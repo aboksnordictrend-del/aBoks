@@ -366,7 +366,7 @@ export default function ProductClient({ product, variants }: Props) {
               aBoks · {selectedVariant?.name}
             </div>
             <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17' }}>
-              {formatPrice(product.price)}
+              {formatPrice(product.price * qty)}
             </div>
           </div>
           <button
