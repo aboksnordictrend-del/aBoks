@@ -125,6 +125,10 @@ export default function HomeClient() {
                 maxWidth: '480px',
                 paddingLeft: 'clamp(24px,5vw,72px)',
                 paddingRight: '20px',
+                marginLeft: '60px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
               }}
             >
               <HeroContent colorId={colorId} setColorId={setColorId} />
@@ -546,17 +550,17 @@ function HeroContent({
 
   return (
     <>
-      <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 22px' }}>
+      <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 22px', textAlign: 'center' }}>
         Smart batteriorganisering
       </p>
-      <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.1vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 24px' }}>
+      <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.1vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 24px', textAlign: 'center' }}>
         Samle batteriene på{' '}
         <em style={{ fontStyle: 'italic', color: '#39402c' }}>ett</em> sted.
       </h1>
-      <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 400, fontSize: 'clamp(16px,1.3vw,18px)', lineHeight: 1.62, color: '#3a3f33', margin: '0 0 36px' }}>
+      <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 400, fontSize: 'clamp(16px,1.3vw,18px)', lineHeight: 1.62, color: '#3a3f33', margin: '0 0 36px', textAlign: 'center' }}>
         aBoks organiserer nye, brukte, AA- og AAA-batterier i én smart boks.
       </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '56px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '56px', justifyContent: 'center' }}>
         <Link
           href="/produkt/aboks"
           style={{
@@ -602,7 +606,7 @@ function HeroContent({
         </Link>
       </div>
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px', justifyContent: 'center' }}>
           <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#5e6a48' }}>
             Velg din farge
           </span>
@@ -610,7 +614,7 @@ function HeroContent({
             {activeColor.name}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'center', justifyContent: 'center' }}>
           {COLORS.map((c) => (
             <button
               key={c.id}
