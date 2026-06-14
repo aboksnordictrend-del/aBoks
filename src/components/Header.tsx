@@ -115,7 +115,7 @@ export default function Header() {
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]">
               {[
-                { label: 'Produktet', href: '/produkt/aboks' },
+                { label: 'Produkter', href: '/produkt/aboks' },
                 { label: 'Slik fungerer det', href: '/#slik' },
                 { label: 'Historien', href: '/#historien' },
                 { label: 'Spørsmål', href: '/#faq' },
@@ -261,7 +261,7 @@ export default function Header() {
 
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {[
-                { label: 'Produktet', href: '/produkt/aboks' },
+                { label: 'Produkter', href: '/produkt/aboks' },
                 { label: 'Handlekurv', href: '/handlekurv' },
                 { label: 'Hjem', href: '/' },
               ].map((item) => (
@@ -284,26 +284,6 @@ export default function Header() {
               ))}
             </nav>
 
-            <Link
-              href="/produkt/aboks"
-              onClick={() => setMenuOpen(false)}
-              style={{
-                marginTop: 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '18px',
-                borderRadius: '999px',
-                background: '#39402c',
-                color: '#faf6ee',
-                fontFamily: 'var(--font-manrope)',
-                fontWeight: 600,
-                fontSize: '16px',
-                textDecoration: 'none',
-              }}
-            >
-              Bestill nå
-            </Link>
           </motion.div>
         )}
       </AnimatePresence>
