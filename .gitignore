@@ -1,0 +1,40 @@
+# Next.js
+.next/
+out/
+build/
+
+# Node.js
+node_modules/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+.env.local
+.env.production.local
+.env.development.local
+
+# Payload CMS
+src/payload-types.ts
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploads (committed to git separately if needed)
+public/media/
+
+# Source assets (not needed in repo — processed copies live in public/images/)
+photos/
+references/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
