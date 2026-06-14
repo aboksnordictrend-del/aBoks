@@ -21,11 +21,13 @@ interface Variant {
 }
 
 interface Product {
+  id: string
   title: string
   slug: string
   tagline: string
   description: string
   price: number
+  images: { src: string; alt: string }[]
 }
 
 interface Props {
@@ -65,7 +67,14 @@ const FUTURE = [
   { name: 'aBoks Pro', desc: 'Større kapasitet for verkstedet.' },
 ]
 
-const STUDIO_IMAGE = '/images/aboks-hero-desktop.png'
+function isLightColor(hex: string): boolean {
+  const c = hex.replace('#', '')
+  const full = c.length === 3 ? c.split('').map((ch) => ch + ch).join('') : c
+  const r = parseInt(full.substring(0, 2), 16)
+  const g = parseInt(full.substring(2, 4), 16)
+  const b = parseInt(full.substring(4, 6), 16)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65
+}
 
 export default function ProductClient({ product, variants }: Props) {
   const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? '')
@@ -87,10 +96,10 @@ export default function ProductClient({ product, variants }: Props) {
 
   const thumbImages = [
     ...variants.map((v) => ({ src: v.image, alt: v.name })),
-    { src: STUDIO_IMAGE, alt: 'aBoks studioshot' },
-  ]
+    ...product.images,
+  ].filter((t) => t.src)
 
-  const displayImage = thumbImages[activeImageIdx]?.src ?? selectedVariant?.image
+  const displayImage = thumbImages[activeImageIdx]?.src ?? thumbImages[0]?.src ?? ''
 
   const handleAddToCart = () => {
     if (!selectedVariant) return
@@ -111,8 +120,11 @@ export default function ProductClient({ product, variants }: Props) {
 
   const handleColorSelect = (variantId: string) => {
     setSelectedVariantId(variantId)
-    const idx = variants.findIndex((v) => v.id === variantId)
-    if (idx >= 0) setActiveImageIdx(idx)
+    const variant = variants.find((v) => v.id === variantId)
+    if (variant?.image) {
+      const idx = thumbImages.findIndex((t) => t.src === variant.image)
+      if (idx >= 0) setActiveImageIdx(idx)
+    }
   }
 
   return (
@@ -203,21 +215,24 @@ export default function ProductClient({ product, variants }: Props) {
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6f63' }}>{selectedVariant?.name}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                  {variants.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => handleColorSelect(v.id)}
-                      aria-label={v.name}
-                      style={{
-                        width: '44px', height: '44px', borderRadius: '999px', border: 'none',
-                        cursor: 'pointer', padding: 0, background: v.colorHex,
-                        boxShadow: selectedVariantId === v.id
-                          ? '0 0 0 2px #faf6ee, 0 0 0 4px #39402c'
-                          : '0 0 0 1px rgba(0,0,0,.18)',
-                        transition: 'box-shadow 0.2s ease',
-                      }}
-                    />
-                  ))}
+                  {variants.map((v) => {
+                    const light = isLightColor(v.colorHex)
+                    return (
+                      <button
+                        key={v.id}
+                        onClick={() => handleColorSelect(v.id)}
+                        aria-label={v.name}
+                        style={{
+                          width: '44px', height: '44px', borderRadius: '999px', border: 'none',
+                          cursor: 'pointer', padding: 0, background: v.colorHex,
+                          boxShadow: selectedVariantId === v.id
+                            ? `0 0 0 2px #faf6ee, 0 0 0 4px #39402c${light ? ', inset 0 0 0 1px #c0bdb5' : ''}`
+                            : light ? '0 0 0 1.5px #b0ada5' : '0 0 0 1px rgba(0,0,0,.18)',
+                          transition: 'box-shadow 0.2s ease',
+                        }}
+                      />
+                    )
+                  })}
                 </div>
               </div>
 

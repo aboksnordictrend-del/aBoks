@@ -1,49 +1,82 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ProductClient from './ProductClient'
+import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
 
-const PRODUCT_DATA = {
-  title: 'aBoks',
-  slug: 'aboks',
-  tagline: 'Smart batteriorganisator med tre rom',
-  description:
-    'Hold orden på nye og brukte batterier i én elegant boks. Tre adskilte rom for AA, AAA og brukte celler – alltid full oversikt, alltid klar for gjenvinning.',
-  price: 499,
+function mediaUrl(val: unknown): string {
+  if (typeof val === 'string') return val
+  if (val && typeof val === 'object' && 'url' in val)
+    return String((val as { url?: string }).url ?? '')
+  return ''
 }
 
-const VARIANTS_DATA = [
-  { id: 'v-olive', name: 'Olivengrønn', colorHex: '#5b6347', image: '/images/aboks-olive.png', sku: 'ABOKS-OLIVE', inventory: 100, sortOrder: 0 },
-  { id: 'v-blue', name: 'Mørk blå', colorHex: '#243153', image: '/images/aboks-blue.png', sku: 'ABOKS-BLUE', inventory: 100, sortOrder: 1 },
-  { id: 'v-black', name: 'Sort', colorHex: '#1d1d1f', image: '/images/aboks-black.png', sku: 'ABOKS-BLACK', inventory: 100, sortOrder: 2 },
-]
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
   const { slug } = await params
-  if (slug !== 'aboks') return {}
+  const product = await getProductBySlug(slug)
+  if (!product) return {}
+
+  const ogImage = product.images?.[0]
+    ? mediaUrl((product.images[0] as any).image)
+    : ''
 
   return {
-    title: 'aBoks – Smart batteriorganisator',
-    description:
-      'aBoks organiserer nye, brukte, AA- og AAA-batterier i én smart boks. Tre rom. Full oversikt. Designet i Norge.',
+    title: `${product.title} – Smart batteriorganisator`,
+    description: product.description ?? '',
     openGraph: {
-      title: 'aBoks – Smart batteriorganisator',
-      description: 'Tre rom. Full oversikt. Designet i Norge.',
-      images: [{ url: '/images/aboks-olive.png', width: 1200, height: 1200, alt: 'aBoks' }],
+      title: `${product.title} – Smart batteriorganisator`,
+      description: product.description ?? '',
+      ...(ogImage && {
+        images: [{ url: ogImage, width: 1200, height: 1200, alt: product.title }],
+      }),
     },
   }
 }
 
-export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProductPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
   const { slug } = await params
 
-  if (slug !== 'aboks') {
-    notFound()
-  }
+  const product = await getProductBySlug(slug)
+  if (!product) notFound()
+
+  const rawVariants = await getVariantsForProduct(String(product.id))
+
+  const variants = rawVariants.map((v) => ({
+    id: String(v.id),
+    name: v.name ?? '',
+    colorHex: v.colorHex ?? '#000000',
+    image: mediaUrl((v as any).image),
+    sku: v.sku ?? '',
+    inventory: v.inventory ?? 0,
+    sortOrder: v.sortOrder ?? 0,
+  }))
+
+  const productImages = ((product.images as any[]) ?? [])
+    .map((entry) => ({
+      src: mediaUrl(entry.image),
+      alt: entry.alt ?? product.title,
+    }))
+    .filter((img) => img.src)
 
   return (
     <ProductClient
-      product={PRODUCT_DATA}
-      variants={VARIANTS_DATA}
+      product={{
+        id: String(product.id),
+        title: product.title,
+        slug: product.slug ?? slug,
+        tagline: product.tagline ?? '',
+        description: product.description ?? '',
+        price: product.price ?? 0,
+        images: productImages,
+      }}
+      variants={variants}
     />
   )
 }
