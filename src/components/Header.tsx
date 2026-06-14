@@ -234,19 +234,22 @@ export default function Header() {
               background: '#faf6ee',
               display: 'flex',
               flexDirection: 'column',
-              padding: '24px',
+              padding: 'clamp(20px,3vw,48px) clamp(20px,6vw,96px)',
+              overflowY: 'auto',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '48px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'clamp(36px,5vw,64px)' }}>
               <span
                 style={{
-                  fontFamily: 'var(--font-cormorant)',
-                  fontWeight: 600,
-                  fontSize: '29px',
-                  color: '#1a1d17',
+                  fontFamily: 'var(--font-manrope)',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: '#6b6f63',
                 }}
               >
-                aBoks
+                Meny
               </span>
               <button
                 onClick={() => setMenuOpen(false)}
@@ -263,7 +266,7 @@ export default function Header() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '40px 48px',
+                gap: 'clamp(32px,4vw,48px) clamp(32px,5vw,72px)',
               }}
             >
               {[
@@ -289,7 +292,7 @@ export default function Header() {
                   ],
                 },
               ].map((section) => (
-                <div key={section.label}>
+                <div key={section.label} className="md:text-center">
                   <p style={{
                     fontFamily: 'var(--font-manrope)',
                     fontSize: '11px',
