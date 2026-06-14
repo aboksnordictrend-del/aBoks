@@ -129,25 +129,38 @@ export default function ProductClient({ product, variants }: Props) {
           </div>
         </div>
 
-        {/* BUY SECTION */}
+        {/* BUY SECTION
+            Mobile order: title+desc → gallery → price+colors+cart
+            Desktop: 2-col grid — gallery left (spans 2 rows), info right
+        */}
         <section style={{ padding: 'clamp(28px,4vw,48px) 0 clamp(60px,8vw,96px)' }}>
           <div
-            className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))',
-              gap: 'clamp(36px,5vw,72px)',
-              alignItems: 'start',
-            }}
+            className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] flex flex-col md:grid md:grid-cols-2 items-start"
+            style={{ columnGap: 'clamp(36px,5vw,72px)', rowGap: 'clamp(24px,3vw,36px)' }}
           >
-            {/* Gallery */}
-            <div>
+            {/* INFO TOP: title + tagline + description
+                Mobile: first (order-1); Desktop: right col, row 1 */}
+            <div className="order-1 md:col-start-2 md:row-start-1">
+              <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(40px,5vw,64px)', letterSpacing: '-0.022em', lineHeight: 1.02, color: '#1a1d17', margin: '0 0 8px' }}>
+                {product.title}
+              </h1>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', color: '#6b6f63', margin: '0 0 20px' }}>
+                {product.tagline}
+              </p>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: 0 }}>
+                {product.description}
+              </p>
+            </div>
+
+            {/* GALLERY
+                Mobile: second (order-2); Desktop: left col, spans both rows */}
+            <div className="order-2 md:col-start-1 md:row-start-1 md:row-span-2">
               <div style={{ aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', background: '#e7d9bd', boxShadow: '0 18px 44px -20px rgba(42,36,24,.24)', position: 'relative' }}>
                 <Image
                   src={displayImage}
                   alt="aBoks"
                   fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   style={{ objectFit: 'cover', transition: 'opacity 0.35s ease' }}
                   priority
                 />
@@ -158,14 +171,9 @@ export default function ProductClient({ product, variants }: Props) {
                     key={i}
                     onClick={() => setActiveImageIdx(i)}
                     style={{
-                      width: '100%',
-                      aspectRatio: '1/1',
-                      borderRadius: '14px',
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      border: activeImageIdx === i ? '2px solid #39402c' : '2px solid transparent',
-                      background: '#f2e7d7',
-                      padding: 0,
+                      width: '100%', aspectRatio: '1/1', borderRadius: '14px', overflow: 'hidden',
+                      cursor: 'pointer', border: activeImageIdx === i ? '2px solid #39402c' : '2px solid transparent',
+                      background: '#f2e7d7', padding: 0,
                       boxShadow: activeImageIdx === i ? 'none' : 'inset 0 0 0 1px #e7e2d4',
                       position: 'relative',
                     }}
@@ -176,24 +184,17 @@ export default function ProductClient({ product, variants }: Props) {
               </div>
             </div>
 
-            {/* Info */}
-            <div>
-              <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(40px,5vw,64px)', letterSpacing: '-0.022em', lineHeight: 1.02, color: '#1a1d17', margin: '0 0 8px' }}>
-                {product.title}
-              </h1>
-              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', color: '#6b6f63', margin: '0 0 18px' }}>
-                {product.tagline}
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '26px' }}>
+            {/* INFO BOTTOM: price + colors + cart + trust + accordion
+                Mobile: third (order-3); Desktop: right col, row 2 */}
+            <div className="order-3 md:col-start-2 md:row-start-2">
+              {/* Stars + price */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px' }}>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '26px', color: '#1a1d17' }}>
                   {formatPrice(product.price)}
                 </span>
                 <span style={{ color: '#c9a76a', fontSize: '14px', letterSpacing: '2px' }}>★★★★★</span>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>128 anmeldelser</span>
               </div>
-              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: '0 0 30px' }}>
-                {product.description}
-              </p>
 
               {/* Color selector */}
               <div style={{ marginBottom: '26px' }}>
@@ -208,17 +209,11 @@ export default function ProductClient({ product, variants }: Props) {
                       onClick={() => handleColorSelect(v.id)}
                       aria-label={v.name}
                       style={{
-                        width: '44px',
-                        height: '44px',
-                        borderRadius: '999px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 0,
-                        background: v.colorHex,
-                        boxShadow:
-                          selectedVariantId === v.id
-                            ? '0 0 0 2px #faf6ee, 0 0 0 4px #39402c'
-                            : '0 0 0 1px rgba(0,0,0,.18)',
+                        width: '44px', height: '44px', borderRadius: '999px', border: 'none',
+                        cursor: 'pointer', padding: 0, background: v.colorHex,
+                        boxShadow: selectedVariantId === v.id
+                          ? '0 0 0 2px #faf6ee, 0 0 0 4px #39402c'
+                          : '0 0 0 1px rgba(0,0,0,.18)',
                         transition: 'box-shadow 0.2s ease',
                       }}
                     />
@@ -229,43 +224,25 @@ export default function ProductClient({ product, variants }: Props) {
               {/* Qty + Add to cart */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', marginBottom: '24px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', border: '1.5px solid #d6cfbd', borderRadius: '999px', overflow: 'hidden', background: '#fff' }}>
-                  <button
-                    onClick={() => setQty((q) => Math.max(1, q - 1))}
-                    aria-label="Færre"
-                    style={{ width: '48px', height: '50px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#1a1d17', lineHeight: 1 }}
-                  >
+                  <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Færre"
+                    style={{ width: '48px', height: '50px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#1a1d17', lineHeight: 1 }}>
                     −
                   </button>
                   <span style={{ minWidth: '42px', textAlign: 'center', fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '16px', color: '#1a1d17' }}>
                     {qty}
                   </span>
-                  <button
-                    onClick={() => setQty((q) => Math.min(99, q + 1))}
-                    aria-label="Flere"
-                    style={{ width: '48px', height: '50px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#1a1d17', lineHeight: 1 }}
-                  >
+                  <button onClick={() => setQty((q) => Math.min(99, q + 1))} aria-label="Flere"
+                    style={{ width: '48px', height: '50px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#1a1d17', lineHeight: 1 }}>
                     +
                   </button>
                 </div>
                 <button
                   onClick={handleAddToCart}
                   style={{
-                    flex: 1,
-                    minWidth: '200px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    padding: '17px 32px',
-                    borderRadius: '999px',
-                    background: '#39402c',
-                    color: '#faf6ee',
-                    fontFamily: 'var(--font-manrope)',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'background 0.2s ease',
+                    flex: 1, minWidth: '200px', display: 'inline-flex', alignItems: 'center',
+                    justifyContent: 'center', gap: '10px', padding: '17px 32px', borderRadius: '999px',
+                    background: '#39402c', color: '#faf6ee', fontFamily: 'var(--font-manrope)',
+                    fontWeight: 600, fontSize: '15px', border: 'none', cursor: 'pointer', transition: 'background 0.2s ease',
                   }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2a3020' }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#39402c' }}
