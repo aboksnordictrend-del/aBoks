@@ -158,7 +158,7 @@ export default function HomeClient() {
           {/* MIDDLE: product image — contained, no stretch, nothing overlapping it */}
           <div style={{ position: 'relative', flex: 1, minHeight: '260px' }}>
             <Image
-              src="/images/aboks-hero-official-mobile.png"
+              src="/images/aboks-hero-mobile-v2.png"
               alt="aBoks i tre farger"
               fill
               priority
