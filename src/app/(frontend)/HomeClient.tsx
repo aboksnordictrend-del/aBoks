@@ -125,7 +125,7 @@ export default function HomeClient() {
                 maxWidth: '480px',
                 paddingLeft: 'clamp(24px,5vw,72px)',
                 paddingRight: '20px',
-                marginLeft: '60px',
+                marginLeft: '100px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -553,7 +553,7 @@ function HeroContent({
       <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 22px', textAlign: 'center' }}>
         Smart batteriorganisering
       </p>
-      <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.1vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 24px', textAlign: 'center' }}>
+      <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 700, fontSize: 'clamp(30px,3.1vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 24px', textAlign: 'center' }}>
         Samle batteriene på{' '}
         <em style={{ fontStyle: 'italic', color: '#39402c' }}>ett</em> sted.
       </h1>
