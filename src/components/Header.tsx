@@ -259,28 +259,70 @@ export default function Header() {
               </button>
             </div>
 
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <nav
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '40px 48px',
+              }}
+            >
               {[
-                { label: 'Produkter', href: '/produkt/aboks' },
-                { label: 'Handlekurv', href: '/handlekurv' },
-                { label: 'Hjem', href: '/' },
-              ].map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    display: 'block',
-                    borderBottom: '1px solid #e7e2d4',
-                    padding: '20px 0',
-                    fontFamily: 'var(--font-cormorant)',
-                    fontSize: '30px',
-                    color: '#1a1d17',
-                    textDecoration: 'none',
-                  }}
-                >
-                  {item.label}
-                </Link>
+                {
+                  label: 'Handle',
+                  links: [
+                    { label: 'aBoks', href: '/produkt/aboks' },
+                    { label: 'Handlekurv', href: '/handlekurv' },
+                  ],
+                },
+                {
+                  label: 'Lær mer',
+                  links: [
+                    { label: 'Slik fungerer det', href: '/#slik' },
+                    { label: 'Historien', href: '/#historien' },
+                    { label: 'Spørsmål', href: '/#faq' },
+                  ],
+                },
+                {
+                  label: 'Annet',
+                  links: [
+                    { label: 'Hjem', href: '/' },
+                  ],
+                },
+              ].map((section) => (
+                <div key={section.label}>
+                  <p style={{
+                    fontFamily: 'var(--font-manrope)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: '#9a9a8e',
+                    margin: '0 0 14px',
+                  }}>
+                    {section.label}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {section.links.map((link) => (
+                      <Link
+                        key={link.label}
+                        href={link.href}
+                        onClick={() => setMenuOpen(false)}
+                        style={{
+                          display: 'block',
+                          padding: '11px 0',
+                          borderBottom: '1px solid #e7e2d4',
+                          fontFamily: 'var(--font-cormorant)',
+                          fontSize: '26px',
+                          fontWeight: 600,
+                          color: '#1a1d17',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
 
