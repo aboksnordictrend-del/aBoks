@@ -5,14 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:vercel": "payload migrate && next build",
     "start": "next start",
     "lint": "next lint",
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",
+    "migrate": "payload migrate",
+    "migrate:create": "payload migrate:create",
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {
-    "@payloadcms/db-sqlite": "^3.33.0",
+    "@payloadcms/db-postgres": "^3.85.1",
     "@payloadcms/next": "^3.33.0",
     "@payloadcms/richtext-lexical": "^3.33.0",
     "framer-motion": "^11.15.0",
