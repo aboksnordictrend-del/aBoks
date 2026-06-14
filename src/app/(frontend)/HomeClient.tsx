@@ -13,6 +13,7 @@ const COLORS = [
   { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', image: '/images/aboks-olive.png' },
   { id: 'blue', name: 'Mørk blå', swatch: '#243153', image: '/images/aboks-blue.png' },
   { id: 'black', name: 'Sort', swatch: '#1d1d1f', image: '/images/aboks-black.png' },
+  { id: 'cream', name: 'Creme', swatch: '#FAF7F2', image: '/images/aBoks product white.png' },
 ]
 
 const FEATURES = [
@@ -50,6 +51,7 @@ const FAQS = [
 
 const CAROUSEL_ITEMS = [
   { src: '/images/aboks-hero-desktop.png', alt: 'aBoks – studioshot' },
+  { src: '/images/aBoks product white.png', alt: 'aBoks Hvit' },
   { src: '/images/aboks-olive.png', alt: 'aBoks Olivengrønn' },
   { src: '/images/aboks-blue.png', alt: 'aBoks Mørk blå' },
   { src: '/images/aboks-black.png', alt: 'aBoks Sort' },
@@ -57,6 +59,7 @@ const CAROUSEL_ITEMS = [
 ]
 
 const LIFESTYLE = [
+  { src: '/images/aBoks product white.png', alt: 'Ren og tidløs – aBoks i hvit.' },
   { src: '/images/aboks-olive.png', alt: 'Tar seg godt ut – uansett hvor du setter den.' },
   { src: '/images/aboks-blue.png', alt: 'Robust nok for hytta og turen.' },
   { src: '/images/aboks-black.png', alt: 'Tidløst design som varer.' },
@@ -261,15 +264,8 @@ export default function HomeClient() {
               Resultatet er rot, kasting av gode batterier og brukte celler som aldri når gjenvinningen.
             </p>
           </motion.div>
-          <motion.div {...fadeUp(0.1)} style={{ position: 'relative', aspectRatio: '4/3', borderRadius: '22px', overflow: 'hidden', background: '#efe6d3', border: '1px dashed #cdbf9f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '14px', padding: '24px', textAlign: 'center' }}>
-            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#a99a76" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="9" width="11" height="6" rx="1.4" transform="rotate(-18 8.5 12)" />
-              <rect x="10" y="11" width="11" height="6" rx="1.4" transform="rotate(12 15.5 14)" />
-              <path d="M21 8.5h1.4" />
-            </svg>
-            <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', letterSpacing: '0.04em', color: '#8a8164' }}>
-              Bildeplass – løse batterier i en skuff
-            </span>
+          <motion.div {...fadeUp(0.1)} style={{ position: 'relative', aspectRatio: '4/3', borderRadius: '22px', overflow: 'hidden', background: '#efe6d3' }}>
+            <Image src="/images/problem visual.png" alt="Løse batterier i en skuff" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
           </motion.div>
         </div>
       </section>
@@ -286,10 +282,10 @@ export default function HomeClient() {
               marginBottom: 'clamp(48px,7vw,88px)',
             }}
           >
-            <motion.div {...fadeUp()} style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 48px -18px rgba(42,36,24,.22)', order: 2 }}>
+            <motion.div {...fadeUp()} className="order-2 md:order-1" style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 48px -18px rgba(42,36,24,.22)' }}>
               <Image src="/images/aboks-olive.png" alt="aBoks i bruk" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
             </motion.div>
-            <motion.div {...fadeUp(0.1)} style={{ order: 1 }}>
+            <motion.div {...fadeUp(0.1)} className="order-1 md:order-2 md:pl-[40px]">
               <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 18px' }}>Løsningen</p>
               <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(32px,4vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 24px' }}>
                 Én boks. Tre rom.{' '}
@@ -430,12 +426,12 @@ export default function HomeClient() {
           </motion.div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'clamp(20px,2.4vw,28px)' }}>
             {[
-              { n: '01', title: 'Skissen', desc: 'Den første idéen, tegnet på et kjøkkenbord.', img: null },
-              { n: '02', title: 'Prototypen', desc: 'Vår første 3D-printede modell med tre rom.', img: null },
-              { n: '03', title: 'Testingen', desc: 'Over 40 husstander testet aBoks i hverdagen.', img: null },
+              { n: '01', title: 'Skissen', desc: 'Den første idéen, tegnet på et kjøkkenbord.', img: '/images/skissen.png' },
+              { n: '02', title: 'Prototypen', desc: 'Vår første 3D-printede modell med tre rom.', img: '/images/skissen1.png' },
+              { n: '03', title: 'Testingen', desc: 'Over 40 husstander testet aBoks i hverdagen.', img: '/images/prototipen.jpg' },
               { n: '04', title: 'Produktet', desc: 'Ferdig produkt i tre farger, klart for ditt hjem.', img: '/images/aboks-hero-desktop.png' },
             ].map((step, i) => (
-              <motion.div key={step.n} {...fadeUp(i * 0.08)}>
+              <motion.div key={step.n} {...fadeUp(i * 0.08)} style={{ transform: 'translateY(-20px)' }}>
                 <div style={{ aspectRatio: '4/3', borderRadius: '18px', overflow: 'hidden', marginBottom: '18px', background: '#e7d9bd', border: step.img ? 'none' : '1px dashed #cdbf9f', position: 'relative' }}>
                   {step.img ? (
                     <Image src={step.img} alt={step.title} fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 25vw" />
@@ -586,6 +582,7 @@ function HeroContent({
     { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347' },
     { id: 'blue', name: 'Mørk blå', swatch: '#243153' },
     { id: 'black', name: 'Sort', swatch: '#1d1d1f' },
+    { id: 'cream', name: 'Creme', swatch: '#FAF7F2' },
   ]
   const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
 
