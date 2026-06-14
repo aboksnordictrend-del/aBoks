@@ -136,31 +136,17 @@ export default function HomeClient() {
           </div>
         </div>
 
-        {/* Mobile hero */}
+        {/* Mobile hero – stacked: text top, product middle, buttons bottom */}
         <div
-          className="relative flex flex-col md:hidden"
-          style={{ height: '100svh', minHeight: '620px', overflow: 'hidden' }}
+          className="flex flex-col md:hidden"
+          style={{ minHeight: '100svh', background: '#e0bd92' }}
         >
-          {/* Full-bleed background */}
-          <Image
-            src="/images/aboks-hero-official-mobile.png"
-            alt="aBoks i tre farger"
-            fill
-            priority
-            style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
-          />
-          {/* Gradient: warm top → transparent → dark bottom */}
-          <div style={{
-            position: 'absolute', inset: 0, zIndex: 1,
-            background: 'linear-gradient(to bottom, rgba(224,189,146,0.92) 0%, rgba(224,189,146,0.55) 30%, transparent 52%, rgba(10,8,5,0.52) 100%)',
-          }} />
-
           {/* TOP: eyebrow + heading + subtitle */}
-          <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(88px,22vw,120px) 28px 0', textAlign: 'center' }}>
+          <div style={{ padding: 'clamp(80px,20vw,108px) 28px 16px', textAlign: 'center' }}>
             <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px' }}>
               Smart batteriorganisering
             </p>
-            <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 700, fontSize: 'clamp(34px,9vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 16px' }}>
+            <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 700, fontSize: 'clamp(34px,9vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 14px' }}>
               Samle batteriene på{' '}
               <em style={{ fontStyle: 'italic', color: '#39402c' }}>ett</em> sted.
             </h1>
@@ -169,12 +155,19 @@ export default function HomeClient() {
             </p>
           </div>
 
+          {/* MIDDLE: product image — contained, no stretch, nothing overlapping it */}
+          <div style={{ position: 'relative', flex: 1, minHeight: '260px' }}>
+            <Image
+              src="/images/aboks-hero-official-mobile.png"
+              alt="aBoks i tre farger"
+              fill
+              priority
+              style={{ objectFit: 'contain', objectPosition: 'center' }}
+            />
+          </div>
+
           {/* BOTTOM: buttons + color swatches */}
-          <div style={{
-            position: 'relative', zIndex: 2, marginTop: 'auto',
-            padding: '0 28px clamp(40px,10vw,60px)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '22px',
-          }}>
+          <div style={{ padding: '16px 28px clamp(36px,9vw,52px)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
             <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '360px' }}>
               <Link href="/produkt/aboks" style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -183,21 +176,21 @@ export default function HomeClient() {
               }}>Bestill nå</Link>
               <Link href="/produkt/aboks" style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                padding: '16px 20px', borderRadius: '999px', background: 'rgba(255,255,255,0.45)', color: '#1a1d17',
+                padding: '16px 20px', borderRadius: '999px', background: 'rgba(255,255,255,0.5)', color: '#1a1d17',
                 fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px',
                 border: '1.5px solid rgba(26,29,23,0.22)', textDecoration: 'none',
               }}>Se produktet</Link>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#fff' }}>Velg din farge</span>
-                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', fontWeight: 600, color: '#fff' }}>{activeColor.name}</span>
+                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#3a3f33' }}>Velg din farge</span>
+                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', fontWeight: 600, color: '#1a1d17' }}>{activeColor.name}</span>
               </div>
               <div style={{ display: 'flex', gap: '14px' }}>
                 {COLORS.map((c) => (
                   <button key={c.id} onClick={() => setColorId(c.id)} aria-label={c.name} style={{
                     width: '44px', height: '44px', borderRadius: '999px', border: 'none', cursor: 'pointer', padding: 0, background: c.swatch,
-                    boxShadow: colorId === c.id ? '0 0 0 2.5px rgba(255,255,255,0.9), 0 0 0 4.5px rgba(255,255,255,0.5)' : '0 0 0 1px rgba(255,255,255,0.3)',
+                    boxShadow: colorId === c.id ? `0 0 0 2.5px #e0bd92, 0 0 0 4.5px ${c.swatch}` : '0 0 0 1px rgba(0,0,0,0.2)',
                     transition: 'box-shadow 0.2s ease',
                   }} />
                 ))}
