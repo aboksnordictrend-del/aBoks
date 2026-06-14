@@ -247,7 +247,7 @@ export default function ProductClient({ product, variants }: Props) {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2a3020' }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#39402c' }}
                 >
-                  Legg i handlekurv · {formatPrice(product.price * qty)}
+                  Legg i handlekurv
                 </button>
               </div>
 
