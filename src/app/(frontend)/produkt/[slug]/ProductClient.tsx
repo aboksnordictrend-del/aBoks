@@ -135,7 +135,7 @@ export default function ProductClient({ product, variants }: Props) {
         */}
         <section style={{ padding: 'clamp(28px,4vw,48px) 0 clamp(60px,8vw,96px)' }}>
           <div
-            className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] flex flex-col md:grid md:grid-cols-2 items-start"
+            className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] flex flex-col md:grid md:grid-cols-2 md:items-start"
             style={{ columnGap: 'clamp(36px,5vw,72px)', rowGap: 'clamp(24px,3vw,36px)' }}
           >
             {/* INFO TOP: title + tagline + description
