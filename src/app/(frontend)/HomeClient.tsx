@@ -138,29 +138,71 @@ export default function HomeClient() {
 
         {/* Mobile hero */}
         <div
-          className="flex flex-col md:hidden"
-          style={{ background: '#e6c9a3', minHeight: '100vh' }}
+          className="relative flex flex-col md:hidden"
+          style={{ height: '100svh', minHeight: '620px', overflow: 'hidden' }}
         >
-          <div style={{ order: 1, position: 'relative', zIndex: 2, padding: '116px 24px 16px' }}>
-            <div style={{ maxWidth: '480px' }}>
-              <HeroContent colorId={colorId} setColorId={setColorId} />
-            </div>
+          {/* Full-bleed background */}
+          <Image
+            src="/images/aboks-hero-official-mobile.png"
+            alt="aBoks i tre farger"
+            fill
+            priority
+            style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
+          />
+          {/* Gradient: warm top → transparent → dark bottom */}
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1,
+            background: 'linear-gradient(to bottom, rgba(224,189,146,0.92) 0%, rgba(224,189,146,0.55) 30%, transparent 52%, rgba(10,8,5,0.52) 100%)',
+          }} />
+
+          {/* TOP: eyebrow + heading + subtitle */}
+          <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(88px,22vw,120px) 28px 0', textAlign: 'center' }}>
+            <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '11px', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px' }}>
+              Smart batteriorganisering
+            </p>
+            <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 700, fontSize: 'clamp(34px,9vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 16px' }}>
+              Samle batteriene på{' '}
+              <em style={{ fontStyle: 'italic', color: '#39402c' }}>ett</em> sted.
+            </h1>
+            <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 400, fontSize: '16px', lineHeight: 1.6, color: '#3a3f33', margin: 0 }}>
+              aBoks organiserer nye, brukte, AA- og AAA-batterier i én smart boks.
+            </p>
           </div>
-          <div style={{ order: 2, marginTop: 'auto' }}>
-            <Image
-              src="/images/aboks-hero-official-mobile.png"
-              alt="aBoks i tre farger"
-              width={800}
-              height={600}
-              priority
-              style={{
-                width: '100%',
-                height: '46vh',
-                objectFit: 'cover',
-                objectPosition: 'center 30%',
-                display: 'block',
-              }}
-            />
+
+          {/* BOTTOM: buttons + color swatches */}
+          <div style={{
+            position: 'relative', zIndex: 2, marginTop: 'auto',
+            padding: '0 28px clamp(40px,10vw,60px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '22px',
+          }}>
+            <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '360px' }}>
+              <Link href="/produkt/aboks" style={{
+                flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                padding: '16px 20px', borderRadius: '999px', background: '#39402c', color: '#faf6ee',
+                fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', textDecoration: 'none',
+              }}>Bestill nå</Link>
+              <Link href="/produkt/aboks" style={{
+                flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                padding: '16px 20px', borderRadius: '999px', background: 'rgba(255,255,255,0.45)', color: '#1a1d17',
+                fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px',
+                border: '1.5px solid rgba(26,29,23,0.22)', textDecoration: 'none',
+              }}>Se produktet</Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#fff' }}>Velg din farge</span>
+                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', fontWeight: 600, color: '#fff' }}>{activeColor.name}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '14px' }}>
+                {COLORS.map((c) => (
+                  <button key={c.id} onClick={() => setColorId(c.id)} aria-label={c.name} style={{
+                    width: '44px', height: '44px', borderRadius: '999px', border: 'none', cursor: 'pointer', padding: 0, background: c.swatch,
+                    boxShadow: colorId === c.id ? '0 0 0 2.5px rgba(255,255,255,0.9), 0 0 0 4.5px rgba(255,255,255,0.5)' : '0 0 0 1px rgba(255,255,255,0.3)',
+                    transition: 'box-shadow 0.2s ease',
+                  }} />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
