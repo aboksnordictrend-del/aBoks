@@ -159,7 +159,7 @@ export default function ProductClient({ product, variants }: Props) {
               <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', color: '#6b6f63', margin: '0 0 20px' }}>
                 {product.tagline}
               </p>
-              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: 0 }}>
+              <p className="hidden md:block" style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: 0 }}>
                 {product.description}
               </p>
             </div>
@@ -271,6 +271,11 @@ export default function ProductClient({ product, variants }: Props) {
                   Legg i handlekurv
                 </button>
               </div>
+
+              {/* Description — mobile only (hidden on desktop, shown in order-1 there) */}
+              <p className="md:hidden" style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: '0 0 24px' }}>
+                {product.description}
+              </p>
 
               {/* Trust signals */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px 0', borderTop: '1px solid #e7e2d4', borderBottom: '1px solid #e7e2d4', marginBottom: '30px' }}>
