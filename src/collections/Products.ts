@@ -10,11 +10,11 @@ export const Products: CollectionConfig = {
     listSearchableFields: ['title', 'slug'],
   },
   access: {
-    read: () => true,
-    create: ({ req }) => !!req.user,
-    update: ({ req }) => !!req.user,
-    delete: ({ req }) => !!req.user,
-  },
+  read: () => true,
+  create: () => true,
+  update: () => true,
+  delete: () => true,
+},
   versions: {
     drafts: true,
   },
