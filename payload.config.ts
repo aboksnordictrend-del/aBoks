@@ -31,7 +31,12 @@ export default buildConfig({
     ? [
         vercelBlobStorage({
           enabled: true,
-          collections: { media: true },
+          collections: {
+            media: {
+              // Required: without this, media.url is built from serverURL (→ localhost in prod)
+              disablePayloadAccessControl: true,
+            },
+          },
           token: process.env.BLOB_READ_WRITE_TOKEN,
         }),
       ]
