@@ -12,8 +12,11 @@ export const Media: CollectionConfig = {
     group: 'Innhold',
   },
   access: {
-    read: () => true,
-  },
+  read: () => true,
+  create: () => true,
+  update: () => true,
+  delete: () => true,
+},
   upload: {
     staticDir: path.resolve(dirname, '../../public/media'),
     imageSizes: [
