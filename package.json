@@ -2,10 +2,11 @@
   "name": "aboks",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:vercel": "payload generate:importmap && payload migrate && next build",
+    "build:vercel": "payload migrate && next build",
     "start": "next start",
     "lint": "next lint",
     "generate:types": "payload generate:types",
