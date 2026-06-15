@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
 import CartToast from '@/components/CartToast'
 import Accordion from '@/components/Accordion'
 import VideoPlaceholder from '@/components/VideoPlaceholder'
+import ProductImageCarousel, {
+  type ProductImageCarouselHandle,
+} from '@/components/ProductImageCarousel'
 import { formatPrice } from '@/lib/format'
 
 interface Variant {
@@ -82,6 +83,7 @@ export default function ProductClient({ product, variants }: Props) {
   const [activeImageIdx, setActiveImageIdx] = useState(0)
   const [toastVisible, setToastVisible] = useState(false)
   const [isNarrow, setIsNarrow] = useState(false)
+  const carouselRef = useRef<ProductImageCarouselHandle>(null)
 
   const addItem = useCartStore((s) => s.addItem)
 
@@ -123,7 +125,10 @@ export default function ProductClient({ product, variants }: Props) {
     const variant = variants.find((v) => v.id === variantId)
     if (variant?.image) {
       const idx = thumbImages.findIndex((t) => t.src === variant.image)
-      if (idx >= 0) setActiveImageIdx(idx)
+      if (idx >= 0) {
+        setActiveImageIdx(idx)
+        carouselRef.current?.goTo(idx)
+      }
     }
   }
 
@@ -167,39 +172,12 @@ export default function ProductClient({ product, variants }: Props) {
             {/* GALLERY
                 Mobile: second (order-2); Desktop: left col, spans both rows */}
             <div className="order-2 md:col-start-1 md:row-start-1 md:row-span-2">
-              <div style={{ aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', background: '#e7d9bd', boxShadow: '0 18px 44px -20px rgba(42,36,24,.24)', position: 'relative' }}>
-                {displayImage ? (
-                  <Image
-                    src={displayImage}
-                    alt="aBoks"
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    style={{ objectFit: 'cover', transition: 'opacity 0.35s ease' }}
-                    priority
-                  />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#a99a76', letterSpacing: '0.04em' }}>Bildeplass</span>
-                  </div>
-                )}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '14px' }}>
-                {thumbImages.map((thumb, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImageIdx(i)}
-                    style={{
-                      width: '100%', aspectRatio: '1/1', borderRadius: '14px', overflow: 'hidden',
-                      cursor: 'pointer', border: activeImageIdx === i ? '2px solid #39402c' : '2px solid transparent',
-                      background: '#f2e7d7', padding: 0,
-                      boxShadow: activeImageIdx === i ? 'none' : 'inset 0 0 0 1px #e7e2d4',
-                      position: 'relative',
-                    }}
-                  >
-                    <Image src={thumb.src} alt={thumb.alt} fill style={{ objectFit: 'cover' }} sizes="100px" />
-                  </button>
-                ))}
-              </div>
+              <ProductImageCarousel
+                ref={carouselRef}
+                images={thumbImages}
+                initialIndex={0}
+                onIndexChange={setActiveImageIdx}
+              />
             </div>
 
             {/* INFO BOTTOM: price + colors + cart + trust + accordion
