@@ -9,8 +9,11 @@ export const ProductVariants: CollectionConfig = {
     description: 'Fargevarianter for produkter.',
   },
   access: {
-    read: () => true,
-  },
+  read: () => true,
+  create: () => true,
+  update: () => true,
+  delete: () => true,
+},
   fields: [
     {
       name: 'product',
