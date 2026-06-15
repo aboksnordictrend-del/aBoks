@@ -9,12 +9,11 @@ export const Orders: CollectionConfig = {
     description: 'Alle bestillinger fra nettbutikken.',
   },
   access: {
-    read: ({ req }) => {
-      if (req.user) return true
-      return false
-    },
-    create: () => true,
-  },
+  read: ({ req }) => !!req.user,
+  create: () => true,
+  update: ({ req }) => !!req.user,
+  delete: ({ req }) => !!req.user,
+},
   fields: [
     {
       name: 'orderNumber',
