@@ -3,7 +3,7 @@
 import Image from 'next/image'
 
 interface VideoPlaceholderProps {
-  thumbnail: string
+  thumbnail?: string
   label?: string
   duration?: string
 }
@@ -30,13 +30,15 @@ export default function VideoPlaceholder({
         boxShadow: '0 24px 56px -20px rgba(42,36,24,.3)',
       }}
     >
-      <Image
-        src={thumbnail}
-        alt="aBoks film"
-        fill
-        sizes="(max-width: 1100px) 100vw, 1100px"
-        style={{ objectFit: 'cover', opacity: 0.92 }}
-      />
+      {thumbnail && (
+        <Image
+          src={thumbnail}
+          alt="aBoks film"
+          fill
+          sizes="(max-width: 1100px) 100vw, 1100px"
+          style={{ objectFit: 'cover', opacity: 0.92 }}
+        />
+      )}
       <span
         style={{
           position: 'absolute',
