@@ -10,10 +10,10 @@ import Accordion from '@/components/Accordion'
 import VideoPlaceholder from '@/components/VideoPlaceholder'
 
 const COLORS = [
-  { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', image: '/images/aboks-olive.png' },
-  { id: 'blue', name: 'Mørk blå', swatch: '#243153', image: '/images/aboks-blue.png' },
-  { id: 'black', name: 'Sort', swatch: '#1d1d1f', image: '/images/aboks-black.png' },
-  { id: 'cream', name: 'Creme', swatch: '#FAF7F2', image: '/images/aBoks product white.png' },
+  { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
+  { id: 'blue', name: 'Mørk blå', swatch: '#243153', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp' },
+  { id: 'black', name: 'Sort', swatch: '#1d1d1f', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp' },
+  { id: 'cream', name: 'Creme', swatch: '#FAF7F2', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp' },
 ]
 
 const FEATURES = [
@@ -50,19 +50,19 @@ const FAQS = [
 ]
 
 const CAROUSEL_ITEMS = [
-  { src: '/images/aboks-hero-desktop.png', alt: 'aBoks – studioshot' },
-  { src: '/images/aBoks product white.png', alt: 'aBoks Hvit' },
-  { src: '/images/aboks-olive.png', alt: 'aBoks Olivengrønn' },
-  { src: '/images/aboks-blue.png', alt: 'aBoks Mørk blå' },
-  { src: '/images/aboks-black.png', alt: 'aBoks Sort' },
-  { src: '/images/hero-mobile.png', alt: 'aBoks i bruk' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks.webp', alt: 'aBoks – studioshot' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp', alt: 'aBoks Hvit' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp', alt: 'aBoks Olivengrønn' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp', alt: 'aBoks Mørk blå' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp', alt: 'aBoks Sort' },
+  { src: '/images/hero-mobile.webp', alt: 'aBoks i bruk' },
 ]
 
 const LIFESTYLE = [
-  { src: '/images/aBoks product white.png', alt: 'Ren og tidløs – aBoks i hvit.' },
-  { src: '/images/aboks-olive.png', alt: 'Tar seg godt ut – uansett hvor du setter den.' },
-  { src: '/images/aboks-blue.png', alt: 'Robust nok for hytta og turen.' },
-  { src: '/images/aboks-black.png', alt: 'Tidløst design som varer.' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp', alt: 'Ren og tidløs – aBoks i hvit.' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp', alt: 'Tar seg godt ut – uansett hvor du setter den.' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp', alt: 'Robust nok for hytta og turen.' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp', alt: 'Tidløst design som varer.' },
 ]
 
 const FUTURE = [
@@ -105,7 +105,7 @@ export default function HomeClient() {
         {/* Desktop hero */}
         <div className="hidden md:block">
           <Image
-            src="/images/aboks-hero-official.png"
+            src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-hero-decktop.webp"
             alt="aBoks i tre farger – olivengrønn, mørk blå og sort"
             width={2000}
             height={1200}
@@ -145,7 +145,7 @@ export default function HomeClient() {
           style={{ height: '100svh', minHeight: '620px', overflow: 'hidden' }}
         >
           <Image
-            src="/images/aboks-hero-mobile-v2.png"
+            src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aboks-hero-mobile.webp"
             alt="aBoks i tre farger"
             fill
             priority
@@ -265,7 +265,7 @@ export default function HomeClient() {
             </p>
           </motion.div>
           <motion.div {...fadeUp(0.1)} style={{ position: 'relative', aspectRatio: '4/3', borderRadius: '22px', overflow: 'hidden', background: '#efe6d3' }}>
-            <Image src="/images/problem visual.png" alt="Løse batterier i en skuff" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
+            <Image src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/problem-visual.webp" alt="Løse batterier i en skuff" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
           </motion.div>
         </div>
       </section>
@@ -283,7 +283,7 @@ export default function HomeClient() {
             }}
           >
             <motion.div {...fadeUp()} className="order-2 md:order-1" style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 48px -18px rgba(42,36,24,.22)' }}>
-              <Image src="/images/aboks-olive.png" alt="aBoks i bruk" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
+              <Image src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp" alt="aBoks i bruk" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
             </motion.div>
             <motion.div {...fadeUp(0.1)} className="order-1 md:order-2 md:pl-[40px]">
               <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 18px' }}>Løsningen</p>
@@ -410,7 +410,7 @@ export default function HomeClient() {
             </h2>
           </motion.div>
           <motion.div {...fadeUp(0.1)}>
-            <VideoPlaceholder thumbnail="/images/aboks-hero-desktop.png" label="Videoplass" duration="1:42" />
+            <VideoPlaceholder thumbnail="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks.webp" label="Videoplass" duration="1:42" />
           </motion.div>
         </div>
       </section>
@@ -426,10 +426,10 @@ export default function HomeClient() {
           </motion.div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'clamp(20px,2.4vw,28px)' }}>
             {[
-              { n: '01', title: 'Skissen', desc: 'Den første idéen, tegnet på et kjøkkenbord.', img: '/images/skissen.png' },
-              { n: '02', title: 'Prototypen', desc: 'Vår første 3D-printede modell med tre rom.', img: '/images/skissen1.png' },
+              { n: '01', title: 'Skissen', desc: 'Den første idéen, tegnet på et kjøkkenbord.', img: '/images/skissen.webp' },
+              { n: '02', title: 'Prototypen', desc: 'Vår første 3D-printede modell med tre rom.', img: '/images/skissen1.webp' },
               { n: '03', title: 'Testingen', desc: 'Over 40 husstander testet aBoks i hverdagen.', img: '/images/prototipen.jpg' },
-              { n: '04', title: 'Produktet', desc: 'Ferdig produkt i tre farger, klart for ditt hjem.', img: '/images/aboks-hero-desktop.png' },
+              { n: '04', title: 'Produktet', desc: 'Ferdig produkt i tre farger, klart for ditt hjem.', img: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks.webp' },
             ].map((step, i) => (
               <motion.div key={step.n} {...fadeUp(i * 0.08)} style={{ transform: 'translateY(-20px)' }}>
                 <div style={{ aspectRatio: '4/3', borderRadius: '18px', overflow: 'hidden', marginBottom: '18px', background: '#e7d9bd', border: step.img ? 'none' : '1px dashed #cdbf9f', position: 'relative' }}>

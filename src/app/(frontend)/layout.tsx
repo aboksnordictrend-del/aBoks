@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     siteName: 'aBoks',
     title: 'aBoks – Smart batteriorganisering',
     description: 'Én smart boks med tre rom – for AA, AAA og brukte batterier. Designet i Norge.',
-    images: [{ url: '/images/hero-desktop.png', width: 1200, height: 630, alt: 'aBoks' }],
+    images: [{ url: '/images/hero-desktop.webp', width: 1200, height: 630, alt: 'aBoks' }],
   },
 }
 
