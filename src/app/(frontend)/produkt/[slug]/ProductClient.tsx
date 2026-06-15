@@ -168,14 +168,20 @@ export default function ProductClient({ product, variants }: Props) {
                 Mobile: second (order-2); Desktop: left col, spans both rows */}
             <div className="order-2 md:col-start-1 md:row-start-1 md:row-span-2">
               <div style={{ aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', background: '#e7d9bd', boxShadow: '0 18px 44px -20px rgba(42,36,24,.24)', position: 'relative' }}>
-                <Image
-                  src={displayImage}
-                  alt="aBoks"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  style={{ objectFit: 'cover', transition: 'opacity 0.35s ease' }}
-                  priority
-                />
+                {displayImage ? (
+                  <Image
+                    src={displayImage}
+                    alt="aBoks"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    style={{ objectFit: 'cover', transition: 'opacity 0.35s ease' }}
+                    priority
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#a99a76', letterSpacing: '0.04em' }}>Bildeplass</span>
+                  </div>
+                )}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '14px' }}>
                 {thumbImages.map((thumb, i) => (
@@ -310,7 +316,7 @@ export default function ProductClient({ product, variants }: Props) {
         {/* VIDEO */}
         <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0' }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 clamp(20px,5vw,48px)' }}>
-            <VideoPlaceholder thumbnail={displayImage} label="Produktvideo" />
+            <VideoPlaceholder thumbnail={displayImage || undefined} label="Produktvideo" />
           </div>
         </section>
 
