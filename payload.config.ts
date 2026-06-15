@@ -15,6 +15,14 @@ import { Customers } from './src/collections/Customers'
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+// NEXT_PUBLIC_SERVER_URL is the canonical URL (set this in Vercel env vars).
+// VERCEL_URL is auto-set by Vercel per deployment (no https:// prefix).
+// Without a correct serverURL, Payload's CSRF check rejects all server action
+// requests (Origin header mismatch → req.user = null → 500 on list views).
+const serverURL =
+  process.env.NEXT_PUBLIC_SERVER_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
 export default buildConfig({
   admin: {
     user: Users.slug,
@@ -56,7 +64,7 @@ export default buildConfig({
       fileSize: 10_000_000,
     },
   },
-  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
-  cors: [process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'],
+  serverURL,
+  cors: [serverURL],
   sharp,
 })
