@@ -40,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="nb" className={`${cormorant.variable} ${manrope.variable}`} suppressHydrationWarning>
+    <html lang="nb" className={`${cormorant.variable} ${manrope.variable}`} data-site="frontend" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Header />
         <div style={{ overflowX: 'clip' }}>

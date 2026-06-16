@@ -46,17 +46,19 @@ html {
 }
 
 @layer components {
+  /* Scoped to frontend only — admin panel (payload) has its own layout without data-site="frontend" */
+
   /* Remove browser tap highlight — we provide our own press feedback */
-  button,
-  a[href],
-  [role="button"] {
+  html[data-site="frontend"] button,
+  html[data-site="frontend"] a[href],
+  html[data-site="frontend"] [role="button"] {
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
 
   /* Base release transition for elements without an inline transition */
-  button,
-  a[href] {
+  html[data-site="frontend"] button,
+  html[data-site="frontend"] a[href] {
     transition:
       transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
       filter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
@@ -64,14 +66,14 @@ html {
   }
 
   /* Text link hover: subtle fade to signal interactivity */
-  a[href]:not([data-btn]):hover {
+  html[data-site="frontend"] a[href]:not([data-btn]):hover {
     opacity: 0.70;
   }
 
   /* Press-in: scale down and brighten slightly */
-  button:active,
-  a[href]:active,
-  [role="button"]:active {
+  html[data-site="frontend"] button:active,
+  html[data-site="frontend"] a[href]:active,
+  html[data-site="frontend"] [role="button"]:active {
     transform: scale(0.965) !important;
     filter: brightness(1.1) !important;
   }
