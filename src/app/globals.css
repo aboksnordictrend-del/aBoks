@@ -44,3 +44,29 @@ html {
     @apply py-[clamp(72px,9vw,120px)];
   }
 }
+
+@layer components {
+  /* Remove browser tap highlight — we provide our own press feedback */
+  button,
+  a[href],
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Base release transition for elements without an inline transition */
+  button,
+  a[href] {
+    transition:
+      transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      filter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* Press-in: scale down and brighten slightly */
+  button:active,
+  a[href]:active,
+  [role="button"]:active {
+    transform: scale(0.965) !important;
+    filter: brightness(1.1) !important;
+  }
+}

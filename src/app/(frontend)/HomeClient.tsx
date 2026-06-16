@@ -200,7 +200,7 @@ export default function HomeClient() {
                   <button key={c.id} onClick={() => setColorId(c.id)} aria-label={c.name} style={{
                     width: '44px', height: '44px', borderRadius: '999px', border: 'none', cursor: 'pointer', padding: 0, background: c.swatch,
                     boxShadow: colorId === c.id ? '0 0 0 2.5px rgba(255,255,255,0.9), 0 0 0 4.5px rgba(255,255,255,0.4)' : '0 0 0 1px rgba(255,255,255,0.35)',
-                    transition: 'box-shadow 0.2s ease',
+                    transition: 'transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease',
                   }} />
                 ))}
               </div>
@@ -531,7 +531,7 @@ export default function HomeClient() {
                     fontWeight: 700,
                     fontSize: '15px',
                     textDecoration: 'none',
-                    transition: 'transform 0.15s ease',
+                    transition: 'transform 0.15s ease, filter 0.15s ease',
                   }}
                 >
                   Bestill nå · {fmt(PRICE)}
@@ -559,7 +559,7 @@ export default function HomeClient() {
                       colorId === c.id
                         ? '0 0 0 2px #faf6ee, 0 0 0 4px #39402c'
                         : '0 0 0 1px rgba(0,0,0,.18)',
-                    transition: 'box-shadow 0.2s ease',
+                    transition: 'transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease',
                   }}
                 />
               ))}
@@ -615,7 +615,7 @@ function HeroContent({
             fontSize: '15px',
             letterSpacing: '0.01em',
             textDecoration: 'none',
-            transition: 'background 0.2s ease',
+            transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
           }}
         >
           Bestill nå
@@ -637,7 +637,7 @@ function HeroContent({
             letterSpacing: '0.01em',
             border: '1.5px solid rgba(26,29,23,.22)',
             textDecoration: 'none',
-            transition: 'background 0.2s ease, border-color 0.2s ease',
+            transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease, border-color 0.2s ease',
           }}
         >
           Se produktet
@@ -670,7 +670,7 @@ function HeroContent({
                   colorId === c.id
                     ? '0 0 0 2px #faf6ee, 0 0 0 4px #39402c'
                     : '0 0 0 1px rgba(0,0,0,.18)',
-                transition: 'box-shadow 0.2s ease',
+                transition: 'transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease',
               }}
             />
           ))}

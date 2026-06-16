@@ -153,7 +153,7 @@ export default function CartClient() {
                     fontWeight: 600,
                     fontSize: '15px',
                     textDecoration: 'none',
-                    transition: 'background 0.2s ease',
+                    transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
                   }}
                 >
                   Gå til kassen

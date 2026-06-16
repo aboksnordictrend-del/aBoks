@@ -216,7 +216,7 @@ export function CarouselArrows({
             alignItems: 'center',
             justifyContent: 'center',
             color: '#1a1d17',
-            transition: 'background 0.2s',
+            transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
             flexShrink: 0,
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = bgHover }}

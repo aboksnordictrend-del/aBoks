@@ -212,7 +212,7 @@ export default function ProductClient({ product, variants }: Props) {
                           boxShadow: selectedVariantId === v.id
                             ? `0 0 0 2px #faf6ee, 0 0 0 4px #39402c${light ? ', inset 0 0 0 1px #c0bdb5' : ''}`
                             : light ? '0 0 0 1.5px #b0ada5' : '0 0 0 1px rgba(0,0,0,.18)',
-                          transition: 'box-shadow 0.2s ease',
+                          transition: 'transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease',
                         }}
                       />
                     )
@@ -241,7 +241,7 @@ export default function ProductClient({ product, variants }: Props) {
                     flex: 1, minWidth: '200px', display: 'inline-flex', alignItems: 'center',
                     justifyContent: 'center', gap: '10px', padding: '17px 32px', borderRadius: '999px',
                     background: '#39402c', color: '#faf6ee', fontFamily: 'var(--font-manrope)',
-                    fontWeight: 600, fontSize: '15px', border: 'none', cursor: 'pointer', transition: 'background 0.2s ease',
+                    fontWeight: 600, fontSize: '15px', border: 'none', cursor: 'pointer', transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
                   }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2a3020' }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#39402c' }}

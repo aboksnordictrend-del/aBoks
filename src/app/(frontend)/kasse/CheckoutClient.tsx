@@ -245,7 +245,7 @@ export default function CheckoutClient() {
                   fontSize: '15px',
                   border: 'none',
                   cursor: 'pointer',
-                  transition: 'background 0.2s ease',
+                  transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2a3020' }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#39402c' }}
