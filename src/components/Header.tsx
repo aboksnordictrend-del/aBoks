@@ -115,7 +115,7 @@ export default function Header() {
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]">
               {[
-                { label: 'Produkter', href: '/produkt/aboks' },
+                { label: 'Produkter', href: '/produkter/aboks' },
                 { label: 'Slik fungerer det', href: '/#slik' },
                 { label: 'Historien', href: '/#historien' },
                 { label: 'Spørsmål', href: '/#faq' },
@@ -273,8 +273,8 @@ export default function Header() {
                 {
                   label: 'Handle',
                   links: [
-                    { label: 'aBoks', href: '/produkt/aboks' },
-                    { label: 'aBoks Mini', href: '/produkt/aboks-mini' },
+                    { label: 'aBoks', href: '/produkter/aboks' },
+                    { label: 'aBoks Mini', href: '/produkter/aboks-mini' },
                     { label: 'Handlekurv', href: '/handlekurv' },
                   ],
                 },

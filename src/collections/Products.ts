@@ -29,7 +29,7 @@ export const Products: CollectionConfig = {
       required: true,
       unique: true,
       admin: {
-        description: 'Brukes i URL-en: /produkt/[slug]',
+        description: 'Brukes i URL-en: /produkter/[slug]',
       },
     },
     {

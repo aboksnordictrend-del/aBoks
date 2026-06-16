@@ -26,6 +26,9 @@ export async function generateMetadata({
   return {
     title: `${product.title} – Smart batteriorganisator`,
     description: product.description ?? '',
+    alternates: {
+      canonical: `/produkter/${slug}`,
+    },
     openGraph: {
       title: `${product.title} – Smart batteriorganisator`,
       description: product.description ?? '',

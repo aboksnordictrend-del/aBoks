@@ -56,8 +56,8 @@ export default function Footer() {
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
-                { label: 'Bestill aBoks', href: '/produkt/aboks' },
-                { label: 'Farger', href: '/produkt/aboks#farger' },
+                { label: 'Bestill aBoks', href: '/produkter/aboks' },
+                { label: 'Farger', href: '/produkter/aboks#farger' },
                 { label: 'Handlekurv', href: '/handlekurv' },
               ].map((item) => (
                 <Link

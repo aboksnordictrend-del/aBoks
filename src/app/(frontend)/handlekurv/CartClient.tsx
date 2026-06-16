@@ -92,7 +92,7 @@ export default function CartClient() {
                 ))}
 
                 <Link
-                  href="/produkt/aboks"
+                  href="/produkter/aboks"
                   style={{
                     alignSelf: 'flex-start',
                     marginTop: '24px',
@@ -180,7 +180,7 @@ export default function CartClient() {
                 Finn din aBoks i favorittfargen.
               </p>
               <Link
-                href="/produkt/aboks"
+                href="/produkter/aboks"
                 data-btn
                 style={{
                   display: 'inline-flex',
