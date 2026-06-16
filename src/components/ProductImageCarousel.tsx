@@ -28,6 +28,7 @@ interface Props {
   images: CarouselImage[]
   onIndexChange?: (index: number) => void
   initialIndex?: number
+  onZoom?: (index: number) => void
 }
 
 const SNAP_OFFSET = 55
@@ -35,7 +36,7 @@ const SNAP_VEL   = 380
 const FLY_DIST   = 440
 
 const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
-  function ProductImageCarousel({ images, onIndexChange, initialIndex = 0 }, ref) {
+  function ProductImageCarousel({ images, onIndexChange, initialIndex = 0, onZoom }, ref) {
     const n = images.length
     const [current, setCurrent]       = useState(initialIndex)
     const [bgIdx,   setBgIdx]         = useState<number | null>(null)
@@ -295,14 +296,14 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
 
           {/* Prev arrow — desktop only */}
           <button
+            type="button"
             onClick={() => goTo(current - 1)}
             aria-label="Forrige bilde"
             className="hidden md:flex"
             style={{
               position: 'absolute',
               left: '14px',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              top: 'calc(50% - 20px)',
               width: '40px',
               height: '40px',
               borderRadius: '999px',
@@ -314,7 +315,6 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
               zIndex: 20,
               boxShadow: '0 2px 10px rgba(0,0,0,.14)',
               opacity: current > 0 ? 1 : 0,
-              pointerEvents: current > 0 ? 'auto' : 'none',
               transition: 'opacity 0.2s',
             }}
           >
@@ -325,14 +325,14 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
 
           {/* Next arrow — desktop only */}
           <button
+            type="button"
             onClick={() => goTo(current + 1)}
             aria-label="Neste bilde"
             className="hidden md:flex"
             style={{
               position: 'absolute',
               right: '14px',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              top: 'calc(50% - 20px)',
               width: '40px',
               height: '40px',
               borderRadius: '999px',
@@ -344,7 +344,6 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
               zIndex: 20,
               boxShadow: '0 2px 10px rgba(0,0,0,.14)',
               opacity: current < n - 1 ? 1 : 0,
-              pointerEvents: current < n - 1 ? 'auto' : 'none',
               transition: 'opacity 0.2s',
             }}
           >
@@ -352,6 +351,52 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
               <path d="M9 18l6-6-6-6" />
             </svg>
           </button>
+
+          {/* Zoom button */}
+          {onZoom && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onZoom(current) }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label="Forstørr bilde"
+              style={{
+                position: 'absolute',
+                top: '14px',
+                right: '14px',
+                width: '40px',
+                height: '40px',
+                borderRadius: '999px',
+                background: 'rgba(250,246,238,0.88)',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 30,
+                boxShadow: '0 2px 12px rgba(0,0,0,.16)',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                transition: 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease',
+              }}
+              onMouseEnter={(e) => {
+                const b = e.currentTarget as HTMLButtonElement
+                b.style.transform = 'scale(1.12)'
+                b.style.boxShadow = '0 4px 18px rgba(0,0,0,.24)'
+                b.style.background = 'rgba(250,246,238,1)'
+              }}
+              onMouseLeave={(e) => {
+                const b = e.currentTarget as HTMLButtonElement
+                b.style.transform = ''
+                b.style.boxShadow = '0 2px 12px rgba(0,0,0,.16)'
+                b.style.background = 'rgba(250,246,238,0.88)'
+              }}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1a1d17" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7.5" />
+                <path d="M21 21l-3.8-3.8" />
+                <path d="M11 8v6M8 11h6" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* ── Thumbnail strip ───────────────────────────── */}

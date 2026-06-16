@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { AnimatePresence } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
 import CartToast from '@/components/CartToast'
 import Accordion from '@/components/Accordion'
@@ -9,6 +10,7 @@ import VideoPlaceholder from '@/components/VideoPlaceholder'
 import ProductImageCarousel, {
   type ProductImageCarouselHandle,
 } from '@/components/ProductImageCarousel'
+import ImageLightbox from '@/components/ImageLightbox'
 import { formatPrice } from '@/lib/format'
 
 interface Variant {
@@ -83,6 +85,7 @@ export default function ProductClient({ product, variants }: Props) {
   const [activeImageIdx, setActiveImageIdx] = useState(0)
   const [toastVisible, setToastVisible] = useState(false)
   const [isNarrow, setIsNarrow] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const carouselRef = useRef<ProductImageCarouselHandle>(null)
 
   const addItem = useCartStore((s) => s.addItem)
@@ -177,6 +180,7 @@ export default function ProductClient({ product, variants }: Props) {
                 images={thumbImages}
                 initialIndex={0}
                 onIndexChange={setActiveImageIdx}
+                onZoom={setLightboxIndex}
               />
             </div>
 
@@ -344,6 +348,18 @@ export default function ProductClient({ product, variants }: Props) {
           </div>
         </section>
       </main>
+
+      {/* LIGHTBOX */}
+      <AnimatePresence>
+        {lightboxIndex !== null && (
+          <ImageLightbox
+            images={thumbImages}
+            index={lightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+            onNavigate={setLightboxIndex}
+          />
+        )}
+      </AnimatePresence>
 
       {/* MOBILE STICKY BUY BUTTON */}
       {isNarrow && (
