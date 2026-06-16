@@ -35,20 +35,22 @@ export default buildConfig({
     },
   },
   collections: [Users, Products, ProductVariants, Media, Orders, Customers],
-  plugins: process.env.BLOB_READ_WRITE_TOKEN
-    ? [
-        vercelBlobStorage({
-          enabled: true,
-          collections: {
-            media: {
-              // Required: without this, media.url is built from serverURL (→ localhost in prod)
-              disablePayloadAccessControl: true,
-            },
-          },
-          token: process.env.BLOB_READ_WRITE_TOKEN,
-        }),
-      ]
-    : [],
+  // Plugin must always be registered so withPayload includes VercelBlobClientUploadHandler
+  // in the importMap at build time. BLOB_READ_WRITE_TOKEN is a runtime-only Vercel env var
+  // and is not available during `next build`, so a conditional plugins array would produce
+  // an empty importMap entry and cause a white screen in production admin.
+  plugins: [
+    vercelBlobStorage({
+      enabled: !!process.env.BLOB_READ_WRITE_TOKEN,
+      collections: {
+        media: {
+          // Required: without this, media.url is built from serverURL (→ localhost in prod)
+          disablePayloadAccessControl: true,
+        },
+      },
+      token: process.env.BLOB_READ_WRITE_TOKEN ?? '',
+    }),
+  ],
   editor: lexicalEditor({}),
   secret: process.env.PAYLOAD_SECRET || 'aboks-secret-key-change-in-production-now',
   typescript: {

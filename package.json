@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:vercel": "payload migrate && next build",
+    "build:vercel": "payload migrate && payload generate:importmap && next build",
     "start": "next start",
     "lint": "next lint",
     "generate:types": "payload generate:types",
