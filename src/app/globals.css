@@ -59,7 +59,13 @@ html {
   a[href] {
     transition:
       transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-      filter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      filter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      opacity 0.22s ease;
+  }
+
+  /* Text link hover: subtle fade to signal interactivity */
+  a[href]:not([data-btn]):hover {
+    opacity: 0.70;
   }
 
   /* Press-in: scale down and brighten slightly */

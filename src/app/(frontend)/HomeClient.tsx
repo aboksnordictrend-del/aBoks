@@ -178,12 +178,12 @@ export default function HomeClient() {
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px',
           }}>
             <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '360px' }}>
-              <Link href="/produkt/aboks" style={{
+              <Link href="/produkt/aboks" data-btn style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 padding: '16px 20px', borderRadius: '999px', background: '#39402c', color: '#faf6ee',
                 fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', textDecoration: 'none',
               }}>Bestill nå</Link>
-              <Link href="/produkt/aboks" style={{
+              <Link href="/produkt/aboks" data-btn style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 padding: '16px 20px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', color: '#fff',
                 fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px',
@@ -519,6 +519,7 @@ export default function HomeClient() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
                 <Link
                   href="/produkt/aboks"
+                  data-btn
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -601,6 +602,7 @@ function HeroContent({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '56px', justifyContent: 'center' }}>
         <Link
           href="/produkt/aboks"
+          data-btn
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -622,6 +624,7 @@ function HeroContent({
         </Link>
         <Link
           href="/produkt/aboks"
+          data-btn
           style={{
             display: 'inline-flex',
             alignItems: 'center',

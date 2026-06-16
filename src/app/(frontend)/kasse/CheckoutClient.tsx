@@ -83,6 +83,7 @@ export default function CheckoutClient() {
             </p>
             <Link
               href="/"
+              data-btn
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

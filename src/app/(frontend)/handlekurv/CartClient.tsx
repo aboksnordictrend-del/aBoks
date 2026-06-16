@@ -139,6 +139,7 @@ export default function CartClient() {
                 </div>
                 <Link
                   href="/kasse"
+                  data-btn
                   style={{
                     width: '100%',
                     display: 'inline-flex',
@@ -180,6 +181,7 @@ export default function CartClient() {
               </p>
               <Link
                 href="/produkt/aboks"
+                data-btn
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
