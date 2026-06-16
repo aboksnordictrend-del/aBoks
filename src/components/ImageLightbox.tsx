@@ -182,109 +182,117 @@ export default function ImageLightbox({ images, index, onClose, onNavigate }: Pr
         </div>
       )}
 
-      {/* ── Main image ────────────────────────────────── */}
-      <motion.div
-        key={index}
-        initial={{ opacity: 0, scale: 0.97 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+      {/* ── Image + arrows ───────────────────────────── */}
+      {/*
+        Wrapper has the same dimensions as the image so that arrow
+        top: calc(50% - 25px) is relative to the image height, not the
+        full overlay height. Without this, the thumbnail strip below the
+        image shifts the image upward from the viewport center, making
+        arrows positioned at 50% of the overlay land below the image center.
+      */}
+      <div
         style={{
           position: 'relative',
           width: 'min(90vw, calc(100vh - 196px))',
           maxWidth: '860px',
           aspectRatio: '1 / 1',
-          borderRadius: '14px',
-          overflow: 'hidden',
           flexShrink: 0,
         }}
       >
-        <Image
-          src={current.src}
-          alt={current.alt}
-          fill
-          sizes="90vw"
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
           style={{
-            objectFit: 'contain',
-            transform: `scale(${pinchScale})`,
-            transition: pinchScale === 1 ? 'transform 0.28s ease' : 'none',
-            transformOrigin: 'center',
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '14px',
+            overflow: 'hidden',
           }}
-          priority
-          draggable={false}
-        />
-      </motion.div>
-
-      {/* ── Navigation arrows ─────────────────────────── */}
-      {n > 1 && (
-        <>
-          {/*
-            Позиционирование через top: calc(50% - 25px) вместо
-            top: 50% + transform: translateY(-50%), потому что глобальный CSS
-            button:active { transform: scale() !important } полностью заменяет
-            transform, что убирало translateY и заставляло кнопки прыгать.
-          */}
-          <button
-            type="button"
-            onClick={prev}
-            aria-label="Forrige bilde"
+        >
+          <Image
+            src={current.src}
+            alt={current.alt}
+            fill
+            sizes="90vw"
             style={{
-              position: 'absolute',
-              left: 'clamp(10px,2.5vw,36px)',
-              top: 'calc(50% - 25px)',
-              width: '50px',
-              height: '50px',
-              borderRadius: '999px',
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
-              transition: 'background 0.18s ease',
+              objectFit: 'contain',
+              transform: `scale(${pinchScale})`,
+              transition: pinchScale === 1 ? 'transform 0.28s ease' : 'none',
+              transformOrigin: 'center',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.18)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)' }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
+            priority
+            draggable={false}
+          />
+        </motion.div>
 
-          <button
-            type="button"
-            onClick={next}
-            aria-label="Neste bilde"
-            style={{
-              position: 'absolute',
-              right: 'clamp(10px,2.5vw,36px)',
-              top: 'calc(50% - 25px)',
-              width: '50px',
-              height: '50px',
-              borderRadius: '999px',
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
-              transition: 'background 0.18s ease',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.18)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)' }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-        </>
-      )}
+        {/* ── Navigation arrows ─────────────────────────── */}
+        {n > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={prev}
+              aria-label="Forrige bilde"
+              style={{
+                position: 'absolute',
+                left: 'clamp(10px,2.5vw,36px)',
+                top: 'calc(50% - 25px)',
+                width: '50px',
+                height: '50px',
+                borderRadius: '999px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                transition: 'background 0.18s ease',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.18)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onClick={next}
+              aria-label="Neste bilde"
+              style={{
+                position: 'absolute',
+                right: 'clamp(10px,2.5vw,36px)',
+                top: 'calc(50% - 25px)',
+                width: '50px',
+                height: '50px',
+                borderRadius: '999px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)',
+                transition: 'background 0.18s ease',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.18)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)' }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
 
       {/* ── Thumbnails ────────────────────────────────── */}
       {n > 1 && (

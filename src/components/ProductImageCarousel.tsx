@@ -294,12 +294,12 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
             </div>
           )}
 
-          {/* Prev arrow — desktop only */}
+          {/* Prev arrow */}
           <button
             type="button"
             onClick={() => goTo(current - 1)}
             aria-label="Forrige bilde"
-            className="hidden md:flex"
+            className="flex"
             style={{
               position: 'absolute',
               left: '14px',
@@ -323,12 +323,12 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
             </svg>
           </button>
 
-          {/* Next arrow — desktop only */}
+          {/* Next arrow */}
           <button
             type="button"
             onClick={() => goTo(current + 1)}
             aria-label="Neste bilde"
-            className="hidden md:flex"
+            className="flex"
             style={{
               position: 'absolute',
               right: '14px',
