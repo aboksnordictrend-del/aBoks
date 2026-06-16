@@ -274,6 +274,7 @@ export default function Header() {
                   label: 'Handle',
                   links: [
                     { label: 'aBoks', href: '/produkt/aboks' },
+                    { label: 'aBoks Mini', href: '/produkt/aboks-mini' },
                     { label: 'Handlekurv', href: '/handlekurv' },
                   ],
                 },

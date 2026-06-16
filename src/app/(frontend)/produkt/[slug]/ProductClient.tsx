@@ -142,7 +142,7 @@ export default function ProductClient({ product, variants }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>
             <Link href="/" style={{ color: '#6b6f63', textDecoration: 'none' }}>Hjem</Link>
             <span style={{ opacity: 0.5 }}>/</span>
-            <span style={{ color: '#1a1d17', fontWeight: 600 }}>aBoks</span>
+            <span style={{ color: '#1a1d17', fontWeight: 600 }}>{product.title}</span>
           </div>
         </div>
 
