@@ -41,10 +41,13 @@ export async function generateMetadata({
 
 export default async function ProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ variant?: string }>
 }) {
   const { slug } = await params
+  const { variant } = await searchParams
 
   const product = await getProductBySlug(slug)
   if (!product) notFound()
@@ -80,6 +83,7 @@ export default async function ProductPage({
         images: productImages,
       }}
       variants={variants}
+      initialSku={variant}
     />
   )
 }

@@ -36,6 +36,7 @@ interface Product {
 interface Props {
   product: Product
   variants: Variant[]
+  initialSku?: string
 }
 
 const CAPACITY = [
@@ -79,14 +80,33 @@ function isLightColor(hex: string): boolean {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65
 }
 
-export default function ProductClient({ product, variants }: Props) {
-  const [selectedVariantId, setSelectedVariantId] = useState(variants[0]?.id ?? '')
+export default function ProductClient({ product, variants, initialSku }: Props) {
+  const initialVariant = initialSku
+    ? (variants.find((v) => v.sku === initialSku) ?? variants[0])
+    : variants[0]
+
+  const initialThumbImages = [
+    ...variants.map((v) => ({ src: v.image, alt: v.name })),
+    ...product.images,
+  ].filter((t) => t.src)
+
+  const initialImageIdx = initialVariant?.image
+    ? Math.max(0, initialThumbImages.findIndex((t) => t.src === initialVariant.image))
+    : 0
+
+  const [selectedVariantId, setSelectedVariantId] = useState(initialVariant?.id ?? variants[0]?.id ?? '')
   const [qty, setQty] = useState(1)
-  const [activeImageIdx, setActiveImageIdx] = useState(0)
+  const [activeImageIdx, setActiveImageIdx] = useState(initialImageIdx)
   const [toastVisible, setToastVisible] = useState(false)
   const [isNarrow, setIsNarrow] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const carouselRef = useRef<ProductImageCarouselHandle>(null)
+
+  useEffect(() => {
+    if (initialImageIdx > 0) {
+      carouselRef.current?.goTo(initialImageIdx)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addItem = useCartStore((s) => s.addItem)
 

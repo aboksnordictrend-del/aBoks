@@ -10,10 +10,10 @@ import Accordion from '@/components/Accordion'
 import VideoPlaceholder from '@/components/VideoPlaceholder'
 
 const COLORS = [
-  { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
-  { id: 'blue', name: 'Mørk blå', swatch: '#243153', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp' },
-  { id: 'black', name: 'Sort', swatch: '#1d1d1f', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp' },
-  { id: 'cream', name: 'Creme', swatch: '#FAF7F2', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp' },
+  { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
+  { id: 'blue',  name: 'Mørk blå',    swatch: '#243153', sku: 'ABOKS-BLUE-001',  image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp' },
+  { id: 'black', name: 'Sort',         swatch: '#1d1d1f', sku: 'ABOKS-SORT-001',  image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp' },
+  { id: 'cream', name: 'Creme',        swatch: '#FAF7F2', sku: 'ABOKS-CREME-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp' },
 ]
 
 const FEATURES = [
@@ -178,12 +178,12 @@ export default function HomeClient() {
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px',
           }}>
             <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '360px' }}>
-              <Link href="/produkter/aboks" data-btn style={{
+              <Link href={`/produkter/aboks?variant=${activeColor.sku}`} data-btn style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 padding: '16px 20px', borderRadius: '999px', background: '#39402c', color: '#faf6ee',
                 fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', textDecoration: 'none',
               }}>Bestill nå</Link>
-              <Link href="/produkter/aboks" data-btn style={{
+              <Link href={`/produkter/aboks?variant=${activeColor.sku}`} data-btn style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 padding: '16px 20px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', color: '#fff',
                 fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px',
@@ -518,7 +518,7 @@ export default function HomeClient() {
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
                 <Link
-                  href="/produkter/aboks"
+                  href={`/produkter/aboks?variant=${activeColor.sku}`}
                   data-btn
                   style={{
                     display: 'inline-flex',
@@ -580,10 +580,10 @@ function HeroContent({
   setColorId: (id: string) => void
 }) {
   const COLORS = [
-    { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347' },
-    { id: 'blue', name: 'Mørk blå', swatch: '#243153' },
-    { id: 'black', name: 'Sort', swatch: '#1d1d1f' },
-    { id: 'cream', name: 'Creme', swatch: '#FAF7F2' },
+    { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001' },
+    { id: 'blue',  name: 'Mørk blå',    swatch: '#243153', sku: 'ABOKS-BLUE-001'  },
+    { id: 'black', name: 'Sort',         swatch: '#1d1d1f', sku: 'ABOKS-SORT-001'  },
+    { id: 'cream', name: 'Creme',        swatch: '#FAF7F2', sku: 'ABOKS-CREME-001' },
   ]
   const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
 
@@ -601,7 +601,7 @@ function HeroContent({
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '56px', justifyContent: 'center' }}>
         <Link
-          href="/produkter/aboks"
+          href={`/produkter/aboks?variant=${activeColor.sku}`}
           data-btn
           style={{
             display: 'inline-flex',
@@ -623,7 +623,7 @@ function HeroContent({
           Bestill nå
         </Link>
         <Link
-          href="/produkter/aboks"
+          href={`/produkter/aboks?variant=${activeColor.sku}`}
           data-btn
           style={{
             display: 'inline-flex',
