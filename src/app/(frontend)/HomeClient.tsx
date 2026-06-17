@@ -426,9 +426,9 @@ export default function HomeClient() {
           </motion.div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'clamp(20px,2.4vw,28px)' }}>
             {[
-              { n: '01', title: 'Skissen', desc: 'Den første idéen, tegnet på et kjøkkenbord.', img: '/images/skissen.webp' },
-              { n: '02', title: 'Prototypen', desc: 'Vår første 3D-printede modell med tre rom.', img: '/images/skissen1.webp' },
-              { n: '03', title: 'Testingen', desc: 'Over 40 husstander testet aBoks i hverdagen.', img: '/images/prototipen.jpg' },
+              { n: '01', title: 'Skissen', desc: 'Den første idéen, tegnet på et kjøkkenbord.', img: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Skissen-1.webp' },
+              { n: '02', title: 'Prototypen', desc: 'Vår første 3D-printede modell med tre rom.', img: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Prototypen.webp' },
+              { n: '03', title: 'Testingen', desc: 'Over 40 husstander testet aBoks i hverdagen.', img: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-Testingen.webp' },
               { n: '04', title: 'Produktet', desc: 'Ferdig produkt i tre farger, klart for ditt hjem.', img: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks.webp' },
             ].map((step, i) => (
               <motion.div key={step.n} {...fadeUp(i * 0.08)} style={{ transform: 'translateY(-20px)' }}>
