@@ -294,7 +294,14 @@ export default function HomeClient() {
             }}
           >
             <motion.div {...fadeUp()} className="order-2 md:order-1" style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 48px -18px rgba(42,36,24,.22)' }}>
-              <Image src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp" alt="aBoks i bruk" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
+              <video
+                src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
             </motion.div>
             <motion.div {...fadeUp(0.1)} className="order-1 md:order-2 md:pl-[40px]">
               <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 18px' }}>Løsningen</p>
@@ -475,8 +482,15 @@ export default function HomeClient() {
               Se aBoks i bruk.
             </h2>
           </motion.div>
-          <motion.div {...fadeUp(0.1)}>
-            <VideoPlaceholder thumbnail="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks.webp" label="Videoplass" duration="1:42" />
+          <motion.div {...fadeUp(0.1)} style={{ borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 56px -20px rgba(42,36,24,.3)' }}>
+            <video
+              src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }}
+            />
           </motion.div>
         </div>
       </section>
