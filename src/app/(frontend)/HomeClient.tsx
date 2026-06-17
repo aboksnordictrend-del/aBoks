@@ -446,6 +446,32 @@ export default function HomeClient() {
         <Carousel ref={prodCarouselRef} items={CAROUSEL_ITEMS} aspectRatio="4/3" itemWidth="min(78vw, 460px)" background="#f2e7d7" />
       </section>
 
+      {/* ==================== SAFETY INFO ==================== */}
+      <section style={{ background: '#faf6ee', padding: 'clamp(72px,9vw,120px) 0', marginTop: '-100px' }}>
+        <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'clamp(40px,6vw,80px)', alignItems: 'center' }}>
+            <motion.div {...fadeUp()}>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 18px' }}>
+                Visste du at...?
+              </p>
+              <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(32px,4vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 24px' }}>
+                Sikker oppbevaring starter hjemme.
+              </h2>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: 'clamp(16px,1.4vw,18px)', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 18px' }}>
+                Løse brukte batterier kan i enkelte tilfeller kortslutte dersom polene kommer i kontakt med metall.
+              </p>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: 'clamp(16px,1.4vw,18px)', lineHeight: 1.65, color: '#3a3f33', margin: 0 }}>
+                Med et eget rom for brukte batterier gjør aBoks det enklere å oppbevare dem trygt frem til de leveres til gjenvinning.
+              </p>
+            </motion.div>
+            <motion.div
+              {...fadeUp(0.12)}
+              style={{ position: 'relative', aspectRatio: '4/3', borderRadius: '22px', overflow: 'hidden', background: '#e8e2d8', boxShadow: '0 8px 32px -10px rgba(42,36,24,.14)' }}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ==================== LIFESTYLE CAROUSEL ==================== */}
       <section style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0' }}>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '24px', marginBottom: '36px' }}>
