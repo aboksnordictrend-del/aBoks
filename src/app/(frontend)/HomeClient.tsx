@@ -71,6 +71,17 @@ const FUTURE = [
   { name: 'aBoks Pro', desc: 'Større kapasitet for verkstedet.' },
 ]
 
+const ROOMS = [
+  { label: 'Ved TV-en',           image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Ved-TV.png' },
+  { label: 'I boden',             image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-boden.png' },
+  { label: 'På familiekjøkkenet', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-familiekj%C3%B8kkenet.png' },
+  { label: 'På soverommet',       image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-soverommet.png' },
+  { label: 'På barnerommet',      image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-barnerommet.png' },
+  { label: 'På hjemmekontoret',   image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-hjemmekontoret.png' },
+  { label: 'I gangen',            image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-gangen.png' },
+  { label: 'På vaskerommet',      image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-vaskerommet.png' },
+]
+
 const PRICE = 499
 
 function fmt(n: number) {
@@ -332,6 +343,61 @@ export default function HomeClient() {
                 <div style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: '30px', color: '#c9a76a', marginBottom: '18px', lineHeight: 1 }}>{f.n}</div>
                 <h3 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '19px', color: '#1a1d17', margin: '0 0 10px' }}>{f.title}</h3>
                 <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15.5px', lineHeight: 1.55, color: '#6b6f63', margin: 0 }}>{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ==================== ROOMS GALLERY ==================== */}
+      <section style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0' }}>
+        <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+          <motion.div {...fadeUp()} style={{ marginBottom: 'clamp(40px,5vw,64px)' }}>
+            <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 14px' }}>
+              Passer overalt i hjemmet
+            </p>
+            <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(32px,4vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 20px' }}>
+              Én boks. <em>Mange steder.</em>
+            </h2>
+            <p style={{ fontFamily: 'var(--font-manrope)', fontSize: 'clamp(15px,1.4vw,17.5px)', lineHeight: 1.7, color: '#6b6f63', margin: 0, maxWidth: '540px' }}>
+              aBoks er laget for å passe naturlig inn i hjemmet – enten den står ved TV-en, på kjøkkenet, i boden eller på hjemmekontoret.
+            </p>
+          </motion.div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(calc(50% - 10px), 260px), 1fr))', gap: 'clamp(12px,1.6vw,20px)' }}>
+            {ROOMS.map((room, i) => (
+              <motion.div
+                key={room.label}
+                {...fadeUp(i * 0.05)}
+                whileHover="zoom"
+                style={{ borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(42,36,24,.07)', position: 'relative', aspectRatio: '1', cursor: 'default' }}
+              >
+                <motion.div
+                  variants={{ zoom: { scale: 1.07 } }}
+                  transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  style={{ position: 'absolute', inset: 0 }}
+                >
+                  {room.image ? (
+                    <Image
+                      src={room.image}
+                      alt={room.label}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                      style={{ objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: '#ddd6c8' }} />
+                  )}
+                </motion.div>
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1,
+                  padding: '40px 16px 16px',
+                  background: 'linear-gradient(to top, rgba(26,29,23,0.65) 0%, transparent 100%)',
+                  pointerEvents: 'none',
+                }}>
+                  <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '13.5px', color: '#fff', letterSpacing: '0.01em' }}>
+                    {room.label}
+                  </span>
+                </div>
               </motion.div>
             ))}
           </div>
