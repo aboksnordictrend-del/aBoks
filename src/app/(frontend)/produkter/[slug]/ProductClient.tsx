@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { AnimatePresence } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
 import CartToast from '@/components/CartToast'
@@ -66,9 +67,9 @@ const TRUST = [
 ]
 
 const FUTURE = [
-  { name: 'aBoks Mini', desc: 'Kompakt utgave laget for skuffen.' },
-  { name: 'aBoks Wall', desc: 'Veggmontert oppbevaring for garasjen.' },
-  { name: 'aBoks Pro', desc: 'Større kapasitet for verkstedet.' },
+  { name: 'aBoks Mini',        desc: 'Kompakt utgave laget for skuffen.',              image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aaBoks-blue.webp' },
+  { name: 'aBoks Huset – Gul', desc: 'Har du et gult hus? Da er dette noe for deg.',    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-gul-house.webp' },
+  { name: 'aBoks Huset – Rød', desc: 'Perfekt til det røde huset.',                    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-red-house.webp' },
 ]
 
 function isLightColor(hex: string): boolean {
@@ -352,12 +353,16 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'clamp(20px,2.4vw,28px)' }}>
               {FUTURE.map((p) => (
                 <div key={p.name} style={{ background: '#fff', borderRadius: '22px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(42,36,24,.05)' }}>
-                  <div style={{ aspectRatio: '4/3', background: '#efe6d3', borderBottom: '1px dashed #cdbf9f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                    <span style={{ position: 'absolute', top: '14px', left: '14px', fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#39402c', background: '#e6ecdf', padding: '6px 12px', borderRadius: '999px' }}>
-                      Kommer snart
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', letterSpacing: '0.04em', color: '#a99a76' }}>Bildeplass</span>
-                  </div>
+                  {p.image && (
+                    <div style={{ aspectRatio: '4/3', background: '#efe6d3', borderBottom: '1px dashed #cdbf9f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                      <Image
+                        src={p.image}
+                        alt={p.name}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+                  )}
                   <div style={{ padding: '24px 26px 28px' }}>
                     <h3 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '19px', color: '#1a1d17', margin: '0 0 8px' }}>{p.name}</h3>
                     <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', lineHeight: 1.55, color: '#6b6f63', margin: 0 }}>{p.desc}</p>
