@@ -19,7 +19,7 @@ const COLORS = [
 const FEATURES = [
   { n: '01', title: 'Tre adskilte rom', desc: 'AA, AAA og brukte batterier – hver type på sin egen plass.' },
   { n: '02', title: 'Alltid oversikt', desc: 'Se på et blikk hva du har igjen, og hva som skal gjenvinnes.' },
-  { n: '03', title: 'Plukk-og-bytt-skuffer', desc: 'Lette uttrekksskuffer gjør det enkelt å bytte batteri.' },
+  { n: '03', title: 'Rask tilgang', desc: 'Ta batteriet du trenger på et øyeblikk – enkelt, raskt og oversiktlig.' },
   { n: '04', title: 'Matt premium-finish', desc: 'Diskré, slitesterkt design som passer i ethvert rom.' },
 ]
 
