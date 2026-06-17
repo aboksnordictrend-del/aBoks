@@ -271,7 +271,7 @@ export default function HomeClient() {
       </section>
 
       {/* ==================== SOLUTION ==================== */}
-      <section id="slik" style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0' }}>
+      <section id="slik" style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0', scrollMarginTop: '80px' }}>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
           <div
             style={{
@@ -416,7 +416,7 @@ export default function HomeClient() {
       </section>
 
       {/* ==================== STORY ==================== */}
-      <section id="historien" style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0' }}>
+      <section id="historien" style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0', scrollMarginTop: '80px' }}>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
           <motion.div {...fadeUp()} style={{ maxWidth: '680px', marginBottom: 'clamp(40px,5vw,64px)' }}>
             <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 18px' }}>Historien</p>
@@ -480,7 +480,7 @@ export default function HomeClient() {
       </section>
 
       {/* ==================== FAQ ==================== */}
-      <section id="faq" style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0' }}>
+      <section id="faq" style={{ background: '#f2e7d7', padding: 'clamp(72px,9vw,120px) 0', scrollMarginTop: '80px' }}>
         <div style={{ maxWidth: '840px', margin: '0 auto', padding: '0 clamp(20px,5vw,48px)' }}>
           <motion.div {...fadeUp()} style={{ textAlign: 'center', marginBottom: 'clamp(36px,4vw,56px)' }}>
             <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 18px' }}>Vanlige spørsmål</p>

@@ -43,7 +43,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
     <html lang="nb" className={`${cormorant.variable} ${manrope.variable}`} data-site="frontend" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Header />
-        <div style={{ overflowX: 'clip' }}>
+        <div>
           {children}
         </div>
         <Footer />

@@ -16,12 +16,38 @@ export default function Header() {
   const lastY = useRef(0)
   const totalCount = useCartStore((s) => s.totalCount())
 
+  // ref keeps hidden state readable inside stable scroll listener (no re-registration)
+  const hiddenRef = useRef(hidden)
+  hiddenRef.current = hidden
+
+  const rafScrollTo = (target: number) => {
+    const start = window.scrollY
+    const distance = target - start
+    const duration = 560
+    const t0 = performance.now()
+    const ease = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    const step = (now: number) => {
+      const p = Math.min((now - t0) / duration, 1)
+      window.scrollTo({ top: start + distance * ease(p), behavior: 'instant' })
+      if (p < 1) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }
+
+  const scrollToHash = (e: React.MouseEvent, hash: string) => {
+    if (!isHome) return
+    e.preventDefault()
+    const el = document.getElementById(hash)
+    if (!el) return
+    rafScrollTo(el.getBoundingClientRect().top + window.scrollY - 72)
+  }
+
   useEffect(() => {
     lastY.current = window.scrollY
     const onScroll = () => {
       const y = window.scrollY
       const isScrolled = y > 36
-      let isHidden = hidden
+      let isHidden = hiddenRef.current
       if (y > lastY.current + 4 && y > 160) isHidden = true
       else if (y < lastY.current - 4) isHidden = false
       lastY.current = y
@@ -30,7 +56,7 @@ export default function Header() {
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [hidden])
+  }, []) // stable: hiddenRef keeps current value without re-registering listener
 
   useEffect(() => {
     setMenuOpen(false)
@@ -114,15 +140,34 @@ export default function Header() {
           <div className="flex items-center gap-[clamp(16px,2.6vw,38px)]">
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]">
+              <Link
+                href="/produkter"
+                style={{
+                  fontFamily: 'var(--font-manrope)',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  letterSpacing: '0.01em',
+                  color: '#1a1d17',
+                  textDecoration: 'none',
+                  padding: '6px 0',
+                }}
+              >
+                Produkter
+              </Link>
               {[
-                { label: 'Produkter', href: '/produkter' },
-                { label: 'Slik fungerer det', href: '/#slik' },
-                { label: 'Historien', href: '/#historien' },
-                { label: 'Spørsmål', href: '/#faq' },
+                { label: 'Slik fungerer det', hash: 'slik' },
+                { label: 'Historien',         hash: 'historien' },
+                { label: 'Spørsmål',          hash: 'faq' },
               ].map((item) => (
-                <Link
+                <a
                   key={item.label}
-                  href={item.href}
+                  href={`/#${item.hash}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    const el = document.getElementById(item.hash)
+                    if (!el) return
+                    rafScrollTo(el.getBoundingClientRect().top + window.scrollY - 80)
+                  }}
                   style={{
                     fontFamily: 'var(--font-manrope)',
                     fontWeight: 600,
@@ -134,7 +179,7 @@ export default function Header() {
                   }}
                 >
                   {item.label}
-                </Link>
+                </a>
               ))}
             </nav>
 
@@ -282,9 +327,9 @@ export default function Header() {
                 {
                   label: 'Lær mer',
                   links: [
-                    { label: 'Slik fungerer det', href: '/#slik' },
-                    { label: 'Historien', href: '/#historien' },
-                    { label: 'Spørsmål', href: '/#faq' },
+                    { label: 'Slik fungerer det', href: '/#slik',      hash: 'slik' },
+                    { label: 'Historien',          href: '/#historien', hash: 'historien' },
+                    { label: 'Spørsmål',           href: '/#faq',       hash: 'faq' },
                   ],
                 },
                 {
@@ -311,7 +356,10 @@ export default function Header() {
                       <Link
                         key={link.label}
                         href={link.href}
-                        onClick={() => setMenuOpen(false)}
+                        onClick={(e) => {
+                          setMenuOpen(false)
+                          if ('hash' in link && link.hash) scrollToHash(e, link.hash as string)
+                        }}
                         style={{
                           display: 'block',
                           padding: '11px 0',
