@@ -585,6 +585,7 @@ export default function HomeClient() {
           @media (max-width: 767px) {
             .slik-desktop { display: none; }
             .slik-mobile  { display: flex; flex-direction: column; }
+            .slik-spacer  { height: calc((100vw - clamp(40px, 10vw, 96px) - 136px) * 0.625 - 22px); }
           }
         `}</style>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
@@ -592,9 +593,12 @@ export default function HomeClient() {
             <div style={{ borderRadius: '28px', padding: 'clamp(36px,4.5vw,60px)' }}>
 
               {/* Label */}
-              <p style={{ textAlign: 'center', fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 clamp(32px,4vw,48px)' }}>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 14px' }}>
                 Slik kommer du i gang
               </p>
+              <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.6vw,46px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 clamp(32px,4vw,48px)' }}>
+                Klar på få minutter.
+              </h2>
 
               {/* ── DESKTOP: horizontal process ── */}
               <div className="slik-desktop" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 'clamp(16px,2vw,28px)' }}>
@@ -626,17 +630,30 @@ export default function HomeClient() {
               <div className="slik-mobile" style={{ gap: 0 }}>
                 {STEPS.map((step, i) => (
                   <div key={step.number} style={{ display: 'flex', gap: '20px' }}>
-                    {/* Left: circle + connector line */}
+                    {/* Left: spacer + circle + connector — all in one flex column */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '44px', flexShrink: 0 }}>
+                      {/* Spacer pushes circle to card center; transparent on step 1, line on steps 2+ */}
+                      <div
+                        className="slik-spacer"
+                        style={{
+                          width: '2px',
+                          flexShrink: 0,
+                          background: i > 0
+                            ? 'repeating-linear-gradient(to bottom, #c0b49a 0px, #c0b49a 5px, transparent 5px, transparent 10px)'
+                            : 'transparent',
+                        }}
+                      />
+                      {/* Circle */}
                       <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#faf6ee', border: '1.5px solid #c0b49a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-cormorant)', fontSize: '18px', fontWeight: 500, color: '#1a1d17', flexShrink: 0 }}>
                         {step.number}
                       </div>
+                      {/* Connector fills remaining height down to bottom of right column */}
                       {i < STEPS.length - 1 && (
-                        <div style={{ flexGrow: 1, width: '2px', minHeight: '20px', background: 'repeating-linear-gradient(to bottom, #c0b49a 0px, #c0b49a 5px, transparent 5px, transparent 10px)' }} />
+                        <div style={{ flexGrow: 1, width: '2px', background: 'repeating-linear-gradient(to bottom, #c0b49a 0px, #c0b49a 5px, transparent 5px, transparent 10px)' }} />
                       )}
                     </div>
-                    {/* Right: video card + title */}
-                    <div style={{ flex: 1, paddingTop: '4px', paddingBottom: i < STEPS.length - 1 ? '32px' : 0 }}>
+                    {/* Right: card + title + bottom gap (gap creates height for connector to fill) */}
+                    <div style={{ flex: 1, paddingBottom: i < STEPS.length - 1 ? '28px' : 0 }}>
                       <StepVideoCard step={step} />
                       <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', letterSpacing: '-0.01em', lineHeight: 1.3, color: '#1a1d17', margin: '14px 0 0' }}>
                         {step.title}
