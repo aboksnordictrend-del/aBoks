@@ -50,12 +50,27 @@ const FAQS = [
 ]
 
 const CAROUSEL_ITEMS = [
-  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks.webp', alt: 'aBoks – studioshot' },
-  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp', alt: 'aBoks Hvit' },
-  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp', alt: 'aBoks Olivengrønn' },
-  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp', alt: 'aBoks Mørk blå' },
-  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp', alt: 'aBoks Sort' },
-  { src: '/images/hero-mobile.webp', alt: 'aBoks i bruk' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-blue-2.webp', alt: 'aBoks Mørk blå' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-1.webp', alt: 'aBoks Hvit' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-sort-1.webp', alt: 'aBoks Sort' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-olive-1.webp', alt: 'aBoks Olivengrønn' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-4.webp', alt: 'aBoks Hvit 4' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-5.webp', alt: 'aBoks Hvit 5' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-blue-4.webp', alt: 'aBoks Blå 4' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-7.webp', alt: 'aBoks Hvit 7' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-blue-3.webp', alt: 'aBoks Blå 3' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-olive-2.webp', alt: 'aBoks Olivengrønn 2' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-sort-3.webp', alt: 'aBoks Sort 3' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-2.webp', alt: 'aBoks Hvit 2' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-6.webp', alt: 'aBoks Hvit 6' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-sort-2.webp', alt: 'aBoks Sort 2' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-blue-1.webp', alt: 'aBoks Blå 1' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-10.webp', alt: 'aBoks Hvit 10' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-olive-3.webp', alt: 'aBoks Olivengrønn 3' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-12.webp', alt: 'aBoks Hvit 12' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-3.webp', alt: 'aBoks Hvit 3' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-8.webp', alt: 'aBoks Hvit 8' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-9.webp', alt: 'aBoks Hvit 9' },
 ]
 
 const LIFESTYLE = [
