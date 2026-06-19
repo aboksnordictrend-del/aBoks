@@ -589,7 +589,7 @@ export default function HomeClient() {
         `}</style>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
           <motion.div {...fadeUp()}>
-            <div style={{ background: '#f2e7d7', borderRadius: '28px', padding: 'clamp(36px,4.5vw,60px)', boxShadow: '0 8px 40px -12px rgba(42,36,24,.10)' }}>
+            <div style={{ borderRadius: '28px', padding: 'clamp(36px,4.5vw,60px)' }}>
 
               {/* Label */}
               <p style={{ textAlign: 'center', fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 clamp(32px,4vw,48px)' }}>
@@ -632,7 +632,7 @@ export default function HomeClient() {
                         {step.number}
                       </div>
                       {i < STEPS.length - 1 && (
-                        <div style={{ flexGrow: 1, width: 0, borderLeft: '1.5px dashed #c0b49a' }} />
+                        <div style={{ flexGrow: 1, width: '2px', minHeight: '20px', background: 'repeating-linear-gradient(to bottom, #c0b49a 0px, #c0b49a 5px, transparent 5px, transparent 10px)' }} />
                       )}
                     </div>
                     {/* Right: video card + title */}
