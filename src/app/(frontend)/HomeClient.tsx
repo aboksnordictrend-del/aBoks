@@ -467,7 +467,15 @@ export default function HomeClient() {
             <motion.div
               {...fadeUp(0.12)}
               style={{ position: 'relative', aspectRatio: '4/3', borderRadius: '22px', overflow: 'hidden', background: '#e8e2d8', boxShadow: '0 8px 32px -10px rgba(42,36,24,.14)' }}
-            />
+            >
+              <Image
+                src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Sikkerhet.webp"
+                alt="Sikker oppbevaring hjemme"
+                fill
+                style={{ objectFit: 'cover' }}
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
+            </motion.div>
           </div>
         </div>
       </section>
