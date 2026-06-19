@@ -80,6 +80,13 @@ const LIFESTYLE = [
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp', alt: 'Tidløst design som varer.' },
 ]
 
+const STEPS = [
+  { number: 1, title: 'Sett inn modulene',                      posterUrl: '', videoUrl: '' },
+  { number: 2, title: 'Fyll med batterier',                     posterUrl: '', videoUrl: '' },
+  { number: 3, title: 'Bruk batteriene',                        posterUrl: '', videoUrl: '' },
+  { number: 4, title: 'Lever brukte batterier til gjenvinning', posterUrl: '', videoUrl: '' },
+]
+
 const FUTURE = [
   { name: 'aBoks Mini', desc: 'Kompakt utgave laget for skuffen.' },
   { name: 'aBoks Wall', desc: 'Veggmontert oppbevaring for garasjen.' },
@@ -110,6 +117,54 @@ function fadeUp(delay = 0) {
     viewport: { once: true },
     transition: { duration: 0.6, delay, ease: [0.22, 0.61, 0.36, 1] },
   }
+}
+
+function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  function play()   { if (videoRef.current && step.videoUrl) videoRef.current.play() }
+  function pause()  { if (!videoRef.current) return; videoRef.current.pause(); videoRef.current.currentTime = 0 }
+  function toggle() { if (!videoRef.current || !step.videoUrl) return; videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause() }
+
+  return (
+    <div
+      onMouseEnter={play}
+      onMouseLeave={pause}
+      onClick={toggle}
+      style={{
+        aspectRatio: '4/5',
+        borderRadius: '18px',
+        overflow: 'hidden',
+        background: '#e3dcd1',
+        position: 'relative',
+        boxShadow: '0 4px 20px -6px rgba(42,36,24,.14)',
+        cursor: step.videoUrl ? 'pointer' : 'default',
+        width: '100%',
+      }}
+    >
+      {step.posterUrl && !step.videoUrl && (
+        <Image src={step.posterUrl} alt={step.title} fill style={{ objectFit: 'cover' }} />
+      )}
+      {step.videoUrl && (
+        <video
+          ref={videoRef}
+          src={step.videoUrl}
+          muted
+          loop
+          playsInline
+          poster={step.posterUrl || undefined}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      )}
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(250,246,238,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
+            <path d="M1.5 1.5L12.5 8L1.5 14.5V1.5Z" fill="#3a3f33" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function HomeClient() {
@@ -522,8 +577,82 @@ export default function HomeClient() {
         />
       </section>
 
-      {/* ==================== VIDEO ==================== */}
+      {/* ==================== HOW TO START ==================== */}
       <section style={{ background: '#faf6ee', padding: 'clamp(72px,9vw,120px) 0' }}>
+        <style>{`
+          .slik-desktop { display: grid; }
+          .slik-mobile  { display: none; }
+          @media (max-width: 767px) {
+            .slik-desktop { display: none; }
+            .slik-mobile  { display: flex; flex-direction: column; }
+          }
+        `}</style>
+        <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+          <motion.div {...fadeUp()}>
+            <div style={{ background: '#f2e7d7', borderRadius: '28px', padding: 'clamp(36px,4.5vw,60px)', boxShadow: '0 8px 40px -12px rgba(42,36,24,.10)' }}>
+
+              {/* Label */}
+              <p style={{ textAlign: 'center', fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 clamp(32px,4vw,48px)' }}>
+                Slik kommer du i gang
+              </p>
+
+              {/* ── DESKTOP: horizontal process ── */}
+              <div className="slik-desktop" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 'clamp(16px,2vw,28px)' }}>
+                {STEPS.map((step, i) => (
+                  <div key={step.number} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                    {/* Number row with dashed connectors */}
+                    <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                      {i > 0 && (
+                        <div style={{ position: 'absolute', top: '50%', left: 0, width: '50%', borderTop: '1.5px dashed #c0b49a', transform: 'translateY(-50%)' }} />
+                      )}
+                      {i < STEPS.length - 1 && (
+                        <div style={{ position: 'absolute', top: '50%', right: 0, width: '50%', borderTop: '1.5px dashed #c0b49a', transform: 'translateY(-50%)' }} />
+                      )}
+                      <div style={{ position: 'relative', zIndex: 1, width: '48px', height: '48px', borderRadius: '50%', background: '#faf6ee', border: '1.5px solid #c0b49a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-cormorant)', fontSize: '20px', fontWeight: 500, color: '#1a1d17', flexShrink: 0 }}>
+                        {step.number}
+                      </div>
+                    </div>
+                    {/* Video card */}
+                    <StepVideoCard step={step} />
+                    {/* Title */}
+                    <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: 'clamp(13px,1.1vw,15px)', letterSpacing: '-0.01em', lineHeight: 1.3, color: '#1a1d17', margin: 0, textAlign: 'center' }}>
+                      {step.title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── MOBILE: vertical timeline ── */}
+              <div className="slik-mobile" style={{ gap: 0 }}>
+                {STEPS.map((step, i) => (
+                  <div key={step.number} style={{ display: 'flex', gap: '20px' }}>
+                    {/* Left: circle + connector line */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '44px', flexShrink: 0 }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#faf6ee', border: '1.5px solid #c0b49a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-cormorant)', fontSize: '18px', fontWeight: 500, color: '#1a1d17', flexShrink: 0 }}>
+                        {step.number}
+                      </div>
+                      {i < STEPS.length - 1 && (
+                        <div style={{ flexGrow: 1, width: 0, borderLeft: '1.5px dashed #c0b49a' }} />
+                      )}
+                    </div>
+                    {/* Right: video card + title */}
+                    <div style={{ flex: 1, paddingTop: '4px', paddingBottom: i < STEPS.length - 1 ? '32px' : 0 }}>
+                      <StepVideoCard step={step} />
+                      <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', letterSpacing: '-0.01em', lineHeight: 1.3, color: '#1a1d17', margin: '14px 0 0' }}>
+                        {step.title}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ==================== VIDEO ==================== */}
+      <section style={{ background: '#faf6ee', padding: 'clamp(72px,9vw,120px) 0', marginTop: '-100px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 clamp(20px,5vw,48px)' }}>
           <motion.div {...fadeUp()} style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 44px' }}>
             <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px' }}>Film</p>
