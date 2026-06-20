@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import Carousel, { CarouselArrows } from '@/components/Carousel'
 import type { CarouselHandle } from '@/components/Carousel'
 import Accordion from '@/components/Accordion'
-import VideoPlaceholder from '@/components/VideoPlaceholder'
 
 const COLORS = [
   { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
@@ -81,10 +80,10 @@ const LIFESTYLE = [
 ]
 
 const STEPS = [
-  { number: 1, title: 'Sett inn modulene',                      posterUrl: '', videoUrl: '' },
-  { number: 2, title: 'Fyll med batterier',                     posterUrl: '', videoUrl: '' },
-  { number: 3, title: 'Bruk batteriene',                        posterUrl: '', videoUrl: '' },
-  { number: 4, title: 'Lever brukte batterier til gjenvinning', posterUrl: '', videoUrl: '' },
+  { number: 1, title: 'Sett inn modulene',                      posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Sett-inn-modulene-1080.webp',        videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Sett-inn-modulene-34.mp4' },
+  { number: 2, title: 'Fyll med batterier',                     posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Fyll-med-batterier-1080.webp',    videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Fyll-med-batterier-34.mp4' },
+  { number: 3, title: 'Bruk batteriene',                        posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Bruk-batteriene-1080.webp',          videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Bruk-batteriene-34.mp4' },
+  { number: 4, title: 'Lever brukte batterier til gjenvinning', posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Lever-brukte-batterier-1080.webp', videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Lever-brukte-batterier-34.mp4' },
 ]
 
 const FUTURE = [
@@ -121,16 +120,51 @@ function fadeUp(delay = 0) {
 
 function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
 
-  function play()   { if (videoRef.current && step.videoUrl) videoRef.current.play() }
-  function pause()  { if (!videoRef.current) return; videoRef.current.pause(); videoRef.current.currentTime = 0 }
-  function toggle() { if (!videoRef.current || !step.videoUrl) return; videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause() }
+  function ensureSrc() {
+    const v = videoRef.current
+    if (!v || !step.videoUrl) return false
+    if (!v.src || v.src === window.location.href) {
+      v.src = step.videoUrl
+      v.loop = true
+      v.load()
+    }
+    return true
+  }
+
+  function handleMouseEnter() {
+    if (!ensureSrc()) return
+    videoRef.current!.play().catch(() => {})
+  }
+
+  function handleMouseLeave() {
+    videoRef.current?.pause()
+  }
+
+  function handleClick() {
+    if (!ensureSrc()) return
+    const v = videoRef.current!
+    if (v.paused) v.play().catch(() => {})
+    else v.pause()
+  }
+
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    const onEnded = () => {
+      v.currentTime = 0
+      v.play().catch(() => {})
+    }
+    v.addEventListener('ended', onEnded)
+    return () => v.removeEventListener('ended', onEnded)
+  }, [])
 
   return (
     <div
-      onMouseEnter={play}
-      onMouseLeave={pause}
-      onClick={toggle}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
       style={{
         aspectRatio: '4/5',
         borderRadius: '18px',
@@ -148,15 +182,24 @@ function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
       {step.videoUrl && (
         <video
           ref={videoRef}
-          src={step.videoUrl}
           muted
-          loop
           playsInline
           poster={step.posterUrl || undefined}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       )}
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+      <div
+        className="step-play-btn"
+        style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+          opacity: isPlaying ? 0 : 1,
+          transition: 'opacity 0.2s',
+        }}
+      >
         <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(250,246,238,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
             <path d="M1.5 1.5L12.5 8L1.5 14.5V1.5Z" fill="#3a3f33" />
@@ -170,8 +213,36 @@ function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
 export default function HomeClient() {
   const [colorId, setColorId] = useState('olive')
   const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
-  const prodCarouselRef = useRef<CarouselHandle>(null)
-  const lifeCarouselRef = useRef<CarouselHandle>(null)
+  const prodCarouselRef   = useRef<CarouselHandle>(null)
+  const lifeCarouselRef   = useRef<CarouselHandle>(null)
+  const solutionVideoRef  = useRef<HTMLVideoElement>(null)
+  const mainVideoRef      = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const SOLUTION_SRC = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video.mp4'
+    const MAIN_SRC     = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video.mp4'
+    const setup = (v: HTMLVideoElement | null, src: string) => {
+      if (!v) return () => {}
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            if (!v.src || v.src === window.location.href) v.src = src
+            v.play().catch(() => {})
+          } else {
+            v.pause()
+            v.removeAttribute('src')
+            v.load()
+          }
+        },
+        { threshold: 0.25 }
+      )
+      obs.observe(v)
+      return () => obs.disconnect()
+    }
+    const c1 = setup(solutionVideoRef.current, SOLUTION_SRC)
+    const c2 = setup(mainVideoRef.current, MAIN_SRC)
+    return () => { c1(); c2() }
+  }, [])
 
   return (
     <main>
@@ -365,8 +436,7 @@ export default function HomeClient() {
           >
             <motion.div {...fadeUp()} className="order-2 md:order-1" style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 48px -18px rgba(42,36,24,.22)' }}>
               <video
-                src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video.mp4"
-                autoPlay
+                ref={solutionVideoRef}
                 muted
                 loop
                 playsInline
@@ -587,6 +657,9 @@ export default function HomeClient() {
             .slik-mobile  { display: flex; flex-direction: column; }
             .slik-spacer  { height: calc((100vw - clamp(40px, 10vw, 96px) - 136px) * 0.625 - 22px); }
           }
+          @media (hover: hover) and (pointer: fine) {
+            .step-play-btn { display: none !important; }
+          }
         `}</style>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
           <motion.div {...fadeUp()}>
@@ -679,8 +752,7 @@ export default function HomeClient() {
           </motion.div>
           <motion.div {...fadeUp(0.1)} style={{ borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 56px -20px rgba(42,36,24,.3)' }}>
             <video
-              src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video.mp4"
-              autoPlay
+              ref={mainVideoRef}
               muted
               loop
               playsInline
