@@ -133,12 +133,18 @@ function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
     return true
   }
 
+  function isHoverDevice() {
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  }
+
   function handleMouseEnter() {
+    if (!isHoverDevice()) return
     if (!ensureSrc()) return
     videoRef.current!.play().catch(() => {})
   }
 
   function handleMouseLeave() {
+    if (!isHoverDevice()) return
     videoRef.current?.pause()
   }
 
@@ -150,11 +156,10 @@ function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
       v.src = step.videoUrl
       v.loop = true
       v.load()
-      v.addEventListener('canplay', () => v.play().catch(() => {}), { once: true })
-    } else {
-      if (v.paused) v.play().catch(() => {})
-      else v.pause()
     }
+
+    if (v.paused) v.play().catch(() => {})
+    else v.pause()
   }
 
   useEffect(() => {
