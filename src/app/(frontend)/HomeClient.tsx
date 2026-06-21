@@ -73,7 +73,7 @@ const CAROUSEL_ITEMS = [
 ]
 
 const LIFESTYLE = [
-  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp', alt: 'Ren og tidløs – aBoks i hvit.' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-Hvit-1.webp', alt: 'Ren og tidløs – aBoks i hvit.' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp', alt: 'Tar seg godt ut – uansett hvor du setter den.' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp', alt: 'Robust nok for hytta og turen.' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp', alt: 'Tidløst design som varer.' },
