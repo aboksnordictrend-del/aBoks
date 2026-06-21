@@ -143,10 +143,18 @@ function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
   }
 
   function handleClick() {
-    if (!ensureSrc()) return
-    const v = videoRef.current!
-    if (v.paused) v.play().catch(() => {})
-    else v.pause()
+    const v = videoRef.current
+    if (!v || !step.videoUrl) return
+
+    if (!v.src || v.src === window.location.href) {
+      v.src = step.videoUrl
+      v.loop = true
+      v.load()
+      v.addEventListener('canplay', () => v.play().catch(() => {}), { once: true })
+    } else {
+      if (v.paused) v.play().catch(() => {})
+      else v.pause()
+    }
   }
 
   useEffect(() => {
