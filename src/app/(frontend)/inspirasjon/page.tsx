@@ -48,28 +48,34 @@ const placeholderCards = [
     imageAlt: 'Orden i skuffen – aBoks guide til hjemorganisering',
   },
   {
-    category: 'Guide',
-    title: 'Hvilke batterier passer til hva?',
+    category: 'Hjem & bærekraft',
+    title: 'Hvilke batterier passer til hva? Den komplette guiden for hjemmet',
     description:
-      'AA, AAA, C eller D – hva er forskjellen, og hvilke produkter bruker hvilke batterier? En komplett oversikt.',
-    date: 'Kommer snart',
-    slug: '#',
+      'Hvilke batterier passer til hva? Vi gir deg oversikten over alkaliske, litium- og oppladbare AA- og AAA-batterier – hvor de hører hjemme, hvordan du oppbevarer dem trygt, og hvordan du gjenvinner riktig i Norge.',
+    date: 'Juni 2026',
+    slug: '/inspirasjon/hvilke-batterier-passer-til-hva',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Hvilke-batterier-passer.webp',
+    imageAlt: 'Hvilke batterier passer til hva – aBoks guide',
   },
   {
-    category: 'Bærekraft',
+    category: 'Bærekraftig hjem',
     title: 'aBoks og fremtidens bærekraftige hjem',
     description:
-      'Hvordan kan smarte organiseringsløsninger bidra til et mer bevisst forbruk og mindre søppel i hverdagen?',
-    date: 'Kommer snart',
-    slug: '#',
+      'aBoks og fremtidens bærekraftige hjem henger tettere sammen enn de fleste tror. Når noe så lite som et batteri får sin faste plass, blir hverdagen ryddigere, tryggere og mer sirkulær. Her er de praktiske grepene som teller.',
+    date: 'Juni 2026',
+    slug: '/inspirasjon/aboks-fremtidens-baerekraftige-hjem',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/aBoks-fremtid.webp',
+    imageAlt: 'aBoks og fremtidens bærekraftige hjem – orden og gjenvinning',
   },
   {
-    category: 'Kunnskap',
+    category: 'Bærekraft & smart hverdag',
     title: 'Slik forlenger du levetiden på batteriene dine',
     description:
-      'Temperatur, lagring og bruksmønster påvirker kapasiteten. Lær hva du kan gjøre for å få mer ut av hvert batteri.',
-    date: 'Kommer snart',
-    slug: '#',
+      'Med noen enkle grep kan du forlenge levetiden på batteriene dine betydelig – spare penger, redusere avfall og gjøre hjemmet både tryggere og mer bærekraftig. Her er ekspertrådene som faktisk virker.',
+    date: 'Juni 2026',
+    slug: '/inspirasjon/forleng-levetiden-pa-batteriene',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Levetiden-pa-batteriene.webp',
+    imageAlt: 'Slik forlenger du levetiden på batteriene dine – aBoks guide',
   },
 ]
 
