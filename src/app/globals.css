@@ -65,15 +65,14 @@ html {
       opacity 0.22s ease;
   }
 
-  /* Text link hover: subtle fade to signal interactivity */
-  html[data-site="frontend"] a[href]:not([data-btn]):hover {
-    opacity: 0.70;
-  }
-
-  /* Press-in for mouse/trackpad (hover-capable devices only).
-     Touch devices use .is-pressed managed by TouchPressManager so that
-     touchcancel (fired during scroll) properly releases the pressed state. */
+  /* Hover and press feedback — desktop/mouse only.
+     On touch devices :hover sticks after tap (iOS Safari bug), so we gate
+     everything behind (hover: hover) and handle touch via TouchPressManager. */
   @media (hover: hover) {
+    html[data-site="frontend"] a[href]:not([data-btn]):hover {
+      opacity: 0.70;
+    }
+
     html[data-site="frontend"] button:active,
     html[data-site="frontend"] a[href]:active,
     html[data-site="frontend"] [role="button"]:active {
@@ -82,7 +81,8 @@ html {
     }
   }
 
-  /* Touch press state — added/removed via touchstart/touchend/touchcancel */
+  /* Touch press state — JS-managed via TouchPressManager.
+     Added on touchstart, removed on touchend AND touchcancel (scroll). */
   html[data-site="frontend"] .is-pressed {
     transform: scale(0.965) !important;
     filter: brightness(1.1) !important;
