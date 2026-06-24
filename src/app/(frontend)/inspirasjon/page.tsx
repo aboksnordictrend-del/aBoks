@@ -1,0 +1,329 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Inspirasjon',
+  description:
+    'Tips, guider og ideer om batterier, organisering, bærekraft og et ryddig hjem – fra aBoks.',
+  alternates: {
+    canonical: '/inspirasjon',
+  },
+  openGraph: {
+    title: 'Inspirasjon | aBoks',
+    description:
+      'Tips, guider og ideer om batterier, organisering, bærekraft og et ryddig hjem – fra aBoks.',
+  },
+}
+
+const placeholderCards = [
+  {
+    category: 'Tips og råd',
+    title: 'Slik sorterer du batteriene riktig hjemme',
+    description:
+      'En enkel rutine for å holde oversikt over nye, brukte og tomme batterier – og spare tid neste gang du trenger en.',
+    date: 'Kommer snart',
+    slug: '#',
+  },
+  {
+    category: 'Miljø',
+    title: 'Hvorfor det lønner seg å levere inn brukte batterier',
+    description:
+      'Visste du at batterier inneholder verdifulle materialer som kan gjenvinnes? Her forklarer vi hvorfor levering er viktig.',
+    date: 'Kommer snart',
+    slug: '#',
+  },
+  {
+    category: 'Organisering',
+    title: 'Orden i skuffen – 5 tips for et ryddigere hjem',
+    description:
+      'Små grep som gir stor forskjell. Vi deler favorittipsene våre for å skape system i hverdagssaker du bruker mest.',
+    date: 'Kommer snart',
+    slug: '#',
+  },
+  {
+    category: 'Guide',
+    title: 'Hvilke batterier passer til hva?',
+    description:
+      'AA, AAA, C eller D – hva er forskjellen, og hvilke produkter bruker hvilke batterier? En komplett oversikt.',
+    date: 'Kommer snart',
+    slug: '#',
+  },
+  {
+    category: 'Bærekraft',
+    title: 'aBoks og fremtidens bærekraftige hjem',
+    description:
+      'Hvordan kan smarte organiseringsløsninger bidra til et mer bevisst forbruk og mindre søppel i hverdagen?',
+    date: 'Kommer snart',
+    slug: '#',
+  },
+  {
+    category: 'Kunnskap',
+    title: 'Slik forlenger du levetiden på batteriene dine',
+    description:
+      'Temperatur, lagring og bruksmønster påvirker kapasiteten. Lær hva du kan gjøre for å få mer ut av hvert batteri.',
+    date: 'Kommer snart',
+    slug: '#',
+  },
+]
+
+export default function InspirasjonPage() {
+  return (
+    <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
+      <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+
+        {/* Breadcrumb */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontFamily: 'var(--font-manrope)',
+            fontSize: '13px',
+            color: '#6b6f63',
+            paddingTop: '18px',
+            marginBottom: 'clamp(36px,5vw,56px)',
+          }}
+        >
+          <Link href="/" style={{ color: '#6b6f63', textDecoration: 'none' }}>Hjem</Link>
+          <span style={{ opacity: 0.5 }}>/</span>
+          <span style={{ color: '#1a1d17', fontWeight: 600 }}>Inspirasjon</span>
+        </div>
+
+        {/* Page heading */}
+        <div style={{ marginBottom: 'clamp(48px,6vw,72px)', textAlign: 'center' }}>
+          <p
+            style={{
+              fontFamily: 'var(--font-manrope)',
+              fontWeight: 700,
+              fontSize: '11px',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: '#5e6a48',
+              margin: '0 0 14px',
+            }}
+          >
+            Artikler og guider
+          </p>
+          <h1
+            style={{
+              fontFamily: 'var(--font-cormorant)',
+              fontWeight: 500,
+              fontSize: 'clamp(40px,5vw,72px)',
+              letterSpacing: '-0.024em',
+              lineHeight: 1.0,
+              color: '#1a1d17',
+              margin: '0 0 24px',
+            }}
+          >
+            Inspirasjon
+          </h1>
+          <p
+            style={{
+              fontFamily: 'var(--font-manrope)',
+              fontSize: 'clamp(15px,1.1vw,17px)',
+              lineHeight: 1.7,
+              color: '#6b6f63',
+              margin: '0 auto',
+              maxWidth: '520px',
+            }}
+          >
+            Her samler vi nyttige artikler, tips og guider om batterier, organisering,
+            gjenvinning og et mer bevisst hverdagsliv. Nytt innhold er på vei.
+          </p>
+        </div>
+
+        {/* Article grid */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+            gap: 'clamp(24px,3vw,40px)',
+            marginBottom: 'clamp(80px,10vw,128px)',
+          }}
+        >
+          {placeholderCards.map((card) => (
+            <article
+              key={card.title}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                background: '#f3ede2',
+              }}
+            >
+              {/* Image placeholder 16:9 */}
+              <div
+                style={{
+                  position: 'relative',
+                  paddingTop: '56.25%',
+                  background: 'linear-gradient(135deg, #e4dfd2 0%, #d6d0c2 100%)',
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <svg
+                    width="40"
+                    height="40"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#b5b0a4"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="3" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="m21 15-5-5L5 21" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Card body */}
+              <div
+                style={{
+                  padding: 'clamp(20px,2vw,28px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  flex: 1,
+                }}
+              >
+                {/* Category */}
+                <span
+                  style={{
+                    fontFamily: 'var(--font-manrope)',
+                    fontWeight: 700,
+                    fontSize: '10px',
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: '#5e6a48',
+                    marginBottom: '10px',
+                    display: 'block',
+                  }}
+                >
+                  {card.category}
+                </span>
+
+                {/* Title */}
+                <h2
+                  style={{
+                    fontFamily: 'var(--font-cormorant)',
+                    fontWeight: 600,
+                    fontSize: 'clamp(20px,1.8vw,24px)',
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1.2,
+                    color: '#1a1d17',
+                    margin: '0 0 10px',
+                  }}
+                >
+                  {card.title}
+                </h2>
+
+                {/* Description */}
+                <p
+                  style={{
+                    fontFamily: 'var(--font-manrope)',
+                    fontSize: '14px',
+                    lineHeight: 1.65,
+                    color: '#6b6f63',
+                    margin: '0 0 20px',
+                    flex: 1,
+                  }}
+                >
+                  {card.description}
+                </p>
+
+                {/* Footer: date + link */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginTop: 'auto',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-manrope)',
+                      fontSize: '12px',
+                      color: '#9a9a8e',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {card.date}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-manrope)',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      color: '#9a9a8e',
+                      letterSpacing: '0.04em',
+                      cursor: 'default',
+                    }}
+                  >
+                    Les mer →
+                  </span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {/* Coming soon banner */}
+        <div
+          style={{
+            textAlign: 'center',
+            paddingBottom: 'clamp(64px,8vw,96px)',
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-block',
+              border: '1.5px solid #c9cfc0',
+              borderRadius: '16px',
+              padding: 'clamp(28px,3vw,44px) clamp(32px,4vw,64px)',
+              maxWidth: '480px',
+            }}
+          >
+            <p
+              style={{
+                fontFamily: 'var(--font-cormorant)',
+                fontWeight: 500,
+                fontSize: 'clamp(22px,2vw,28px)',
+                color: '#1a1d17',
+                margin: '0 0 10px',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              Mer innhold er på vei
+            </p>
+            <p
+              style={{
+                fontFamily: 'var(--font-manrope)',
+                fontSize: '14px',
+                lineHeight: 1.7,
+                color: '#6b6f63',
+                margin: 0,
+              }}
+            >
+              Vi jobber med artikler og guider som hjelper deg å bruke,
+              oppbevare og resirkulere batterier på best mulig måte.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  )
+}

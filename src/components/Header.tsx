@@ -157,29 +157,48 @@ export default function Header() {
               {[
                 { label: 'Slik fungerer det', hash: 'slik' },
                 { label: 'Historien',         hash: 'historien' },
+                { label: 'Inspirasjon',       href: '/inspirasjon' },
                 { label: 'Spørsmål',          hash: 'faq' },
               ].map((item) => (
-                <a
-                  key={item.label}
-                  href={`/#${item.hash}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    const el = document.getElementById(item.hash)
-                    if (!el) return
-                    rafScrollTo(el.getBoundingClientRect().top + window.scrollY - 80)
-                  }}
-                  style={{
-                    fontFamily: 'var(--font-manrope)',
-                    fontWeight: 600,
-                    fontSize: '14px',
-                    letterSpacing: '0.01em',
-                    color: '#1a1d17',
-                    textDecoration: 'none',
-                    padding: '6px 0',
-                  }}
-                >
-                  {item.label}
-                </a>
+                'href' in item ? (
+                  <Link
+                    key={item.label}
+                    href={item.href!}
+                    style={{
+                      fontFamily: 'var(--font-manrope)',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      letterSpacing: '0.01em',
+                      color: '#1a1d17',
+                      textDecoration: 'none',
+                      padding: '6px 0',
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={item.label}
+                    href={`/#${item.hash}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      const el = document.getElementById(item.hash!)
+                      if (!el) return
+                      rafScrollTo(el.getBoundingClientRect().top + window.scrollY - 80)
+                    }}
+                    style={{
+                      fontFamily: 'var(--font-manrope)',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      letterSpacing: '0.01em',
+                      color: '#1a1d17',
+                      textDecoration: 'none',
+                      padding: '6px 0',
+                    }}
+                  >
+                    {item.label}
+                  </a>
+                )
               ))}
             </nav>
 
@@ -327,9 +346,10 @@ export default function Header() {
                 {
                   label: 'Lær mer',
                   links: [
-                    { label: 'Slik fungerer det', href: '/#slik',      hash: 'slik' },
-                    { label: 'Historien',          href: '/#historien', hash: 'historien' },
-                    { label: 'Spørsmål',           href: '/#faq',       hash: 'faq' },
+                    { label: 'Slik fungerer det', href: '/#slik',        hash: 'slik' },
+                    { label: 'Historien',          href: '/#historien',   hash: 'historien' },
+                    { label: 'Inspirasjon',        href: '/inspirasjon' },
+                    { label: 'Spørsmål',           href: '/#faq',         hash: 'faq' },
                   ],
                 },
                 {
