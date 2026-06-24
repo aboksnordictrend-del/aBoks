@@ -336,6 +336,10 @@ export default function Header() {
                   label: 'Annet',
                   links: [
                     { label: 'Hjem', href: '/' },
+                    { label: 'Kontakt oss', href: '/kontakt' },
+                    { label: 'Frakt og retur', href: '/frakt-og-retur' },
+                    { label: 'Kjøpsvilkår', href: '/kjopsvilkar' },
+                    { label: 'Personvernerklæring', href: '/personvernerklaering' },
                   ],
                 },
               ].map((section) => (
