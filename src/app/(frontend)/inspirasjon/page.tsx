@@ -150,11 +150,55 @@ export default function InspirasjonPage() {
         >
           {placeholderCards.map((card) => {
             const published = card.slug !== '#'
-            const ImageWrapper = published
-              ? ({ children }: { children: React.ReactNode }) => (
-                  <Link href={card.slug} style={{ display: 'block', textDecoration: 'none' }}>{children}</Link>
-                )
-              : ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+            const hasImage = 'image' in card && card.image
+
+            const imageInner = (
+              <div
+                style={{
+                  position: 'relative',
+                  paddingTop: '56.25%',
+                  background: 'linear-gradient(135deg, #e4dfd2 0%, #d6d0c2 100%)',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                }}
+              >
+                {hasImage ? (
+                  <Image
+                    src={card.image as string}
+                    alt={(card as { imageAlt?: string }).imageAlt ?? card.title}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    style={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg
+                      width="40"
+                      height="40"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#b5b0a4"
+                      strokeWidth="1.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="3" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <path d="m21 15-5-5L5 21" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            )
 
             return (
               <article
@@ -167,54 +211,18 @@ export default function InspirasjonPage() {
                   background: '#f3ede2',
                 }}
               >
-                {/* Image placeholder 16:9 */}
-                <ImageWrapper>
-                  <div
-                    style={{
-                      position: 'relative',
-                      paddingTop: '56.25%',
-                      background: 'linear-gradient(135deg, #e4dfd2 0%, #d6d0c2 100%)',
-                      flexShrink: 0,
-                      overflow: 'hidden',
-                    }}
+                {/* Image 16:9 */}
+                {published ? (
+                  <Link
+                    href={card.slug}
+                    tabIndex={-1}
+                    style={{ display: 'block', textDecoration: 'none' }}
                   >
-                    {'image' in card && card.image ? (
-                      <Image
-                        src={card.image as string}
-                        alt={(card as { imageAlt?: string }).imageAlt ?? card.title}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        style={{ objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <svg
-                          width="40"
-                          height="40"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#b5b0a4"
-                          strokeWidth="1.2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <rect x="3" y="3" width="18" height="18" rx="3" />
-                          <circle cx="8.5" cy="8.5" r="1.5" />
-                          <path d="m21 15-5-5L5 21" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                </ImageWrapper>
+                    {imageInner}
+                  </Link>
+                ) : (
+                  imageInner
+                )}
 
                 {/* Card body */}
                 <div
