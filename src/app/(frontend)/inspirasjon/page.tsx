@@ -38,12 +38,14 @@ const placeholderCards = [
     imageAlt: 'Levere inn brukte batterier – aBoks guide',
   },
   {
-    category: 'Organisering',
-    title: 'Orden i skuffen – 5 tips for et ryddigere hjem',
+    category: 'Hjem & Organisering',
+    title: 'Orden i skuffen – 5 tips for et ryddigere og tryggere hjem',
     description:
-      'Små grep som gir stor forskjell. Vi deler favorittipsene våre for å skape system i hverdagssaker du bruker mest.',
-    date: 'Kommer snart',
-    slug: '#',
+      'Den ene rotskuffen sier ofte mer om hjemmet enn vi liker å innrømme. Med fem enkle grep – fra soneinndeling til smart batterioppbevaring – skaper du orden i skuffen som varer, og et hjem som er tryggere og mer bærekraftig.',
+    date: 'Juni 2026',
+    slug: '/inspirasjon/orden-i-skuffen',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Orden-i-skuffen.webp',
+    imageAlt: 'Orden i skuffen – aBoks guide til hjemorganisering',
   },
   {
     category: 'Guide',
