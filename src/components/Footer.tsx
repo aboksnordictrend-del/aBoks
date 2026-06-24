@@ -130,17 +130,24 @@ export default function Footer() {
               Kundeservice
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {['Kontakt oss', 'Frakt og retur', 'Vilkår'].map((t) => (
-                <span
-                  key={t}
+              {[
+                { label: 'Kontakt oss', href: '/kontakt' },
+                { label: 'Frakt og retur', href: '/frakt-og-retur' },
+                { label: 'Kjøpsvilkår', href: '/kjopsvilkar' },
+                { label: 'Personvernerklæring', href: '/personvernerklaering' },
+              ].map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
                   style={{
                     fontFamily: 'var(--font-manrope)',
                     fontSize: '15px',
                     color: '#d7dccd',
+                    textDecoration: 'none',
                   }}
                 >
-                  {t}
-                </span>
+                  {item.label}
+                </Link>
               ))}
             </div>
           </div>

@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         destination: '/produkter/:slug*',
         permanent: true,
       },
+      {
+        source: '/vilkar',
+        destination: '/kjopsvilkar',
+        permanent: true,
+      },
     ]
   },
   images: {
