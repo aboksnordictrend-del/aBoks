@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
@@ -17,12 +18,14 @@ export const metadata: Metadata = {
 
 const placeholderCards = [
   {
-    category: 'Tips og råd',
+    category: 'Bærekraftig hjem',
     title: 'Slik sorterer du batteriene riktig hjemme',
     description:
-      'En enkel rutine for å holde oversikt over nye, brukte og tomme batterier – og spare tid neste gang du trenger en.',
-    date: 'Kommer snart',
-    slug: '#',
+      'Å sortere batteriene riktig hjemme er et av de enkleste grepene for et tryggere hjem og en renere natur. Her er de praktiske rådene som faktisk fungerer i en travel hverdag – fra teiping av poler til en fast plass for nye og brukte batterier.',
+    date: 'Juni 2026',
+    slug: '/inspirasjon/slik-sorterer-du-batteriene-riktig-hjemme',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Sorterer-batteriene-hjemme.webp',
+    imageAlt: 'Sortere batteriene riktig hjemme – aBoks guide',
   },
   {
     category: 'Miljø',
@@ -141,143 +144,185 @@ export default function InspirasjonPage() {
             marginBottom: 'clamp(80px,10vw,128px)',
           }}
         >
-          {placeholderCards.map((card) => (
-            <article
-              key={card.title}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                borderRadius: '20px',
-                overflow: 'hidden',
-                background: '#f3ede2',
-              }}
-            >
-              {/* Image placeholder 16:9 */}
-              <div
-                style={{
-                  position: 'relative',
-                  paddingTop: '56.25%',
-                  background: 'linear-gradient(135deg, #e4dfd2 0%, #d6d0c2 100%)',
-                  flexShrink: 0,
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <svg
-                    width="40"
-                    height="40"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#b5b0a4"
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <rect x="3" y="3" width="18" height="18" rx="3" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="m21 15-5-5L5 21" />
-                  </svg>
-                </div>
-              </div>
+          {placeholderCards.map((card) => {
+            const published = card.slug !== '#'
+            const ImageWrapper = published
+              ? ({ children }: { children: React.ReactNode }) => (
+                  <Link href={card.slug} style={{ display: 'block', textDecoration: 'none' }}>{children}</Link>
+                )
+              : ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 
-              {/* Card body */}
-              <div
+            return (
+              <article
+                key={card.title}
                 style={{
-                  padding: 'clamp(20px,2vw,28px)',
                   display: 'flex',
                   flexDirection: 'column',
-                  flex: 1,
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                  background: '#f3ede2',
                 }}
               >
-                {/* Category */}
-                <span
-                  style={{
-                    fontFamily: 'var(--font-manrope)',
-                    fontWeight: 700,
-                    fontSize: '10px',
-                    letterSpacing: '0.18em',
-                    textTransform: 'uppercase',
-                    color: '#5e6a48',
-                    marginBottom: '10px',
-                    display: 'block',
-                  }}
-                >
-                  {card.category}
-                </span>
+                {/* Image placeholder 16:9 */}
+                <ImageWrapper>
+                  <div
+                    style={{
+                      position: 'relative',
+                      paddingTop: '56.25%',
+                      background: 'linear-gradient(135deg, #e4dfd2 0%, #d6d0c2 100%)',
+                      flexShrink: 0,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {'image' in card && card.image ? (
+                      <Image
+                        src={card.image as string}
+                        alt={(card as { imageAlt?: string }).imageAlt ?? card.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <svg
+                          width="40"
+                          height="40"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#b5b0a4"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <rect x="3" y="3" width="18" height="18" rx="3" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <path d="m21 15-5-5L5 21" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </ImageWrapper>
 
-                {/* Title */}
-                <h2
+                {/* Card body */}
+                <div
                   style={{
-                    fontFamily: 'var(--font-cormorant)',
-                    fontWeight: 600,
-                    fontSize: 'clamp(20px,1.8vw,24px)',
-                    letterSpacing: '-0.01em',
-                    lineHeight: 1.2,
-                    color: '#1a1d17',
-                    margin: '0 0 10px',
-                  }}
-                >
-                  {card.title}
-                </h2>
-
-                {/* Description */}
-                <p
-                  style={{
-                    fontFamily: 'var(--font-manrope)',
-                    fontSize: '14px',
-                    lineHeight: 1.65,
-                    color: '#6b6f63',
-                    margin: '0 0 20px',
+                    padding: 'clamp(20px,2vw,28px)',
+                    display: 'flex',
+                    flexDirection: 'column',
                     flex: 1,
                   }}
                 >
-                  {card.description}
-                </p>
+                  {/* Category */}
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-manrope)',
+                      fontWeight: 700,
+                      fontSize: '10px',
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      color: '#5e6a48',
+                      marginBottom: '10px',
+                      display: 'block',
+                    }}
+                  >
+                    {card.category}
+                  </span>
 
-                {/* Footer: date + link */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    marginTop: 'auto',
-                  }}
-                >
-                  <span
+                  {/* Title */}
+                  <h2
                     style={{
-                      fontFamily: 'var(--font-manrope)',
-                      fontSize: '12px',
-                      color: '#9a9a8e',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    {card.date}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-manrope)',
+                      fontFamily: 'var(--font-cormorant)',
                       fontWeight: 600,
-                      fontSize: '13px',
-                      color: '#9a9a8e',
-                      letterSpacing: '0.04em',
-                      cursor: 'default',
+                      fontSize: 'clamp(20px,1.8vw,24px)',
+                      letterSpacing: '-0.01em',
+                      lineHeight: 1.2,
+                      color: '#1a1d17',
+                      margin: '0 0 10px',
                     }}
                   >
-                    Les mer →
-                  </span>
+                    {published ? (
+                      <Link href={card.slug} style={{ color: '#1a1d17', textDecoration: 'none' }}>
+                        {card.title}
+                      </Link>
+                    ) : card.title}
+                  </h2>
+
+                  {/* Description */}
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-manrope)',
+                      fontSize: '14px',
+                      lineHeight: 1.65,
+                      color: '#6b6f63',
+                      margin: '0 0 20px',
+                      flex: 1,
+                    }}
+                  >
+                    {card.description}
+                  </p>
+
+                  {/* Footer: date + link */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      marginTop: 'auto',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-manrope)',
+                        fontSize: '12px',
+                        color: '#9a9a8e',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      {card.date}
+                    </span>
+                    {published ? (
+                      <Link
+                        href={card.slug}
+                        style={{
+                          fontFamily: 'var(--font-manrope)',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          color: '#39402c',
+                          letterSpacing: '0.04em',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        Les mer →
+                      </Link>
+                    ) : (
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-manrope)',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          color: '#9a9a8e',
+                          letterSpacing: '0.04em',
+                          cursor: 'default',
+                        }}
+                      >
+                        Les mer →
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            )
+          })}
         </div>
 
         {/* Coming soon banner */}
