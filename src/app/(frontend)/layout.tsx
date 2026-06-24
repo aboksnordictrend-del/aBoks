@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Manrope } from 'next/font/google'
 import '../globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import TouchPressManager from '@/components/TouchPressManager'
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -42,6 +43,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
   return (
     <html lang="nb" className={`${cormorant.variable} ${manrope.variable}`} data-site="frontend" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <TouchPressManager />
         <Header />
         <div>
           {children}
