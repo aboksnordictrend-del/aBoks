@@ -28,12 +28,14 @@ const placeholderCards = [
     imageAlt: 'Sortere batteriene riktig hjemme – aBoks guide',
   },
   {
-    category: 'Miljø',
+    category: 'Bærekraft & gjenvinning',
     title: 'Hvorfor det lønner seg å levere inn brukte batterier',
     description:
-      'Visste du at batterier inneholder verdifulle materialer som kan gjenvinnes? Her forklarer vi hvorfor levering er viktig.',
-    date: 'Kommer snart',
-    slug: '#',
+      'Å levere inn brukte batterier er en av de enkleste miljøhandlingene vi gjør hjemme – og en av dem flest glemmer. Her er hvorfor det lønner seg for både lommeboka, sikkerheten og naturen, og hvordan litt orden hjemme gjør hele forskjellen.',
+    date: 'Juni 2026',
+    slug: '/inspirasjon/levere-inn-brukte-batterier',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Hvorfor-det-l%C3%B8nner.webp',
+    imageAlt: 'Levere inn brukte batterier – aBoks guide',
   },
   {
     category: 'Organisering',
