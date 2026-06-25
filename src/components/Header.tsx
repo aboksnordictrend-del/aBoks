@@ -35,13 +35,34 @@ export default function Header() {
     requestAnimationFrame(step)
   }
 
-  const scrollToHash = (e: React.MouseEvent, hash: string) => {
-    if (!isHome) return
-    e.preventDefault()
-    const el = document.getElementById(hash)
-    if (!el) return
-    rafScrollTo(el.getBoundingClientRect().top + window.scrollY - 72)
+  const headerOffset = () => {
+    const h = document.querySelector('header')?.getBoundingClientRect().height ?? 80
+    return h + 20 // 20px breathing room below the header
   }
+
+  const scrollToSection = (hash: string) => {
+    const el = document.getElementById(hash)
+    if (el) rafScrollTo(el.getBoundingClientRect().top + window.scrollY - headerOffset())
+  }
+
+  // After navigating to home page with a hash, scroll to the target section.
+  // Retries until the element is in the DOM (React may not have painted yet).
+  useEffect(() => {
+    if (!isHome) return
+    const hash = window.location.hash.slice(1)
+    if (!hash) return
+    let timerId: ReturnType<typeof setTimeout>
+    const tryScroll = (attempt = 0) => {
+      const el = document.getElementById(hash)
+      if (el) {
+        rafScrollTo(el.getBoundingClientRect().top + window.scrollY - headerOffset())
+      } else if (attempt < 8) {
+        timerId = setTimeout(() => tryScroll(attempt + 1), 100)
+      }
+    }
+    timerId = setTimeout(tryScroll, 60)
+    return () => clearTimeout(timerId)
+  }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     lastY.current = window.scrollY
@@ -166,17 +187,18 @@ export default function Header() {
                     {item.label}
                   </Link>
                 ) : (
-                  <a key={item.label} href={`/#${item.hash}`}
+                  <Link
+                    key={item.label}
+                    href={`/#${item.hash}`}
                     onClick={(e) => {
+                      if (!isHome) return // let Link navigate to /#hash; useEffect handles scroll
                       e.preventDefault()
-                      const el = document.getElementById(item.hash!)
-                      if (!el) return
-                      rafScrollTo(el.getBoundingClientRect().top + window.scrollY - 80)
+                      scrollToSection(item.hash!)
                     }}
                     style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}
                   >
                     {item.label}
-                  </a>
+                  </Link>
                 )
               ))}
             </nav>
@@ -248,6 +270,7 @@ export default function Header() {
               <button
                 onClick={() => setMenuOpen(false)}
                 aria-label="Lukk"
+                type="button"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
               >
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
@@ -304,7 +327,13 @@ export default function Header() {
                         href={link.href}
                         onClick={(e) => {
                           setMenuOpen(false)
-                          if ('hash' in link && link.hash) scrollToHash(e, link.hash as string)
+                          if ('hash' in link && link.hash) {
+                            if (isHome) {
+                              e.preventDefault()
+                              scrollToSection(link.hash as string)
+                            }
+                            // else: let Link navigate to /#hash; useEffect handles scroll
+                          }
                         }}
                         style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '26px', fontWeight: 600, color: '#1a1d17', textDecoration: 'none' }}
                       >

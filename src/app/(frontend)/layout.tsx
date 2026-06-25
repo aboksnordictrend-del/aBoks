@@ -21,7 +21,7 @@ const manrope = Manrope({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SERVER_URL ?? 'https://aboks.no'),
   title: {
     default: 'aBoks – Smart batteriorganisering',
     template: '%s | aBoks',

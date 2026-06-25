@@ -169,8 +169,11 @@ export default function FraktOgReturPage() {
 
           <Section number="04" title="Fraktkostnader">
             <p style={bodyStyle}>
-              Fraktkostnaden vises i kassen før du fullfører bestillingen. Eventuelle kampanjer
-              med gratis frakt vil bli opplyst på nettsiden.
+              Frakt koster <strong>69 kr</strong>. Ved kjøp for <strong>650 kr eller mer</strong> er
+              frakten gratis.
+            </p>
+            <p style={bodyStyle}>
+              Fraktkostnaden beregnes automatisk i kassen basert på din bestillingssum.
             </p>
           </Section>
 

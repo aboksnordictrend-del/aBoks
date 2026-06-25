@@ -77,6 +77,26 @@ const placeholderCards = [
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Levetiden-pa-batteriene.webp',
     imageAlt: 'Slik forlenger du levetiden på batteriene dine – aBoks guide',
   },
+  {
+    category: 'Bærekraft & gjenvinning',
+    title: 'Hvordan resirkuleres batterier? Fra innsamling til nye råvarer',
+    description:
+      'Hvordan resirkuleres batterier egentlig – fra du legger en utbrukt celle i en boks hjemme til metallene er på vei inn i et nytt produkt? Vi følger hele reisen gjennom innsamling, sortering og kjemisk utvinning, og viser hvorfor det aller viktigste leddet i kjeden er deg.',
+    date: 'Juni 2026',
+    slug: '/inspirasjon/hvordan-resirkuleres-batterier',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Recycling-factory.webp',
+    imageAlt: 'Hvordan resirkuleres batterier – fra innsamling til nye råvarer',
+  },
+  {
+    category: 'Gjenvinning & bærekraft',
+    title: 'Hvor kan man levere brukte batterier? Komplett guide for norske hjem',
+    description:
+      'En praktisk og oppdatert oversikt over hvor du leverer brukte batterier i Norge – fra dagligvarebutikken til gjenvinningsstasjonen – med tips til trygg oppbevaring og hvorfor riktig batteriretur er viktig for miljø og brannsikkerhet.',
+    date: '2026',
+    slug: '/inspirasjon/hvor-levere-brukte-batterier',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/levere%20brukte%20batterier.webp',
+    imageAlt: 'Hvor kan man levere brukte batterier – aBoks guide',
+  },
 ]
 
 export default function InspirasjonPage() {

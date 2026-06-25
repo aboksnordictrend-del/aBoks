@@ -6,8 +6,10 @@ import { useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
 
 export default function CartClient() {
-  const { items, removeItem, incrementItem, decrementItem, subtotal } = useCartStore()
-  const total = subtotal()
+  const { items, removeItem, incrementItem, decrementItem, subtotal, shipping, orderTotal } = useCartStore()
+  const sub = subtotal()
+  const shippingCost = shipping()
+  const total = orderTotal()
   const hasCart = items.length > 0
 
   return (
@@ -127,12 +129,23 @@ export default function CartClient() {
                 <h2 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17', margin: '0 0 22px' }}>Oppsummering</h2>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>Delsum</span>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#1a1d17' }}>{formatPrice(total)}</span>
+                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#1a1d17' }}>{formatPrice(sub)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '18px' }}>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>Frakt</span>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#5f8253' }}>Gratis</span>
+                  {shippingCost === 0 ? (
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#5f8253' }}>Gratis</span>
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#1a1d17' }}>{formatPrice(shippingCost)}</span>
+                  )}
                 </div>
+                {shippingCost > 0 && (
+                  <div style={{ marginBottom: '14px', marginTop: '-10px' }}>
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#8a8164' }}>
+                      Gratis frakt ved kjøp over kr 650
+                    </span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '18px', borderTop: '1px solid #e7e2d4', marginBottom: '24px' }}>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', fontWeight: 700, color: '#1a1d17' }}>Totalt</span>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '20px', fontWeight: 700, color: '#1a1d17' }}>{formatPrice(total)}</span>

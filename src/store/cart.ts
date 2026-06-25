@@ -22,6 +22,8 @@ interface CartState {
   clearCart: () => void
   totalCount: () => number
   subtotal: () => number
+  shipping: () => number
+  orderTotal: () => number
 }
 
 export const useCartStore = create<CartState>()(
@@ -65,6 +67,10 @@ export const useCartStore = create<CartState>()(
       totalCount: () => get().items.reduce((sum, i) => sum + i.qty, 0),
 
       subtotal: () => get().items.reduce((sum, i) => sum + i.qty * i.price, 0),
+
+      shipping: () => (get().subtotal() >= 650 ? 0 : 69),
+
+      orderTotal: () => get().subtotal() + get().shipping(),
     }),
     {
       name: 'aboks-cart',
