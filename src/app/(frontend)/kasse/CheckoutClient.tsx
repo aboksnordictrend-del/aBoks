@@ -80,7 +80,7 @@ export default function CheckoutClient() {
             <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: '0 0 8px' }}>
               Vi har sendt en bekreftelse på e-post. Din aBoks er snart på vei.
             </p>
-            <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#8a8164', margin: '0 0 32px' }}>
+            <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6057', margin: '0 0 32px' }}>
               Ordrenummer: <span style={{ fontWeight: 700, color: '#39402c' }}>{orderNo}</span>
             </p>
             <Link
@@ -115,7 +115,7 @@ export default function CheckoutClient() {
           <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(38px,4.6vw,60px)', letterSpacing: '-0.022em', lineHeight: 1.02, color: '#1a1d17', margin: '0 0 8px' }}>
             Kasse
           </h1>
-          <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#8a8164', margin: '0 0 clamp(28px,4vw,44px)' }}>
+          <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6057', margin: '0 0 clamp(28px,4vw,44px)' }}>
             Dette er en demo – ingen betaling gjennomføres.
           </p>
 
@@ -173,14 +173,14 @@ export default function CheckoutClient() {
                 <h2 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '17px', color: '#1a1d17', margin: '0 0 18px' }}>Betaling</h2>
                 <div style={{ border: '1.5px solid #e0d9c7', borderRadius: '16px', background: '#fff', overflow: 'hidden' }}>
                   <div style={{ padding: '16px', borderBottom: '1px solid #f0ebdd' }}>
-                    <input placeholder="Kortnummer" style={{ width: '100%', border: 'none', fontFamily: 'var(--font-manrope)', fontSize: '15px', outline: 'none', background: 'none' }} />
+                    <input aria-label="Kortnummer" placeholder="Kortnummer" style={{ width: '100%', border: 'none', fontFamily: 'var(--font-manrope)', fontSize: '15px', outline: 'none', background: 'none' }} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
                     <div style={{ padding: '16px', borderRight: '1px solid #f0ebdd' }}>
-                      <input placeholder="MM/ÅÅ" style={{ width: '100%', border: 'none', fontFamily: 'var(--font-manrope)', fontSize: '15px', outline: 'none', background: 'none' }} />
+                      <input aria-label="Utløpsdato (MM/ÅÅ)" placeholder="MM/ÅÅ" style={{ width: '100%', border: 'none', fontFamily: 'var(--font-manrope)', fontSize: '15px', outline: 'none', background: 'none' }} />
                     </div>
                     <div style={{ padding: '16px' }}>
-                      <input placeholder="CVC" style={{ width: '100%', border: 'none', fontFamily: 'var(--font-manrope)', fontSize: '15px', outline: 'none', background: 'none' }} />
+                      <input aria-label="CVC" placeholder="CVC" style={{ width: '100%', border: 'none', fontFamily: 'var(--font-manrope)', fontSize: '15px', outline: 'none', background: 'none' }} />
                     </div>
                   </div>
                 </div>
@@ -232,7 +232,7 @@ export default function CheckoutClient() {
               </div>
               {shippingCost > 0 && (
                 <div style={{ marginBottom: '18px' }}>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#8a8164' }}>
+                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#6b6057' }}>
                     Gratis frakt ved kjøp over kr 650
                   </span>
                 </div>

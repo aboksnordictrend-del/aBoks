@@ -322,7 +322,7 @@ export default function InspirasjonPage() {
                       style={{
                         fontFamily: 'var(--font-manrope)',
                         fontSize: '12px',
-                        color: '#9a9a8e',
+                        color: '#696a62',
                         letterSpacing: '0.04em',
                       }}
                     >
@@ -348,7 +348,7 @@ export default function InspirasjonPage() {
                           fontFamily: 'var(--font-manrope)',
                           fontWeight: 600,
                           fontSize: '13px',
-                          color: '#9a9a8e',
+                          color: '#696a62',
                           letterSpacing: '0.04em',
                           cursor: 'default',
                         }}

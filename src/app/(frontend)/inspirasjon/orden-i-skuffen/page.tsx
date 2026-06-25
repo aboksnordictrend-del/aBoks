@@ -186,7 +186,7 @@ export default function ArticlePage() {
               gjennomtenkte grep som gjør hverdagen enklere, tryggere og mer bærekraftig.
             </p>
             <p style={{
-              fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#9a9a8e',
+              fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#696a62',
               margin: 0, paddingBottom: '32px', borderBottom: '1px solid #ddd8ce',
             }}>
               Av redaksjonen · Lesetid ca. 6 min · Oppdatert juni 2026
@@ -516,7 +516,7 @@ export default function ArticlePage() {
                   { label: 'Sortere.no', url: 'https://www.sortere.no/', note: 'hvor du leverer batterier i din kommune' },
                 ].map((s) => (
                   <li key={s.url} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
-                    <span style={{ flexShrink: 0, width: '6px', height: '6px', borderRadius: '50%', background: '#9a9a8e', marginTop: '8px' }} />
+                    <span style={{ flexShrink: 0, width: '6px', height: '6px', borderRadius: '50%', background: '#696a62', marginTop: '8px' }} />
                     <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63', lineHeight: 1.6 }}>
                       <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" style={extLink}>{s.label}</a>
                       {' '}– {s.note}

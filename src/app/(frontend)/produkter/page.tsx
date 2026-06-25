@@ -83,7 +83,7 @@ export default async function ProductsPage() {
             textAlign: 'center',
             fontFamily: 'var(--font-manrope)',
             fontSize: '16px',
-            color: '#9a9a8e',
+            color: '#696a62',
           }}>
             Ingen produkter tilgjengelig for øyeblikket.
           </div>

@@ -200,7 +200,7 @@ export default function ArticlePage() {
               mer enn de fleste tror, og hvilke grep som faktisk fungerer i en travel hverdag.
             </p>
             <p style={{
-              fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#9a9a8e',
+              fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#696a62',
               margin: 0, paddingBottom: '32px',
               borderBottom: '1px solid #ddd8ce',
             }}>

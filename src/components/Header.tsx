@@ -155,7 +155,7 @@ export default function Header() {
               className="flex lg:hidden items-center"
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                 <path d="M3 6h18M3 12h18M3 18h18" />
               </svg>
             </button>
@@ -172,7 +172,7 @@ export default function Header() {
 
           {/* RIGHT col: nav (desktop only) + cart (always) + hamburger (desktop only) */}
           <div className="flex items-center justify-end" style={{ gap: 'clamp(16px,2.6vw,38px)' }}>
-            <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]">
+            <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]" aria-label="Primærnavigasjon">
               <Link href="/produkter" style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
                 Produkter
               </Link>
@@ -204,7 +204,7 @@ export default function Header() {
             </nav>
 
             <Link href="/handlekurv" aria-label="Handlekurv" style={{ position: 'relative', color: '#1a1d17', display: 'flex', alignItems: 'center', padding: '6px' }}>
-              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="9" cy="20" r="1.1" />
                 <circle cx="18" cy="20" r="1.1" />
                 <path d="M2.2 3.2h2.1l2.3 11.8a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L21 6.3H5.3" />
@@ -228,7 +228,7 @@ export default function Header() {
               className="hidden lg:flex items-center"
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                 <path d="M3 6h18M3 12h18M3 18h18" />
               </svg>
             </button>
@@ -273,13 +273,14 @@ export default function Header() {
                 type="button"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
               >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>
             </div>
 
             <nav
+              aria-label="Mobilmeny"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -317,7 +318,7 @@ export default function Header() {
                 },
               ].map((section) => (
                 <div key={section.label} className="md:text-center">
-                  <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a9a8e', margin: '0 0 14px' }}>
+                  <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#696a62', margin: '0 0 14px' }}>
                     {section.label}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>

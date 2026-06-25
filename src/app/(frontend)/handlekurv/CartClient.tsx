@@ -141,7 +141,7 @@ export default function CartClient() {
                 </div>
                 {shippingCost > 0 && (
                   <div style={{ marginBottom: '14px', marginTop: '-10px' }}>
-                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#8a8164' }}>
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#6b6057' }}>
                       Gratis frakt ved kjøp over kr 650
                     </span>
                   </div>
@@ -172,7 +172,7 @@ export default function CartClient() {
                 >
                   Gå til kassen
                 </Link>
-                <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '12.5px', color: '#8a8164', textAlign: 'center', margin: '14px 0 0' }}>
+                <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '12.5px', color: '#6b6057', textAlign: 'center', margin: '14px 0 0' }}>
                   100 dagers åpent kjøp · Sikker betaling
                 </p>
               </div>

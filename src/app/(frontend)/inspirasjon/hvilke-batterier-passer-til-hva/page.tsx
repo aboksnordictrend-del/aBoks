@@ -170,7 +170,7 @@ export default function ArticlePage() {
               oppbevarer og gjenvinner dem trygt.
             </p>
             <p style={{
-              fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#9a9a8e',
+              fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#696a62',
               margin: 0, paddingBottom: '32px', borderBottom: '1px solid #ddd8ce',
             }}>
               Av redaksjonen i aBoks · Oppdatert juni 2026 · Lesetid ca. 7 minutter
@@ -482,7 +482,7 @@ export default function ArticlePage() {
                   { label: 'DSB', url: 'https://www.dsb.no/', note: 'brannsikkerhet i hjemmet' },
                 ].map((s) => (
                   <li key={s.url} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
-                    <span style={{ flexShrink: 0, width: '6px', height: '6px', borderRadius: '50%', background: '#9a9a8e', marginTop: '8px' }} />
+                    <span style={{ flexShrink: 0, width: '6px', height: '6px', borderRadius: '50%', background: '#696a62', marginTop: '8px' }} />
                     <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63', lineHeight: 1.6 }}>
                       <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" style={extLink}>{s.label}</a>
                       {' '}– {s.note}
@@ -503,7 +503,7 @@ export default function ArticlePage() {
               <p style={{
                 marginTop: '28px', paddingTop: '20px', borderTop: '1px solid #ece8e1',
                 fontFamily: 'var(--font-manrope)', fontSize: '12px',
-                color: '#9a9a8e', lineHeight: 1.7, fontStyle: 'italic',
+                color: '#696a62', lineHeight: 1.7, fontStyle: 'italic',
               }}>
                 Denne artikkelen er utarbeidet av redaksjonen i aBoks med utgangspunkt i
                 råd fra norske miljø- og gjenvinningsmyndigheter. Innholdet er ment som
