@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -121,37 +122,37 @@ export default function Header() {
         </AnimatePresence>
 
         {/* Main nav */}
-        <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] py-[15px] flex items-center justify-between gap-4">
-          <Link
-            href="/"
-            style={{
-              fontFamily: 'var(--font-cormorant)',
-              fontWeight: 600,
-              fontSize: '29px',
-              letterSpacing: '0.005em',
-              color: '#1a1d17',
-              lineHeight: 1,
-              textDecoration: 'none',
-            }}
-          >
-            aBoks
+        <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] py-[12px] grid grid-cols-[1fr_auto_1fr] lg:flex lg:justify-between items-center">
+
+          {/* LEFT col: hamburger (mobile only) | logo (desktop only) */}
+          <div className="flex items-center">
+            {/* Mobile: hamburger */}
+            <button
+              onClick={() => setMenuOpen(true)}
+              aria-label="Meny"
+              type="button"
+              className="flex lg:hidden items-center"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                <path d="M3 6h18M3 12h18M3 18h18" />
+              </svg>
+            </button>
+            {/* Desktop: logo */}
+            <Link href="/" aria-label="aBoks – hjem" className="hidden lg:flex items-center">
+              <Image src="/logo.png" alt="aBoks" height={56} width={62} style={{ height: '56px', width: 'auto' }} priority />
+            </Link>
+          </div>
+
+          {/* CENTER col: logo (mobile only) */}
+          <Link href="/" aria-label="aBoks – hjem" className="flex lg:hidden items-center justify-center">
+            <Image src="/logo.png" alt="aBoks" height={56} width={62} style={{ height: '56px', width: 'auto' }} priority />
           </Link>
 
-          <div className="flex items-center gap-[clamp(16px,2.6vw,38px)]">
-            {/* Desktop nav */}
+          {/* RIGHT col: nav (desktop only) + cart (always) + hamburger (desktop only) */}
+          <div className="flex items-center justify-end" style={{ gap: 'clamp(16px,2.6vw,38px)' }}>
             <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]">
-              <Link
-                href="/produkter"
-                style={{
-                  fontFamily: 'var(--font-manrope)',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  letterSpacing: '0.01em',
-                  color: '#1a1d17',
-                  textDecoration: 'none',
-                  padding: '6px 0',
-                }}
-              >
+              <Link href="/produkter" style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
                 Produkter
               </Link>
               {[
@@ -161,40 +162,18 @@ export default function Header() {
                 { label: 'Spørsmål',          hash: 'faq' },
               ].map((item) => (
                 'href' in item ? (
-                  <Link
-                    key={item.label}
-                    href={item.href!}
-                    style={{
-                      fontFamily: 'var(--font-manrope)',
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      letterSpacing: '0.01em',
-                      color: '#1a1d17',
-                      textDecoration: 'none',
-                      padding: '6px 0',
-                    }}
-                  >
+                  <Link key={item.label} href={item.href!} style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
                     {item.label}
                   </Link>
                 ) : (
-                  <a
-                    key={item.label}
-                    href={`/#${item.hash}`}
+                  <a key={item.label} href={`/#${item.hash}`}
                     onClick={(e) => {
                       e.preventDefault()
                       const el = document.getElementById(item.hash!)
                       if (!el) return
                       rafScrollTo(el.getBoundingClientRect().top + window.scrollY - 80)
                     }}
-                    style={{
-                      fontFamily: 'var(--font-manrope)',
-                      fontWeight: 600,
-                      fontSize: '14px',
-                      letterSpacing: '0.01em',
-                      color: '#1a1d17',
-                      textDecoration: 'none',
-                      padding: '6px 0',
-                    }}
+                    style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}
                   >
                     {item.label}
                   </a>
@@ -202,50 +181,16 @@ export default function Header() {
               ))}
             </nav>
 
-            {/* Cart */}
-            <Link
-              href="/handlekurv"
-              aria-label="Handlekurv"
-              style={{ position: 'relative', color: '#1a1d17', display: 'flex', alignItems: 'center', padding: '6px' }}
-            >
-              <svg
-                width="23"
-                height="23"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+            <Link href="/handlekurv" aria-label="Handlekurv" style={{ position: 'relative', color: '#1a1d17', display: 'flex', alignItems: 'center', padding: '6px' }}>
+              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="9" cy="20" r="1.1" />
                 <circle cx="18" cy="20" r="1.1" />
                 <path d="M2.2 3.2h2.1l2.3 11.8a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.3L21 6.3H5.3" />
               </svg>
               <AnimatePresence>
                 {totalCount > 0 && (
-                  <motion.span
-                    key="badge"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    style={{
-                      position: 'absolute',
-                      top: '-1px',
-                      right: '-1px',
-                      minWidth: '17px',
-                      height: '17px',
-                      padding: '0 4px',
-                      borderRadius: '999px',
-                      background: '#39402c',
-                      color: '#faf6ee',
-                      fontFamily: 'var(--font-manrope)',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
+                  <motion.span key="badge" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                    style={{ position: 'absolute', top: '-1px', right: '-1px', minWidth: '17px', height: '17px', padding: '0 4px', borderRadius: '999px', background: '#39402c', color: '#faf6ee', fontFamily: 'var(--font-manrope)', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     {totalCount}
                   </motion.span>
@@ -253,30 +198,15 @@ export default function Header() {
               </AnimatePresence>
             </Link>
 
-            {/* Mobile hamburger */}
+            {/* Desktop: hamburger after cart */}
             <button
               onClick={() => setMenuOpen(true)}
               aria-label="Meny"
-              className="lg:hidden"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                color: '#1a1d17',
-              }}
+              type="button"
+              className="hidden lg:flex items-center"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-              >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
                 <path d="M3 6h18M3 12h18M3 18h18" />
               </svg>
             </button>
@@ -346,33 +276,25 @@ export default function Header() {
                 {
                   label: 'Lær mer',
                   links: [
-                    { label: 'Slik fungerer det', href: '/#slik',        hash: 'slik' },
-                    { label: 'Historien',          href: '/#historien',   hash: 'historien' },
+                    { label: 'Slik fungerer det', href: '/#slik',      hash: 'slik' },
+                    { label: 'Historien',          href: '/#historien', hash: 'historien' },
                     { label: 'Inspirasjon',        href: '/inspirasjon' },
-                    { label: 'Spørsmål',           href: '/#faq',         hash: 'faq' },
+                    { label: 'Spørsmål',           href: '/#faq',       hash: 'faq' },
                   ],
                 },
                 {
                   label: 'Annet',
                   links: [
-                    { label: 'Hjem', href: '/' },
-                    { label: 'Kontakt oss', href: '/kontakt' },
-                    { label: 'Frakt og retur', href: '/frakt-og-retur' },
-                    { label: 'Kjøpsvilkår', href: '/kjopsvilkar' },
+                    { label: 'Hjem',                href: '/' },
+                    { label: 'Kontakt oss',         href: '/kontakt' },
+                    { label: 'Frakt og retur',      href: '/frakt-og-retur' },
+                    { label: 'Kjøpsvilkår',         href: '/kjopsvilkar' },
                     { label: 'Personvernerklæring', href: '/personvernerklaering' },
                   ],
                 },
               ].map((section) => (
                 <div key={section.label} className="md:text-center">
-                  <p style={{
-                    fontFamily: 'var(--font-manrope)',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: '#9a9a8e',
-                    margin: '0 0 14px',
-                  }}>
+                  <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a9a8e', margin: '0 0 14px' }}>
                     {section.label}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -384,16 +306,7 @@ export default function Header() {
                           setMenuOpen(false)
                           if ('hash' in link && link.hash) scrollToHash(e, link.hash as string)
                         }}
-                        style={{
-                          display: 'block',
-                          padding: '11px 0',
-                          borderBottom: '1px solid #e7e2d4',
-                          fontFamily: 'var(--font-cormorant)',
-                          fontSize: '26px',
-                          fontWeight: 600,
-                          color: '#1a1d17',
-                          textDecoration: 'none',
-                        }}
+                        style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '26px', fontWeight: 600, color: '#1a1d17', textDecoration: 'none' }}
                       >
                         {link.label}
                       </Link>
