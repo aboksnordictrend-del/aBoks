@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Cormorant_Garamond, Manrope } from 'next/font/google'
+import Script from 'next/script'
 import '../globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -49,6 +50,12 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
           {children}
         </div>
         <Footer />
+        {/* CookieYes consent banner */}
+        <Script
+          id="cookieyes"
+          src="https://cdn-cookieyes.com/client_data/ffac5a38a403790cde2c588fe7db8a3d/script.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   )
