@@ -26,6 +26,16 @@ export const Orders: CollectionConfig = {
       },
     },
     {
+      name: 'kustomOrderId',
+      type: 'text',
+      label: 'Kustom Order ID',
+      index: true,
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+      },
+    },
+    {
       name: 'customer',
       type: 'relationship',
       relationTo: 'customers',
@@ -40,19 +50,16 @@ export const Orders: CollectionConfig = {
           name: 'email',
           type: 'email',
           label: 'E-post',
-          required: true,
         },
         {
           name: 'firstName',
           type: 'text',
           label: 'Fornavn',
-          required: true,
         },
         {
           name: 'lastName',
           type: 'text',
           label: 'Etternavn',
-          required: true,
         },
         {
           name: 'address',

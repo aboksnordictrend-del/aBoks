@@ -1,0 +1,151 @@
+'use server'
+
+import { createKustomOrder, getKustomOrder } from '@/lib/kustom'
+import { getPayloadClient } from '@/lib/payload'
+import { generateOrderNumber } from '@/lib/format'
+import type { CartItem } from '@/store/cart'
+
+const FREE_SHIPPING_THRESHOLD = 650
+const SHIPPING_COST = 69
+// Norwegian MVA 25% expressed in Kustom basis points
+const TAX_RATE = 2500
+
+function toOere(kr: number): number {
+  return Math.round(kr * 100)
+}
+
+// VAT is included in the price: tax = amount * rate / (10000 + rate)
+function lineTax(totalAmountOere: number): number {
+  return Math.round((totalAmountOere * TAX_RATE) / (10000 + TAX_RATE))
+}
+
+export async function initKustomCheckout(
+  items: CartItem[],
+): Promise<{ kustomOrderId: string; htmlSnippet: string }> {
+  if (!items.length) throw new Error('Handlekurven er tom')
+
+  const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? 'https://aboks.no'
+
+  const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0)
+  const shippingKr = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST
+  const total = subtotal + shippingKr
+
+  const orderLines: {
+    type: 'physical' | 'shipping_fee'
+    reference: string
+    name: string
+    quantity: number
+    quantity_unit: string
+    unit_price: number
+    tax_rate: number
+    total_amount: number
+    total_discount_amount: number
+    total_tax_amount: number
+  }[] = items.map((item) => {
+    const lineTotal = toOere(item.qty * item.price)
+    return {
+      type: 'physical',
+      reference: item.variantId,
+      name: `aBoks · ${item.colorName}`,
+      quantity: item.qty,
+      quantity_unit: 'pcs',
+      unit_price: toOere(item.price),
+      tax_rate: TAX_RATE,
+      total_amount: lineTotal,
+      total_discount_amount: 0,
+      total_tax_amount: lineTax(lineTotal),
+    }
+  })
+
+  if (shippingKr > 0) {
+    const shippingOere = toOere(shippingKr)
+    orderLines.push({
+      type: 'shipping_fee',
+      reference: 'FRAKT-STD',
+      name: 'Frakt',
+      quantity: 1,
+      quantity_unit: 'pcs',
+      unit_price: shippingOere,
+      tax_rate: TAX_RATE,
+      total_amount: shippingOere,
+      total_discount_amount: 0,
+      total_tax_amount: lineTax(shippingOere),
+    })
+  }
+
+  const orderAmountOere = toOere(total)
+  const orderTaxAmountOere = orderLines.reduce((s, l) => s + l.total_tax_amount, 0)
+
+  const kustomOrder = await createKustomOrder({
+    purchase_country: 'NO',
+    purchase_currency: 'NOK',
+    locale: 'nb-NO',
+    order_amount: orderAmountOere,
+    order_tax_amount: orderTaxAmountOere,
+    order_lines: orderLines,
+    merchant_urls: {
+      terms: `${serverUrl}/kjopsvilkar`,
+      checkout: `${serverUrl}/kasse?order_id={checkout.order.id}`,
+      confirmation: `${serverUrl}/kasse/bekreftelse?order_id={checkout.order.id}`,
+      push: `${serverUrl}/api/kustom/webhook?order_id={checkout.order.id}`,
+    },
+  })
+
+  // Create a pending order in Payload CMS before payment
+  const payload = await getPayloadClient()
+  const orderNumber = generateOrderNumber()
+
+  await payload.create({
+    collection: 'orders',
+    data: {
+      orderNumber,
+      kustomOrderId: kustomOrder.order_id,
+      items: items.map((item) => ({
+        variant: Number(item.variantId),
+        variantName: item.colorName,
+        quantity: item.qty,
+        unitPrice: item.price,
+        lineTotal: item.qty * item.price,
+      })),
+      subtotal,
+      shipping: shippingKr,
+      total,
+      status: 'pending',
+    },
+  })
+
+  return {
+    kustomOrderId: kustomOrder.order_id,
+    htmlSnippet: kustomOrder.html_snippet ?? '',
+  }
+}
+
+export async function fetchExistingCheckout(
+  orderId: string,
+): Promise<{ kustomOrderId: string; htmlSnippet: string }> {
+  const kustomOrder = await getKustomOrder(orderId)
+  return {
+    kustomOrderId: kustomOrder.order_id,
+    htmlSnippet: kustomOrder.html_snippet ?? '',
+  }
+}
+
+export async function getOrderConfirmation(kustomOrderId: string) {
+  const kustomOrder = await getKustomOrder(kustomOrderId)
+
+  const payload = await getPayloadClient()
+  const result = await payload.find({
+    collection: 'orders',
+    where: { kustomOrderId: { equals: kustomOrderId } },
+    limit: 1,
+  })
+
+  const addr = kustomOrder.billing_address ?? kustomOrder.shipping_address
+
+  return {
+    status: kustomOrder.status,
+    orderNumber: result.docs[0]?.orderNumber ?? '',
+    email: addr?.email ?? '',
+    totalKr: kustomOrder.order_amount / 100,
+  }
+}

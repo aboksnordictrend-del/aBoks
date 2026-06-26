@@ -1,17 +1,16 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import CheckoutClient from './CheckoutClient'
+import BekreftlseClient from './BekreftlseClient'
 
 export const metadata: Metadata = {
-  title: 'Kasse | aBoks',
-  description: 'Fullfør bestillingen din hos aBoks.',
+  title: 'Bestilling bekreftet | aBoks',
   robots: { index: false, follow: false },
 }
 
-export default function CheckoutPage() {
+export default function BekreftelsePage() {
   return (
     <Suspense>
-      <CheckoutClient />
+      <BekreftlseClient />
     </Suspense>
   )
 }
