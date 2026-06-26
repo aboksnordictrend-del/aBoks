@@ -26,6 +26,15 @@ export async function initKustomCheckout(
 
   const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? 'https://aboks.no'
 
+  // Safe log: verify which base URL Kustom will receive — no secrets here
+  console.log('[kasse] initKustomCheckout serverUrl:', serverUrl)
+  if (serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1')) {
+    console.warn(
+      '[kasse] merchant_urls contain localhost — Kustom requires public HTTPS URLs. ' +
+      'Set NEXT_PUBLIC_SERVER_URL to your ngrok/Vercel URL for live testing.',
+    )
+  }
+
   const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0)
   const shippingKr = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST
   const total = subtotal + shippingKr

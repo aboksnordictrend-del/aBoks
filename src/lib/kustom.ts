@@ -66,6 +66,12 @@ function authHeader(): string {
 }
 
 export async function createKustomOrder(payload: KustomCreateOrderPayload): Promise<KustomOrder> {
+  // Safe log: merchant_urls and amounts only — no auth credentials
+  console.log('[kustom] createKustomOrder', {
+    order_amount: payload.order_amount,
+    merchant_urls: payload.merchant_urls,
+  })
+
   const res = await fetch(`${BASE_URL}/checkout/v3/orders`, {
     method: 'POST',
     headers: {
@@ -78,6 +84,7 @@ export async function createKustomOrder(payload: KustomCreateOrderPayload): Prom
 
   if (!res.ok) {
     const text = await res.text()
+    console.error('[kustom] createKustomOrder failed: status=%d body=%s', res.status, text)
     throw new Error(`Kustom create order failed (${res.status}): ${text}`)
   }
 
