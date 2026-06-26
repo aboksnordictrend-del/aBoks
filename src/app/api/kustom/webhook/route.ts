@@ -60,6 +60,42 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Deduct inventory from each ordered variant by variantId, not productId
+    for (const item of order.items ?? []) {
+      if (!item.variant || !item.quantity) continue
+
+      const variantId =
+        typeof item.variant === 'object'
+          ? String((item.variant as { id: number }).id)
+          : String(item.variant)
+
+      try {
+        const variant = await payload.findByID({
+          collection: 'product-variants',
+          id: Number(variantId),
+        })
+
+        const newInventory = Math.max(0, (variant.inventory ?? 0) - item.quantity)
+
+        await payload.update({
+          collection: 'product-variants',
+          id: Number(variantId),
+          data: { inventory: newInventory },
+        })
+
+        console.log(
+          `[kustom-webhook] inventory: variant=${variantId} (${variant.name ?? variant.sku}) ${variant.inventory} → ${newInventory}`,
+        )
+      } catch (invErr) {
+        // Log but don't fail the webhook — order is confirmed, inventory can be corrected manually
+        console.error(
+          '[kustom-webhook] inventory update failed for variant',
+          variantId,
+          invErr instanceof Error ? invErr.message : invErr,
+        )
+      }
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err) {
     // Return 500 so Kustom retries the push notification

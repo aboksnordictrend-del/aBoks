@@ -245,6 +245,28 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
                 </div>
               </div>
 
+              {/* Lagerstatus — lest fra selectedVariant.inventory (state, ikke URL) */}
+              {selectedVariant && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                  {selectedVariant.inventory > 10 ? (
+                    <>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#5f8253', flexShrink: 0, display: 'inline-block' }} />
+                      <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#3a3f33' }}>På lager</span>
+                    </>
+                  ) : selectedVariant.inventory > 0 ? (
+                    <>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#5f8253', flexShrink: 0, display: 'inline-block' }} />
+                      <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#3a3f33' }}>På lager: {selectedVariant.inventory} stk.</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#b06a4a', flexShrink: 0, display: 'inline-block' }} />
+                      <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6057' }}>Utsolgt</span>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Qty + Add to cart */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', marginBottom: '24px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', border: '1.5px solid #d6cfbd', borderRadius: '999px', overflow: 'hidden', background: '#fff' }}>
@@ -262,16 +284,26 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
                 </div>
                 <button
                   onClick={handleAddToCart}
+                  disabled={!selectedVariant || selectedVariant.inventory === 0}
                   style={{
                     flex: 1, minWidth: '200px', display: 'inline-flex', alignItems: 'center',
                     justifyContent: 'center', gap: '10px', padding: '17px 32px', borderRadius: '999px',
-                    background: '#39402c', color: '#faf6ee', fontFamily: 'var(--font-manrope)',
-                    fontWeight: 600, fontSize: '15px', border: 'none', cursor: 'pointer', transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
+                    background: selectedVariant?.inventory === 0 ? '#c8c0b0' : '#39402c',
+                    color: '#faf6ee', fontFamily: 'var(--font-manrope)',
+                    fontWeight: 600, fontSize: '15px', border: 'none',
+                    cursor: selectedVariant?.inventory === 0 ? 'not-allowed' : 'pointer',
+                    transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#2a3020' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#39402c' }}
+                  onMouseEnter={(e) => {
+                    if (selectedVariant?.inventory !== 0)
+                      (e.currentTarget as HTMLButtonElement).style.background = '#2a3020'
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background =
+                      selectedVariant?.inventory === 0 ? '#c8c0b0' : '#39402c'
+                  }}
                 >
-                  Legg i handlekurv
+                  {selectedVariant?.inventory === 0 ? 'Utsolgt' : 'Legg i handlekurv'}
                 </button>
               </div>
 
@@ -416,6 +448,7 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
           </div>
           <button
             onClick={handleAddToCart}
+            disabled={!selectedVariant || selectedVariant.inventory === 0}
             style={{
               flex: 1,
               display: 'inline-flex',
@@ -423,16 +456,16 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
               justifyContent: 'center',
               padding: '15px',
               borderRadius: '999px',
-              background: '#39402c',
+              background: selectedVariant?.inventory === 0 ? '#c8c0b0' : '#39402c',
               color: '#faf6ee',
               fontFamily: 'var(--font-manrope)',
               fontWeight: 600,
               fontSize: '15px',
               border: 'none',
-              cursor: 'pointer',
+              cursor: selectedVariant?.inventory === 0 ? 'not-allowed' : 'pointer',
             }}
           >
-            Legg i handlekurv
+            {selectedVariant?.inventory === 0 ? 'Utsolgt' : 'Legg i handlekurv'}
           </button>
         </div>
       )}
