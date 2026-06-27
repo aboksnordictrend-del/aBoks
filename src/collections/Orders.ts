@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { sendOrderEmails } from './hooks/sendOrderEmails'
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
@@ -170,6 +171,24 @@ export const Orders: CollectionConfig = {
         position: 'sidebar',
       },
     },
+    {
+      name: 'confirmationEmailSentAt',
+      type: 'date',
+      admin: { hidden: true },
+    },
+    {
+      name: 'adminEmailSentAt',
+      type: 'date',
+      admin: { hidden: true },
+    },
+    {
+      name: 'shippedEmailSentAt',
+      type: 'date',
+      admin: { hidden: true },
+    },
   ],
+  hooks: {
+    afterChange: [sendOrderEmails],
+  },
   timestamps: true,
 }
