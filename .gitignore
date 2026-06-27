@@ -18,7 +18,7 @@ node_modules/
 .env.development.local
 
 # Payload CMS
-src/payload-types.ts
+# payload-types.ts is committed so Vercel can resolve imports during build
 
 # OS
 .DS_Store
