@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+.gtm-noscript {
+  display: none;
+  visibility: hidden;
+}
+
 :root {
   --font-cormorant: 'Cormorant Garamond', Georgia, serif;
   --font-manrope: 'Manrope', system-ui, sans-serif;
