@@ -33,6 +33,12 @@ interface Feature {
   description: string
 }
 
+interface Capacity {
+  aa: number
+  aaa: number
+  usedCompartments: number
+}
+
 interface Product {
   id: string
   title: string
@@ -42,6 +48,7 @@ interface Product {
   price: number
   images: { src: string; alt: string }[]
   features: Feature[]
+  capacity: Capacity
   sale?: SaleInfo | null
 }
 
@@ -51,25 +58,6 @@ interface Props {
   initialSku?: string
 }
 
-const CAPACITY = [
-  { big: '20', unit: 'AA-batterier', note: 'Eget rom for nye AA.' },
-  { big: '36', unit: 'AAA-batterier', note: 'Eget rom for nye AAA.' },
-  { big: '1', unit: 'rom for brukte', note: 'Samle dem til gjenvinning.' },
-]
-
-const FAQS = [
-  { id: 'f1', question: 'Hvilke batterier passer i aBoks?', answer: 'aBoks har egne rom for AA- og AAA-batterier, pluss et eget rom for brukte batterier som skal leveres til gjenvinning.' },
-  { id: 'f2', question: 'Hvor mange batterier får jeg plass til?', answer: 'Du får plass til 20 AA-batterier og 36 AAA-batterier, i tillegg til et romslig rom for brukte batterier.' },
-  { id: 'f3', question: 'Hvilket materiale er aBoks laget av?', answer: 'aBoks er laget av et solid, matt materiale som tåler daglig bruk og er enkelt å holde rent.' },
-  { id: 'f4', question: 'Kan jeg henge aBoks på veggen?', answer: 'aBoks er designet for å stå støtt på benken eller i skuffen. En veggmontert løsning er på vei.' },
-  { id: 'f5', question: 'Hva er leverings- og returvilkårene?', answer: 'Vi sender innen 1–2 virkedager, tilbyr fri frakt over kr 650 og 100 dagers åpent kjøp.' },
-]
-
-const DETAILS = [
-  { id: 'd1', question: 'Beskrivelse', answer: 'aBoks holder nye og brukte batterier samlet i én elegant boks med tre adskilte rom. Slutt på løse batterier i skuffen – du har alltid oversikt.' },
-  { id: 'd2', question: 'Spesifikasjoner', answer: 'Mål: 16 × 14 × 6 cm. Tre rom: AA, AAA og brukte. Matt finish. Fås i olivengrønn, mørk blå og sort.' },
-  { id: 'd3', question: 'Frakt og retur', answer: 'Fri frakt over kr 650. Sendes innen 1–2 virkedager. 100 dagers åpent kjøp.' },
-]
 
 const TRUST = [
   'Fri frakt over kr 650',
@@ -132,6 +120,66 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? variants[0]
   const effectivePrice = getEffectivePrice(product.price, product.sale)
   const saleActive = isSaleActive(product.price, product.sale)
+
+  // Capacity-derived content — keeps AAA references correct per product
+  const hasAAA = product.capacity.aaa > 0
+
+  const capacityItems = [
+    product.capacity.aa > 0
+      ? { big: String(product.capacity.aa), unit: 'AA-batterier', note: 'Eget rom for nye AA.' }
+      : null,
+    product.capacity.aaa > 0
+      ? { big: String(product.capacity.aaa), unit: 'AAA-batterier', note: 'Eget rom for nye AAA.' }
+      : null,
+    product.capacity.usedCompartments > 0
+      ? {
+          big: String(product.capacity.usedCompartments),
+          unit: 'rom for brukte',
+          note: hasAAA ? 'Samle dem til gjenvinning.' : 'Samle brukte batterier til gjenvinning.',
+        }
+      : null,
+  ].filter((c): c is { big: string; unit: string; note: string } => c !== null)
+
+  const capacityBandEyebrow = hasAAA ? 'Tre rom, full kapasitet' : 'To rom, kompakt design'
+  const capacityBandHeading = hasAAA ? 'Plass til alt – hver for seg.' : 'Plass til AA – og brukte batterier.'
+
+  const DETAILS = [
+    {
+      id: 'd1',
+      question: 'Beskrivelse',
+      answer: hasAAA
+        ? `${product.title} holder nye og brukte batterier samlet i én elegant boks med tre adskilte rom. Slutt på løse batterier i skuffen – du har alltid oversikt.`
+        : `${product.title} holder nye og brukte batterier samlet i én kompakt boks med to adskilte rom. Slutt på løse batterier i skuffen – du har alltid oversikt.`,
+    },
+    {
+      id: 'd2',
+      question: 'Spesifikasjoner',
+      answer: hasAAA
+        ? 'Mål: 16 × 14 × 6 cm. Tre rom: AA, AAA og brukte. Matt finish. Fås i olivengrønn, mørk blå og sort.'
+        : 'Kompakt design. To rom: AA og brukte. Matt finish.',
+    },
+    { id: 'd3', question: 'Frakt og retur', answer: 'Fri frakt over kr 650. Sendes innen 1–2 virkedager. 100 dagers åpent kjøp.' },
+  ]
+
+  const FAQS = [
+    {
+      id: 'f1',
+      question: 'Hvilke batterier passer i aBoks?',
+      answer: hasAAA
+        ? 'aBoks har egne rom for AA- og AAA-batterier, pluss et eget rom for brukte batterier som skal leveres til gjenvinning.'
+        : `${product.title} har egne rom for AA-batterier, pluss et eget rom for brukte batterier som skal leveres til gjenvinning.`,
+    },
+    {
+      id: 'f2',
+      question: 'Hvor mange batterier får jeg plass til?',
+      answer: hasAAA
+        ? `Du får plass til ${product.capacity.aa} AA-batterier og ${product.capacity.aaa} AAA-batterier, i tillegg til et romslig rom for brukte batterier.`
+        : `Du får plass til ${product.capacity.aa} AA-batterier, i tillegg til et romslig rom for brukte batterier.`,
+    },
+    { id: 'f3', question: 'Hvilket materiale er aBoks laget av?', answer: 'aBoks er laget av et solid, matt materiale som tåler daglig bruk og er enkelt å holde rent.' },
+    { id: 'f4', question: 'Kan jeg henge aBoks på veggen?', answer: 'aBoks er designet for å stå støtt på benken eller i skuffen. En veggmontert løsning er på vei.' },
+    { id: 'f5', question: 'Hva er leverings- og returvilkårene?', answer: 'Vi sender innen 1–2 virkedager, tilbyr fri frakt over kr 650 og 100 dagers åpent kjøp.' },
+  ]
 
   // view_item: fires on initial mount and whenever the selected variant changes
   useEffect(() => {
@@ -378,14 +426,14 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
           <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
             <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 56px' }}>
               <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#a9c08f', margin: '0 0 16px' }}>
-                Tre rom, full kapasitet
+                {capacityBandEyebrow}
               </p>
               <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.8vw,48px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#faf6ee', margin: 0 }}>
-                Plass til alt – hver for seg.
+                {capacityBandHeading}
               </h2>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'clamp(28px,4vw,48px)' }}>
-              {CAPACITY.map((c) => (
+              {capacityItems.map((c) => (
                 <div key={c.unit} style={{ textAlign: 'center', padding: '0 12px' }}>
                   <div style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(60px,7vw,88px)', lineHeight: 1, color: '#faf6ee', marginBottom: '10px' }}>{c.big}</div>
                   <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '16px', color: '#faf6ee', marginBottom: '6px' }}>{c.unit}</div>

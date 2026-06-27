@@ -89,6 +89,11 @@ export default async function ProductPage({
         price: product.price ?? 0,
         images: productImages,
         features,
+        capacity: {
+          aa: product.capacity?.aa ?? 0,
+          aaa: product.capacity?.aaa ?? 0,
+          usedCompartments: product.capacity?.usedCompartments ?? 0,
+        },
         sale: {
           salePrice: product.salePrice ?? null,
           saleStartDate: product.saleStartDate ?? null,
