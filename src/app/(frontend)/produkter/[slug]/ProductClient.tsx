@@ -26,6 +26,13 @@ interface Variant {
   sortOrder: number
 }
 
+interface Feature {
+  id: string
+  number: string
+  title: string
+  description: string
+}
+
 interface Product {
   id: string
   title: string
@@ -34,6 +41,7 @@ interface Product {
   description: string
   price: number
   images: { src: string; alt: string }[]
+  features: Feature[]
   sale?: SaleInfo | null
 }
 
@@ -394,6 +402,86 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
             <VideoPlaceholder thumbnail={displayImage || undefined} label="Produktvideo" />
           </div>
         </section>
+
+        {/* FEATURES */}
+        {product.features.length > 0 && (
+          <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0' }}>
+            <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+
+              {/* Section header */}
+              <div style={{ textAlign: 'center', maxWidth: '560px', margin: '0 auto clamp(44px,6vw,68px)' }}>
+                <p style={{
+                  fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px',
+                  letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px',
+                }}>
+                  Hvorfor aBoks
+                </p>
+                <h2 style={{
+                  fontFamily: 'var(--font-cormorant)', fontWeight: 500,
+                  fontSize: 'clamp(30px,3.8vw,48px)', letterSpacing: '-0.02em', lineHeight: 1.07,
+                  color: '#1a1d17', margin: '0 0 18px',
+                }}>
+                  Derfor velger kunder aBoks
+                </h2>
+                <p style={{
+                  fontFamily: 'var(--font-manrope)', fontSize: '16px', lineHeight: 1.65,
+                  color: '#6b6f63', margin: 0,
+                }}>
+                  Små detaljer som gjør hverdagen enklere.
+                </p>
+              </div>
+
+              {/* Feature cards — 1 col mobile, 3 col desktop */}
+              <div
+                className="grid grid-cols-1 md:grid-cols-3"
+                style={{ gap: 'clamp(16px,2vw,24px)' }}
+              >
+                {product.features.map((f) => (
+                  <div
+                    key={f.id}
+                    style={{
+                      background: '#fff',
+                      borderRadius: '20px',
+                      border: '1px solid #e7e2d4',
+                      padding: 'clamp(26px,3vw,40px)',
+                      boxShadow: '0 2px 12px rgba(42,36,24,.05)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    {/* Number */}
+                    <span style={{
+                      fontFamily: 'var(--font-cormorant)', fontWeight: 400,
+                      fontSize: '28px', lineHeight: 1, letterSpacing: '-0.01em',
+                      color: '#c9a76a', marginBottom: '20px', display: 'block',
+                    }}>
+                      {f.number}
+                    </span>
+
+                    {/* Title */}
+                    <h3 style={{
+                      fontFamily: 'var(--font-manrope)', fontWeight: 700,
+                      fontSize: 'clamp(17px,1.4vw,20px)', lineHeight: 1.25,
+                      color: '#1a1d17', margin: '0 0 14px',
+                    }}>
+                      {f.title}
+                    </h3>
+
+                    {/* Description */}
+                    <p style={{
+                      fontFamily: 'var(--font-manrope)', fontSize: '15px',
+                      lineHeight: 1.7, color: '#6b6f63', margin: 0,
+                      flexGrow: 1,
+                    }}>
+                      {f.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </section>
+        )}
 
         {/* PRODUCT FAQ */}
         <section style={{ background: '#f2e7d7', padding: 'clamp(64px,8vw,104px) 0' }}>

@@ -71,6 +71,13 @@ export default async function ProductPage({
     }))
     .filter((img) => img.src)
 
+  const features = (product.features ?? []).map((f, i) => ({
+    id: f.id ?? String(i),
+    number: f.number ?? String(i + 1).padStart(2, '0'),
+    title: f.title,
+    description: f.description,
+  }))
+
   return (
     <ProductClient
       product={{
@@ -81,6 +88,7 @@ export default async function ProductPage({
         description: product.description ?? '',
         price: product.price ?? 0,
         images: productImages,
+        features,
         sale: {
           salePrice: product.salePrice ?? null,
           saleStartDate: product.saleStartDate ?? null,
