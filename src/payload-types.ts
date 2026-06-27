@@ -204,6 +204,18 @@ export interface Product {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Tilbudspris i kr. Sett lavere enn ordinær pris for å aktivere rabatt. La stå tom for ingen rabatt.
+   */
+  salePrice?: number | null;
+  /**
+   * La stå tom for å starte umiddelbart.
+   */
+  saleStartDate?: string | null;
+  /**
+   * La stå tom for at tilbudet aldri utløper.
+   */
+  saleEndDate?: string | null;
   seo?: {
     title?: string | null;
     description?: string | null;
@@ -505,6 +517,9 @@ export interface ProductsSelect<T extends boolean = true> {
         answer?: T;
         id?: T;
       };
+  salePrice?: T;
+  saleStartDate?: T;
+  saleEndDate?: T;
   seo?:
     | T
     | {

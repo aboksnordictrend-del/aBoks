@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getPayloadClient } from '@/lib/payload'
+import { getEffectivePrice } from '@/lib/pricing'
 import type { Media, Product, ProductVariant } from '@/payload-types'
 
 export const dynamic = 'force-dynamic'
@@ -34,8 +35,69 @@ function availability(inventory: number): string {
   return inventory > 0 ? 'in stock' : 'out of stock'
 }
 
-function formatPrice(price: number): string {
+function formatFeedPrice(price: number): string {
   return `${price.toFixed(2)} NOK`
+}
+
+/** Format a UTC ISO string as Europe/Oslo local time with timezone offset, e.g. 2024-06-01T10:00+02:00 */
+function toOsloISO(isoStr: string): string {
+  const d = new Date(isoStr)
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Oslo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00'
+
+  // Compute the Oslo offset by comparing UTC vs Oslo wall-clock interpretation
+  const localAsUtcMs = Date.UTC(
+    Number(get('year')),
+    Number(get('month')) - 1,
+    Number(get('day')),
+    Number(get('hour')),
+    Number(get('minute')),
+  )
+  const diffMins = Math.round((localAsUtcMs - d.getTime()) / 60000)
+  const sign = diffMins >= 0 ? '+' : '-'
+  const hh = String(Math.floor(Math.abs(diffMins) / 60)).padStart(2, '0')
+  const mm = String(Math.abs(diffMins) % 60).padStart(2, '0')
+
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}${sign}${hh}:${mm}`
+}
+
+interface SaleFields {
+  price: string
+  salePrice?: string
+  saleDateRange?: string
+}
+
+function buildSaleFields(product: Product): SaleFields {
+  const regularPrice = formatFeedPrice(product.price)
+  const sale = {
+    salePrice: product.salePrice ?? null,
+    saleStartDate: product.saleStartDate ?? null,
+    saleEndDate: product.saleEndDate ?? null,
+  }
+  const effective = getEffectivePrice(product.price, sale)
+
+  if (effective >= product.price) {
+    return { price: regularPrice }
+  }
+
+  const fields: SaleFields = {
+    price: regularPrice,
+    salePrice: formatFeedPrice(effective),
+  }
+
+  if (sale.saleStartDate && sale.saleEndDate) {
+    fields.saleDateRange = `${toOsloISO(sale.saleStartDate)}/${toOsloISO(sale.saleEndDate)}`
+  }
+
+  return fields
 }
 
 function buildItem(fields: {
@@ -46,10 +108,11 @@ function buildItem(fields: {
   imageLink: string
   additionalImages: string[]
   avail: string
-  price: string
+  sale: SaleFields
   itemGroupId?: string
   color?: string
 }): string {
+  const { sale } = fields
   const lines = [
     `    <item>`,
     `      <g:id>${escapeXml(fields.id)}</g:id>`,
@@ -61,7 +124,11 @@ function buildItem(fields: {
       (u) => `      <g:additional_image_link>${escapeXml(u)}</g:additional_image_link>`,
     ),
     `      <g:availability>${fields.avail}</g:availability>`,
-    `      <g:price>${fields.price}</g:price>`,
+    `      <g:price>${sale.price}</g:price>`,
+    ...(sale.salePrice ? [`      <g:sale_price>${sale.salePrice}</g:sale_price>`] : []),
+    ...(sale.saleDateRange
+      ? [`      <g:sale_price_effective_date>${sale.saleDateRange}</g:sale_price_effective_date>`]
+      : []),
     `      <g:brand>aBoks</g:brand>`,
     `      <g:condition>new</g:condition>`,
     `      <g:google_product_category>Home &amp; Garden &gt; Household Supplies</g:google_product_category>`,
@@ -107,7 +174,7 @@ export async function GET() {
         .filter(Boolean) as Media[]
 
       const description = truncate(stripHtml(product.description ?? ''), 5000)
-      const price = formatPrice(product.price)
+      const sale = buildSaleFields(product)
 
       if (variants.length > 0) {
         for (const variant of variants as ProductVariant[]) {
@@ -117,7 +184,6 @@ export async function GET() {
           const imageLink = resolveImageUrl(mainImage)
           if (!imageLink) continue
 
-          // Additional images: all product images (variant image first if different)
           const seen = new Set<string>([imageLink])
           const additional: string[] = []
           if (variantMedia && productImages.length > 0) {
@@ -139,7 +205,7 @@ export async function GET() {
               imageLink,
               additionalImages: additional,
               avail: availability(variant.inventory),
-              price,
+              sale,
               itemGroupId: product.slug,
               color: variant.name,
             }),
@@ -163,7 +229,7 @@ export async function GET() {
             imageLink,
             additionalImages: additional,
             avail: 'in stock',
-            price,
+            sale,
           }),
         )
       }

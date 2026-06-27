@@ -14,6 +14,7 @@ import ProductImageCarousel, {
 import ImageLightbox from '@/components/ImageLightbox'
 import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
+import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
 
 interface Variant {
   id: string
@@ -33,6 +34,7 @@ interface Product {
   description: string
   price: number
   images: { src: string; alt: string }[]
+  sale?: SaleInfo | null
 }
 
 interface Props {
@@ -120,6 +122,8 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
   }, [])
 
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? variants[0]
+  const effectivePrice = getEffectivePrice(product.price, product.sale)
+  const saleActive = isSaleActive(product.price, product.sale)
 
   // view_item: fires on initial mount and whenever the selected variant changes
   useEffect(() => {
@@ -128,7 +132,7 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
       variantId: selectedVariant.id,
       variantName: selectedVariant.name,
       productTitle: product.title,
-      price: product.price,
+      price: effectivePrice,
     })
   }, [selectedVariantId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -148,7 +152,7 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
         colorName: selectedVariant.name,
         colorHex: selectedVariant.colorHex,
         colorImage: selectedVariant.image,
-        price: product.price,
+        price: effectivePrice,
       },
       qty,
     )
@@ -157,7 +161,7 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
       variantId: selectedVariant.id,
       variantName: selectedVariant.name,
       productTitle: product.title,
-      price: product.price,
+      price: effectivePrice,
       quantity: qty,
     })
     setToastVisible(true)
@@ -229,10 +233,21 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
                 Mobile: third (order-3); Desktop: right col, row 2 */}
             <div className="order-3 md:col-start-2 md:row-start-2">
               {/* Stars + price */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px' }}>
-                <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '26px', color: '#1a1d17' }}>
-                  {formatPrice(product.price)}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px', flexWrap: 'wrap' }}>
+                {saleActive ? (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '26px', color: '#b06a4a' }}>
+                      {formatPrice(effectivePrice)}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', color: '#9a9488', textDecoration: 'line-through' }}>
+                      {formatPrice(product.price)}
+                    </span>
+                  </div>
+                ) : (
+                  <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '26px', color: '#1a1d17' }}>
+                    {formatPrice(product.price)}
+                  </span>
+                )}
                 <span style={{ color: '#c9a76a', fontSize: '14px', letterSpacing: '2px' }}>★★★★★</span>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>128 anmeldelser</span>
               </div>
@@ -462,9 +477,20 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
             <div style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', color: '#6b6f63' }}>
               aBoks · {selectedVariant?.name}
             </div>
-            <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17' }}>
-              {formatPrice(product.price * qty)}
-            </div>
+            {saleActive ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#b06a4a' }}>
+                  {formatPrice(effectivePrice * qty)}
+                </span>
+                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#9a9488', textDecoration: 'line-through' }}>
+                  {formatPrice(product.price * qty)}
+                </span>
+              </div>
+            ) : (
+              <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17' }}>
+                {formatPrice(product.price * qty)}
+              </div>
+            )}
           </div>
           <button
             onClick={handleAddToCart}

@@ -81,6 +81,11 @@ export default async function ProductPage({
         description: product.description ?? '',
         price: product.price ?? 0,
         images: productImages,
+        sale: {
+          salePrice: product.salePrice ?? null,
+          saleStartDate: product.saleStartDate ?? null,
+          saleEndDate: product.saleEndDate ?? null,
+        },
       }}
       variants={variants}
       initialSku={variant}

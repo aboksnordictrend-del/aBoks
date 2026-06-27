@@ -149,6 +149,32 @@ export const Products: CollectionConfig = {
       ],
     },
     {
+      name: 'salePrice',
+      type: 'number',
+      label: 'Tilbudspris (kr)',
+      min: 0,
+      admin: {
+        step: 10,
+        description: 'Tilbudspris i kr. Sett lavere enn ordinær pris for å aktivere rabatt. La stå tom for ingen rabatt.',
+      },
+    },
+    {
+      name: 'saleStartDate',
+      type: 'date',
+      label: 'Tilbud gyldig fra',
+      admin: {
+        description: 'La stå tom for å starte umiddelbart.',
+      },
+    },
+    {
+      name: 'saleEndDate',
+      type: 'date',
+      label: 'Tilbud gyldig til',
+      admin: {
+        description: 'La stå tom for at tilbudet aldri utløper.',
+      },
+    },
+    {
       name: 'seo',
       type: 'group',
       label: 'SEO',
