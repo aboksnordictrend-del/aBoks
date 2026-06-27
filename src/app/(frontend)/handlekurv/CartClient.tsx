@@ -1,9 +1,11 @@
 'use client'
 
+import { useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
+import { trackViewCart, trackBeginCheckout } from '@/lib/analytics'
 
 export default function CartClient() {
   const { items, removeItem, incrementItem, decrementItem, subtotal, shipping, orderTotal } = useCartStore()
@@ -11,6 +13,12 @@ export default function CartClient() {
   const shippingCost = shipping()
   const total = orderTotal()
   const hasCart = items.length > 0
+
+  // view_cart: fires once when the cart page mounts and has items
+  useEffect(() => {
+    if (!hasCart) return
+    trackViewCart(items, total)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <main style={{ paddingTop: 'clamp(96px,12vh,132px)', background: '#faf6ee', minHeight: '100vh' }}>
@@ -153,6 +161,7 @@ export default function CartClient() {
                 <Link
                   href="/kasse"
                   data-btn
+                  onClick={() => trackBeginCheckout(items, total)}
                   style={{
                     width: '100%',
                     display: 'inline-flex',

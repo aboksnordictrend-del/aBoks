@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
 import { initKustomCheckout, fetchExistingCheckout } from './actions'
+import { trackAddShippingInfo, trackAddPaymentInfo } from '@/lib/analytics'
 
 type CheckoutState =
   | { phase: 'loading' }
@@ -66,6 +67,14 @@ export default function CheckoutClient() {
       renderSnippet(state.htmlSnippet, containerRef.current)
     }
   }, [state])
+
+  // add_shipping_info + add_payment_info: fire once when Kustom checkout widget loads
+  useEffect(() => {
+    if (state.phase !== 'ready') return
+    const shippingTier = shippingCost === 0 ? 'Free' : 'Standard'
+    trackAddShippingInfo(items, total, shippingTier)
+    trackAddPaymentInfo(items, total)
+  }, [state.phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!hasCart) {
     return (

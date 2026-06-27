@@ -6,12 +6,21 @@ import { useSearchParams } from 'next/navigation'
 import { useCartStore } from '@/store/cart'
 import { getOrderConfirmation } from '../actions'
 import { formatPrice } from '@/lib/format'
+import { trackPurchase } from '@/lib/analytics'
 
 interface Confirmation {
   status: string
   orderNumber: string
   email: string
   totalKr: number
+  shippingKr: number
+  orderItems: Array<{
+    itemId: string
+    itemName: string
+    itemVariant: string
+    price: number
+    quantity: number
+  }>
 }
 
 export default function BekreftlseClient() {
@@ -37,7 +46,23 @@ export default function BekreftlseClient() {
     }
 
     getOrderConfirmation(orderId)
-      .then(setConfirmation)
+      .then((data) => {
+        setConfirmation(data)
+        // purchase: fires once after confirmed order; localStorage guards against re-fire on refresh
+        trackPurchase({
+          transactionId: data.orderNumber || orderId,
+          value: data.totalKr,
+          shipping: data.shippingKr,
+          items: data.orderItems.map((item) => ({
+            item_id: item.itemId,
+            item_name: item.itemName,
+            item_variant: item.itemVariant || undefined,
+            price: item.price,
+            quantity: item.quantity,
+            item_category: 'Battery Organizer',
+          })),
+        })
+      })
       .catch(() => setError('Kunne ikke hente ordredetaljer.'))
       .finally(() => setLoading(false))
   }, [orderId, clearCart])

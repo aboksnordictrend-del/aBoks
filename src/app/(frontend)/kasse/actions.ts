@@ -151,10 +151,28 @@ export async function getOrderConfirmation(kustomOrderId: string) {
 
   const addr = kustomOrder.billing_address ?? kustomOrder.shipping_address
 
+  const shippingLine = kustomOrder.order_lines.find((l) => l.type === 'shipping_fee')
+  const shippingKr = shippingLine ? shippingLine.total_amount / 100 : 0
+
+  const orderItems = kustomOrder.order_lines
+    .filter((l) => l.type === 'physical')
+    .map((l) => {
+      const [rawName = 'aBoks', rawVariant = ''] = l.name.split(' · ')
+      return {
+        itemId: l.reference,
+        itemName: rawName.trim(),
+        itemVariant: rawVariant.trim(),
+        price: l.unit_price / 100,
+        quantity: l.quantity,
+      }
+    })
+
   return {
     status: kustomOrder.status,
     orderNumber: result.docs[0]?.orderNumber ?? '',
     email: addr?.email ?? '',
     totalKr: kustomOrder.order_amount / 100,
+    shippingKr,
+    orderItems,
   }
 }

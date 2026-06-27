@@ -13,6 +13,7 @@ import ProductImageCarousel, {
 } from '@/components/ProductImageCarousel'
 import ImageLightbox from '@/components/ImageLightbox'
 import { formatPrice } from '@/lib/format'
+import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 
 interface Variant {
   id: string
@@ -120,6 +121,17 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
 
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? variants[0]
 
+  // view_item: fires on initial mount and whenever the selected variant changes
+  useEffect(() => {
+    if (!selectedVariant) return
+    trackViewItem({
+      variantId: selectedVariant.id,
+      variantName: selectedVariant.name,
+      productTitle: product.title,
+      price: product.price,
+    })
+  }, [selectedVariantId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const thumbImages = [
     ...variants.map((v) => ({ src: v.image, alt: v.name })),
     ...product.images,
@@ -140,6 +152,14 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
       },
       qty,
     )
+    // add_to_cart: fires after item is added to cart
+    trackAddToCart({
+      variantId: selectedVariant.id,
+      variantName: selectedVariant.name,
+      productTitle: product.title,
+      price: product.price,
+      quantity: qty,
+    })
     setToastVisible(true)
     setTimeout(() => setToastVisible(false), 1700)
   }
