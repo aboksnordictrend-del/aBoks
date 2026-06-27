@@ -1,137 +1,130 @@
 # GA4 Enhanced Ecommerce — GTM Setup Guide
 
 **Container:** GTM-NZ6VFSN9  
-**GA4 Measurement ID:** G-5HH9N0J6BD (existing tag named "GA4 Admin")  
-**Events pushed by the site:** `view_item`, `add_to_cart`, `view_cart`, `begin_checkout`, `add_shipping_info`, `add_payment_info`, `purchase`
+**GA4 Measurement ID:** G-5HH9N0J6BD (existing tag named "GA4 Admin")
 
 ---
 
-## 1. Create Variable: DLV - ecommerce
+## Что правильно: вариант 1, вариант 2 или что-то другое?
 
-**GTM → Variables → User-Defined Variables → New**
+**Ни вариант 1, ни вариант 2 не являются рекомендованным подходом Google.**
 
-| Field | Value |
+Официальная документация Google (developers.google.com/tag-manager/ecommerce-ga4) рекомендует:
+
+> "Under More Settings > Ecommerce, check **Send Ecommerce data**. For Data Source select **Data Layer**."
+
+Когда этот флаг включён — GTM **автоматически** читает весь `ecommerce`-объект из dataLayer и маппит все поля в GA4. Вручную создавать переменные `DLV - ecommerce` или отдельные DLV для `currency`/`value`/`items` **не нужно**.
+
+Итог:
+| Вариант | Статус |
 |---|---|
-| Variable Name | `DLV - ecommerce` |
-| Variable Type | Data Layer Variable |
-| Data Layer Variable Name | `ecommerce` |
-| Data Layer Version | Version 2 |
-| Set Default Value | off |
-
-Save.
+| Вариант 1: одна DLV `ecommerce` → параметр `ecommerce = {{DLV - ecommerce}}` | ❌ Не работает для GA4 ecommerce-отчётов. GA4 получит `ecommerce` как произвольный параметр (объект), а не как структурированные поля `items`, `currency`, `value` |
+| Вариант 2: отдельные DLV для каждого поля | ⚠️ Работает, но избыточно и ошибкоопасно. Google не рекомендует |
+| **Send Ecommerce data → Data Layer** | ✅ Официально рекомендованный подход Google |
 
 ---
 
-## 2. Create Triggers (7 total)
+## Формат dataLayer сайта — уже правильный
 
-**GTM → Triggers → New** — repeat for each row below.
-
-| Trigger Name | Trigger Type | Event Name |
-|---|---|---|
-| `CE - view_item` | Custom Event | `view_item` |
-| `CE - add_to_cart` | Custom Event | `add_to_cart` |
-| `CE - view_cart` | Custom Event | `view_cart` |
-| `CE - begin_checkout` | Custom Event | `begin_checkout` |
-| `CE - add_shipping_info` | Custom Event | `add_shipping_info` |
-| `CE - add_payment_info` | Custom Event | `add_payment_info` |
-| `CE - purchase` | Custom Event | `purchase` |
-
-Settings for each:
-- **Use regex matching:** off
-- **This trigger fires on:** All Custom Events
-
-Save after each.
-
----
-
-## 3. Create Tags (7 total)
-
-**GTM → Tags → New** — repeat for each event below.
-
-### Tag template (same for all 7):
-
-| Field | Value |
-|---|---|
-| Tag Type | Google Analytics: GA4 Event |
-| Measurement ID | `G-5HH9N0J6BD` |
-| Event Name | *(see table below)* |
-| Event Parameters → Add Row | Name: `ecommerce` / Value: `{{DLV - ecommerce}}` |
-| Firing Trigger | *(see table below)* |
-
-> **About Measurement ID:** If GTM shows a dropdown "Send event using settings from", select the existing **GA4 Admin** Google Tag instead of entering the ID manually — both work.
-
-### Tags:
-
-| Tag Name | Event Name | Firing Trigger |
-|---|---|---|
-| `GA4 Event - view_item` | `view_item` | `CE - view_item` |
-| `GA4 Event - add_to_cart` | `add_to_cart` | `CE - add_to_cart` |
-| `GA4 Event - view_cart` | `view_cart` | `CE - view_cart` |
-| `GA4 Event - begin_checkout` | `begin_checkout` | `CE - begin_checkout` |
-| `GA4 Event - add_shipping_info` | `add_shipping_info` | `CE - add_shipping_info` |
-| `GA4 Event - add_payment_info` | `add_payment_info` | `CE - add_payment_info` |
-| `GA4 Event - purchase` | `purchase` | `CE - purchase` |
-
-Save after each.
-
----
-
-## 4. Verify in GTM Preview
-
-1. GTM → **Preview** → enter `https://aboks.no`
-2. Navigate to a product page → **Tags Fired** should show `GA4 Event - view_item`
-3. Add to cart → `GA4 Event - add_to_cart`
-4. Go to `/handlekurv` → `GA4 Event - view_cart`
-5. Click "Gå til kassen" → `GA4 Event - begin_checkout`
-6. Wait for Kustom checkout widget to load → `GA4 Event - add_shipping_info` + `GA4 Event - add_payment_info`
-7. After test purchase → `/kasse/bekreftelse` → `GA4 Event - purchase`
-
-Click any fired tag → **Variables** tab → confirm `DLV - ecommerce` has an object with `currency`, `value`, `items`.
-
----
-
-## 5. Verify in GA4 DebugView
-
-1. Open **GA4 → Admin → DebugView**
-2. Open the site in the same browser (GTM Preview must be active)
-3. Trigger any event — it appears in DebugView within seconds
-4. Click the event → confirm `ecommerce` parameter is present with correct data
-
----
-
-## 6. Publish
-
-GTM → **Submit** → add version name (e.g. "GA4 Ecommerce events") → **Publish**.
-
----
-
-## dataLayer format reference
-
-The site pushes events in this format (see `src/lib/analytics.ts`):
+Сайт (`src/lib/analytics.ts`) пушит события в точно том формате, который Google требует:
 
 ```js
-// Clear previous ecommerce data first (always)
+// Обязательный сброс перед каждым событием
 window.dataLayer.push({ ecommerce: null })
 
-// Then push the event
+// Само событие
 window.dataLayer.push({
-  event: 'view_item',           // matches the Custom Event trigger
-  ecommerce: {
+  event: 'view_item',       // GTM читает через {{Event}}
+  ecommerce: {              // GTM читает через "Send Ecommerce data"
     currency: 'NOK',
     value: 399,
-    items: [
-      {
-        item_id: 'variant-id',
-        item_name: 'aBoks',
-        item_variant: 'Olivengrønn',
-        item_category: 'Battery Organizer',
-        price: 399,
-        quantity: 1,
-      }
-    ]
+    items: [{ item_id: '...', item_name: '...', ... }]
   }
 })
 ```
 
-`purchase` additionally includes `transaction_id`, `shipping`, `tax` inside `ecommerce`.  
-`DLV - ecommerce` (Data Layer Variable) reads the `ecommerce` key from this push.
+**Код сайта менять не нужно.**
+
+---
+
+## Настройка GTM: 1 тег + 1 триггер
+
+Вместо 7 тегов и 7 триггеров достаточно одного тега с `{{Event}}` в качестве имени события.
+
+### Шаг 1 — Создать триггер
+
+**GTM → Triggers → New**
+
+| Поле | Значение |
+|---|---|
+| Trigger Name | `CE - GA4 Ecommerce` |
+| Trigger Type | Custom Event |
+| Event Name | `view_item\|add_to_cart\|view_cart\|begin_checkout\|add_shipping_info\|add_payment_info\|purchase` |
+| Use regex matching | ✅ включить |
+| This trigger fires on | All Custom Events |
+
+Save.
+
+### Шаг 2 — Создать тег
+
+**GTM → Tags → New**
+
+| Поле | Значение |
+|---|---|
+| Tag Name | `GA4 Event - Ecommerce` |
+| Tag Type | Google Analytics: GA4 Event |
+| Measurement ID | `G-5HH9N0J6BD` |
+| Event Name | `{{Event}}` ← встроенная переменная GTM |
+
+Дальше в том же теге:
+
+**More Settings → Ecommerce:**
+| Поле | Значение |
+|---|---|
+| Send Ecommerce data | ✅ включить |
+| Data Source | Data Layer |
+
+**Firing Triggers:**
+| Поле | Значение |
+|---|---|
+| Trigger | `CE - GA4 Ecommerce` |
+
+Save.
+
+> **`{{Event}}`** — это встроенная переменная GTM, которая читает поле `event` из текущего dataLayer-пуша. Когда сайт пушит `{event: 'view_item', ...}`, тег отправит событие с именем `view_item` в GA4. Один тег обрабатывает все 7 событий автоматически.
+
+---
+
+## Проверка в GTM Preview
+
+1. GTM → **Preview** → открой `https://aboks.no`
+2. Перейди на страницу товара → в панели Tags должен появиться `GA4 Event - Ecommerce` с event name `view_item`
+3. Добавь товар → событие `add_to_cart`
+4. `/handlekurv` → `view_cart`
+5. "Gå til kassen" → `begin_checkout`
+6. Kustom checkout загрузился → `add_shipping_info` + `add_payment_info`
+7. Страница `/kasse/bekreftelse` → `purchase`
+
+Кликни на сработавший тег → **Variables** → убедись, что `{{Event}}` показывает нужное имя события.
+
+## Проверка в GA4 DebugView
+
+**GA4 → Admin → DebugView** (тот же браузер, GTM Preview активен):
+
+- Каждое событие появляется в реальном времени
+- Нажми на `purchase` → должны быть параметры `transaction_id`, `value`, `currency`, `items`
+- Нажми на `view_item` → должны быть `currency`, `value`, `items`
+
+---
+
+## Publish
+
+GTM → **Submit** → название версии, например `GA4 Ecommerce tracking` → **Publish**.
+
+---
+
+## Источники
+
+- [Measure ecommerce — Google Tag Manager](https://developers.google.com/tag-manager/ecommerce-ga4) — официальная документация с описанием "Send Ecommerce data"
+- [GA4 ecommerce (GTM tab)](https://developers.google.com/analytics/devguides/collection/ga4/ecommerce?client_type=gtm) — официальная документация Google Analytics
+- [GA4 Ecommerce Guide for GTM — Simo Ahava](https://www.simoahava.com/analytics/google-analytics-4-ecommerce-guide-google-tag-manager/) — детальный разбор подходов
