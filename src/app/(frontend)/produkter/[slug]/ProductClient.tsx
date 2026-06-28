@@ -41,6 +41,12 @@ interface Capacity {
   usedCompartments: number
 }
 
+interface FaqItem {
+  id: string
+  question: string
+  answer: string
+}
+
 interface Product {
   id: string
   title: string
@@ -51,6 +57,7 @@ interface Product {
   images: { src: string; alt: string }[]
   features: Feature[]
   capacity: Capacity
+  faqs: FaqItem[]
   sale?: SaleInfo | null
 }
 
@@ -163,26 +170,6 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
         : 'Kompakt design. To rom: AA og brukte. Matt finish.',
     },
     { id: 'd3', question: 'Frakt og retur', answer: 'Fri frakt over kr 650. Sendes innen 1–2 virkedager. 100 dagers åpent kjøp.' },
-  ]
-
-  const FAQS = [
-    {
-      id: 'f1',
-      question: 'Hvilke batterier passer i aBoks?',
-      answer: hasAAA
-        ? 'aBoks har egne rom for AA- og AAA-batterier, pluss et eget rom for brukte batterier som skal leveres til gjenvinning.'
-        : `${product.title} har egne rom for AA-batterier, pluss et eget rom for brukte batterier som skal leveres til gjenvinning.`,
-    },
-    {
-      id: 'f2',
-      question: 'Hvor mange batterier får jeg plass til?',
-      answer: hasAAA
-        ? `Du får plass til ${product.capacity.aa} AA-batterier og ${product.capacity.aaa} AAA-batterier, i tillegg til et romslig rom for brukte batterier.`
-        : `Du får plass til ${product.capacity.aa} AA-batterier, i tillegg til et romslig rom for brukte batterier.`,
-    },
-    { id: 'f3', question: 'Hvilket materiale er aBoks laget av?', answer: 'aBoks er laget av et solid, matt materiale som tåler daglig bruk og er enkelt å holde rent.' },
-    { id: 'f4', question: 'Kan jeg henge aBoks på veggen?', answer: 'aBoks er designet for å stå støtt på benken eller i skuffen. En veggmontert løsning er på vei.' },
-    { id: 'f5', question: 'Hva er leverings- og returvilkårene?', answer: 'Vi sender innen 1–2 virkedager, tilbyr fri frakt over kr 650 og 100 dagers åpent kjøp.' },
   ]
 
   // view_item: fires on initial mount and whenever the selected variant changes
@@ -591,17 +578,19 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
         )}
 
         {/* PRODUCT FAQ */}
-        <section style={{ background: '#f2e7d7', padding: 'clamp(64px,8vw,104px) 0' }}>
-          <div style={{ maxWidth: '840px', margin: '0 auto', padding: '0 clamp(20px,5vw,48px)' }}>
-            <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,4vw,48px)' }}>
-              <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px' }}>Vanlige spørsmål</p>
-              <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.8vw,46px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: 0 }}>
-                Ofte stilte spørsmål
-              </h2>
+        {product.faqs.length > 0 && (
+          <section style={{ background: '#f2e7d7', padding: 'clamp(64px,8vw,104px) 0' }}>
+            <div style={{ maxWidth: '840px', margin: '0 auto', padding: '0 clamp(20px,5vw,48px)' }}>
+              <div style={{ textAlign: 'center', marginBottom: 'clamp(32px,4vw,48px)' }}>
+                <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px' }}>Vanlige spørsmål</p>
+                <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.8vw,46px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: 0 }}>
+                  Ofte stilte spørsmål
+                </h2>
+              </div>
+              <Accordion items={product.faqs} defaultOpen={product.faqs[0]?.id} borderColor="#ddd2bb" />
             </div>
-            <Accordion items={FAQS} defaultOpen="f1" borderColor="#ddd2bb" />
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* FUTURE PRODUCTS */}
         <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0 clamp(96px,11vw,140px)' }}>
