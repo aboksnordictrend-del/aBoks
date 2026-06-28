@@ -1,7 +1,29 @@
 import type { CollectionConfig } from 'payload'
 
+async function revalidateProduct(slug: string) {
+  const { revalidatePath, revalidateTag } = await import('next/cache')
+  // Invalidate data cache (all pages using product data, including dynamic product pages)
+  revalidateTag('products')
+  revalidateTag('product-variants')
+  // Invalidate ISR page cache for static pages
+  revalidatePath('/', 'page')
+  revalidatePath('/produkter', 'page')
+}
+
 export const Products: CollectionConfig = {
   slug: 'products',
+  hooks: {
+    afterChange: [
+      async ({ doc }: { doc: any }) => {
+        await revalidateProduct(doc.slug)
+      },
+    ],
+    afterDelete: [
+      async ({ doc }: { doc: any }) => {
+        await revalidateProduct(doc.slug)
+      },
+    ],
+  },
   admin: {
     useAsTitle: 'title',
     group: 'Butikk',

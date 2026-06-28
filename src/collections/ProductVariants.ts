@@ -2,6 +2,18 @@ import type { CollectionConfig } from 'payload'
 
 export const ProductVariants: CollectionConfig = {
   slug: 'product-variants',
+  hooks: {
+    afterChange: [
+      async () => {
+        const { revalidatePath, revalidateTag } = await import('next/cache')
+        // Invalidate data cache (product pages re-fetch fresh variant data on next request)
+        revalidateTag('product-variants')
+        // Invalidate ISR page cache for static pages
+        revalidatePath('/', 'page')
+        revalidatePath('/produkter', 'page')
+      },
+    ],
+  },
   admin: {
     useAsTitle: 'name',
     group: 'Butikk',

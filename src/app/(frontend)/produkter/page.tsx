@@ -3,6 +3,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getProducts } from '@/lib/payload'
 
+export const revalidate = 3600
+
 export const metadata: Metadata = {
   title: 'aBoks Produkter – Smart batteriorganisering',
   description: 'Utforsk hele aBoks-serien. Smart batteriorganisering designet i Norge.',

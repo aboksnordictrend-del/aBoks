@@ -3,8 +3,7 @@ import HomeClient from './HomeClient'
 import { getProductBySlug } from '@/lib/payload'
 import type { SaleInfo } from '@/lib/pricing'
 
-// Hero показывает countdown со свежими данными из Payload — страница не должна кэшироваться
-export const dynamic = 'force-dynamic'
+export const revalidate = 3600
 
 export const metadata: Metadata = {
   // absolute bypasses the layout template (%s | aBoks) to avoid duplication
@@ -52,9 +51,8 @@ export default async function HomePage() {
         saleStartDate: product.saleStartDate ?? null,
         saleEndDate: product.saleEndDate ?? null,
       }
-      console.log('[HOME] sale data from Payload:', JSON.stringify({ price, sale }))
     } else {
-      console.warn('[HOME] getProductBySlug("aboks") returned null — no product found with this slug')
+      console.warn('[HOME] no product found with slug "aboks"')
     }
   } catch (err) {
     console.error('[HOME] Failed to fetch product from Payload:', err instanceof Error ? err.message : String(err))
