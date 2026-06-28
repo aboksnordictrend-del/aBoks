@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Cormorant_Garamond, Manrope } from 'next/font/google'
 import Script from 'next/script'
 import '../globals.css'
-import Header from '@/components/Header'
+import Header from '@/components/HeaderServer'
 import Footer from '@/components/Footer'
 import TouchPressManager from '@/components/TouchPressManager'
 

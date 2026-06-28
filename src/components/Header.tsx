@@ -7,7 +7,9 @@ import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
 
-export default function Header() {
+type ProductLink = { title: string; slug: string }
+
+export default function Header({ products = [] }: { products?: ProductLink[] }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
 
@@ -292,8 +294,7 @@ export default function Header() {
                   label: 'Handle',
                   links: [
                     { label: 'Alle produkter', href: '/produkter' },
-                    { label: 'aBoks', href: '/produkter/aboks' },
-                    { label: 'aBoks Mini', href: '/produkter/aboks-mini' },
+                    ...products.map(p => ({ label: p.title, href: `/produkter/${p.slug}` })),
                     { label: 'Handlekurv', href: '/handlekurv' },
                   ],
                 },
