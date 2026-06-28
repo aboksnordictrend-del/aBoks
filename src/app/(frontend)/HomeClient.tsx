@@ -7,6 +7,8 @@ import { motion } from 'framer-motion'
 import Carousel, { CarouselArrows } from '@/components/Carousel'
 import type { CarouselHandle } from '@/components/Carousel'
 import Accordion from '@/components/Accordion'
+import SaleCountdown from '@/components/SaleCountdown'
+import { isSaleActive, getEffectivePrice, type SaleInfo } from '@/lib/pricing'
 
 const COLORS = [
   { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
@@ -223,8 +225,11 @@ function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
   )
 }
 
-export default function HomeClient() {
+export default function HomeClient({ sale }: { sale: SaleInfo | null }) {
   const [colorId, setColorId] = useState('olive')
+  const [saleExpired, setSaleExpired] = useState(false)
+  const saleActive = !saleExpired && isSaleActive(PRICE, sale)
+  const effectivePrice = saleExpired ? PRICE : getEffectivePrice(PRICE, sale)
   const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
   const prodCarouselRef   = useRef<CarouselHandle>(null)
   const lifeCarouselRef   = useRef<CarouselHandle>(null)
@@ -299,7 +304,12 @@ export default function HomeClient() {
                 alignItems: 'center',
               }}
             >
-              <HeroContent colorId={colorId} setColorId={setColorId} />
+              <HeroContent
+                colorId={colorId}
+                setColorId={setColorId}
+                sale={saleActive ? sale : null}
+                onExpire={() => setSaleExpired(true)}
+              />
             </div>
           </div>
         </div>
@@ -355,6 +365,16 @@ export default function HomeClient() {
                 border: '1.5px solid rgba(255,255,255,0.45)', textDecoration: 'none',
               }}>Se produktet</Link>
             </div>
+            {saleActive && sale?.saleStartDate && sale?.saleEndDate && (
+              <div style={{ width: '100%', maxWidth: '360px' }}>
+                <SaleCountdown
+                  startDate={sale.saleStartDate}
+                  endDate={sale.saleEndDate}
+                  onExpire={() => setSaleExpired(true)}
+                  variant="dark"
+                />
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#fff' }}>Velg din farge</span>
@@ -895,7 +915,7 @@ export default function HomeClient() {
                     transition: 'transform 0.15s ease, filter 0.15s ease',
                   }}
                 >
-                  Bestill nå · {fmt(PRICE)}
+                  Bestill nå · {fmt(effectivePrice)}
                 </Link>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#a9c08f' }}>
                   Fri frakt over kr 650
@@ -935,9 +955,13 @@ export default function HomeClient() {
 function HeroContent({
   colorId,
   setColorId,
+  sale,
+  onExpire,
 }: {
   colorId: string
   setColorId: (id: string) => void
+  sale: SaleInfo | null
+  onExpire: () => void
 }) {
   const COLORS = [
     { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001' },
@@ -959,7 +983,7 @@ function HeroContent({
       <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 400, fontSize: 'clamp(16px,1.3vw,18px)', lineHeight: 1.62, color: '#3a3f33', margin: '0 0 36px', textAlign: 'center' }}>
         aBoks organiserer nye, brukte, AA- og AAA-batterier i én smart boks.
       </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '56px', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '20px', justifyContent: 'center' }}>
         <Link
           href={`/produkter/aboks?variant=${activeColor.sku}`}
           data-btn
@@ -1006,6 +1030,15 @@ function HeroContent({
           Se produktet
         </Link>
       </div>
+      {sale?.saleStartDate && sale?.saleEndDate && (
+        <div style={{ width: '100%', marginBottom: '20px' }}>
+          <SaleCountdown
+            startDate={sale.saleStartDate}
+            endDate={sale.saleEndDate}
+            onExpire={onExpire}
+          />
+        </div>
+      )}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px', justifyContent: 'center' }}>
           <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#5e6a48' }}>

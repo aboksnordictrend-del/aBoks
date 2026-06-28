@@ -15,6 +15,7 @@ import ImageLightbox from '@/components/ImageLightbox'
 import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
+import SaleCountdown from '@/components/SaleCountdown'
 
 interface Variant {
   id: string
@@ -117,9 +118,11 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  const [saleExpired, setSaleExpired] = useState(false)
+
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? variants[0]
-  const effectivePrice = getEffectivePrice(product.price, product.sale)
-  const saleActive = isSaleActive(product.price, product.sale)
+  const effectivePrice = saleExpired ? product.price : getEffectivePrice(product.price, product.sale)
+  const saleActive = !saleExpired && isSaleActive(product.price, product.sale)
 
   // Capacity-derived content — keeps AAA references correct per product
   const hasAAA = product.capacity.aaa > 0
@@ -289,7 +292,7 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
                 Mobile: third (order-3); Desktop: right col, row 2 */}
             <div className="order-3 md:col-start-2 md:row-start-2">
               {/* Stars + price */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '22px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: saleActive && product.sale?.saleStartDate && product.sale?.saleEndDate ? '14px' : '22px', flexWrap: 'wrap' }}>
                 {saleActive ? (
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                     <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '26px', color: '#b06a4a' }}>
@@ -307,6 +310,18 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
                 <span style={{ color: '#c9a76a', fontSize: '14px', letterSpacing: '2px' }}>★★★★★</span>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>128 anmeldelser</span>
               </div>
+
+              {/* Sale countdown — сразу под ценой, левое выравнивание */}
+              {saleActive && product.sale?.saleStartDate && product.sale?.saleEndDate && (
+                <div style={{ marginBottom: '22px' }}>
+                  <SaleCountdown
+                    startDate={product.sale.saleStartDate}
+                    endDate={product.sale.saleEndDate}
+                    onExpire={() => setSaleExpired(true)}
+                    align="left"
+                  />
+                </div>
+              )}
 
               {/* Color selector */}
               <div style={{ marginBottom: '26px' }}>

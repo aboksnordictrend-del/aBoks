@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import HomeClient from './HomeClient'
+import { getProductBySlug } from '@/lib/payload'
+import type { SaleInfo } from '@/lib/pricing'
 
 export const metadata: Metadata = {
   // absolute bypasses the layout template (%s | aBoks) to avoid duplication
@@ -35,6 +37,19 @@ export const metadata: Metadata = {
   },
 }
 
-export default function HomePage() {
-  return <HomeClient />
+export default async function HomePage() {
+  let sale: SaleInfo | null = null
+  try {
+    const product = await getProductBySlug('aboks')
+    if (product) {
+      sale = {
+        salePrice: product.salePrice ?? null,
+        saleStartDate: product.saleStartDate ?? null,
+        saleEndDate: product.saleEndDate ?? null,
+      }
+    }
+  } catch {
+    // hero renders without countdown on fetch error
+  }
+  return <HomeClient sale={sale} />
 }
