@@ -264,6 +264,16 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
 
   return (
     <main>
+      {/* DEV-ONLY: sale diagnostic overlay */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ position: 'fixed', bottom: 8, right: 8, zIndex: 9999, background: 'rgba(0,0,0,0.85)', color: '#0f0', fontFamily: 'monospace', fontSize: 11, padding: '8px 12px', borderRadius: 6, maxWidth: 340, pointerEvents: 'none' }}>
+          <div>price: {price}</div>
+          <div>saleActive: {String(saleActive)}</div>
+          <div>salePrice: {String(sale?.salePrice ?? 'null')}</div>
+          <div>saleStart: {String(sale?.saleStartDate ?? 'null')}</div>
+          <div>saleEnd: {String(sale?.saleEndDate ?? 'null')}</div>
+        </div>
+      )}
       {/* ==================== HERO ==================== */}
       <section
         style={{

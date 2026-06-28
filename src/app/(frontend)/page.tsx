@@ -52,9 +52,12 @@ export default async function HomePage() {
         saleStartDate: product.saleStartDate ?? null,
         saleEndDate: product.saleEndDate ?? null,
       }
+      console.log('[HOME] sale data from Payload:', JSON.stringify({ price, sale }))
+    } else {
+      console.warn('[HOME] getProductBySlug("aboks") returned null — no product found with this slug')
     }
-  } catch {
-    // hero renders without countdown on fetch error
+  } catch (err) {
+    console.error('[HOME] Failed to fetch product from Payload:', err instanceof Error ? err.message : String(err))
   }
   return <HomeClient sale={sale} price={price} />
 }
