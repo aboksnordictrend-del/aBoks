@@ -3,6 +3,9 @@ import HomeClient from './HomeClient'
 import { getProductBySlug } from '@/lib/payload'
 import type { SaleInfo } from '@/lib/pricing'
 
+// Hero показывает countdown со свежими данными из Payload — страница не должна кэшироваться
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   // absolute bypasses the layout template (%s | aBoks) to avoid duplication
   title: {
@@ -39,9 +42,11 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   let sale: SaleInfo | null = null
+  let price = 499
   try {
     const product = await getProductBySlug('aboks')
     if (product) {
+      price = product.price ?? 499
       sale = {
         salePrice: product.salePrice ?? null,
         saleStartDate: product.saleStartDate ?? null,
@@ -51,5 +56,5 @@ export default async function HomePage() {
   } catch {
     // hero renders without countdown on fetch error
   }
-  return <HomeClient sale={sale} />
+  return <HomeClient sale={sale} price={price} />
 }

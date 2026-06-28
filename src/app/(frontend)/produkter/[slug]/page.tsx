@@ -62,6 +62,7 @@ export default async function ProductPage({
     sku: v.sku ?? '',
     inventory: v.inventory ?? 0,
     sortOrder: v.sortOrder ?? 0,
+    videoUrl: v.videoUrl ?? null,
   }))
 
   const productImages = ((product.images as any[]) ?? [])

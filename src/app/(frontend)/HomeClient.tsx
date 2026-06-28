@@ -225,11 +225,11 @@ function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
   )
 }
 
-export default function HomeClient({ sale }: { sale: SaleInfo | null }) {
+export default function HomeClient({ sale, price }: { sale: SaleInfo | null; price: number }) {
   const [colorId, setColorId] = useState('olive')
   const [saleExpired, setSaleExpired] = useState(false)
-  const saleActive = !saleExpired && isSaleActive(PRICE, sale)
-  const effectivePrice = saleExpired ? PRICE : getEffectivePrice(PRICE, sale)
+  const saleActive = !saleExpired && isSaleActive(price, sale)
+  const effectivePrice = saleExpired ? price : getEffectivePrice(price, sale)
   const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
   const prodCarouselRef   = useRef<CarouselHandle>(null)
   const lifeCarouselRef   = useRef<CarouselHandle>(null)

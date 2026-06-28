@@ -25,6 +25,7 @@ interface Variant {
   sku: string
   inventory: number
   sortOrder: number
+  videoUrl: string | null
 }
 
 interface Feature {
@@ -462,7 +463,50 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
         {/* VIDEO */}
         <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0' }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 clamp(20px,5vw,48px)' }}>
-            <VideoPlaceholder thumbnail={displayImage || undefined} label="Produktvideo" />
+            {selectedVariant?.videoUrl ? (
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  aspectRatio: '16/9',
+                  borderRadius: '24px',
+                  overflow: 'hidden',
+                  boxShadow: '0 24px 56px -20px rgba(42,36,24,.3)',
+                  background: '#e7d9bd',
+                }}
+              >
+                <video
+                  key={selectedVariant.videoUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                >
+                  <source src={selectedVariant.videoUrl} type="video/mp4" />
+                </video>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: '24px',
+                    bottom: '22px',
+                    fontFamily: 'var(--font-manrope)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    letterSpacing: '0.04em',
+                    color: '#faf6ee',
+                    background: 'rgba(26,29,23,.5)',
+                    padding: '7px 14px',
+                    borderRadius: '999px',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  Produktvideo
+                </span>
+              </div>
+            ) : (
+              <VideoPlaceholder thumbnail={displayImage || undefined} label="Produktvideo" />
+            )}
           </div>
         </section>
 

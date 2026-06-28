@@ -299,6 +299,10 @@ export interface ProductVariant {
    * Lavere tall vises først.
    */
   sortOrder?: number | null;
+  /**
+   * Full URL til .mp4-produktvideo for denne fargen. La stå tom hvis ingen video.
+   */
+  videoUrl?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -542,6 +546,7 @@ export interface ProductVariantsSelect<T extends boolean = true> {
   sku?: T;
   inventory?: T;
   sortOrder?: T;
+  videoUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }

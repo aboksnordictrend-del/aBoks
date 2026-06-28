@@ -76,6 +76,14 @@ export const ProductVariants: CollectionConfig = {
         description: 'Lavere tall vises først.',
       },
     },
+    {
+      name: 'videoUrl',
+      type: 'text',
+      label: 'Video URL (mp4)',
+      admin: {
+        description: 'Full URL til .mp4-produktvideo for denne fargen. La stå tom hvis ingen video.',
+      },
+    },
   ],
   timestamps: true,
 }
