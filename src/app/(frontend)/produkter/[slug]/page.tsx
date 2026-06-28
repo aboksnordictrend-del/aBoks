@@ -79,6 +79,12 @@ export default async function ProductPage({
     description: f.description,
   }))
 
+  const details = (((product as any).details as any[]) ?? []).map((d: any, i: number) => ({
+    id: d.id ?? String(i),
+    title: d.title ?? '',
+    content: d.content ?? '',
+  })).filter((d) => d.title)
+
   const faqs = ((product.faqs as any[]) ?? []).map((f: any, i: number) => ({
     id: f.id ?? String(i),
     question: f.question ?? '',
@@ -96,6 +102,7 @@ export default async function ProductPage({
         price: product.price ?? 0,
         images: productImages,
         features,
+        details,
         faqs,
         capacity: {
           aa: product.capacity?.aa ?? 0,

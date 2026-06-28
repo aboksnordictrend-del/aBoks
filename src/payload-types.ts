@@ -197,6 +197,16 @@ export interface Product {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Seksjoner som vises i akkordeon under kjøpsknappen (f.eks. Beskrivelse, Spesifikasjoner, Frakt og retur). Du kan endre rekkefølge, legge til og slette seksjoner fritt.
+   */
+  details?:
+    | {
+        title: string;
+        content: string;
+        id?: string | null;
+      }[]
+    | null;
   faqs?:
     | {
         question: string;
@@ -512,6 +522,13 @@ export interface ProductsSelect<T extends boolean = true> {
         number?: T;
         title?: T;
         description?: T;
+        id?: T;
+      };
+  details?:
+    | T
+    | {
+        title?: T;
+        content?: T;
         id?: T;
       };
   faqs?:

@@ -41,6 +41,12 @@ interface Capacity {
   usedCompartments: number
 }
 
+interface DetailItem {
+  id: string
+  title: string
+  content: string
+}
+
 interface FaqItem {
   id: string
   question: string
@@ -57,6 +63,7 @@ interface Product {
   images: { src: string; alt: string }[]
   features: Feature[]
   capacity: Capacity
+  details: DetailItem[]
   faqs: FaqItem[]
   sale?: SaleInfo | null
 }
@@ -153,24 +160,6 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
 
   const capacityBandEyebrow = hasAAA ? 'Tre rom, full kapasitet' : 'To rom, kompakt design'
   const capacityBandHeading = hasAAA ? 'Plass til alt – hver for seg.' : 'Plass til AA – og brukte batterier.'
-
-  const DETAILS = [
-    {
-      id: 'd1',
-      question: 'Beskrivelse',
-      answer: hasAAA
-        ? `${product.title} holder nye og brukte batterier samlet i én elegant boks med tre adskilte rom. Slutt på løse batterier i skuffen – du har alltid oversikt.`
-        : `${product.title} holder nye og brukte batterier samlet i én kompakt boks med to adskilte rom. Slutt på løse batterier i skuffen – du har alltid oversikt.`,
-    },
-    {
-      id: 'd2',
-      question: 'Spesifikasjoner',
-      answer: hasAAA
-        ? 'Mål: 16 × 14 × 6 cm. Tre rom: AA, AAA og brukte. Matt finish. Fås i olivengrønn, mørk blå og sort.'
-        : 'Kompakt design. To rom: AA og brukte. Matt finish.',
-    },
-    { id: 'd3', question: 'Frakt og retur', answer: 'Fri frakt over kr 650. Sendes innen 1–2 virkedager. 100 dagers åpent kjøp.' },
-  ]
 
   // view_item: fires on initial mount and whenever the selected variant changes
   useEffect(() => {
@@ -419,7 +408,12 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
               </div>
 
               {/* Details accordion */}
-              <Accordion items={DETAILS} borderColor="#e7e2d4" />
+              {product.details.length > 0 && (
+                <Accordion
+                  items={product.details.map((d) => ({ id: d.id, question: d.title, answer: d.content }))}
+                  borderColor="#e7e2d4"
+                />
+              )}
             </div>
           </div>
         </section>

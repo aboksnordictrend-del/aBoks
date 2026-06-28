@@ -14,7 +14,8 @@
     "check:importmap": "node scripts/check-importmap.mjs",
     "migrate": "payload migrate",
     "migrate:create": "payload migrate:create",
-    "seed": "tsx src/seed.ts"
+    "seed": "tsx src/seed.ts",
+    "migrate:details": "tsx src/migrate-details.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.85.1",

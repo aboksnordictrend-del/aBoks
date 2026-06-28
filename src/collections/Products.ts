@@ -130,6 +130,28 @@ export const Products: CollectionConfig = {
       ],
     },
     {
+      name: 'details',
+      type: 'array',
+      label: 'Produktdetaljer (akkordeon)',
+      admin: {
+        description: 'Seksjoner som vises i akkordeon under kjøpsknappen (f.eks. Beskrivelse, Spesifikasjoner, Frakt og retur). Du kan endre rekkefølge, legge til og slette seksjoner fritt.',
+      },
+      fields: [
+        {
+          name: 'title',
+          type: 'text',
+          label: 'Tittel',
+          required: true,
+        },
+        {
+          name: 'content',
+          type: 'textarea',
+          label: 'Innhold',
+          required: true,
+        },
+      ],
+    },
+    {
       name: 'faqs',
       type: 'array',
       label: 'Vanlige spørsmål',
