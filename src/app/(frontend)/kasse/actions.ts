@@ -87,23 +87,29 @@ export async function initKustomCheckout(
 
   const orderNumber = generateOrderNumber()
 
-  const kustomOrder = await createKustomOrder({
-    purchase_country: 'NO',
-    purchase_currency: 'NOK',
-    locale: 'nb-NO',
-    order_amount: orderAmountOere,
-    order_tax_amount: orderTaxAmountOere,
-    order_lines: orderLines,
-    merchant_urls: {
-      terms: `${serverUrl}/kjopsvilkar`,
-      checkout: `${serverUrl}/kasse?order_id={checkout.order.id}`,
-      confirmation: `${serverUrl}/kasse/bekreftelse?order_id={checkout.order.id}`,
-      push: `${serverUrl}/api/kustom/webhook?order_id={checkout.order.id}`,
-    },
-    merchant_reference: orderNumber,
-    billing_countries: ['NO'],
-    shipping_countries: ['NO'],
-  })
+  let kustomOrder
+  try {
+    kustomOrder = await createKustomOrder({
+      purchase_country: 'NO',
+      purchase_currency: 'NOK',
+      locale: 'nb-NO',
+      order_amount: orderAmountOere,
+      order_tax_amount: orderTaxAmountOere,
+      order_lines: orderLines,
+      merchant_urls: {
+        terms: `${serverUrl}/kjopsvilkar`,
+        checkout: `${serverUrl}/kasse?order_id={checkout.order.id}`,
+        confirmation: `${serverUrl}/kasse/bekreftelse?order_id={checkout.order.id}`,
+        push: `${serverUrl}/api/kustom/webhook?order_id={checkout.order.id}`,
+      },
+      merchant_reference: orderNumber,
+      billing_countries: ['NO'],
+      shipping_countries: ['NO'],
+    })
+  } catch (err) {
+    console.error('[kasse] Kustom create order failed:', err instanceof Error ? err.message : err)
+    throw new Error('Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.')
+  }
 
   // Detect account-level misconfiguration: no checkout widget AND no payment
   // methods enabled on the merchant account in the Kustom Portal.
@@ -125,27 +131,33 @@ export async function initKustomCheckout(
     )
   }
 
-  // Create a pending order in Payload CMS before payment
-  const payload = await getPayloadClient()
-
-  await payload.create({
-    collection: 'orders',
-    data: {
-      orderNumber,
-      kustomOrderId: kustomOrder.order_id,
-      items: items.map((item) => ({
-        variant: Number(item.variantId),
-        variantName: item.colorName,
-        quantity: item.qty,
-        unitPrice: item.price,
-        lineTotal: item.qty * item.price,
-      })),
-      subtotal,
-      shipping: shippingKr,
-      total,
-      status: 'pending',
-    },
-  })
+  // Create a pending order in Payload CMS before payment.
+  // This is non-blocking: a DB failure must not prevent the checkout widget from loading.
+  // The webhook will attempt to re-create/update the order after payment completes.
+  try {
+    const payload = await getPayloadClient()
+    await payload.create({
+      collection: 'orders',
+      data: {
+        orderNumber,
+        kustomOrderId: kustomOrder.order_id,
+        items: items.map((item) => ({
+          variant: Number(item.variantId),
+          variantName: item.colorName,
+          quantity: item.qty,
+          unitPrice: item.price,
+          lineTotal: item.qty * item.price,
+        })),
+        subtotal,
+        shipping: shippingKr,
+        total,
+        status: 'pending',
+      },
+    })
+  } catch (err) {
+    // Log the error but do not block checkout — the user can still pay.
+    console.error('[kasse] Failed to pre-create order in Payload CMS:', err instanceof Error ? err.message : err)
+  }
 
   return {
     kustomOrderId: kustomOrder.order_id,

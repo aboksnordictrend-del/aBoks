@@ -55,10 +55,13 @@ export default function CheckoutClient() {
           : await initKustomCheckout(items)
         setState({ phase: 'ready', ...result })
       } catch (err) {
-        const message =
-          err instanceof Error && err.message
-            ? err.message
-            : 'Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.'
+        // Next.js 15 sanitises server action errors in production — err.message is always
+        // the generic "An error occurred in the Server Components render…" string, not the
+        // original message. Always show a user-friendly Norwegian message instead.
+        const raw = err instanceof Error ? err.message : ''
+        const message = raw && !raw.startsWith('An error occurred in the Server Components')
+          ? raw
+          : 'Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.'
         setState({ phase: 'error', message })
       }
     }
