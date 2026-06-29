@@ -85,6 +85,8 @@ export async function initKustomCheckout(
   const orderAmountOere = toOere(total)
   const orderTaxAmountOere = orderLines.reduce((s, l) => s + l.total_tax_amount, 0)
 
+  const orderNumber = generateOrderNumber()
+
   const kustomOrder = await createKustomOrder({
     purchase_country: 'NO',
     purchase_currency: 'NOK',
@@ -98,11 +100,30 @@ export async function initKustomCheckout(
       confirmation: `${serverUrl}/kasse/bekreftelse?order_id={checkout.order.id}`,
       push: `${serverUrl}/api/kustom/webhook?order_id={checkout.order.id}`,
     },
+    merchant_reference: orderNumber,
   })
+
+  // Detect account-level misconfiguration: Kustom returns "deducted" when no
+  // payment methods are enabled on the merchant account in the Kustom Portal.
+  const noPaymentMethods =
+    (kustomOrder.external_payment_methods?.length ?? 0) === 0 &&
+    (kustomOrder.external_checkouts?.length ?? 0) === 0
+  if (kustomOrder.html_snippet === 'deducted' || (!kustomOrder.html_snippet && noPaymentMethods)) {
+    console.error(
+      '[kasse] Kustom returned no usable checkout widget. ' +
+      'html_snippet=%s external_payment_methods=%d external_checkouts=%d — ' +
+      'Enable payment methods in the Kustom Portal under Elements/Integrations.',
+      kustomOrder.html_snippet,
+      kustomOrder.external_payment_methods?.length ?? 0,
+      kustomOrder.external_checkouts?.length ?? 0,
+    )
+    throw new Error(
+      'Ingen betalingsmetoder er aktivert for nettbutikken. Kontakt oss på post@aboks.no for hjelp.',
+    )
+  }
 
   // Create a pending order in Payload CMS before payment
   const payload = await getPayloadClient()
-  const orderNumber = generateOrderNumber()
 
   await payload.create({
     collection: 'orders',

@@ -54,8 +54,12 @@ export default function CheckoutClient() {
           ? await fetchExistingCheckout(existingOrderId)
           : await initKustomCheckout(items)
         setState({ phase: 'ready', ...result })
-      } catch {
-        setState({ phase: 'error', message: 'Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.' })
+      } catch (err) {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : 'Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.'
+        setState({ phase: 'error', message })
       }
     }
 

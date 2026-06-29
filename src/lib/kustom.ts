@@ -39,6 +39,7 @@ export interface KustomCreateOrderPayload {
   order_tax_amount: number
   order_lines: KustomOrderLine[]
   merchant_urls: KustomMerchantUrls
+  merchant_reference?: string
 }
 
 export interface KustomOrder {
@@ -56,6 +57,8 @@ export interface KustomOrder {
   started_at?: string
   completed_at?: string
   last_modified_at?: string
+  external_payment_methods?: unknown[]
+  external_checkouts?: unknown[]
 }
 
 function authHeader(): string {
@@ -88,7 +91,15 @@ export async function createKustomOrder(payload: KustomCreateOrderPayload): Prom
     throw new Error(`Kustom create order failed (${res.status}): ${text}`)
   }
 
-  return res.json() as Promise<KustomOrder>
+  const order = (await res.json()) as KustomOrder
+  console.log('[kustom] createKustomOrder response: status=%d order=%s html_snippet=%s ext_payment_methods=%d ext_checkouts=%d',
+    res.status,
+    order.order_id,
+    order.html_snippet,
+    order.external_payment_methods?.length ?? 0,
+    order.external_checkouts?.length ?? 0,
+  )
+  return order
 }
 
 export async function getKustomOrder(orderId: string): Promise<KustomOrder> {
