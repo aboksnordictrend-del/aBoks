@@ -101,14 +101,17 @@ export async function initKustomCheckout(
       push: `${serverUrl}/api/kustom/webhook?order_id={checkout.order.id}`,
     },
     merchant_reference: orderNumber,
+    billing_countries: ['NO'],
+    shipping_countries: ['NO'],
   })
 
-  // Detect account-level misconfiguration: Kustom returns "deducted" when no
-  // payment methods are enabled on the merchant account in the Kustom Portal.
+  // Detect account-level misconfiguration: no checkout widget AND no payment
+  // methods enabled on the merchant account in the Kustom Portal.
+  // Note: html_snippet === 'deducted' is normal — it is not an error indicator.
   const noPaymentMethods =
     (kustomOrder.external_payment_methods?.length ?? 0) === 0 &&
     (kustomOrder.external_checkouts?.length ?? 0) === 0
-  if (kustomOrder.html_snippet === 'deducted' || (!kustomOrder.html_snippet && noPaymentMethods)) {
+  if (!kustomOrder.html_snippet && noPaymentMethods) {
     console.error(
       '[kasse] Kustom returned no usable checkout widget. ' +
       'html_snippet=%s external_payment_methods=%d external_checkouts=%d — ' +

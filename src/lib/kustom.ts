@@ -40,6 +40,8 @@ export interface KustomCreateOrderPayload {
   order_lines: KustomOrderLine[]
   merchant_urls: KustomMerchantUrls
   merchant_reference?: string
+  billing_countries?: string[]
+  shipping_countries?: string[]
 }
 
 export interface KustomOrder {
@@ -54,6 +56,9 @@ export interface KustomOrder {
   order_lines: KustomOrderLine[]
   billing_address?: KustomAddress
   shipping_address?: KustomAddress
+  billing_countries?: string[]
+  shipping_countries?: string[]
+  merchant_data?: string
   started_at?: string
   completed_at?: string
   last_modified_at?: string
@@ -92,12 +97,15 @@ export async function createKustomOrder(payload: KustomCreateOrderPayload): Prom
   }
 
   const order = (await res.json()) as KustomOrder
-  console.log('[kustom] createKustomOrder response: status=%d order=%s html_snippet=%s ext_payment_methods=%d ext_checkouts=%d',
+  console.log('[kustom] createKustomOrder response: status=%d order=%s html_snippet=%s ext_payment_methods=%d ext_checkouts=%d billing_countries=%s shipping_countries=%s merchant_data=%s',
     res.status,
     order.order_id,
     order.html_snippet,
     order.external_payment_methods?.length ?? 0,
     order.external_checkouts?.length ?? 0,
+    order.billing_countries,
+    order.shipping_countries,
+    order.merchant_data,
   )
   return order
 }
