@@ -176,14 +176,27 @@ export async function fetchExistingCheckout(
 }
 
 export async function getOrderConfirmation(kustomOrderId: string) {
+  // Kustom is the primary source of truth for the confirmation page.
+  // Payload is queried only to enrich the orderNumber; if it fails we fall
+  // back to merchant_reference (which is the orderNumber we set at CREATE_ORDER).
   const kustomOrder = await getKustomOrder(kustomOrderId)
 
-  const payload = await getPayloadClient()
-  const result = await payload.find({
-    collection: 'orders',
-    where: { kustomOrderId: { equals: kustomOrderId } },
-    limit: 1,
-  })
+  // merchant_reference holds the orderNumber we generated in initKustomCheckout
+  let orderNumber: string = kustomOrder.merchant_reference ?? ''
+
+  try {
+    const payload = await getPayloadClient()
+    const result = await payload.find({
+      collection: 'orders',
+      where: { kustomOrderId: { equals: kustomOrderId } },
+      limit: 1,
+    })
+    if (result.docs[0]?.orderNumber) {
+      orderNumber = result.docs[0].orderNumber
+    }
+  } catch {
+    // Payload unavailable — merchant_reference is already set above
+  }
 
   const addr = kustomOrder.billing_address ?? kustomOrder.shipping_address
 
@@ -205,7 +218,7 @@ export async function getOrderConfirmation(kustomOrderId: string) {
 
   return {
     status: kustomOrder.status,
-    orderNumber: result.docs[0]?.orderNumber ?? '',
+    orderNumber,
     email: addr?.email ?? '',
     totalKr: kustomOrder.order_amount / 100,
     shippingKr,

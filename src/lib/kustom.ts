@@ -59,6 +59,7 @@ export interface KustomOrder {
   billing_countries?: string[]
   shipping_countries?: string[]
   merchant_data?: string
+  merchant_reference?: string
   started_at?: string
   completed_at?: string
   last_modified_at?: string

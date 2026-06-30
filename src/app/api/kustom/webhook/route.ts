@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getKustomOrder } from '@/lib/kustom'
 import { getPayloadClient } from '@/lib/payload'
+import { generateOrderNumber } from '@/lib/format'
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -11,16 +12,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Fetch from Kustom API to verify payment status and get customer data.
-    // This also acts as implicit auth verification: only our credentials can call this endpoint.
+    // Fetch from Kustom to verify payment status and get customer + line data.
     const kustomOrder = await getKustomOrder(orderId)
 
     if (kustomOrder.status !== 'checkout_complete') {
-      // Not paid yet — return 200 so Kustom doesn't retry
       return NextResponse.json({ ok: true, skipped: true })
     }
 
     const payload = await getPayloadClient()
+    const addr = kustomOrder.billing_address ?? kustomOrder.shipping_address
 
     const existing = await payload.find({
       collection: 'orders',
@@ -28,40 +28,83 @@ export async function POST(req: NextRequest) {
       limit: 1,
     })
 
-    if (existing.docs.length === 0) {
-      // Order not in CMS yet (race condition is unlikely but possible).
-      // Return 200 to prevent infinite retries from Kustom.
-      return NextResponse.json({ ok: true, note: 'Order not found in CMS' })
-    }
+    let confirmedOrder
 
-    const order = existing.docs[0]
+    if (existing.docs.length > 0) {
+      const order = existing.docs[0]
 
-    // Idempotency: already confirmed, nothing to do
-    if (order.status === 'confirmed') {
-      return NextResponse.json({ ok: true, skipped: true })
-    }
+      // Idempotency: already confirmed, nothing to do
+      if (order.status === 'confirmed') {
+        return NextResponse.json({ ok: true, skipped: true })
+      }
 
-    const addr = kustomOrder.billing_address ?? kustomOrder.shipping_address
-
-    await payload.update({
-      collection: 'orders',
-      id: String(order.id),
-      data: {
-        status: 'confirmed',
-        customerInfo: {
-          email: addr?.email ?? '',
-          firstName: addr?.given_name ?? '',
-          lastName: addr?.family_name ?? '',
-          address: addr?.street_address ?? '',
-          postalCode: addr?.postal_code ?? '',
-          city: addr?.city ?? '',
-          phone: addr?.phone ?? '',
+      confirmedOrder = await payload.update({
+        collection: 'orders',
+        id: String(order.id),
+        data: {
+          status: 'confirmed',
+          customerInfo: {
+            email: addr?.email ?? '',
+            firstName: addr?.given_name ?? '',
+            lastName: addr?.family_name ?? '',
+            address: addr?.street_address ?? '',
+            postalCode: addr?.postal_code ?? '',
+            city: addr?.city ?? '',
+            phone: addr?.phone ?? '',
+          },
         },
-      },
-    })
+      })
+    } else {
+      // The pre-create in initKustomCheckout failed or was skipped.
+      // Reconstruct the order from Kustom data so we never lose a paid order.
+      const physicalLines = (kustomOrder.order_lines ?? []).filter(l => l.type === 'physical')
+      const shippingLine = (kustomOrder.order_lines ?? []).find(l => l.type === 'shipping_fee')
 
-    // Deduct inventory from each ordered variant by variantId, not productId
-    for (const item of order.items ?? []) {
+      const subtotal = physicalLines.reduce((s, l) => s + l.total_amount, 0) / 100
+      const shipping = shippingLine ? shippingLine.total_amount / 100 : 0
+      const total = kustomOrder.order_amount / 100
+
+      // Use the merchant_reference we set at CREATE_ORDER, or generate a fallback
+      const orderNumber = kustomOrder.merchant_reference || generateOrderNumber()
+
+      confirmedOrder = await payload.create({
+        collection: 'orders',
+        data: {
+          orderNumber,
+          kustomOrderId: orderId,
+          items: physicalLines.map(l => {
+            const variantId = parseInt(l.reference, 10)
+            const [, colorName] = l.name.split(' · ')
+            return {
+              ...(Number.isFinite(variantId) ? { variant: variantId } : {}),
+              variantName: colorName?.trim() ?? l.name,
+              quantity: l.quantity,
+              unitPrice: l.unit_price / 100,
+              lineTotal: l.total_amount / 100,
+            }
+          }),
+          subtotal,
+          shipping,
+          total,
+          status: 'confirmed',
+          customerInfo: {
+            email: addr?.email ?? '',
+            firstName: addr?.given_name ?? '',
+            lastName: addr?.family_name ?? '',
+            address: addr?.street_address ?? '',
+            postalCode: addr?.postal_code ?? '',
+            city: addr?.city ?? '',
+            phone: addr?.phone ?? '',
+          },
+        },
+      })
+
+      console.log('[kustom-webhook] created missing order from Kustom data: orderId=%s payloadId=%s', orderId, confirmedOrder.id)
+    }
+
+    // Deduct inventory — run regardless of create vs. update path
+    const itemsToProcess = confirmedOrder.items ?? []
+    for (const item of itemsToProcess) {
       if (!item.variant || !item.quantity) continue
 
       const variantId =
@@ -87,7 +130,6 @@ export async function POST(req: NextRequest) {
           `[kustom-webhook] inventory: variant=${variantId} (${variant.name ?? variant.sku}) ${variant.inventory} → ${newInventory}`,
         )
       } catch (invErr) {
-        // Log but don't fail the webhook — order is confirmed, inventory can be corrected manually
         console.error(
           '[kustom-webhook] inventory update failed for variant',
           variantId,
@@ -98,7 +140,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    // Return 500 so Kustom retries the push notification
     console.error('[kustom-webhook] error:', err instanceof Error ? err.message : 'Unknown error')
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
