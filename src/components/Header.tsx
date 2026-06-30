@@ -16,8 +16,12 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
   const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const lastY = useRef(0)
-  const totalCount = useCartStore((s) => s.totalCount())
+  const rawCount = useCartStore((s) => s.totalCount())
+  const totalCount = mounted ? rawCount : 0
+
+  useEffect(() => { setMounted(true) }, [])
 
   // ref keeps hidden state readable inside stable scroll listener (no re-registration)
   const hiddenRef = useRef(hidden)

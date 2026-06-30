@@ -9,6 +9,7 @@ import type { CarouselHandle } from '@/components/Carousel'
 import Accordion from '@/components/Accordion'
 import SaleCountdown from '@/components/SaleCountdown'
 import { isSaleActive, getEffectivePrice, type SaleInfo } from '@/lib/pricing'
+import { formatPrice } from '@/lib/format'
 
 const COLORS = [
   { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
@@ -107,9 +108,6 @@ const ROOMS = [
 
 const PRICE = 499
 
-function fmt(n: number) {
-  return 'kr ' + Number(n).toLocaleString('nb-NO')
-}
 
 function fadeUp(delay = 0) {
   return {
@@ -925,7 +923,7 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
                     transition: 'transform 0.15s ease, filter 0.15s ease',
                   }}
                 >
-                  Bestill nå · {fmt(effectivePrice)}
+                  Bestill nå · {formatPrice(effectivePrice)}
                 </Link>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#a9c08f' }}>
                   Fri frakt over kr 650

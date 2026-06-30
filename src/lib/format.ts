@@ -1,5 +1,8 @@
 export function formatPrice(amount: number): string {
-  return 'kr ' + Number(amount).toLocaleString('nb-NO')
+  // Deterministic: avoid toLocaleString whose ICU output differs between Node.js and browsers,
+  // which causes React hydration mismatches. nb-NO standard uses non-breaking space as thousands separator.
+  const s = Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+  return 'kr ' + s
 }
 
 export function generateOrderNumber(seed?: number): string {
