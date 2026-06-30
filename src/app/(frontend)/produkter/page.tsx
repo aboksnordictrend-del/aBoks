@@ -24,8 +24,15 @@ function mediaUrl(val: unknown): string {
   return ''
 }
 
+const PRODUCT_SLUG_ORDER = ['aboks', 'aboks-mini', 'aboks-nano']
+
 export default async function ProductsPage() {
-  const products = await getProducts()
+  const rawProducts = await getProducts()
+  const products = [...rawProducts].sort((a, b) => {
+    const ai = PRODUCT_SLUG_ORDER.indexOf(a.slug as string)
+    const bi = PRODUCT_SLUG_ORDER.indexOf(b.slug as string)
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
 
   return (
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>

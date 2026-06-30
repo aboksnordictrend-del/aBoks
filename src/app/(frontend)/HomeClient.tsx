@@ -819,8 +819,8 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
               { n: '03', title: 'Testingen', desc: 'Over 40 husstander testet aBoks i hverdagen.', img: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-Testingen.webp' },
               { n: '04', title: 'Produktet', desc: 'Ferdig produkt i tre farger, klart for ditt hjem.', img: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks.webp' },
             ].map((step, i) => (
-              <motion.div key={step.n} {...fadeUp(i * 0.08)} style={{ transform: 'translateY(-20px)' }}>
-                <div style={{ aspectRatio: '4/3', borderRadius: '18px', overflow: 'hidden', marginBottom: '18px', background: '#e7d9bd', border: step.img ? 'none' : '1px dashed #cdbf9f', position: 'relative' }}>
+              <motion.div key={step.n} {...fadeUp(i * 0.08)} className="flex flex-col-reverse md:flex-col" style={{ transform: 'translateY(-20px)', gap: '18px' }}>
+                <div style={{ aspectRatio: '4/3', borderRadius: '18px', overflow: 'hidden', background: '#e7d9bd', border: step.img ? 'none' : '1px dashed #cdbf9f', position: 'relative' }}>
                   {step.img ? (
                     <Image src={step.img} alt={step.title} fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 25vw" />
                   ) : (
@@ -829,9 +829,11 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
                     </div>
                   )}
                 </div>
-                <div style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: '22px', color: '#c9a76a', marginBottom: '6px', lineHeight: 1 }}>{step.n}</div>
-                <h3 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17', margin: '0 0 8px' }}>{step.title}</h3>
-                <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', lineHeight: 1.55, color: '#6b6f63', margin: 0 }}>{step.desc}</p>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: '22px', color: '#c9a76a', marginBottom: '6px', lineHeight: 1 }}>{step.n}</div>
+                  <h3 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17', margin: '0 0 8px' }}>{step.title}</h3>
+                  <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', lineHeight: 1.55, color: '#6b6f63', margin: 0 }}>{step.desc}</p>
+                </div>
               </motion.div>
             ))}
           </div>
