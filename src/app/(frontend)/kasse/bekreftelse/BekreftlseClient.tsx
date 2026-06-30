@@ -45,26 +45,46 @@ export default function BekreftlseClient() {
       return
     }
 
-    getOrderConfirmation(orderId)
-      .then((data) => {
-        setConfirmation(data)
-        // purchase: fires once after confirmed order; localStorage guards against re-fire on refresh
-        trackPurchase({
-          transactionId: data.orderNumber || orderId,
-          value: data.totalKr,
-          shipping: data.shippingKr,
-          items: data.orderItems.map((item) => ({
-            item_id: item.itemId,
-            item_name: item.itemName,
-            item_variant: item.itemVariant || undefined,
-            price: item.price,
-            quantity: item.quantity,
-            item_category: 'Battery Organizer',
-          })),
+    // The Kustom push webhook runs server-to-server before the redirect, but
+    // can lag by a few seconds. Retry up to 4 times (0 s, 2 s, 4 s, 6 s) so
+    // the order number is shown even when the webhook is slightly delayed.
+    let attempts = 0
+    const MAX_ATTEMPTS = 4
+
+    const fetchConfirmation = () => {
+      getOrderConfirmation(orderId)
+        .then((data) => {
+          if (!data.orderNumber && attempts < MAX_ATTEMPTS - 1) {
+            attempts++
+            setTimeout(fetchConfirmation, 2000)
+            return
+          }
+
+          setConfirmation(data)
+          setLoading(false)
+
+          // purchase: fires once after confirmed order; localStorage guards against re-fire on refresh
+          trackPurchase({
+            transactionId: data.orderNumber || orderId,
+            value: data.totalKr,
+            shipping: data.shippingKr,
+            items: data.orderItems.map((item) => ({
+              item_id: item.itemId,
+              item_name: item.itemName,
+              item_variant: item.itemVariant || undefined,
+              price: item.price,
+              quantity: item.quantity,
+              item_category: 'Battery Organizer',
+            })),
+          })
         })
-      })
-      .catch(() => setError('Kunne ikke hente ordredetaljer.'))
-      .finally(() => setLoading(false))
+        .catch(() => {
+          setError('Kunne ikke hente ordredetaljer.')
+          setLoading(false)
+        })
+    }
+
+    fetchConfirmation()
   }, [orderId, clearCart])
 
   if (loading) {

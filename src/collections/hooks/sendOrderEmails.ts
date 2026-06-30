@@ -57,8 +57,16 @@ export const sendOrderEmails: CollectionAfterChangeHook<Order> = async ({
     }
   }
 
-  // ── New order: confirmation to customer + notification to admin ────────────
-  if (operation === 'create') {
+  // ── Order confirmed: send to customer + admin ─────────────────────────────
+  // Fires when status first becomes 'confirmed', regardless of how it got there:
+  //   • webhook fallback creates the order directly as 'confirmed'  (create)
+  //   • normal flow: webhook updates pending → confirmed            (update)
+  const justConfirmed =
+    doc.status === 'confirmed' &&
+    (operation === 'create' ||
+      (operation === 'update' && previousDoc?.status !== 'confirmed'))
+
+  if (justConfirmed) {
     if (!doc.confirmationEmailSentAt) {
       try {
         const email = createOrderConfirmationEmail({
