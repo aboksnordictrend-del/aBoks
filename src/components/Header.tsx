@@ -92,7 +92,11 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
     setScrolled(false)
   }, [pathname])
 
-  const atHeroTop = isHome && !scrolled
+  // Gated on `mounted` (not just isHome/scrolled): usePathname() can resolve
+  // differently between the server-rendered static HTML and the client's first
+  // render for this shared-layout component, which was flipping the trust bar
+  // and header background on/off and causing a hydration mismatch (React #418).
+  const atHeroTop = mounted && isHome && !scrolled
   const bg = atHeroTop ? 'transparent' : 'rgba(250,246,238,0.85)'
   const blur = atHeroTop ? '' : 'saturate-[140%] backdrop-blur-[14px]'
   const shadow = atHeroTop ? '' : 'shadow-header'
