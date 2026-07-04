@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
 import { readdirSync } from 'fs'
 import { join } from 'path'
 import { getProducts } from '@/lib/payload'
+import { getTotalPages as getInspirasjonTotalPages } from './(frontend)/inspirasjon/_data'
 
 export const revalidate = 3600
 
@@ -21,7 +22,7 @@ function getArticleSlugs(): string[] {
   try {
     const dir = join(process.cwd(), 'src', 'app', '(frontend)', 'inspirasjon')
     return readdirSync(dir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
+      .filter(d => d.isDirectory() && !d.name.startsWith('_') && d.name !== 'page')
       .map(d => d.name)
   } catch {
     return []
@@ -47,5 +48,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }))
 
-  return [...STATIC_PAGES, ...productPages, ...articlePages]
+  const inspirasjonTotalPages = getInspirasjonTotalPages()
+  const inspirasjonPaginationPages: MetadataRoute.Sitemap = Array.from(
+    { length: Math.max(0, inspirasjonTotalPages - 1) },
+    (_, i) => ({
+      url: `${BASE_URL}/inspirasjon/page/${i + 2}`,
+      changeFrequency: 'weekly',
+      priority: 0.5,
+    }),
+  )
+
+  return [...STATIC_PAGES, ...productPages, ...articlePages, ...inspirasjonPaginationPages]
 }
