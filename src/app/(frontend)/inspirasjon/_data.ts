@@ -122,6 +122,17 @@ const articles: InspirasjonArticle[] = [
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Miljokonsekvensene-av-usorterte-batterier.webp',
     imageAlt: 'Miljøkonsekvensene av usorterte batterier – aBoks guide',
   },
+  {
+    category: 'Hjem & Organisering',
+    title: 'Den beste gaven til alle – praktisk, enkel og alltid nyttig',
+    description:
+      'Den beste gaven til alle er sjelden den mest spektakulære – den er den som faktisk blir brukt. Her er kriteriene og idéene som treffer uansett hvem du gir til.',
+    date: 'Juli 2026',
+    publishedAt: '2026-07-06',
+    slug: '/inspirasjon/den-beste-gaven-til-alle',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/den-beste-gaven-til-alle.webp',
+    imageAlt: 'Den beste gaven til alle – aBoks guide',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {
