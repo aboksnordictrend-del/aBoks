@@ -1,22 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Miljøkonsekvensene av usorterte batterier – hvorfor sortering betyr noe',
-  description:
-    'Millioner av batterier kastes feil hvert år i Norge. Se hvilke miljøkonsekvenser usorterte batterier fører til – og hvordan riktig sortering hjemme gjør en reell forskjell.',
-  alternates: {
-    canonical: '/inspirasjon/miljokonsekvenser-usorterte-batterier',
-  },
+  ...buildArticleMetadata({
+    slug: 'miljokonsekvenser-usorterte-batterier',
+    title: 'Miljøkonsekvensene av usorterte batterier – hvorfor sortering betyr noe',
+    description:
+      'Millioner av batterier kastes feil hvert år i Norge. Se hvilke miljøkonsekvenser usorterte batterier fører til – og hvordan riktig sortering hjemme gjør en reell forskjell.',
+    ogTitle: 'Miljøkonsekvensene av usorterte batterier – hvorfor sortering betyr noe | aBoks',
+    ogDescription:
+      'Artikkelen forklarer hvorfor batterier er farlig avfall, hvordan feilsortering skaper brannrisiko på avfallsanlegg, hva som går tapt av verdifulle råstoffer, og gir konkrete, praktiske råd for riktig sortering hjemme – med aBoks som naturlig løsning.',
+  }),
   keywords: [
     'miljøkonsekvenser usorterte batterier', 'batterier', 'resirkulering',
     'farlig avfall', 'brannsikkerhet', 'sirkulær økonomi', 'kildesortering', 'miljø',
   ],
-  openGraph: {
-    title: 'Miljøkonsekvensene av usorterte batterier – hvorfor sortering betyr noe | aBoks',
-    description:
-      'Artikkelen forklarer hvorfor batterier er farlig avfall, hvordan feilsortering skaper brannrisiko på avfallsanlegg, hva som går tapt av verdifulle råstoffer, og gir konkrete, praktiske råd for riktig sortering hjemme – med aBoks som naturlig løsning.',
-  },
 }
 
 /* ── Style tokens ── */

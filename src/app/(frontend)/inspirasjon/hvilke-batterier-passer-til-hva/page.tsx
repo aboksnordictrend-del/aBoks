@@ -1,23 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Hvilke batterier passer til hva? Den komplette guiden for hjemmet',
-  description:
-    'Hvilke batterier passer til hva? Lær forskjellen på alkaliske, litium og oppladbare AA- og AAA-batterier – og hvordan du velger riktig, oppbevarer trygt og gjenvinner rett.',
-  alternates: {
-    canonical: '/inspirasjon/hvilke-batterier-passer-til-hva',
-  },
+  ...buildArticleMetadata({
+    slug: 'hvilke-batterier-passer-til-hva',
+    title: 'Hvilke batterier passer til hva? Den komplette guiden for hjemmet',
+    description:
+      'Hvilke batterier passer til hva? Lær forskjellen på alkaliske, litium og oppladbare AA- og AAA-batterier – og hvordan du velger riktig, oppbevarer trygt og gjenvinner rett.',
+    ogTitle: 'Hvilke batterier passer til hva? Den komplette guiden for hjemmet | aBoks',
+    ogDescription:
+      'En praktisk og tillitsvekkende guide til batterityper for norske hjem. Vi forklarer hvilke batterier som passer til hva, vanlige misforståelser, brannsikker oppbevaring og riktig gjenvinning – med fersk innsikt fra norske miljømyndigheter.',
+  }),
   keywords: [
     'batterityper', 'AA batterier', 'AAA batterier', 'alkaliske batterier',
     'litiumbatterier', 'oppladbare batterier', 'batterigjenvinning',
     'brannsikkerhet', 'hjemmeorganisering', 'batterioppbevaring',
   ],
-  openGraph: {
-    title: 'Hvilke batterier passer til hva? Den komplette guiden for hjemmet | aBoks',
-    description:
-      'En praktisk og tillitsvekkende guide til batterityper for norske hjem. Vi forklarer hvilke batterier som passer til hva, vanlige misforståelser, brannsikker oppbevaring og riktig gjenvinning – med fersk innsikt fra norske miljømyndigheter.',
-  },
 }
 
 /* ── Style tokens ── */

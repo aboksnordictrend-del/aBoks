@@ -1,23 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Hvordan resirkuleres batterier? Fra innsamling til nye råvarer | aBoks',
-  description:
-    'Hvordan resirkuleres batterier i Norge? Følg reisen fra kjøkkenskuffen til nye råvarer – innsamling, sortering, gjenvinning og hvorfor riktig sortering hjemme er avgjørende.',
-  alternates: {
-    canonical: '/inspirasjon/hvordan-resirkuleres-batterier',
-  },
+  ...buildArticleMetadata({
+    slug: 'hvordan-resirkuleres-batterier',
+    title: 'Hvordan resirkuleres batterier? Fra innsamling til nye råvarer | aBoks',
+    description:
+      'Hvordan resirkuleres batterier i Norge? Følg reisen fra kjøkkenskuffen til nye råvarer – innsamling, sortering, gjenvinning og hvorfor riktig sortering hjemme er avgjørende.',
+    ogTitle: 'Hvordan resirkuleres batterier? Fra innsamling til nye råvarer | aBoks',
+    ogDescription:
+      'En grundig og lettlest guide til hvordan batterier resirkuleres i Norge, steg for steg – fra innsamling og sortering til kjemisk utvinning av sink, bly, nikkel og kobolt. Inkluderer norske gjenvinningskrav, Hydrovolts «svarte masse», brannstatistikk og praktiske råd for trygg innlevering hjemmefra.',
+  }),
   keywords: [
     'batterigjenvinning', 'resirkulering', 'batterier', 'bærekraft',
     'kildesortering', 'sirkulærøkonomi', 'brannsikkerhet', 'litium-ion',
     'miljø', 'gjenvinning Norge',
   ],
-  openGraph: {
-    title: 'Hvordan resirkuleres batterier? Fra innsamling til nye råvarer | aBoks',
-    description:
-      'En grundig og lettlest guide til hvordan batterier resirkuleres i Norge, steg for steg – fra innsamling og sortering til kjemisk utvinning av sink, bly, nikkel og kobolt. Inkluderer norske gjenvinningskrav, Hydrovolts «svarte masse», brannstatistikk og praktiske råd for trygg innlevering hjemmefra.',
-  },
 }
 
 /* ── Style tokens ── */

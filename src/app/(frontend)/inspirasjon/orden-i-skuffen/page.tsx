@@ -1,23 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Orden i skuffen – 5 tips for et ryddigere og tryggere hjem',
-  description:
-    'Orden i skuffen handler om mer enn estetikk. Få 5 praktiske tips for et ryddigere, tryggere og mer bærekraftig hjem – med smart batterioppbevaring og riktig gjenvinning.',
-  alternates: {
-    canonical: '/inspirasjon/orden-i-skuffen',
-  },
+  ...buildArticleMetadata({
+    slug: 'orden-i-skuffen',
+    title: 'Orden i skuffen – 5 tips for et ryddigere og tryggere hjem',
+    description:
+      'Orden i skuffen handler om mer enn estetikk. Få 5 praktiske tips for et ryddigere, tryggere og mer bærekraftig hjem – med smart batterioppbevaring og riktig gjenvinning.',
+    ogTitle: 'Orden i skuffen – 5 tips for et ryddigere og tryggere hjem | aBoks',
+    ogDescription:
+      'En praktisk og inspirerende guide til hvordan du skaper varig orden i skuffen. Lær å tømme, soneinndele og få kontroll på batterikaoset, samtidig som du ivaretar brannsikkerhet og riktig gjenvinning – forankret i råd fra DSB og Miljødirektoratet.',
+  }),
   keywords: [
     'orden i skuffen', 'rydding', 'hjemorganisering', 'batterioppbevaring',
     'batterigjenvinning', 'brannsikkerhet', 'bærekraftig hjem',
     'skandinavisk design', 'aBoks',
   ],
-  openGraph: {
-    title: 'Orden i skuffen – 5 tips for et ryddigere og tryggere hjem | aBoks',
-    description:
-      'En praktisk og inspirerende guide til hvordan du skaper varig orden i skuffen. Lær å tømme, soneinndele og få kontroll på batterikaoset, samtidig som du ivaretar brannsikkerhet og riktig gjenvinning – forankret i råd fra DSB og Miljødirektoratet.',
-  },
 }
 
 /* ── Style tokens ── */

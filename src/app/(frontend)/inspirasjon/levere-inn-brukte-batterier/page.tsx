@@ -1,23 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Hvorfor det lønner seg å levere inn brukte batterier',
-  description:
-    'Brukte batterier hører hjemme på gjenvinning – ikke i restavfallet. Slik leverer du inn batterier trygt, hvorfor det lønner seg, og hvordan du får orden hjemme.',
-  alternates: {
-    canonical: '/inspirasjon/levere-inn-brukte-batterier',
-  },
+  ...buildArticleMetadata({
+    slug: 'levere-inn-brukte-batterier',
+    title: 'Hvorfor det lønner seg å levere inn brukte batterier',
+    description:
+      'Brukte batterier hører hjemme på gjenvinning – ikke i restavfallet. Slik leverer du inn batterier trygt, hvorfor det lønner seg, og hvordan du får orden hjemme.',
+    ogTitle: 'Hvorfor det lønner seg å levere inn brukte batterier | aBoks',
+    ogDescription:
+      'En praktisk og tillitvekkende guide til hvorfor du bør levere inn brukte batterier til gjenvinning. Artikkelen forklarer brannrisikoen ved batterier i restavfall, gevinsten for miljøet, hvor du leverer inn gratis, og hvordan enkel batteriorganisering hjemme gjør den gode vanen mulig.',
+  }),
   keywords: [
     'brukte batterier', 'batterigjenvinning', 'levere inn batterier',
     'brannsikkerhet hjemme', 'batteriorganisering', 'kildesortering',
     'miljøvennlig hjem', 'aBoks',
   ],
-  openGraph: {
-    title: 'Hvorfor det lønner seg å levere inn brukte batterier | aBoks',
-    description:
-      'En praktisk og tillitvekkende guide til hvorfor du bør levere inn brukte batterier til gjenvinning. Artikkelen forklarer brannrisikoen ved batterier i restavfall, gevinsten for miljøet, hvor du leverer inn gratis, og hvordan enkel batteriorganisering hjemme gjør den gode vanen mulig.',
-  },
 }
 
 /* ── Style tokens ── */

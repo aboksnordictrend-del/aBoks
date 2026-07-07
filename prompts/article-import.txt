@@ -62,14 +62,35 @@ src/app/(frontend)/inspirasjon/[slug]/page.tsx
 
 ## Metadata
 
-Автоматически создать metadata:
+Автоматически создать metadata, используя информацию из HTML и SEO-пакета:
 
 * title
 * description
-* OpenGraph
 * canonical
+* OpenGraph (og:title, og:description, og:image, og:image:width/height/type, og:url, og:type, og:site_name)
+* Twitter Card (summary_large_image)
 
-используя информацию из HTML.
+Обязательно:
+
+1. Добавить статью и её главное изображение (с полями `imageWidth`/`imageHeight` — реальные пиксельные
+   размеры картинки, минимум 1200×630) в `src/app/(frontend)/inspirasjon/_data.ts`.
+2. В `page.tsx` статьи НЕ писать `openGraph`/`twitter` вручную. Вместо этого импортировать
+   `buildArticleMetadata` из `../_seo` и вызвать его со slug статьи:
+
+   ```ts
+   import { buildArticleMetadata } from '../_seo'
+
+   export const metadata: Metadata = buildArticleMetadata({
+     slug: 'slug-statji',
+     title: '...',
+     description: '...',
+   })
+   ```
+
+   `buildArticleMetadata` сам подставит og:image (из `_data.ts`, либо дефолтное изображение сайта,
+   если картинки нет или она меньше 1200×630), абсолютные URL, og:type=article, og:site_name=aBoks
+   и twitter:card=summary_large_image. Это гарантирует, что каждая новая статья автоматически получает
+   корректные Open Graph и Twitter Card теги без ручной работы.
 
 ## Карточка статьи
 
@@ -88,7 +109,9 @@ src/app/(frontend)/inspirasjon/[slug]/page.tsx
 
 Важно:
 Не добавляй карточку вручную в код страницы.
-Она должна автоматически отображаться через существующий список статей, который получает данные из Payload CMS.
+Она должна автоматически отображаться через существующий список статей, который получает данные из
+`src/app/(frontend)/inspirasjon/_data.ts` (статьи не хранятся в Payload CMS — добавь новую запись в этот
+файл, и карточка появится сама).
 
 Пагинация уже настроена по 9 статей на страницу. Новая статья должна автоматически появляться на первой
 странице списка (если статьи отсортированы по дате публикации от новых к старым). При этом более старые

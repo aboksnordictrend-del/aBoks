@@ -1,22 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Hvor kan man levere brukte batterier? Komplett guide for norske hjem',
-  description:
-    'Lurer du på hvor du kan levere brukte batterier? Her er den komplette guiden til returpunkter, gjenvinningsstasjoner og trygg oppbevaring hjemme.',
-  alternates: {
-    canonical: '/inspirasjon/hvor-levere-brukte-batterier',
-  },
+  ...buildArticleMetadata({
+    slug: 'hvor-levere-brukte-batterier',
+    title: 'Hvor kan man levere brukte batterier? Komplett guide for norske hjem',
+    description:
+      'Lurer du på hvor du kan levere brukte batterier? Her er den komplette guiden til returpunkter, gjenvinningsstasjoner og trygg oppbevaring hjemme.',
+    ogTitle: 'Hvor kan man levere brukte batterier? Komplett guide for norske hjem',
+    ogDescription:
+      'En praktisk og oppdatert oversikt over hvor du leverer brukte batterier i Norge – fra dagligvarebutikken til gjenvinningsstasjonen – med tips til trygg oppbevaring og hvorfor riktig batteriretur er viktig for miljø og brannsikkerhet.',
+  }),
   keywords: [
     'brukte batterier', 'batteriretur', 'gjenvinning', 'kildesortering',
     'batterisikkerhet', 'miljø', 'hjemmeorganisering', 'farlig avfall',
   ],
-  openGraph: {
-    title: 'Hvor kan man levere brukte batterier? Komplett guide for norske hjem',
-    description:
-      'En praktisk og oppdatert oversikt over hvor du leverer brukte batterier i Norge – fra dagligvarebutikken til gjenvinningsstasjonen – med tips til trygg oppbevaring og hvorfor riktig batteriretur er viktig for miljø og brannsikkerhet.',
-  },
 }
 
 /* ── Style tokens ── */

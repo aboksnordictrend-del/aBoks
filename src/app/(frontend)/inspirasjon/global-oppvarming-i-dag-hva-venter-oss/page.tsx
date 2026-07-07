@@ -1,22 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Global oppvarming i dag – hva venter oss i fremtiden?',
-  description:
-    'Global oppvarming er ikke lenger noe fjernt. Se hvordan klimaet i Norge allerede har endret seg, hva forskerne venter fremover, og hvilke grep som gjør hjemmet ditt tryggere.',
-  alternates: {
-    canonical: '/inspirasjon/global-oppvarming-i-dag-hva-venter-oss',
-  },
+  ...buildArticleMetadata({
+    slug: 'global-oppvarming-i-dag-hva-venter-oss',
+    title: 'Global oppvarming i dag – hva venter oss i fremtiden?',
+    description:
+      'Global oppvarming er ikke lenger noe fjernt. Se hvordan klimaet i Norge allerede har endret seg, hva forskerne venter fremover, og hvilke grep som gjør hjemmet ditt tryggere.',
+    ogTitle: 'Global oppvarming i dag – hva venter oss i fremtiden? | aBoks',
+    ogDescription:
+      'En grundig, kildebasert gjennomgang av global oppvarming i norsk kontekst – med fakta fra Miljødirektoratet og SSB, fremtidsscenarier, og praktiske råd om beredskap og bærekraft i hjemmet.',
+  }),
   keywords: [
     'global oppvarming', 'klimaendringer', 'bærekraft', 'beredskap',
     'egenberedskap', 'batterier', 'Norge', 'aBoks',
   ],
-  openGraph: {
-    title: 'Global oppvarming i dag – hva venter oss i fremtiden? | aBoks',
-    description:
-      'En grundig, kildebasert gjennomgang av global oppvarming i norsk kontekst – med fakta fra Miljødirektoratet og SSB, fremtidsscenarier, og praktiske råd om beredskap og bærekraft i hjemmet.',
-  },
 }
 
 /* ── Style tokens ── */

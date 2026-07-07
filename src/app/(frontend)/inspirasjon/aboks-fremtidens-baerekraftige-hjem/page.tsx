@@ -1,19 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildArticleMetadata({
+  slug: 'aboks-fremtidens-baerekraftige-hjem',
   title: 'aBoks og fremtidens bærekraftige hjem – orden, trygghet og sirkulær hverdag',
   description:
     'aBoks og fremtidens bærekraftige hjem handler om orden i batteriene, tryggere oppbevaring og riktig gjenvinning. Praktiske råd, fakta og inspirasjon til et mer bærekraftig hjem.',
-  alternates: {
-    canonical: '/inspirasjon/aboks-fremtidens-baerekraftige-hjem',
-  },
-  openGraph: {
-    title: 'aBoks og fremtidens bærekraftige hjem – orden, trygghet og sirkulær hverdag',
-    description:
-      'aBoks og fremtidens bærekraftige hjem handler om orden i batteriene, tryggere oppbevaring og riktig gjenvinning. Praktiske råd, fakta og inspirasjon til et mer bærekraftig hjem.',
-  },
-}
+})
 
 const h2Style: React.CSSProperties = {
   fontFamily: 'var(--font-cormorant)',

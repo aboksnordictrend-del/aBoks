@@ -1,19 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildArticleMetadata({
+  slug: 'forleng-levetiden-pa-batteriene',
   title: 'Slik forlenger du levetiden på batteriene dine | aBoks',
   description:
     'Lær hvordan du forlenger levetiden på batteriene dine med riktig oppbevaring, temperatur og smarte rutiner. Praktiske råd for et tryggere, mer bærekraftig hjem.',
-  alternates: {
-    canonical: '/inspirasjon/forleng-levetiden-pa-batteriene',
-  },
-  openGraph: {
-    title: 'Slik forlenger du levetiden på batteriene dine | aBoks',
-    description:
-      'Lær hvordan du forlenger levetiden på batteriene dine med riktig oppbevaring, temperatur og smarte rutiner. Praktiske råd for et tryggere, mer bærekraftig hjem.',
-  },
-}
+})
 
 const h2Style: React.CSSProperties = {
   fontFamily: 'var(--font-cormorant)',

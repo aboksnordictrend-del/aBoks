@@ -1,23 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Slik sorterer du batteriene riktig hjemme | Trygg guide',
-  description:
-    'Lær å sortere batteriene riktig hjemme – trygt, enkelt og miljøvennlig. Praktiske råd om oppbevaring, teiping av poler og levering til gjenvinning.',
-  alternates: {
-    canonical: '/inspirasjon/slik-sorterer-du-batteriene-riktig-hjemme',
-  },
+  ...buildArticleMetadata({
+    slug: 'slik-sorterer-du-batteriene-riktig-hjemme',
+    title: 'Slik sorterer du batteriene riktig hjemme | Trygg guide',
+    description:
+      'Lær å sortere batteriene riktig hjemme – trygt, enkelt og miljøvennlig. Praktiske råd om oppbevaring, teiping av poler og levering til gjenvinning.',
+    ogTitle: 'Slik sorterer du batteriene riktig hjemme | Trygg guide – aBoks',
+    ogDescription:
+      'En komplett guide til hvordan du sorterer batteriene riktig hjemme. Få vite hvorfor det forebygger brann, hvilke batterier som skal hvor, og hvordan en fast plass for nye og brukte batterier gir orden, sikkerhet og mindre sløsing.',
+  }),
   keywords: [
     'batterisortering', 'kildesortering', 'batterigjenvinning',
     'brannsikkerhet hjemme', 'bærekraftig hjem', 'oppbevaring batterier',
     'skandinavisk design', 'smart hverdag',
   ],
-  openGraph: {
-    title: 'Slik sorterer du batteriene riktig hjemme | Trygg guide – aBoks',
-    description:
-      'En komplett guide til hvordan du sorterer batteriene riktig hjemme. Få vite hvorfor det forebygger brann, hvilke batterier som skal hvor, og hvordan en fast plass for nye og brukte batterier gir orden, sikkerhet og mindre sløsing.',
-  },
 }
 
 /* ── Shared style tokens ── */

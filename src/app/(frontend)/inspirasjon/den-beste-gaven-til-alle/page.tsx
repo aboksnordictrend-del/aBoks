@@ -1,22 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildArticleMetadata } from '../_seo'
 
 export const metadata: Metadata = {
-  title: 'Den beste gaven til alle – praktisk, enkel og alltid nyttig',
-  description:
-    'Sliter du med å finne en gave som passer alle? Få kriteriene for den perfekte allround-gaven, pluss konkrete idéer som treffer uansett hvem du gir til.',
-  alternates: {
-    canonical: '/inspirasjon/den-beste-gaven-til-alle',
-  },
+  ...buildArticleMetadata({
+    slug: 'den-beste-gaven-til-alle',
+    title: 'Den beste gaven til alle – praktisk, enkel og alltid nyttig',
+    description:
+      'Sliter du med å finne en gave som passer alle? Få kriteriene for den perfekte allround-gaven, pluss konkrete idéer som treffer uansett hvem du gir til.',
+    ogTitle: 'Den beste gaven til alle – praktisk, enkel og alltid nyttig | aBoks',
+    ogDescription:
+      'En komplett guide til hvordan du velger en praktisk gave til alle – med sjekkliste, konkrete gaveidéer, bærekraftstips og ekspertråd fra norske kilder som DSB, NORSIRK og Miljødirektoratet.',
+  }),
   keywords: [
     'praktisk gave til alle', 'gavetips', 'praktiske gaver', 'bærekraftige gaver',
     'batteriboks', 'hjemorganisering', 'gjenvinning',
   ],
-  openGraph: {
-    title: 'Den beste gaven til alle – praktisk, enkel og alltid nyttig | aBoks',
-    description:
-      'En komplett guide til hvordan du velger en praktisk gave til alle – med sjekkliste, konkrete gaveidéer, bærekraftstips og ekspertråd fra norske kilder som DSB, NORSIRK og Miljødirektoratet.',
-  },
 }
 
 /* ── Style tokens ── */

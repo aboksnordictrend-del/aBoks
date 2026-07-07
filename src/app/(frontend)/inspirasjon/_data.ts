@@ -7,6 +7,9 @@ export type InspirasjonArticle = {
   slug: string
   image?: string
   imageAlt?: string
+  /** Natural pixel dimensions of `image`, required for correct og:image:width/height. */
+  imageWidth?: number
+  imageHeight?: number
 }
 
 export const ARTICLES_PER_PAGE = 9
@@ -21,6 +24,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-01',
     slug: '/inspirasjon/slik-sorterer-du-batteriene-riktig-hjemme',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Sorterer-batteriene-hjemme.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Sortere batteriene riktig hjemme – aBoks guide',
   },
   {
@@ -32,6 +37,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-02',
     slug: '/inspirasjon/levere-inn-brukte-batterier',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Hvorfor-det-l%C3%B8nner.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Levere inn brukte batterier – aBoks guide',
   },
   {
@@ -43,6 +50,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-03',
     slug: '/inspirasjon/orden-i-skuffen',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Orden-i-skuffen.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Orden i skuffen – aBoks guide til hjemorganisering',
   },
   {
@@ -54,6 +63,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-04',
     slug: '/inspirasjon/hvilke-batterier-passer-til-hva',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Hvilke-batterier-passer.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Hvilke batterier passer til hva – aBoks guide',
   },
   {
@@ -65,6 +76,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-05',
     slug: '/inspirasjon/aboks-fremtidens-baerekraftige-hjem',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/aBoks-fremtid.webp',
+    imageWidth: 1024,
+    imageHeight: 576,
     imageAlt: 'aBoks og fremtidens bærekraftige hjem – orden og gjenvinning',
   },
   {
@@ -76,6 +89,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-06',
     slug: '/inspirasjon/forleng-levetiden-pa-batteriene',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Levetiden-pa-batteriene.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Slik forlenger du levetiden på batteriene dine – aBoks guide',
   },
   {
@@ -87,6 +102,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-07',
     slug: '/inspirasjon/hvordan-resirkuleres-batterier',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Recycling-factory.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Hvordan resirkuleres batterier – fra innsamling til nye råvarer',
   },
   {
@@ -98,6 +115,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-06-08',
     slug: '/inspirasjon/hvor-levere-brukte-batterier',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/levere%20brukte%20batterier.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Hvor kan man levere brukte batterier – aBoks guide',
   },
   {
@@ -109,6 +128,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-07-04',
     slug: '/inspirasjon/global-oppvarming-i-dag-hva-venter-oss',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Global-oppvarming.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Global oppvarming i dag – hva venter oss i fremtiden – aBoks guide',
   },
   {
@@ -120,6 +141,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-07-05',
     slug: '/inspirasjon/miljokonsekvenser-usorterte-batterier',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Miljokonsekvensene-av-usorterte-batterier.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Miljøkonsekvensene av usorterte batterier – aBoks guide',
   },
   {
@@ -131,6 +154,8 @@ const articles: InspirasjonArticle[] = [
     publishedAt: '2026-07-06',
     slug: '/inspirasjon/den-beste-gaven-til-alle',
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/den-beste-gaven-til-alle.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
     imageAlt: 'Den beste gaven til alle – aBoks guide',
   },
 ]
