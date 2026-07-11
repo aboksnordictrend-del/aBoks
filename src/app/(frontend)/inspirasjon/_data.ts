@@ -158,6 +158,19 @@ const articles: InspirasjonArticle[] = [
     imageHeight: 941,
     imageAlt: 'Den beste gaven til alle – aBoks guide',
   },
+  {
+    category: 'Bærekraftig hjem',
+    title: 'Fotball-VM 2026: Heia Norge – og heia miljøet!',
+    description:
+      'Norge er tilbake i et VM for første gang siden 1998 – og fotballsommeren foregår ofte midt på natten. Her er hvordan du gjør fotballkvelden hjemme både uforglemmelig og litt mer bærekraftig, med batterier klare til fjernkontroll og speaker, og en trygg plass for de brukte til de leveres til gjenvinning.',
+    date: 'Juli 2026',
+    publishedAt: '2026-07-11',
+    slug: '/inspirasjon/fotball-vm-2026-heia-norge-heia-miljoet',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Heia%20Norge.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
+    imageAlt: 'Fotball-VM 2026: Heia Norge – og heia miljøet – aBoks guide',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {
