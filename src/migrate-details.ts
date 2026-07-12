@@ -39,7 +39,7 @@ async function migrateDetails() {
       },
       {
         title: 'Frakt og retur',
-        content: 'Fri frakt over kr 650. Sendes innen 1–2 virkedager. 100 dagers åpent kjøp.',
+        content: 'Fri frakt over kr 650. Sendes innen 1–3 virkedager. 100 dagers åpent kjøp.',
       },
     ]
 

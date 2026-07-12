@@ -63,7 +63,7 @@ async function seed() {
         { question: 'Hvor mange batterier får jeg plass til?', answer: 'Du får plass til 20 AA-batterier og 36 AAA-batterier, i tillegg til et romslig rom for brukte batterier.' },
         { question: 'Hvilket materiale er aBoks laget av?', answer: 'aBoks er laget av et solid, matt materiale som tåler daglig bruk og er enkelt å holde rent.' },
         { question: 'Kan jeg henge aBoks på veggen?', answer: 'aBoks er designet for å stå støtt på benken eller i skuffen. En veggmontert løsning er på vei.' },
-        { question: 'Hva er leverings- og returvilkårene?', answer: 'Vi sender innen 1–2 virkedager, tilbyr fri frakt over kr 650 og 100 dagers åpent kjøp.' },
+        { question: 'Hva er leverings- og returvilkårene?', answer: 'Vi sender innen 1–3 virkedager, tilbyr fri frakt over kr 650 og 100 dagers åpent kjøp.' },
       ],
       seo: {
         title: 'aBoks – Smart batteriorganisator',

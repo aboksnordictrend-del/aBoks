@@ -78,7 +78,7 @@ interface Props {
 const TRUST = [
   'Fri frakt over kr 650',
   '100 dagers åpent kjøp',
-  'Sendes innen 1–2 virkedager',
+  'Sendes innen 1–3 virkedager',
 ]
 
 const FUTURE = [
