@@ -37,7 +37,7 @@ const CAROUSEL_ITEMS = [
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-blue-2.webp', alt: 'aBoks Mørk blå' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-1.webp', alt: 'aBoks Hvit' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-sort-1.webp', alt: 'aBoks Sort' },
-  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-olive-1.webp', alt: 'aBoks Olivengrønn' },
+  { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-olive-1-new.webp', alt: 'aBoks Olivengrønn' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-4.webp', alt: 'aBoks Hvit 4' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-hvit-5.webp', alt: 'aBoks Hvit 5' },
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Galleri-1/aBoks-blue-4.webp', alt: 'aBoks Blå 4' },
