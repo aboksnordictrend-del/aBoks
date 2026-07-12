@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import Breadcrumbs from '@/components/Breadcrumbs'
 import Pagination from '@/components/Pagination'
 import type { InspirasjonArticle } from '../_data'
 import ArticleGrid from './ArticleGrid'
@@ -20,31 +20,17 @@ export default function InspirasjonContent({
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
-        {/* Breadcrumb */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontFamily: 'var(--font-manrope)',
-            fontSize: '13px',
-            color: '#6b6f63',
-            paddingTop: '18px',
-            marginBottom: 'clamp(36px,5vw,56px)',
-          }}
-        >
-          <Link href="/" style={{ color: '#6b6f63', textDecoration: 'none' }}>Hjem</Link>
-          <span style={{ opacity: 0.5 }}>/</span>
-          {currentPage > 1 ? (
-            <>
-              <Link href="/inspirasjon" style={{ color: '#6b6f63', textDecoration: 'none' }}>Inspirasjon</Link>
-              <span style={{ opacity: 0.5 }}>/</span>
-              <span style={{ color: '#1a1d17', fontWeight: 600 }}>Side {currentPage}</span>
-            </>
-          ) : (
-            <span style={{ color: '#1a1d17', fontWeight: 600 }}>Inspirasjon</span>
-          )}
-        </div>
+        <Breadcrumbs
+          items={
+            currentPage > 1
+              ? [
+                  { label: 'Hjem', href: '/' },
+                  { label: 'Inspirasjon', href: '/inspirasjon' },
+                  { label: `Side ${currentPage}` },
+                ]
+              : [{ label: 'Hjem', href: '/' }, { label: 'Inspirasjon' }]
+          }
+        />
 
         {/* Page heading */}
         <div style={{ marginBottom: 'clamp(48px,6vw,72px)', textAlign: 'center' }}>

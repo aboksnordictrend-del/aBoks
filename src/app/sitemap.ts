@@ -10,8 +10,10 @@ const BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
 
 const STATIC_PAGES: MetadataRoute.Sitemap = [
   { url: BASE_URL, changeFrequency: 'daily', priority: 1 },
-  { url: `${BASE_URL}/produkter`, changeFrequency: 'daily', priority: 0.8 },
+  { url: `${BASE_URL}/produkter`, changeFrequency: 'daily', priority: 0.9 },
+  { url: `${BASE_URL}/slik-fungerer-det`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${BASE_URL}/inspirasjon`, changeFrequency: 'weekly', priority: 0.8 },
+  { url: `${BASE_URL}/vanlige-sporsmal`, changeFrequency: 'monthly', priority: 0.7 },
   { url: `${BASE_URL}/kontakt`, changeFrequency: 'monthly', priority: 0.5 },
   { url: `${BASE_URL}/frakt-og-retur`, changeFrequency: 'monthly', priority: 0.4 },
   { url: `${BASE_URL}/kjopsvilkar`, changeFrequency: 'monthly', priority: 0.3 },

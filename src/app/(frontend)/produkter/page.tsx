@@ -1,19 +1,28 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import Breadcrumbs from '@/components/Breadcrumbs'
 import { getProducts } from '@/lib/payload'
 
 export const revalidate = 3600
 
 export const metadata: Metadata = {
-  title: 'aBoks Produkter – Smart batteriorganisering',
-  description: 'Utforsk hele aBoks-serien. Smart batteriorganisering designet i Norge.',
+  title: {
+    absolute: 'aBoks-produkter | Smart oppbevaring av batterier',
+  },
+  description:
+    'Se alle aBoks-produkter: batteribokser med egne rom for nye AA, nye AAA og brukte batterier. Norsk design, fri frakt over kr 650 og 100 dagers åpent kjøp.',
   alternates: {
     canonical: '/produkter',
   },
   openGraph: {
-    title: 'aBoks Produkter – Smart batteriorganisering',
-    description: 'Utforsk hele aBoks-serien. Smart batteriorganisering designet i Norge.',
+    type: 'website',
+    locale: 'nb_NO',
+    siteName: 'aBoks',
+    url: '/produkter',
+    title: 'aBoks-produkter | Smart oppbevaring av batterier',
+    description:
+      'Hele aBoks-serien samlet: smarte batteribokser med tre adskilte rom, designet i Norge for et ryddigere hjem.',
   },
 }
 
@@ -38,16 +47,7 @@ export default async function ProductsPage() {
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
-        {/* Breadcrumb */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63',
-          paddingTop: '18px', marginBottom: 'clamp(36px,5vw,56px)',
-        }}>
-          <Link href="/" style={{ color: '#6b6f63', textDecoration: 'none' }}>Hjem</Link>
-          <span style={{ opacity: 0.5 }}>/</span>
-          <span style={{ color: '#1a1d17', fontWeight: 600 }}>Produkter</span>
-        </div>
+        <Breadcrumbs items={[{ label: 'Hjem', href: '/' }, { label: 'Alle produkter' }]} />
 
         {/* Page heading — centered */}
         <div style={{ marginBottom: 'clamp(48px,6vw,72px)', textAlign: 'center' }}>
@@ -71,7 +71,7 @@ export default async function ProductsPage() {
             color: '#1a1d17',
             margin: '0 0 18px',
           }}>
-            aBoks Produkter
+            Alle produkter
           </h1>
           <p style={{
             fontFamily: 'var(--font-manrope)',

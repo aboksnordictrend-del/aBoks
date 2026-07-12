@@ -1,17 +1,24 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Breadcrumbs from '@/components/Breadcrumbs'
 
 export const metadata: Metadata = {
-  title: 'Kontakt oss',
+  title: {
+    absolute: 'Kontakt aBoks | Vi hjelper deg',
+  },
   description:
-    'Kontakt aBoks dersom du har spørsmål om produkter, bestillinger, levering, retur eller samarbeid.',
+    'Ta kontakt med aBoks om produkter, bestilling, levering, retur eller samarbeid. Vi svarer normalt innen 1–2 virkedager.',
   alternates: {
     canonical: '/kontakt',
   },
   openGraph: {
-    title: 'Kontakt oss | aBoks',
+    type: 'website',
+    locale: 'nb_NO',
+    siteName: 'aBoks',
+    url: '/kontakt',
+    title: 'Kontakt aBoks | Vi hjelper deg',
     description:
-      'Kontakt aBoks dersom du har spørsmål om produkter, bestillinger, levering, retur eller samarbeid.',
+      'Spørsmål om produkter, bestilling, levering eller retur? Ta kontakt med aBoks – vi hjelper deg.',
   },
 }
 
@@ -152,23 +159,7 @@ export default function KontaktPage() {
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
-        {/* Breadcrumb */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontFamily: 'var(--font-manrope)',
-            fontSize: '13px',
-            color: '#6b6f63',
-            paddingTop: '18px',
-            marginBottom: 'clamp(36px,5vw,56px)',
-          }}
-        >
-          <Link href="/" style={{ color: '#6b6f63', textDecoration: 'none' }}>Hjem</Link>
-          <span style={{ opacity: 0.5 }}>/</span>
-          <span style={{ color: '#1a1d17', fontWeight: 600 }}>Kontakt oss</span>
-        </div>
+        <Breadcrumbs items={[{ label: 'Hjem', href: '/' }, { label: 'Kontakt oss' }]} />
 
         {/* Page heading */}
         <div style={{ marginBottom: 'clamp(48px,6vw,72px)', textAlign: 'center' }}>

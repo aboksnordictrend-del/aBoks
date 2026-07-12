@@ -3,16 +3,22 @@ import InspirasjonContent from './_components/InspirasjonContent'
 import { getArticlesForPage, getTotalPages } from './_data'
 
 export const metadata: Metadata = {
-  title: 'Inspirasjon',
+  title: {
+    absolute: 'Inspirasjon | Tips om batterier, oppbevaring og miljø',
+  },
   description:
-    'Tips, guider og ideer om batterier, organisering, bærekraft og et ryddig hjem – fra aBoks.',
+    'Artikler og guider fra aBoks om batterier, oppbevaring, gjenvinning og miljø – med praktiske tips til et ryddigere og mer bærekraftig hjem.',
   alternates: {
     canonical: '/inspirasjon',
   },
   openGraph: {
-    title: 'Inspirasjon | aBoks',
+    type: 'website',
+    locale: 'nb_NO',
+    siteName: 'aBoks',
+    url: '/inspirasjon',
+    title: 'Inspirasjon | Tips om batterier, oppbevaring og miljø',
     description:
-      'Tips, guider og ideer om batterier, organisering, bærekraft og et ryddig hjem – fra aBoks.',
+      'Guider og artikler om batterier, oppbevaring, gjenvinning og miljø – fra aBoks.',
   },
 }
 

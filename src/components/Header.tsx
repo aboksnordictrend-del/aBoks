@@ -187,10 +187,10 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                 Produkter
               </Link>
               {[
-                { label: 'Slik fungerer det', hash: 'slik' },
+                { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                 { label: 'Historien',         hash: 'historien' },
                 { label: 'Inspirasjon',       href: '/inspirasjon' },
-                { label: 'Spørsmål',          hash: 'faq' },
+                { label: 'Vanlige spørsmål',  href: '/vanlige-sporsmal' },
               ].map((item) => (
                 'href' in item ? (
                   <Link key={item.label} href={item.href!} style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
@@ -309,10 +309,10 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                 {
                   label: 'Lær mer',
                   links: [
-                    { label: 'Slik fungerer det', href: '/#slik',      hash: 'slik' },
+                    { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                     { label: 'Historien',          href: '/#historien', hash: 'historien' },
                     { label: 'Inspirasjon',        href: '/inspirasjon' },
-                    { label: 'Spørsmål',           href: '/#faq',       hash: 'faq' },
+                    { label: 'Vanlige spørsmål',   href: '/vanlige-sporsmal' },
                   ],
                 },
                 {

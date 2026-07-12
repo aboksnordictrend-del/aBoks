@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import HomeClient from './HomeClient'
 import { getProductBySlug } from '@/lib/payload'
 import type { SaleInfo } from '@/lib/pricing'
+import { SITE_URL, SITE_NAME, LOGO_URL } from '@/lib/site'
 
 export const revalidate = 3600
 
@@ -39,6 +40,25 @@ export const metadata: Metadata = {
   },
 }
 
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': `${SITE_URL}/#organization`,
+  name: SITE_NAME,
+  url: `${SITE_URL}/`,
+  logo: LOGO_URL,
+}
+
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': `${SITE_URL}/#website`,
+  name: SITE_NAME,
+  url: `${SITE_URL}/`,
+  inLanguage: 'nb-NO',
+  publisher: { '@id': `${SITE_URL}/#organization` },
+}
+
 export default async function HomePage() {
   let sale: SaleInfo | null = null
   let price = 499
@@ -57,5 +77,17 @@ export default async function HomePage() {
   } catch (err) {
     console.error('[HOME] Failed to fetch product from Payload:', err instanceof Error ? err.message : String(err))
   }
-  return <HomeClient sale={sale} price={price} />
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      <HomeClient sale={sale} price={price} />
+    </>
+  )
 }

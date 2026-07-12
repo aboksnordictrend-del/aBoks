@@ -94,9 +94,10 @@ export default function Footer() {
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
-                { label: 'Slik fungerer det', href: '/#slik' },
+                { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
+                { label: 'Inspirasjon', href: '/inspirasjon' },
                 { label: 'Historien', href: '/#historien' },
-                { label: 'Vanlige spørsmål', href: '/#faq' },
+                { label: 'Vanlige spørsmål', href: '/vanlige-sporsmal' },
               ].map((item) => (
                 <Link
                   key={item.label}

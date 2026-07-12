@@ -8,8 +8,10 @@ import Carousel, { CarouselArrows } from '@/components/Carousel'
 import type { CarouselHandle } from '@/components/Carousel'
 import Accordion from '@/components/Accordion'
 import SaleCountdown from '@/components/SaleCountdown'
+import HowItWorksSteps from '@/components/HowItWorksSteps'
 import { isSaleActive, getEffectivePrice, type SaleInfo } from '@/lib/pricing'
 import { formatPrice } from '@/lib/format'
+import { FAQS, COMPARTMENTS, CAPACITY } from '@/lib/content'
 
 const COLORS = [
   { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
@@ -25,30 +27,10 @@ const FEATURES = [
   { n: '04', title: 'Matt premium-finish', desc: 'Diskré, slitesterkt design som passer i ethvert rom.' },
 ]
 
-const COMPARTMENTS = [
-  { tag: 'AA', name: 'Nye AA-batterier', desc: 'Romslig rom som holder de fulle AA-batteriene klare til bruk.' },
-  { tag: 'AAA', name: 'Nye AAA-batterier', desc: 'Smalere rom dimensjonert for de mindre AAA-cellene.' },
-  { tag: '⟲', name: 'Brukte batterier', desc: 'Et eget rom for tomme celler – så de faktisk når gjenvinningen.' },
-]
-
-const CAPACITY = [
-  { big: '20', unit: 'AA-batterier', note: 'Eget rom for nye AA.' },
-  { big: '36', unit: 'AAA-batterier', note: 'Eget rom for nye AAA.' },
-  { big: '1', unit: 'rom for brukte', note: 'Samle dem til gjenvinning.' },
-]
-
 const TESTIMONIALS = [
   { quote: 'Endelig orden i batterikaoset. Jeg finner alltid det jeg leter etter.', name: 'Marianne H. · Oslo' },
   { quote: 'Det lille rommet for brukte er genialt – nå blir de faktisk levert til gjenvinning.', name: 'Anders T. · Bergen' },
   { quote: 'Ser så ren og fin ut på kjøkkenbenken at gjestene spør hvor jeg kjøpte den.', name: 'Ingrid S. · Trondheim' },
-]
-
-const FAQS = [
-  { id: 'f1', question: 'Hvilke batterier passer i aBoks?', answer: 'aBoks har egne rom for AA- og AAA-batterier, pluss et eget rom for brukte batterier som skal leveres til gjenvinning.' },
-  { id: 'f2', question: 'Hvor mange batterier får jeg plass til?', answer: 'Du får plass til 20 AA-batterier og 36 AAA-batterier, i tillegg til et romslig rom for brukte batterier.' },
-  { id: 'f3', question: 'Hvilket materiale er aBoks laget av?', answer: 'aBoks er laget av et solid, matt materiale som tåler daglig bruk og er enkelt å holde rent.' },
-  { id: 'f4', question: 'Kan jeg henge aBoks på veggen?', answer: 'aBoks er designet for å stå støtt på benken eller i skuffen. En veggmontert løsning er på vei.' },
-  { id: 'f5', question: 'Hva er leverings- og returvilkårene?', answer: 'Vi sender innen 1–3 virkedager, tilbyr fri frakt over kr 650 og 100 dagers åpent kjøp.' },
 ]
 
 const CAROUSEL_ITEMS = [
@@ -82,13 +64,6 @@ const LIFESTYLE = [
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp', alt: 'Tidløst design som varer.' },
 ]
 
-const STEPS = [
-  { number: 1, title: 'Sett inn modulene',                      posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Sett-inn-modulene-1080.webp',        videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Sett-inn-modulene-34.mp4' },
-  { number: 2, title: 'Fyll med batterier',                     posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Fyll-med-batterier-1080.webp',    videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Fyll-med-batterier-34.mp4' },
-  { number: 3, title: 'Bruk batteriene',                        posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Bruk-batteriene-1080.webp',          videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Bruk-batteriene-34.mp4' },
-  { number: 4, title: 'Lever brukte batterier til gjenvinning', posterUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Lever-brukte-batterier-1080.webp', videoUrl: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Slik-kommer-du/Lever-brukte-batterier-34.mp4' },
-]
-
 const FUTURE = [
   { name: 'aBoks Mini', desc: 'Kompakt utgave laget for skuffen.' },
   { name: 'aBoks Wall', desc: 'Veggmontert oppbevaring for garasjen.' },
@@ -108,6 +83,13 @@ const ROOMS = [
 
 const PRICE = 499
 
+const homeTextLink: React.CSSProperties = {
+  color: '#39402c',
+  fontWeight: 600,
+  textDecoration: 'underline',
+  textUnderlineOffset: '3px',
+}
+
 
 function fadeUp(delay = 0) {
   return {
@@ -118,110 +100,6 @@ function fadeUp(delay = 0) {
   }
 }
 
-function StepVideoCard({ step }: { step: typeof STEPS[0] }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-
-  function ensureSrc() {
-    const v = videoRef.current
-    if (!v || !step.videoUrl) return false
-    if (!v.src || v.src === window.location.href) {
-      v.src = step.videoUrl
-      v.loop = true
-      v.load()
-    }
-    return true
-  }
-
-  function isHoverDevice() {
-    return window.matchMedia('(hover: hover) and (pointer: fine)').matches
-  }
-
-  function handleMouseEnter() {
-    if (!isHoverDevice()) return
-    if (!ensureSrc()) return
-    videoRef.current!.play().catch(() => {})
-  }
-
-  function handleMouseLeave() {
-    if (!isHoverDevice()) return
-    videoRef.current?.pause()
-  }
-
-  function handleClick() {
-    const v = videoRef.current
-    if (!v || !step.videoUrl) return
-
-    if (!v.src || v.src === window.location.href) {
-      v.src = step.videoUrl
-      v.loop = true
-      v.load()
-    }
-
-    if (v.paused) v.play().catch(() => {})
-    else v.pause()
-  }
-
-  useEffect(() => {
-    const v = videoRef.current
-    if (!v) return
-    const onEnded = () => {
-      v.currentTime = 0
-      v.play().catch(() => {})
-    }
-    v.addEventListener('ended', onEnded)
-    return () => v.removeEventListener('ended', onEnded)
-  }, [])
-
-  return (
-    <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-      style={{
-        aspectRatio: '4/5',
-        borderRadius: '18px',
-        overflow: 'hidden',
-        background: '#e3dcd1',
-        position: 'relative',
-        boxShadow: '0 4px 20px -6px rgba(42,36,24,.14)',
-        cursor: step.videoUrl ? 'pointer' : 'default',
-        width: '100%',
-      }}
-    >
-      {step.posterUrl && !step.videoUrl && (
-        <Image src={step.posterUrl} alt={step.title} fill style={{ objectFit: 'cover' }} />
-      )}
-      {step.videoUrl && (
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          poster={step.posterUrl || undefined}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-      )}
-      <div
-        className="step-play-btn"
-        style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none',
-          opacity: isPlaying ? 0 : 1,
-          transition: 'opacity 0.2s',
-        }}
-      >
-        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(250,246,238,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
-            <path d="M1.5 1.5L12.5 8L1.5 14.5V1.5Z" fill="#3a3f33" />
-          </svg>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function HomeClient({ sale, price }: { sale: SaleInfo | null; price: number }) {
   const [colorId, setColorId] = useState('olive')
@@ -490,8 +368,13 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
                 Én boks. Tre rom.{' '}
                 <em style={{ fontStyle: 'italic', color: '#39402c' }}>Full oversikt.</em>
               </h2>
-              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '18px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 32px' }}>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '18px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 20px' }}>
                 aBoks gir hvert batteri sin faste plass – nye AA, nye AAA og et eget rom for de brukte. Du ser alltid hva du har, og hva som skal gjenvinnes.
+              </p>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 32px' }}>
+                Les mer om{' '}
+                <Link href="/slik-fungerer-det" style={homeTextLink}>slik fungerer aBoks</Link>, eller se{' '}
+                <Link href="/produkter" style={homeTextLink}>alle produkter</Link>.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {COMPARTMENTS.map((c) => (
@@ -690,18 +573,6 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
 
       {/* ==================== HOW TO START ==================== */}
       <section style={{ background: '#faf6ee', padding: 'clamp(72px,9vw,120px) 0' }}>
-        <style>{`
-          .slik-desktop { display: grid; }
-          .slik-mobile  { display: none; }
-          @media (max-width: 767px) {
-            .slik-desktop { display: none; }
-            .slik-mobile  { display: flex; flex-direction: column; }
-            .slik-spacer  { height: calc((100vw - clamp(40px, 10vw, 96px) - 136px) * 0.625 - 22px); }
-          }
-          @media (hover: hover) and (pointer: fine) {
-            .step-play-btn { display: none !important; }
-          }
-        `}</style>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
           <motion.div {...fadeUp()}>
             <div style={{ borderRadius: '28px', padding: 'clamp(36px,4.5vw,60px)' }}>
@@ -710,72 +581,15 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
               <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 14px' }}>
                 Slik kommer du i gang
               </p>
-              <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.6vw,46px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 clamp(32px,4vw,48px)' }}>
+              <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.6vw,46px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 16px' }}>
                 Klar på få minutter.
               </h2>
+              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 clamp(32px,4vw,48px)', maxWidth: '560px' }}>
+                Fire enkle steg fra utpakking til gjenvinning. Se hele gjennomgangen av{' '}
+                <Link href="/slik-fungerer-det" style={homeTextLink}>slik fungerer aBoks</Link>.
+              </p>
 
-              {/* ── DESKTOP: horizontal process ── */}
-              <div className="slik-desktop" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 'clamp(16px,2vw,28px)' }}>
-                {STEPS.map((step, i) => (
-                  <div key={step.number} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                    {/* Number row with dashed connectors */}
-                    <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                      {i > 0 && (
-                        <div style={{ position: 'absolute', top: '50%', left: 0, width: '50%', borderTop: '1.5px dashed #c0b49a', transform: 'translateY(-50%)' }} />
-                      )}
-                      {i < STEPS.length - 1 && (
-                        <div style={{ position: 'absolute', top: '50%', right: 0, width: '50%', borderTop: '1.5px dashed #c0b49a', transform: 'translateY(-50%)' }} />
-                      )}
-                      <div style={{ position: 'relative', zIndex: 1, width: '48px', height: '48px', borderRadius: '50%', background: '#faf6ee', border: '1.5px solid #c0b49a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-cormorant)', fontSize: '20px', fontWeight: 500, color: '#1a1d17', flexShrink: 0 }}>
-                        {step.number}
-                      </div>
-                    </div>
-                    {/* Video card */}
-                    <StepVideoCard step={step} />
-                    {/* Title */}
-                    <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: 'clamp(13px,1.1vw,15px)', letterSpacing: '-0.01em', lineHeight: 1.3, color: '#1a1d17', margin: 0, textAlign: 'center' }}>
-                      {step.title}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* ── MOBILE: vertical timeline ── */}
-              <div className="slik-mobile" style={{ gap: 0 }}>
-                {STEPS.map((step, i) => (
-                  <div key={step.number} style={{ display: 'flex', gap: '20px' }}>
-                    {/* Left: spacer + circle + connector — all in one flex column */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '44px', flexShrink: 0 }}>
-                      {/* Spacer pushes circle to card center; transparent on step 1, line on steps 2+ */}
-                      <div
-                        className="slik-spacer"
-                        style={{
-                          width: '2px',
-                          flexShrink: 0,
-                          background: i > 0
-                            ? 'repeating-linear-gradient(to bottom, #c0b49a 0px, #c0b49a 5px, transparent 5px, transparent 10px)'
-                            : 'transparent',
-                        }}
-                      />
-                      {/* Circle */}
-                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#faf6ee', border: '1.5px solid #c0b49a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-cormorant)', fontSize: '18px', fontWeight: 500, color: '#1a1d17', flexShrink: 0 }}>
-                        {step.number}
-                      </div>
-                      {/* Connector fills remaining height down to bottom of right column */}
-                      {i < STEPS.length - 1 && (
-                        <div style={{ flexGrow: 1, width: '2px', background: 'repeating-linear-gradient(to bottom, #c0b49a 0px, #c0b49a 5px, transparent 5px, transparent 10px)' }} />
-                      )}
-                    </div>
-                    {/* Right: card + title + bottom gap (gap creates height for connector to fill) */}
-                    <div style={{ flex: 1, paddingBottom: i < STEPS.length - 1 ? '28px' : 0 }}>
-                      <StepVideoCard step={step} />
-                      <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', letterSpacing: '-0.01em', lineHeight: 1.3, color: '#1a1d17', margin: '14px 0 0' }}>
-                        {step.title}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <HowItWorksSteps />
 
             </div>
           </motion.div>
@@ -879,6 +693,11 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
             </h2>
           </motion.div>
           <Accordion items={FAQS} defaultOpen="f1" borderColor="#ddd2bb" />
+          <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', lineHeight: 1.7, color: '#3a3f33', margin: '28px 0 0', textAlign: 'center' }}>
+            Se alle <Link href="/vanlige-sporsmal" style={homeTextLink}>vanlige spørsmål om aBoks</Link>, finn tips og guider under{' '}
+            <Link href="/inspirasjon" style={homeTextLink}>Inspirasjon</Link> – eller{' '}
+            <Link href="/kontakt" style={homeTextLink}>kontakt oss</Link>.
+          </p>
         </div>
       </section>
 
@@ -926,6 +745,26 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
                   }}
                 >
                   Bestill nå · {formatPrice(effectivePrice)}
+                </Link>
+                <Link
+                  href="/produkter"
+                  data-btn
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '17px 36px',
+                    borderRadius: '999px',
+                    border: '1.5px solid rgba(250,246,238,0.45)',
+                    color: '#faf6ee',
+                    fontFamily: 'var(--font-manrope)',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    textDecoration: 'none',
+                    transition: 'transform 0.15s ease, filter 0.15s ease',
+                  }}
+                >
+                  Se alle produkter
                 </Link>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#a9c08f' }}>
                   Fri frakt over kr 650
