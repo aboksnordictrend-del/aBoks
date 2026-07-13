@@ -2,14 +2,11 @@
  * Verifies that every migration file on disk is also exported from
  * src/migrations/index.ts.
  *
- * The two are consumed by different code paths, and only one of them reads the index:
- *   • `payload migrate` (build:vercel) reads the *directory* and explicitly skips index.ts;
- *   • `prodMigrations` in payload.config.ts uses the *index* to apply pending migrations
- *     at runtime, against the database the app actually serves from.
- *
- * So a migration missing from the index still applies at build time but never applies
- * at runtime — which is exactly how production ended up without the shipped_email_*
- * columns while the deploy reported success. Fail the build instead.
+ * Note what this does and does not do. `payload migrate` reads the migration
+ * *directory* and explicitly skips index.ts, so migrations apply whether or not they
+ * are listed there — the index is not what broke production. This check just keeps the
+ * index (which `payload migrate:create` maintains) from silently drifting out of sync
+ * with the directory, so it stays trustworthy for anything that does read it.
  */
 import { readdirSync, readFileSync } from 'fs'
 import { resolve } from 'path'
