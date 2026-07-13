@@ -7,6 +7,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import sharp from 'sharp'
 import { getMailTransport, smtpConfigured } from './src/lib/mailTransport'
+import { migrations } from './src/migrations'
 import { Users } from './src/collections/Users'
 import { Products } from './src/collections/Products'
 import { ProductVariants } from './src/collections/ProductVariants'
@@ -72,6 +73,18 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URI,
     },
     push: false,
+    // `payload migrate` in build:vercel discovers migrations from disk and runs them
+    // against whatever DATABASE_URI the *build* sees. That is not necessarily the
+    // database the app serves from — a dashboard Build Command override skips the
+    // step entirely, and a Neon preview branch points it at the wrong database. Both
+    // deploy successfully and then fail at runtime on the first query, because Payload
+    // SELECTs every field in the collection config.
+    //
+    // prodMigrations closes that gap: on connect in production, Payload applies any
+    // pending migrations from this bundled list against the *runtime* connection —
+    // the database the app actually reads from. Migrations stay the single source of
+    // truth and push remains false; this only guarantees they are actually applied.
+    prodMigrations: migrations,
   }),
   upload: {
     limits: {

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "payload generate:importmap && next build",
-    "build:vercel": "payload generate:types && payload generate:importmap && node scripts/check-importmap.mjs && payload migrate && next build",
+    "build:vercel": "payload generate:types && payload generate:importmap && node scripts/check-importmap.mjs && node scripts/check-migrations.mjs && payload migrate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "tsx --test \"src/**/*.test.ts\"",
@@ -14,6 +14,7 @@
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",
     "check:importmap": "node scripts/check-importmap.mjs",
+    "check:migrations": "node scripts/check-migrations.mjs",
     "migrate": "payload migrate",
     "migrate:create": "payload migrate:create",
     "seed": "tsx src/seed.ts",
