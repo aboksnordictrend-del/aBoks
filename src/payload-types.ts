@@ -353,6 +353,8 @@ export interface Order {
   confirmationEmailSentAt?: string | null;
   adminEmailSentAt?: string | null;
   shippedEmailSentAt?: string | null;
+  shippedEmailMessageId?: string | null;
+  shippedEmailError?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -657,6 +659,8 @@ export interface OrdersSelect<T extends boolean = true> {
   confirmationEmailSentAt?: T;
   adminEmailSentAt?: T;
   shippedEmailSentAt?: T;
+  shippedEmailMessageId?: T;
+  shippedEmailError?: T;
   updatedAt?: T;
   createdAt?: T;
 }

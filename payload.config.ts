@@ -5,8 +5,8 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { vercelBlobStorage } from '@payloadcms/storage-vercel-blob'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import nodemailer from 'nodemailer'
 import sharp from 'sharp'
+import { getMailTransport, smtpConfigured } from './src/lib/mailTransport'
 import { Users } from './src/collections/Users'
 import { Products } from './src/collections/Products'
 import { ProductVariants } from './src/collections/ProductVariants'
@@ -25,28 +25,13 @@ const serverURL =
   process.env.NEXT_PUBLIC_SERVER_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
-const smtpConfigured =
-  process.env.SMTP_HOST &&
-  process.env.SMTP_PORT &&
-  process.env.SMTP_USER &&
-  process.env.SMTP_PASS &&
-  process.env.EMAIL_FROM
-
 export default buildConfig({
   ...(smtpConfigured
     ? {
         email: nodemailerAdapter({
           defaultFromAddress: process.env.EMAIL_FROM!,
           defaultFromName: process.env.EMAIL_FROM_NAME || 'aBoks',
-          transport: nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port: Number(process.env.SMTP_PORT),
-            secure: Number(process.env.SMTP_PORT) === 465,
-            auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
-            },
-          }),
+          transport: getMailTransport()!,
         }),
       }
     : {}),

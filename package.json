@@ -9,6 +9,8 @@
     "build:vercel": "payload generate:types && payload generate:importmap && node scripts/check-importmap.mjs && payload migrate && next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",
     "check:importmap": "node scripts/check-importmap.mjs",
