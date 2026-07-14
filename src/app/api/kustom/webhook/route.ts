@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { getKustomOrder } from '@/lib/kustom'
 import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
+import { syncCustomerForOrderSafe } from '@/lib/customers'
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -33,8 +34,11 @@ export async function POST(req: NextRequest) {
     if (existing.docs.length > 0) {
       const order = existing.docs[0]
 
-      // Idempotency: already confirmed, nothing to do
+      // Idempotency: already confirmed, so the order itself needs no write. Still run
+      // the customer sync — it is a no-op when the link is already there, and it repairs
+      // the link if an earlier delivery of this webhook failed halfway.
       if (order.status === 'confirmed') {
+        await syncCustomerForOrderSafe(payload, order)
         return NextResponse.json({ ok: true, skipped: true })
       }
 
@@ -101,6 +105,10 @@ export async function POST(req: NextRequest) {
 
       console.log('[kustom-webhook] created missing order from Kustom data: orderId=%s payloadId=%s', orderId, confirmedOrder.id)
     }
+
+    // Find-or-create the Customer for this buyer and link the order to it.
+    // Runs after the order write has committed so a sync failure can never roll it back.
+    await syncCustomerForOrderSafe(payload, confirmedOrder)
 
     // Deduct inventory — run regardless of create vs. update path
     const itemsToProcess = confirmedOrder.items ?? []

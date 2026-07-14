@@ -18,7 +18,8 @@
     "migrate": "payload migrate",
     "migrate:create": "payload migrate:create",
     "seed": "tsx src/seed.ts",
-    "migrate:details": "tsx src/migrate-details.ts"
+    "migrate:details": "tsx src/migrate-details.ts",
+    "backfill:customers": "tsx src/backfill-customers.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.85.1",
