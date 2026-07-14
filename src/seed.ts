@@ -69,6 +69,7 @@ async function seed() {
         title: 'aBoks – Smart batteriorganisator',
         description: 'aBoks organiserer nye, brukte, AA- og AAA-batterier i én smart boks. Designet i Norge.',
       },
+      section: 'products',
       published: true,
     },
   })

@@ -8,6 +8,7 @@ async function revalidateProduct(slug: string) {
   // Invalidate ISR page cache for static pages
   revalidatePath('/', 'page')
   revalidatePath('/produkter', 'page')
+  revalidatePath('/tilbehor', 'page')
 }
 
 export const Products: CollectionConfig = {
@@ -27,7 +28,7 @@ export const Products: CollectionConfig = {
   admin: {
     useAsTitle: 'title',
     group: 'Butikk',
-    defaultColumns: ['title', 'price', 'published', 'updatedAt'],
+    defaultColumns: ['title', 'section', 'price', 'published', 'updatedAt'],
     description: 'Administrer produkter i butikken.',
     listSearchableFields: ['title', 'slug'],
   },
@@ -234,6 +235,21 @@ export const Products: CollectionConfig = {
           label: 'Meta-beskrivelse',
         },
       ],
+    },
+    {
+      name: 'section',
+      type: 'select',
+      label: 'Seksjon',
+      required: true,
+      defaultValue: 'products',
+      options: [
+        { label: 'Produkter', value: 'products' },
+        { label: 'Tilbehør', value: 'accessories' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'Styrer hvor produktet vises: /produkter eller /tilbehor.',
+      },
     },
     {
       name: 'published',

@@ -231,6 +231,10 @@ export interface Product {
     description?: string | null;
   };
   /**
+   * Styrer hvor produktet vises: /produkter eller /tilbehor.
+   */
+  section: 'products' | 'accessories';
+  /**
    * Kryss av for å vise produktet i butikken.
    */
   published?: boolean | null;
@@ -549,6 +553,7 @@ export interface ProductsSelect<T extends boolean = true> {
         title?: T;
         description?: T;
       };
+  section?: T;
   published?: T;
   updatedAt?: T;
   createdAt?: T;

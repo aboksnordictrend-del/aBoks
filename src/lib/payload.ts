@@ -7,19 +7,34 @@ export const getPayloadClient = cache(async () => {
   return await getPayload({ config: configPromise })
 })
 
-export const getProducts = unstable_cache(
-  async () => {
+export type ProductSection = 'products' | 'accessories'
+
+const getProductsInSection = unstable_cache(
+  async (section: ProductSection) => {
     const payload = await getPayloadClient()
     const result = await payload.find({
       collection: 'products',
-      where: { published: { equals: true } },
+      where: {
+        published: { equals: true },
+        // A row written before the `section` column existed reads as null; treat it as
+        // a regular product so nothing can drop out of /produkter.
+        ...(section === 'products'
+          ? { or: [{ section: { equals: 'products' } }, { section: { exists: false } }] }
+          : { section: { equals: 'accessories' } }),
+      },
       depth: 2,
     })
     return result.docs
   },
-  ['products-all'],
+  ['products-by-section'],
   { revalidate: 3600, tags: ['products'] },
 )
+
+/** Published products in the main catalogue (/produkter). */
+export const getProducts = () => getProductsInSection('products')
+
+/** Published products in the accessories catalogue (/tilbehor). */
+export const getAccessories = () => getProductsInSection('accessories')
 
 export const getProductBySlug = unstable_cache(
   async (slug: string) => {

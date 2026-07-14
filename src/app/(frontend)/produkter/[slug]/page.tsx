@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ProductClient from './ProductClient'
+import type { Crumb } from '@/components/Breadcrumbs'
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
 
 function mediaUrl(val: unknown): string {
@@ -51,6 +52,13 @@ export default async function ProductPage({
 
   const product = await getProductBySlug(slug)
   if (!product) notFound()
+
+  // Accessories live in the same collection and on this same route — only the trail
+  // above the title differs.
+  const parentCrumb: Crumb =
+    product.section === 'accessories'
+      ? { label: 'Tilbehør', href: '/tilbehor' }
+      : { label: 'Produkter', href: '/produkter' }
 
   const rawVariants = await getVariantsForProduct(String(product.id))
 
@@ -117,6 +125,7 @@ export default async function ProductPage({
       }}
       variants={variants}
       initialSku={variant}
+      breadcrumbs={[{ label: 'Hjem', href: '/' }, parentCrumb, { label: product.title }]}
     />
   )
 }

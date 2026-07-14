@@ -303,6 +303,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                   links: [
                     { label: 'Alle produkter', href: '/produkter' },
                     ...products.map(p => ({ label: p.title, href: `/produkter/${p.slug}` })),
+                    { label: 'Tilbehør', href: '/tilbehor' },
                     { label: 'Handlekurv', href: '/handlekurv' },
                   ],
                 },
@@ -331,25 +332,29 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                     {section.label}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {section.links.map((link) => (
-                      <Link
-                        key={link.label}
-                        href={link.href}
-                        onClick={(e) => {
-                          setMenuOpen(false)
-                          if ('hash' in link && link.hash) {
-                            if (isHome) {
-                              e.preventDefault()
-                              scrollToSection(link.hash as string)
+                    {section.links.map((link) => {
+                      const isActive = pathname === link.href
+                      return (
+                        <Link
+                          key={link.label}
+                          href={link.href}
+                          aria-current={isActive ? 'page' : undefined}
+                          onClick={(e) => {
+                            setMenuOpen(false)
+                            if ('hash' in link && link.hash) {
+                              if (isHome) {
+                                e.preventDefault()
+                                scrollToSection(link.hash as string)
+                              }
+                              // else: let Link navigate to /#hash; useEffect handles scroll
                             }
-                            // else: let Link navigate to /#hash; useEffect handles scroll
-                          }
-                        }}
-                        style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '26px', fontWeight: 600, color: '#1a1d17', textDecoration: 'none' }}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
+                          }}
+                          style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '26px', fontWeight: 600, color: isActive ? '#5e6a48' : '#1a1d17', textDecoration: 'none' }}
+                        >
+                          {link.label}
+                        </Link>
+                      )
+                    })}
                   </div>
                 </div>
               ))}

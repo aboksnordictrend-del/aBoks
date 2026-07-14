@@ -12,6 +12,7 @@ import ProductImageCarousel, {
   type ProductImageCarouselHandle,
 } from '@/components/ProductImageCarousel'
 import ImageLightbox from '@/components/ImageLightbox'
+import Breadcrumbs, { type Crumb } from '@/components/Breadcrumbs'
 import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
@@ -72,6 +73,7 @@ interface Props {
   product: Product
   variants: Variant[]
   initialSku?: string
+  breadcrumbs: Crumb[]
 }
 
 
@@ -96,7 +98,7 @@ function isLightColor(hex: string): boolean {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65
 }
 
-export default function ProductClient({ product, variants, initialSku }: Props) {
+export default function ProductClient({ product, variants, initialSku, breadcrumbs }: Props) {
   const initialVariant = initialSku
     ? (variants.find((v) => v.sku === initialSku) ?? variants[0])
     : variants[0]
@@ -221,13 +223,9 @@ export default function ProductClient({ product, variants, initialSku }: Props) 
       <CartToast visible={toastVisible} />
 
       <main style={{ paddingTop: 'clamp(96px,12vh,132px)', background: '#faf6ee' }}>
-        {/* Breadcrumb */}
-        <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] pt-[18px]">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>
-            <Link href="/" style={{ color: '#6b6f63', textDecoration: 'none' }}>Hjem</Link>
-            <span style={{ opacity: 0.5 }}>/</span>
-            <span style={{ color: '#1a1d17', fontWeight: 600 }}>{product.title}</span>
-          </div>
+        {/* Breadcrumb — trail comes from the server: Hjem → Produkter|Tilbehør → title */}
+        <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+          <Breadcrumbs items={breadcrumbs} />
         </div>
 
         {/* BUY SECTION

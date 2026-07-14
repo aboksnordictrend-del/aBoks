@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 import { readdirSync } from 'fs'
 import { join } from 'path'
-import { getProducts } from '@/lib/payload'
+import { getAccessories, getProducts } from '@/lib/payload'
 import { getTotalPages as getInspirasjonTotalPages } from './(frontend)/inspirasjon/_data'
 
 export const revalidate = 3600
@@ -11,6 +11,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
 const STATIC_PAGES: MetadataRoute.Sitemap = [
   { url: BASE_URL, changeFrequency: 'daily', priority: 1 },
   { url: `${BASE_URL}/produkter`, changeFrequency: 'daily', priority: 0.9 },
+  { url: `${BASE_URL}/tilbehor`, changeFrequency: 'weekly', priority: 0.6 },
   { url: `${BASE_URL}/slik-fungerer-det`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${BASE_URL}/inspirasjon`, changeFrequency: 'weekly', priority: 0.8 },
   { url: `${BASE_URL}/vanlige-sporsmal`, changeFrequency: 'monthly', priority: 0.7 },
@@ -32,12 +33,15 @@ function getArticleSlugs(): string[] {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, articleSlugs] = await Promise.all([
+  const [products, accessories, articleSlugs] = await Promise.all([
     getProducts(),
+    getAccessories(),
     Promise.resolve(getArticleSlugs()),
   ])
 
-  const productPages: MetadataRoute.Sitemap = products.map(p => ({
+  // Accessories are products on the same /produkter/[slug] route, so they belong in the
+  // same list of detail pages.
+  const productPages: MetadataRoute.Sitemap = [...products, ...accessories].map(p => ({
     url: `${BASE_URL}/produkter/${p.slug}`,
     lastModified: new Date(p.updatedAt),
     changeFrequency: 'weekly',
