@@ -370,6 +370,10 @@ export interface Order {
  */
 export interface Customer {
   id: number;
+  /**
+   * Genereres automatisk fra fornavn og etternavn (e-post som reserve).
+   */
+  displayName?: string | null;
   email: string;
   firstName?: string | null;
   lastName?: string | null;
@@ -674,6 +678,7 @@ export interface OrdersSelect<T extends boolean = true> {
  * via the `definition` "customers_select".
  */
 export interface CustomersSelect<T extends boolean = true> {
+  displayName?: T;
   email?: T;
   firstName?: T;
   lastName?: T;
