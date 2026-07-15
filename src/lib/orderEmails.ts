@@ -4,9 +4,11 @@ import {
   createOrderConfirmationEmail,
   createAdminOrderEmail,
   createOrderShippedEmail,
+  createOrderDeliveredEmail,
   type EmailTemplate,
 } from '@/emails'
 import { getEmailSendTimeoutMs, verifyMailTransport } from './mailTransport'
+import { generateReceiptPdf } from './receiptPdf'
 
 export const ADMIN_EMAIL = 'post@aboks.no'
 
@@ -16,7 +18,7 @@ export const SKIP_ORDER_EMAIL_HOOKS = 'skipOrderEmailHooks'
 /** Set on req.context by the beforeChange claim, read by the afterChange sender. */
 export const CLAIMED_EMAILS = 'claimedOrderEmails'
 
-export type ClaimableEmail = 'confirmation' | 'admin' | 'shipped'
+export type ClaimableEmail = 'confirmation' | 'admin' | 'shipped' | 'receipt'
 
 export type OrderEmailContext = {
   [SKIP_ORDER_EMAIL_HOOKS]?: boolean
@@ -53,6 +55,7 @@ type ClaimInput = {
   confirmationEmailSentAt?: string | null
   adminEmailSentAt?: string | null
   shippedEmailSentAt?: string | null
+  receiptEmailSentAt?: string | null
 }
 
 /**
@@ -78,6 +81,16 @@ export function emailsToClaim(input: ClaimInput): ClaimableEmail[] {
     input.previousStatus !== 'shipped'
 
   if (justShipped && !input.shippedEmailSentAt) claims.push('shipped')
+
+  // The receipt email fires once, on the first transition into 'delivered'. Like the
+  // shipped email it is update-only and gated by its sentinel, so re-saving an order that
+  // is already delivered — or moving away and back — never resends it.
+  const justDelivered =
+    input.operation === 'update' &&
+    input.nextStatus === 'delivered' &&
+    input.previousStatus !== 'delivered'
+
+  if (justDelivered && !input.receiptEmailSentAt) claims.push('receipt')
 
   return claims
 }
@@ -116,8 +129,6 @@ export function buildOrderEmail(
   if (!customerEmail) return null
 
   const customerName = customerNameOf(doc)
-  const items = itemsOf(doc)
-  const shippingAddress = shippingAddressOf(doc)
 
   if (kind === 'confirmation') {
     return {
@@ -126,11 +137,11 @@ export function buildOrderEmail(
         customerName,
         customerEmail,
         orderNumber: doc.orderNumber,
-        items,
+        items: itemsOf(doc),
         subtotal: doc.subtotal,
         shipping: doc.shipping ?? 0,
         total: doc.total,
-        shippingAddress,
+        shippingAddress: shippingAddressOf(doc),
       }),
     }
   }
@@ -143,23 +154,34 @@ export function buildOrderEmail(
         customerEmail,
         customerPhone: doc.customerInfo?.phone ?? undefined,
         orderNumber: doc.orderNumber,
-        items,
+        items: itemsOf(doc),
         subtotal: doc.subtotal,
         shipping: doc.shipping ?? 0,
         total: doc.total,
-        shippingAddress,
+        shippingAddress: shippingAddressOf(doc),
+      }),
+    }
+  }
+
+  if (kind === 'shipped') {
+    return {
+      to: customerEmail,
+      template: createOrderShippedEmail({
+        customerName,
+        customerEmail,
+        orderNumber: doc.orderNumber,
+        items: itemsOf(doc),
+        total: doc.total,
       }),
     }
   }
 
   return {
     to: customerEmail,
-    template: createOrderShippedEmail({
-      customerName,
+    template: createOrderDeliveredEmail({
+      firstName: doc.customerInfo?.firstName?.trim() || customerName,
       customerEmail,
       orderNumber: doc.orderNumber,
-      items,
-      total: doc.total,
     }),
   }
 }
@@ -252,6 +274,30 @@ export async function sendOrderEmail(
     return result
   }
 
+  // The receipt email carries a generated PDF. Build it *before* the send: a PDF failure
+  // must abort the send so the claim is released and nothing is ever marked as sent.
+  let attachments: Array<{ filename: string; content: Buffer; contentType: string }> | undefined
+  if (kind === 'receipt') {
+    try {
+      const pdf = await generateReceiptPdf(doc)
+      attachments = [
+        {
+          filename: `Kvittering-${doc.orderNumber}.pdf`,
+          content: Buffer.from(pdf),
+          contentType: 'application/pdf',
+        },
+      ]
+    } catch (err) {
+      const result = {
+        ok: false as const,
+        error: `PDF generation failed: ${err instanceof Error ? err.message : String(err)}`,
+        durationMs: Date.now() - startedAt,
+      }
+      logOp(`send:${kind}`, fields, result)
+      return result
+    }
+  }
+
   // Fire-and-forget diagnostic; resolves from cache after the first call.
   void verifyMailTransport()
 
@@ -259,7 +305,7 @@ export async function sendOrderEmail(
 
   try {
     const sent = await Promise.race([
-      payload.sendEmail({ to: built.to, ...built.template }),
+      payload.sendEmail({ to: built.to, ...built.template, ...(attachments ? { attachments } : {}) }),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new EmailTimeoutError(timeoutMs)), timeoutMs)
       }),
@@ -294,6 +340,7 @@ const SENT_AT_FIELD = {
   confirmation: 'confirmationEmailSentAt',
   admin: 'adminEmailSentAt',
   shipped: 'shippedEmailSentAt',
+  receipt: 'receiptEmailSentAt',
 } as const
 
 /**
@@ -303,11 +350,19 @@ const SENT_AT_FIELD = {
  */
 export function outcomeData(kind: ClaimableEmail, result: SendResult): Partial<Order> | null {
   if (result.ok) {
-    if (kind !== 'shipped') return null
-    return {
-      shippedEmailMessageId: result.messageId ?? null,
-      shippedEmailError: null,
-    } as Partial<Order>
+    if (kind === 'shipped') {
+      return {
+        shippedEmailMessageId: result.messageId ?? null,
+        shippedEmailError: null,
+      } as Partial<Order>
+    }
+    if (kind === 'receipt') {
+      return {
+        receiptEmailMessageId: result.messageId ?? null,
+        receiptEmailError: null,
+      } as Partial<Order>
+    }
+    return null
   }
 
   // Release the claim so a retry is possible; never mark a failed send as sent.
@@ -315,6 +370,10 @@ export function outcomeData(kind: ClaimableEmail, result: SendResult): Partial<O
   if (kind === 'shipped') {
     data.shippedEmailMessageId = null
     data.shippedEmailError = result.error.slice(0, 500)
+  }
+  if (kind === 'receipt') {
+    data.receiptEmailMessageId = null
+    data.receiptEmailError = result.error.slice(0, 500)
   }
   return data as Partial<Order>
 }

@@ -210,6 +210,24 @@ export const Orders: CollectionConfig = {
       type: 'textarea',
       admin: { hidden: true },
     },
+    // Receipt (Kvittering) email, sent once on the transition into 'delivered'.
+    // receiptEmailSentAt is the idempotency sentinel — set atomically with the status
+    // change, cleared again only if the send fails, so it is safe to keep read-only.
+    {
+      name: 'receiptEmailSentAt',
+      type: 'date',
+      admin: { hidden: true },
+    },
+    {
+      name: 'receiptEmailMessageId',
+      type: 'text',
+      admin: { hidden: true },
+    },
+    {
+      name: 'receiptEmailError',
+      type: 'textarea',
+      admin: { hidden: true },
+    },
   ],
   hooks: {
     beforeChange: [claimOrderEmails],

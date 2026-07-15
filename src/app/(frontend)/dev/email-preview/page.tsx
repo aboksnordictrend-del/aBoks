@@ -3,8 +3,14 @@ import {
   createOrderConfirmationEmail,
   createAdminOrderEmail,
   createOrderShippedEmail,
+  createOrderDeliveredEmail,
 } from '@/emails'
-import type { OrderConfirmationData, AdminOrderData, OrderShippedData } from '@/emails'
+import type {
+  OrderConfirmationData,
+  AdminOrderData,
+  OrderShippedData,
+  OrderDeliveredData,
+} from '@/emails'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,13 +46,32 @@ const MOCK_SHIPPED: OrderShippedData = {
   total: MOCK_ORDER.total,
 }
 
+// The delivered/receipt email only needs the greeting name, email and order number, so it
+// reuses the existing order mock rather than duplicating it.
+const MOCK_DELIVERED: OrderDeliveredData = {
+  firstName: MOCK_ORDER.customerName,
+  customerEmail: MOCK_ORDER.customerEmail,
+  orderNumber: MOCK_ORDER.orderNumber,
+}
+
 export default function EmailPreviewPage() {
   if (process.env.NODE_ENV === 'production') return notFound()
 
-  const templates = [
+  const templates: Array<{
+    id: string
+    label: string
+    email: ReturnType<typeof createOrderConfirmationEmail>
+    pdfHref?: string
+  }> = [
     { id: 'order-confirmation', label: 'Order Confirmation', email: createOrderConfirmationEmail(MOCK_ORDER) },
     { id: 'admin-order', label: 'Admin Order', email: createAdminOrderEmail(MOCK_ADMIN) },
     { id: 'order-shipped', label: 'Order Shipped', email: createOrderShippedEmail(MOCK_SHIPPED) },
+    {
+      id: 'order-delivered',
+      label: 'Ordre levert / Kvittering',
+      email: createOrderDeliveredEmail(MOCK_DELIVERED),
+      pdfHref: '/dev/receipt-preview',
+    },
   ]
 
   return (
@@ -64,7 +89,7 @@ export default function EmailPreviewPage() {
         </div>
 
         <div className="flex flex-col gap-12">
-          {templates.map(({ id, label, email }) => (
+          {templates.map(({ id, label, email, pdfHref }) => (
             <div key={id} className="overflow-hidden rounded-xl bg-white shadow-sm">
 
               <div className="flex items-baseline gap-4 border-b border-gray-100 px-6 py-4">
@@ -72,6 +97,16 @@ export default function EmailPreviewPage() {
                 <span className="text-sm text-gray-400">
                   Subject: <strong className="text-[#1a1d17]">{email.subject}</strong>
                 </span>
+                {pdfHref && (
+                  <a
+                    href={pdfHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto rounded bg-[#1a1d17] px-3 py-1.5 text-[12px] font-bold text-[#faf6ee] hover:opacity-90"
+                  >
+                    Åpne PDF-kvittering
+                  </a>
+                )}
               </div>
 
               <div className="px-6 pt-4 pb-2">

@@ -44,6 +44,13 @@ export interface OrderShippedData {
   total: number
 }
 
+export interface OrderDeliveredData {
+  /** First name for the greeting ("Hei [FORNAVN]"), falling back to the full name. */
+  firstName: string
+  customerEmail: string
+  orderNumber: string
+}
+
 export interface EmailTemplate {
   subject: string
   html: string

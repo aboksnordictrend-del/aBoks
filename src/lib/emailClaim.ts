@@ -7,6 +7,7 @@ const COLUMN: Record<ClaimableEmail, string> = {
   confirmation: 'confirmation_email_sent_at',
   admin: 'admin_email_sent_at',
   shipped: 'shipped_email_sent_at',
+  receipt: 'receipt_email_sent_at',
 }
 
 type Executor = { execute: (query: unknown) => Promise<unknown> }

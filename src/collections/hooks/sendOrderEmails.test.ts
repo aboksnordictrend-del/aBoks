@@ -5,6 +5,8 @@ import { claimOrderEmails, sendOrderEmails } from './sendOrderEmails'
 import { emailsToClaim } from '@/lib/orderEmails'
 
 process.env.EMAIL_SEND_TIMEOUT_MS = '150'
+// Disable the logo network fetch so receipt-PDF generation is deterministic and offline.
+process.env.RECEIPT_LOGO_URL = ''
 
 // Keep the structured logs out of the test output.
 beforeEach(() => {
@@ -19,6 +21,7 @@ const COLUMN_TO_FIELD: Record<string, keyof Order> = {
   confirmation_email_sent_at: 'confirmationEmailSentAt',
   admin_email_sent_at: 'adminEmailSentAt',
   shipped_email_sent_at: 'shippedEmailSentAt',
+  receipt_email_sent_at: 'receiptEmailSentAt',
 }
 
 const baseOrder = (overrides: Partial<Order> = {}): Order =>
@@ -36,6 +39,9 @@ const baseOrder = (overrides: Partial<Order> = {}): Order =>
     shippedEmailSentAt: null,
     shippedEmailMessageId: null,
     shippedEmailError: null,
+    receiptEmailSentAt: null,
+    receiptEmailMessageId: null,
+    receiptEmailError: null,
     updatedAt: '2026-07-01T10:00:00.000Z',
     createdAt: '2026-07-01T10:00:00.000Z',
     ...overrides,
@@ -173,6 +179,39 @@ describe('emailsToClaim', () => {
       'admin',
     ])
   })
+
+  it('claims the receipt email on confirmed → delivered', () => {
+    assert.deepEqual(
+      emailsToClaim({ operation: 'update', previousStatus: 'confirmed', nextStatus: 'delivered' }),
+      ['receipt'],
+    )
+  })
+
+  it('claims the receipt email on shipped → delivered', () => {
+    assert.deepEqual(
+      emailsToClaim({ operation: 'update', previousStatus: 'shipped', nextStatus: 'delivered' }),
+      ['receipt'],
+    )
+  })
+
+  it('claims nothing when the order is already delivered', () => {
+    assert.deepEqual(
+      emailsToClaim({ operation: 'update', previousStatus: 'delivered', nextStatus: 'delivered' }),
+      [],
+    )
+  })
+
+  it('claims nothing on delivered when the receipt was already sent', () => {
+    assert.deepEqual(
+      emailsToClaim({
+        operation: 'update',
+        previousStatus: 'confirmed',
+        nextStatus: 'delivered',
+        receiptEmailSentAt: '2026-07-01T10:00:00.000Z',
+      }),
+      [],
+    )
+  })
 })
 
 describe('status change to shipped', () => {
@@ -210,6 +249,77 @@ describe('status change to shipped', () => {
     await h.save({ status: 'shipped' })
 
     assert.equal(h.sent.length, 1)
+  })
+})
+
+describe('status change to delivered (receipt email)', () => {
+  it('sends one receipt email with a PDF attachment on confirmed → delivered', async () => {
+    const attachmentsSeen: unknown[] = []
+    const h = harness(async (msg) => {
+      attachmentsSeen.push((msg as { attachments?: unknown }).attachments)
+      return { messageId: '<receipt@zoho>' }
+    })
+    await h.save({ status: 'delivered' })
+
+    assert.equal(h.sent.length, 1)
+    assert.equal(h.sent[0].to, 'kunde@example.com')
+    assert.equal(h.sent[0].subject, 'Kvittering for ordre #AB-1001')
+    assert.ok(h.row.receiptEmailSentAt, 'the claim lands in the same UPDATE as the status')
+    assert.equal(h.row.receiptEmailError, null)
+    assert.equal(h.row.receiptEmailMessageId, '<receipt@zoho>')
+
+    const attachments = attachmentsSeen[0] as Array<{ filename: string; contentType: string }>
+    assert.ok(Array.isArray(attachments) && attachments.length === 1)
+    assert.equal(attachments[0].filename, 'Kvittering-AB-1001.pdf')
+    assert.equal(attachments[0].contentType, 'application/pdf')
+  })
+
+  it('sends the receipt on shipped → delivered too', async () => {
+    const h = harness(okSend, { status: 'shipped', shippedEmailSentAt: '2026-07-02T10:00:00.000Z' })
+    await h.save({ status: 'delivered' })
+
+    assert.equal(h.sent.length, 1)
+    assert.ok(h.row.receiptEmailSentAt)
+  })
+
+  it('does not resend when an already-delivered order is saved again', async () => {
+    const h = harness(okSend)
+    await h.save({ status: 'delivered' })
+    await h.save({ notes: 'Levert på døra' })
+    await h.save({ status: 'delivered' })
+
+    assert.equal(h.sent.length, 1, 'ordinary saves never resend the receipt')
+  })
+
+  it('does not resend on delivered → other → delivered once the receipt is recorded', async () => {
+    const h = harness(okSend)
+    await h.save({ status: 'delivered' })
+    assert.equal(h.sent.length, 1)
+
+    await h.save({ status: 'cancelled' }) // moved away (no email) — sentinel stays set
+    await h.save({ status: 'delivered' }) // and back again
+
+    assert.equal(h.sent.length, 1, 'receiptEmailSentAt prevents a second receipt')
+  })
+
+  it('sends only one receipt when Save is clicked twice concurrently', async () => {
+    const h = harness(okSend)
+    await Promise.all([h.save({ status: 'delivered' }), h.save({ status: 'delivered' })])
+
+    assert.equal(h.sent.length, 1, 'the compare-and-set lets exactly one save win')
+    assert.ok(h.row.receiptEmailSentAt)
+  })
+
+  it('an SMTP error on the receipt is recorded and does not fail the save', async () => {
+    const failing: SendEmailFn = async () => {
+      throw new Error('535 Authentication Failed')
+    }
+    const h = harness(failing)
+    await h.save({ status: 'delivered' })
+
+    assert.equal(h.row.status, 'delivered')
+    assert.equal(h.row.receiptEmailSentAt, null, 'a failed send is never marked as sent')
+    assert.match(String(h.row.receiptEmailError), /Authentication Failed/)
   })
 })
 

@@ -18,6 +18,7 @@ const SENT_AT_DATA_FIELD = {
   confirmation: 'confirmationEmailSentAt',
   admin: 'adminEmailSentAt',
   shipped: 'shippedEmailSentAt',
+  receipt: 'receiptEmailSentAt',
 } as const
 
 /**
@@ -75,6 +76,11 @@ export const claimOrderEmails: CollectionBeforeChangeHook<Order> = async ({
   if (granted.includes('shipped')) {
     data.shippedEmailError = null
     data.shippedEmailMessageId = null
+  }
+
+  if (granted.includes('receipt')) {
+    data.receiptEmailError = null
+    data.receiptEmailMessageId = null
   }
 
   writeClaims(req, granted)
