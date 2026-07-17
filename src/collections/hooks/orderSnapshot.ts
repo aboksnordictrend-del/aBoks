@@ -16,6 +16,10 @@ import { VAT_RATE_PERCENT } from '@/lib/tax'
 // variant, following it to its parent Product, and reading that Product's costPrice.
 // If no Product/Kostpris can be resolved, `unitCost` is left null so the dashboard keeps
 // flagging the line as estimated (never silently 0).
+//
+// The same variant→product lookup also backfills the line's `product` relationship on
+// create: Kustom only sends a variant reference, so without this the order line would
+// store `variant` but leave `product` empty. Both are now always persisted.
 
 interface OrderLine {
   product?: number | { id: number } | null
@@ -40,8 +44,18 @@ async function costFromProduct(req: PayloadRequest, productId: number): Promise<
   return typeof product?.costPrice === 'number' ? product.costPrice : null
 }
 
-/** Follow a variant to its parent Product and read that Product's costPrice. */
-async function costViaVariant(req: PayloadRequest, variantId: number): Promise<number | null> {
+/**
+ * Determine the parent Product id for a create-time line, backfilling `line.product`
+ * from the variant's parent when the line only carries a variant. Both the `product` and
+ * `variant` relationships end up persisted. Returns the parent product id (or null).
+ */
+async function resolveParentProduct(req: PayloadRequest, line: OrderLine): Promise<number | null> {
+  const existing = idOf(line.product)
+  if (existing != null) return existing
+
+  const variantId = idOf(line.variant)
+  if (variantId == null) return null
+
   const variant = await req.payload.findByID({
     collection: 'product-variants',
     id: variantId,
@@ -50,27 +64,26 @@ async function costViaVariant(req: PayloadRequest, variantId: number): Promise<n
   const productId = idOf(variant?.product as OrderLine['product'])
   if (productId == null) {
     req.payload.logger.warn(
-      `[orderSnapshot] variant ${variantId} has no parent product — unitCost left estimated`,
+      `[orderSnapshot] variant ${variantId} has no parent product — product left empty, unitCost estimated`,
     )
     return null
   }
-  return costFromProduct(req, productId)
+  line.product = productId // always persist both product and variant
+  return productId
 }
 
-/** Resolve unit cost from the parent Product; null when no Kostpris is configured. */
-async function resolveUnitCost(req: PayloadRequest, line: OrderLine): Promise<number | null> {
+/** Backfill `line.product` and resolve `unitCost` from the parent Product. */
+async function applyCreateSnapshot(req: PayloadRequest, line: OrderLine): Promise<number | null> {
   try {
-    const variantId = idOf(line.variant)
-    if (variantId != null) return await costViaVariant(req, variantId)
-    const productId = idOf(line.product)
-    if (productId != null) return await costFromProduct(req, productId)
+    const productId = await resolveParentProduct(req, line)
+    return productId != null ? await costFromProduct(req, productId) : null
   } catch (err) {
-    // Never block order creation on a cost lookup — leave it estimated.
+    // Never block order creation on a lookup — leave cost estimated.
     req.payload.logger.error(
-      `[orderSnapshot] cost lookup failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      `[orderSnapshot] snapshot resolution failed: ${err instanceof Error ? err.message : 'unknown'}`,
     )
+    return null
   }
-  return null
 }
 
 /** lineCost = unitCost × quantity; lineProfit = (lineTotal ex-VAT) − lineCost. */
@@ -89,10 +102,10 @@ export const snapshotOrderCosts: CollectionBeforeChangeHook = async ({ data, ope
 
   for (const line of lines as OrderLine[]) {
     if (operation === 'create') {
-      // Server-formed snapshot: the orders-create endpoint is public (checkout), so
-      // cost/VAT are always taken from live Product/Variant data and the tax source,
+      // Server-formed snapshot: the orders-create endpoint is public (checkout), so the
+      // parent product, cost and VAT are always taken from live data and the tax source,
       // never from client-supplied values. null unitCost = no Kostpris configured.
-      line.unitCost = await resolveUnitCost(req, line)
+      line.unitCost = await applyCreateSnapshot(req, line)
       line.vatRate = VAT_RATE_PERCENT
     }
     const derived = deriveLine(line)
