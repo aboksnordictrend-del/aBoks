@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { computeProductCostPrice } from './hooks/productCost'
+import { cascadeVariantDisplayNames } from './hooks/cascadeVariantDisplayNames'
 
 async function revalidateProduct(slug: string) {
   const { revalidatePath, revalidateTag } = await import('next/cache')
@@ -20,6 +21,7 @@ export const Products: CollectionConfig = {
       async ({ doc }: { doc: any }) => {
         await revalidateProduct(doc.slug)
       },
+      cascadeVariantDisplayNames,
     ],
     afterDelete: [
       async ({ doc }: { doc: any }) => {

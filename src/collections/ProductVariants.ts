@@ -1,8 +1,10 @@
 import type { CollectionConfig } from 'payload'
+import { computeVariantDisplayName } from './hooks/variantDisplayName'
 
 export const ProductVariants: CollectionConfig = {
   slug: 'product-variants',
   hooks: {
+    beforeChange: [computeVariantDisplayName],
     afterChange: [
       async () => {
         const { revalidatePath, revalidateTag } = await import('next/cache')
@@ -15,9 +17,10 @@ export const ProductVariants: CollectionConfig = {
     ],
   },
   admin: {
-    useAsTitle: 'name',
+    useAsTitle: 'displayName',
     group: 'Butikk',
-    defaultColumns: ['name', 'colorHex', 'sku', 'inventory', 'product'],
+    defaultColumns: ['displayName', 'colorHex', 'sku', 'inventory', 'product'],
+    listSearchableFields: ['displayName', 'sku', 'name'],
     description: 'Fargevarianter for produkter.',
   },
   access: {
@@ -27,6 +30,15 @@ export const ProductVariants: CollectionConfig = {
   delete: () => true,
 },
   fields: [
+    {
+      name: 'displayName',
+      type: 'text',
+      label: 'Visningsnavn',
+      admin: {
+        readOnly: true,
+        description: 'Genereres automatisk: «Produktnavn – Fargenavn». Kan ikke redigeres manuelt.',
+      },
+    },
     {
       name: 'product',
       type: 'relationship',

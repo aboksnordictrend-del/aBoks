@@ -311,6 +311,10 @@ export interface Media {
  */
 export interface ProductVariant {
   id: number;
+  /**
+   * Genereres automatisk: «Produktnavn – Fargenavn». Kan ikke redigeres manuelt.
+   */
+  displayName?: string | null;
   product: number | Product;
   /**
    * F.eks. Olivengrønn, Mørk blå, Sort
@@ -627,6 +631,7 @@ export interface ProductsSelect<T extends boolean = true> {
  * via the `definition` "product-variants_select".
  */
 export interface ProductVariantsSelect<T extends boolean = true> {
+  displayName?: T;
   product?: T;
   name?: T;
   colorHex?: T;
