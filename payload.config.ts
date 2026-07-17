@@ -13,6 +13,7 @@ import { ProductVariants } from './src/collections/ProductVariants'
 import { Media } from './src/collections/Media'
 import { Orders } from './src/collections/Orders'
 import { Customers } from './src/collections/Customers'
+import { analyticsEndpoint } from './src/endpoints/analytics'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -44,8 +45,22 @@ export default buildConfig({
       titleSuffix: '— aBoks',
       description: 'aBoks Admin Dashboard',
     },
+    components: {
+      // Custom analytics view at /admin/dashboard. A distinct key (`analyse`) — NOT
+      // `dashboard` — so Payload's built-in dashboard at /admin is left untouched.
+      views: {
+        analyse: {
+          Component: '@/components/admin/analytics/DashboardView#default',
+          path: '/dashboard',
+        },
+      },
+      // Adds the "Analyse" entry to the admin sidebar.
+      afterNavLinks: ['@/components/admin/analytics/NavLink#default'],
+    },
   },
   collections: [Users, Products, ProductVariants, Media, Orders, Customers],
+  // Server-side, auth-guarded analytics aggregation → /api/analytics.
+  endpoints: [analyticsEndpoint],
   // Plugin must always be registered so withPayload includes VercelBlobClientUploadHandler
   // in the importMap at build time. BLOB_READ_WRITE_TOKEN is a runtime-only Vercel env var
   // and is not available during `next build`, so a conditional plugins array would produce

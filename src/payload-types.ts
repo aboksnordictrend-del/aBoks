@@ -175,6 +175,23 @@ export interface Product {
    */
   price: number;
   /**
+   * Legg til kostnadsposter (uten MVA). Total kostpris regnes ut automatisk som summen.
+   */
+  costItems?:
+    | {
+        name: string;
+        /**
+         * Kostnad i NOK, uten MVA.
+         */
+        amount: number;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Regnes automatisk ut som summen av alle kostnadsposter (kr, uten MVA).
+   */
+  costPrice?: number | null;
+  /**
    * Første bilde brukes som hovedbilde.
    */
   images?:
@@ -347,12 +364,44 @@ export interface Order {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    /**
+     * Kostpris per enhet på bestillingstidspunktet (uten MVA). Fylles automatisk fra produkt/variant. Kan rettes manuelt.
+     */
+    unitCost?: number | null;
+    /**
+     * MVA-sats lagret da ordren ble opprettet. Brukes til å regne omsetning uten MVA.
+     */
+    vatRate?: number | null;
+    /**
+     * Beregnes automatisk: kostpris × antall.
+     */
+    lineCost?: number | null;
+    /**
+     * Beregnes automatisk: linjesum uten MVA − linjekostnad.
+     */
+    lineProfit?: number | null;
     id?: string | null;
   }[];
   subtotal: number;
   shipping?: number | null;
   total: number;
+  /**
+   * Bedriftens reelle fraktkostnad for denne ordren. Kan skille seg fra frakten kunden betalte.
+   */
+  actualShippingCost?: number | null;
+  /**
+   * Gebyr til betalingsleverandøren for denne ordren.
+   */
+  paymentFee?: number | null;
+  /**
+   * Andre variable kostnader knyttet til ordren (emballasje, retur o.l.).
+   */
+  extraCosts?: number | null;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  /**
+   * Settes automatisk når betalingen bekreftes. Brukes som salgsdato i analysen.
+   */
+  paidAt?: string | null;
   notes?: string | null;
   confirmationEmailSentAt?: string | null;
   adminEmailSentAt?: string | null;
@@ -515,6 +564,14 @@ export interface ProductsSelect<T extends boolean = true> {
   tagline?: T;
   description?: T;
   price?: T;
+  costItems?:
+    | T
+    | {
+        name?: T;
+        amount?: T;
+        id?: T;
+      };
+  costPrice?: T;
   images?:
     | T
     | {
@@ -661,12 +718,20 @@ export interface OrdersSelect<T extends boolean = true> {
         quantity?: T;
         unitPrice?: T;
         lineTotal?: T;
+        unitCost?: T;
+        vatRate?: T;
+        lineCost?: T;
+        lineProfit?: T;
         id?: T;
       };
   subtotal?: T;
   shipping?: T;
   total?: T;
+  actualShippingCost?: T;
+  paymentFee?: T;
+  extraCosts?: T;
   status?: T;
+  paidAt?: T;
   notes?: T;
   confirmationEmailSentAt?: T;
   adminEmailSentAt?: T;

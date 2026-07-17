@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { computeProductCostPrice } from './hooks/productCost'
 
 async function revalidateProduct(slug: string) {
   const { revalidatePath, revalidateTag } = await import('next/cache')
@@ -14,6 +15,7 @@ async function revalidateProduct(slug: string) {
 export const Products: CollectionConfig = {
   slug: 'products',
   hooks: {
+    beforeChange: [computeProductCostPrice],
     afterChange: [
       async ({ doc }: { doc: any }) => {
         await revalidateProduct(doc.slug)
@@ -79,6 +81,53 @@ export const Products: CollectionConfig = {
         step: 10,
         description: 'Pris i norske kroner (eks. 499)',
       },
+    },
+    {
+      type: 'collapsible',
+      label: 'Kostnadsberegning',
+      admin: { initCollapsed: true },
+      fields: [
+        {
+          name: 'costItems',
+          type: 'array',
+          label: 'Kostnader',
+          admin: {
+            description: 'Legg til kostnadsposter (uten MVA). Total kostpris regnes ut automatisk som summen.',
+          },
+          fields: [
+            {
+              name: 'name',
+              type: 'text',
+              label: 'Navn',
+              required: true,
+              maxLength: 120,
+              hooks: {
+                // Trim so " Eske " never counts as content and required rejects blanks.
+                beforeValidate: [({ value }) => (typeof value === 'string' ? value.trim() : value)],
+              },
+              admin: { placeholder: 'F.eks. PLA Matte, Eske, Etikett …' },
+            },
+            {
+              name: 'amount',
+              type: 'number',
+              label: 'Beløp (kr)',
+              required: true,
+              min: 0,
+              admin: { step: 0.5, description: 'Kostnad i NOK, uten MVA.' },
+            },
+          ],
+        },
+        {
+          name: 'costPrice',
+          type: 'number',
+          label: 'Total kostpris',
+          min: 0,
+          admin: {
+            readOnly: true,
+            description: 'Regnes automatisk ut som summen av alle kostnadsposter (kr, uten MVA).',
+          },
+        },
+      ],
     },
     {
       name: 'images',

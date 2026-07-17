@@ -47,6 +47,9 @@ export async function POST(req: NextRequest) {
         id: String(order.id),
         data: {
           status: 'confirmed',
+          // Stamp the payment date once. A replayed webhook keeps the original value,
+          // and a manual status change never reaches this path.
+          paidAt: order.paidAt ?? new Date().toISOString(),
           customerInfo: {
             email: addr?.email ?? '',
             firstName: addr?.given_name ?? '',
@@ -91,6 +94,7 @@ export async function POST(req: NextRequest) {
           shipping,
           total,
           status: 'confirmed',
+          paidAt: new Date().toISOString(),
           customerInfo: {
             email: addr?.email ?? '',
             firstName: addr?.given_name ?? '',

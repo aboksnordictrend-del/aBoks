@@ -3,12 +3,13 @@
 import { createKustomOrder, getKustomOrder } from '@/lib/kustom'
 import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
+import { VAT_RATE_BASIS_POINTS } from '@/lib/tax'
 import type { CartItem } from '@/store/cart'
 
 const FREE_SHIPPING_THRESHOLD = 650
 const SHIPPING_COST = 69
-// Norwegian MVA 25% expressed in Kustom basis points
-const TAX_RATE = 2500
+// Norwegian MVA in Kustom basis points — single source of truth in @/lib/tax.
+const TAX_RATE = VAT_RATE_BASIS_POINTS
 
 function toOere(kr: number): number {
   return Math.round(kr * 100)
