@@ -84,6 +84,54 @@
 }
 .btn:hover { background: var(--theme-elevation-100); }
 
+/* --- Collapsible KPI sections (accordion) --- */
+.accSection { display: flex; flex-direction: column; }
+.accHead {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.3rem 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--theme-text);
+  text-align: left;
+}
+.accChevron { display: inline-flex; color: var(--muted); }
+.accTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.accCount {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--theme-elevation-100);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+}
+.accHead:hover .accTitle,
+.accHead:hover .accChevron { color: var(--theme-text); }
+
+/* Height animation via grid-template-rows 0fr→1fr — smooth, no JS measuring, no reflow jank. */
+.accBody {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 180ms ease;
+}
+.accBodyOpen { grid-template-rows: 1fr; }
+.accBodyInner { overflow: hidden; min-height: 0; }
+.accBodyOpen > .accBodyInner { padding-top: 0.85rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .accBody { transition: none; }
+}
+
 /* --- KPI grid --- */
 .kpiGrid {
   display: grid;
@@ -232,6 +280,64 @@
 }
 .table tbody tr:hover { background: var(--theme-elevation-50); }
 
+.rowClickable { cursor: pointer; }
+.expandCell { display: inline-flex; align-items: center; gap: 0.4rem; }
+.variantCell { display: inline-flex; align-items: center; gap: 0.45rem; padding-left: 1.15rem; }
+.subRow td { background: color-mix(in srgb, var(--theme-elevation-100) 40%, transparent); font-size: 0.8rem; }
+.subRow td:first-child { color: var(--theme-elevation-700); }
+
+/* Columns that collapse on narrow screens. */
+.hideSm { }
+
+/* --- Product × variant matrix (compact) --- */
+.matrixList { display: flex; flex-direction: column; gap: 0.6rem; }
+.matrixRow { display: grid; grid-template-columns: 140px 1fr; gap: 0.6rem; align-items: center; }
+.matrixProduct {
+  font-size: 0.83rem; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.matrixCells { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.matrixCell {
+  display: inline-flex; flex-direction: column; gap: 1px;
+  padding: 0.35rem 0.55rem;
+  border-radius: 7px;
+  border: 1px solid var(--card-border);
+  font-size: 0.82rem;
+  min-width: 84px;
+}
+.matrixCellName { font-size: 0.68rem; color: var(--theme-elevation-700); }
+
+/* --- Marketing (Stage 4) --- */
+.marketingWrap { display: flex; flex-direction: column; gap: 1.25rem; }
+.channelBlock { display: flex; flex-direction: column; gap: 0.75rem; }
+.channelTitle { margin: 0; font-size: 0.95rem; font-weight: 700; }
+.attNote {
+  margin: 0.9rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.4;
+  border-top: 1px dashed var(--card-border);
+  padding-top: 0.7rem;
+}
+
+/* --- Products without sales --- */
+.noSalesList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.noSalesItem {
+  display: flex; flex-wrap: wrap; gap: 0.35rem 1rem;
+  justify-content: space-between; align-items: baseline;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--card-border);
+}
+.noSalesItem:last-child { border-bottom: 0; }
+.noSalesMain { display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; }
+.noSalesName { font-size: 0.85rem; font-weight: 600; }
+.noSalesTag {
+  font-size: 0.68rem; color: var(--muted);
+  border: 1px solid var(--card-border); border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+.noSalesMeta { display: flex; gap: 0.9rem; font-size: 0.75rem; color: var(--muted); }
+
 /* --- Variant bars --- */
 .barList { display: flex; flex-direction: column; gap: 0.7rem; }
 .barRow { display: grid; grid-template-columns: 130px 1fr auto; gap: 0.6rem; align-items: center; }
@@ -293,4 +399,6 @@
 @media (max-width: 640px) {
   .barRow { grid-template-columns: 96px 1fr auto; }
   .kpiValue { font-size: 1.3rem; }
+  .hideSm { display: none; }
+  .matrixRow { grid-template-columns: 1fr; gap: 0.3rem; }
 }

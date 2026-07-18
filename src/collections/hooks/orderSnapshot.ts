@@ -1,4 +1,5 @@
 import type { CollectionBeforeChangeHook, PayloadRequest } from 'payload'
+import type { EconomySetting } from '@/payload-types'
 import { round2 } from '@/lib/analytics/money'
 import { VAT_RATE_PERCENT } from '@/lib/tax'
 
@@ -96,7 +97,91 @@ export function deriveLine(line: OrderLine): { lineCost: number | null; lineProf
   return { lineCost, lineProfit: round2(netLineRevenue - lineCost) }
 }
 
-export const snapshotOrderCosts: CollectionBeforeChangeHook = async ({ data, operation, req }) => {
+// --- Economy-settings automation (paymentFee + actualShippingCost) ---
+//
+// Both are snapshotted ONCE, at order creation, from the admin's Økonomiinnstillinger.
+// They are never recomputed on update, so a manual correction is always preserved. The
+// Kustom fee IS the stored paymentFee (fixedFee + base×percentageFee/100); feeVatRate is
+// NOT added on top — it exists only for an optional net/VAT split in the analytics layer.
+
+interface OrderEconomyData {
+  total?: number | null
+  subtotal?: number | null
+  shipping?: number | null
+  paymentFee?: number | null
+  actualShippingCost?: number | null
+  paymentFeeSource?: 'auto' | 'manual' | null
+}
+
+const numOr0 = (v: unknown): number => (typeof v === 'number' ? v : 0)
+
+async function loadEconomySettings(req: PayloadRequest): Promise<EconomySetting | null> {
+  try {
+    return await req.payload.findGlobal({ slug: 'economy-settings' })
+  } catch {
+    return null // never block order creation on a settings read
+  }
+}
+
+/** Kustom fee = fixedFee + base × percentageFee/100. Null when automation is off. */
+export function computeKustomFee(settings: EconomySetting | null, order: OrderEconomyData): number | null {
+  if (!settings?.kustomEnabled) return null
+  const base =
+    settings.calculateFrom === 'productTotalOnly' ? numOr0(order.subtotal) : numOr0(order.total)
+  return round2(numOr0(settings.fixedFee) + (base * numOr0(settings.percentageFee)) / 100)
+}
+
+/** Standard actual shipping cost. Null when automation is off. */
+export function computeDefaultShipping(settings: EconomySetting | null, order: OrderEconomyData): number | null {
+  if (!settings?.applyDefaultShippingCost) return null
+  // Free shipping to the customer still costs the business — unless explicitly told otherwise.
+  if (numOr0(order.shipping) === 0 && settings.freeShippingStillHasCost === false) return 0
+  return numOr0(settings.defaultShippingCost)
+}
+
+async function applyEconomyAutomation(
+  req: PayloadRequest,
+  data: OrderEconomyData,
+  operation: string,
+  originalDoc: OrderEconomyData | undefined,
+): Promise<void> {
+  if (operation === 'create') {
+    const settings = await loadEconomySettings(req)
+    if (data.paymentFee == null) {
+      const fee = computeKustomFee(settings, data)
+      if (fee != null) {
+        data.paymentFee = fee
+        data.paymentFeeSource = 'auto'
+      }
+    } else {
+      // An explicit fee supplied at creation is treated as a manual value.
+      data.paymentFeeSource = 'manual'
+    }
+    if (data.actualShippingCost == null) {
+      const ship = computeDefaultShipping(settings, data)
+      if (ship != null) data.actualShippingCost = ship
+    }
+    return
+  }
+
+  // Update: never recompute. Only flip the source to 'manual' when the fee was actually
+  // edited by hand — a partial system update (status change) leaves paymentFee undefined
+  // and must not touch the source.
+  if (data.paymentFee !== undefined && originalDoc && data.paymentFee !== originalDoc.paymentFee) {
+    data.paymentFeeSource = 'manual'
+  }
+}
+
+export const snapshotOrderCosts: CollectionBeforeChangeHook = async ({ data, operation, req, originalDoc }) => {
+  if (data) {
+    await applyEconomyAutomation(
+      req,
+      data as OrderEconomyData,
+      operation,
+      originalDoc as OrderEconomyData | undefined,
+    )
+  }
+
   const lines = data?.items
   if (!Array.isArray(lines)) return data
 

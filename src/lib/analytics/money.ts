@@ -49,6 +49,16 @@ export function formatInt(value: number): string {
   return `${neg ? '−' : ''}${groupThousands(String(Math.abs(safe)))}`
 }
 
+/** Decimal number with grouped thousands and nb-NO comma: `2,3` (for e.g. units/order). */
+export function formatDecimal(value: number, decimals = 1): string {
+  const safe = Number.isFinite(value) ? value : 0
+  const neg = safe < 0
+  const fixed = Math.abs(safe).toFixed(decimals)
+  const [intPart, decPart] = fixed.split('.')
+  const grouped = groupThousands(intPart)
+  return `${neg ? '−' : ''}${decPart ? `${grouped},${decPart}` : grouped}`
+}
+
 /**
  * Percentage change from `previous` to `current`, in percent units.
  * Returns null when there is no meaningful baseline (previous = 0), so the UI can

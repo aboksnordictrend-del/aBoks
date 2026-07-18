@@ -206,7 +206,23 @@ export const Orders: CollectionConfig = {
       label: 'Betalingsgebyr (kr)',
       min: 0,
       admin: {
-        description: 'Gebyr til betalingsleverandøren for denne ordren.',
+        description: 'Gebyr til betalingsleverandøren for denne ordren. Beregnes automatisk ved opprettelse hvis aktivert i Økonomiinnstillinger; kan overstyres manuelt.',
+      },
+    },
+    {
+      // Provenance for paymentFee: 'auto' when the snapshot hook computed it at creation,
+      // 'manual' once an admin edits the value. Never recomputed on update.
+      name: 'paymentFeeSource',
+      type: 'select',
+      label: 'Kilde for gebyr',
+      options: [
+        { label: 'Automatisk', value: 'auto' },
+        { label: 'Manuelt', value: 'manual' },
+      ],
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Settes automatisk. «Manuelt» når gebyret er endret for hånd.',
       },
     },
     {

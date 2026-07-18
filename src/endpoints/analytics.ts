@@ -7,7 +7,8 @@
 
 import type { Endpoint, PayloadRequest } from 'payload'
 import { runAnalyticsDetailed, type AnalyticsQuery } from '../lib/analytics/aggregate'
-import { ordersCsv, productsCsv } from '../lib/analytics/csv'
+import { marketingCsv, ordersCsv, productsCsv } from '../lib/analytics/csv'
+import { expenseOverlapsPeriod } from '../lib/analytics/marketing'
 import type { Grouping, PresetKey } from '../lib/analytics/period'
 
 const PRESETS: PresetKey[] = [
@@ -59,6 +60,7 @@ function parseQuery(req: PayloadRequest): AnalyticsQuery {
     customTo,
     paidOnly,
     grouping: groupingRaw as Grouping | undefined,
+    isAdmin: (req.user as { role?: string } | null | undefined)?.role === 'admin',
   }
 }
 
@@ -79,14 +81,31 @@ export const analyticsEndpoint: Endpoint = {
     }
 
     try {
-      const { response, current } = await runAnalyticsDetailed(req.payload, parsed)
+      const { response, current, expenses } = await runAnalyticsDetailed(req.payload, parsed)
 
       const format = (req.query as Record<string, unknown>)?.format
       if (format === 'csv') {
         const type = (req.query as Record<string, unknown>)?.type
-        const isOrders = type === 'orders'
-        const body = isOrders ? ordersCsv(current) : productsCsv(response.products)
-        const filename = `aboks-${isOrders ? 'ordre' : 'produkter'}-${response.period.from.slice(0, 10)}_${response.period.to.slice(0, 10)}.csv`
+        const period = { from: response.period.from, to: response.period.to }
+
+        if (type === 'marketing' && !parsed.isAdmin) {
+          return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
+        }
+
+        let body: string
+        let slug: string
+        if (type === 'orders') {
+          body = ordersCsv(current)
+          slug = 'ordre'
+        } else if (type === 'marketing') {
+          body = marketingCsv(expenses.filter((e) => expenseOverlapsPeriod(e, period)))
+          slug = 'markedsforing'
+        } else {
+          body = productsCsv(response.products, period)
+          slug = 'produkter'
+        }
+
+        const filename = `aboks-${slug}-${period.from.slice(0, 10)}_${period.to.slice(0, 10)}.csv`
         return new Response(body, {
           status: 200,
           headers: {

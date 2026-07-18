@@ -13,6 +13,8 @@ import { ProductVariants } from './src/collections/ProductVariants'
 import { Media } from './src/collections/Media'
 import { Orders } from './src/collections/Orders'
 import { Customers } from './src/collections/Customers'
+import { MarketingExpenses } from './src/collections/MarketingExpenses'
+import { EconomySettings } from './src/globals/EconomySettings'
 import { analyticsEndpoint } from './src/endpoints/analytics'
 
 const filename = fileURLToPath(import.meta.url)
@@ -58,7 +60,8 @@ export default buildConfig({
       afterNavLinks: ['@/components/admin/analytics/NavLink#default'],
     },
   },
-  collections: [Users, Products, ProductVariants, Media, Orders, Customers],
+  collections: [Users, Products, ProductVariants, Media, Orders, Customers, MarketingExpenses],
+  globals: [EconomySettings],
   // Server-side, auth-guarded analytics aggregation → /api/analytics.
   endpoints: [analyticsEndpoint],
   // Plugin must always be registered so withPayload includes VercelBlobClientUploadHandler

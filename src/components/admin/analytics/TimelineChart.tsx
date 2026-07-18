@@ -10,42 +10,69 @@ import {
   YAxis,
 } from 'recharts'
 import type { TimelinePoint } from '../../../lib/analytics/types'
-import { formatInt, formatNOK } from '../../../lib/analytics/money'
+import { formatInt, formatNOK, formatPercent } from '../../../lib/analytics/money'
 
-export type ChartMetric = 'revenue' | 'orders' | 'grossProfit'
+export type ChartMetric = 'revenue' | 'orders' | 'unitsSold' | 'grossProfit' | 'marginPercent'
+
+type Unit = 'money' | 'int' | 'percent'
 
 // Single-series chart → no legend needed; the title/toggle names the series.
-const METRICS: Record<ChartMetric, { label: string; color: string; money: boolean }> = {
-  revenue: { label: 'Omsetning', color: '#3b82f6', money: true },
-  orders: { label: 'Ordre', color: '#8b5cf6', money: false },
-  grossProfit: { label: 'Bruttofortjeneste', color: '#22c55e', money: true },
+export const CHART_METRICS: Record<ChartMetric, { label: string; color: string; unit: Unit }> = {
+  revenue: { label: 'Omsetning', color: '#3b82f6', unit: 'money' },
+  orders: { label: 'Ordre', color: '#8b5cf6', unit: 'int' },
+  unitsSold: { label: 'Solgte enheter', color: '#0ea5e9', unit: 'int' },
+  grossProfit: { label: 'Bruttofortjeneste', color: '#22c55e', unit: 'money' },
+  marginPercent: { label: 'Margin', color: '#14b8a6', unit: 'percent' },
+}
+
+function fmt(value: number, unit: Unit): string {
+  if (unit === 'money') return formatNOK(value)
+  if (unit === 'percent') return formatPercent(value)
+  return formatInt(value)
 }
 
 function TooltipBox({
   active,
   payload,
-  money,
+  unit,
 }: {
   active?: boolean
   payload?: { value: number; payload: TimelinePoint }[]
-  money: boolean
+  unit: Unit
 }) {
   if (!active || !payload?.length) return null
-  const point = payload[0]
+  const p = payload[0].payload
+  const value = payload[0].value
+  const rows: [string, string][] = [
+    ['Ordre', formatInt(p.orders)],
+    ['Enheter', formatInt(p.unitsSold)],
+    ['Omsetning', formatNOK(p.revenue)],
+    ['Fortjeneste', formatNOK(p.grossProfit)],
+    ['Margin', formatPercent(p.marginPercent)],
+  ]
   return (
     <div
       style={{
         background: 'var(--theme-elevation-0)',
         border: '1px solid var(--theme-elevation-150)',
         borderRadius: 6,
-        padding: '0.5rem 0.7rem',
-        fontSize: '0.78rem',
+        padding: '0.55rem 0.75rem',
+        fontSize: '0.76rem',
         color: 'var(--theme-text)',
         boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+        minWidth: 150,
       }}
     >
-      <div style={{ opacity: 0.65, marginBottom: 2 }}>{point.payload.label}</div>
-      <strong>{money ? formatNOK(point.value) : formatInt(point.value)}</strong>
+      <div style={{ opacity: 0.65, marginBottom: 4 }}>{p.label}</div>
+      <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 5 }}>{fmt(value, unit)}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1px 10px', opacity: 0.85 }}>
+        {rows.map(([k, v]) => (
+          <div key={k} style={{ display: 'contents' }}>
+            <span style={{ opacity: 0.7 }}>{k}</span>
+            <span style={{ textAlign: 'right' }}>{v}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -57,7 +84,7 @@ export default function TimelineChart({
   data: TimelinePoint[]
   metric: ChartMetric
 }) {
-  const cfg = METRICS[metric]
+  const cfg = CHART_METRICS[metric]
   const gradientId = `grad-${metric}`
 
   return (
@@ -82,14 +109,14 @@ export default function TimelineChart({
           axisLine={false}
           tickLine={false}
           width={54}
-          tickFormatter={(v: number) => (cfg.money ? formatNOK(v) : formatInt(v))}
+          tickFormatter={(v: number) => fmt(v, cfg.unit)}
         />
         <Tooltip
           content={(props) => (
             <TooltipBox
               active={props.active}
               payload={props.payload as { value: number; payload: TimelinePoint }[] | undefined}
-              money={cfg.money}
+              unit={cfg.unit}
             />
           )}
           cursor={{ stroke: cfg.color, strokeWidth: 1.5, strokeDasharray: '4 4', strokeOpacity: 0.7 }}

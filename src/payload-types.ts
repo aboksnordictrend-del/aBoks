@@ -73,6 +73,7 @@ export interface Config {
     media: Media;
     orders: Order;
     customers: Customer;
+    'marketing-expenses': MarketingExpense;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +87,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     orders: OrdersSelect<false> | OrdersSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
+    'marketing-expenses': MarketingExpensesSelect<false> | MarketingExpensesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -95,8 +97,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'economy-settings': EconomySetting;
+  };
+  globalsSelect: {
+    'economy-settings': EconomySettingsSelect<false> | EconomySettingsSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
@@ -394,9 +400,13 @@ export interface Order {
    */
   actualShippingCost?: number | null;
   /**
-   * Gebyr til betalingsleverandøren for denne ordren.
+   * Gebyr til betalingsleverandøren for denne ordren. Beregnes automatisk ved opprettelse hvis aktivert i Økonomiinnstillinger; kan overstyres manuelt.
    */
   paymentFee?: number | null;
+  /**
+   * Settes automatisk. «Manuelt» når gebyret er endret for hånd.
+   */
+  paymentFeeSource?: ('auto' | 'manual') | null;
   /**
    * Andre variable kostnader knyttet til ordren (emballasje, retur o.l.).
    */
@@ -441,6 +451,44 @@ export interface Customer {
   };
   orders?: (number | Order)[] | null;
   marketingConsent?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Rapporterte markedsføringskostnader. Fordeles på valgt periode i analysen — aldri på enkeltordre.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "marketing-expenses".
+ */
+export interface MarketingExpense {
+  id: number;
+  /**
+   * Kostnadsdato. Uten periode nedenfor teller hele beløpet på denne datoen.
+   */
+  date: string;
+  channel: 'meta' | 'google' | 'tiktok' | 'snapchat' | 'influencer' | 'annet';
+  /**
+   * Beløpet du faktisk betalte, inkludert MVA.
+   */
+  amount: number;
+  /**
+   * Endres kun dersom fakturaen har en annen MVA-sats.
+   */
+  vatRate?: number | null;
+  /**
+   * Beregnes automatisk og brukes i analysen. Du trenger ikke fylle inn noe her.
+   */
+  amountExVat?: number | null;
+  description?: string | null;
+  /**
+   * F.eks. fakturanummer eller kampanje-ID.
+   */
+  externalReference?: string | null;
+  /**
+   * Valgfritt. Sammen med «Periode til» fordeles beløpet jevnt over dagene i perioden.
+   */
+  periodFrom?: string | null;
+  periodTo?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -491,6 +539,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'customers';
         value: number | Customer;
+      } | null)
+    | ({
+        relationTo: 'marketing-expenses';
+        value: number | MarketingExpense;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -734,6 +786,7 @@ export interface OrdersSelect<T extends boolean = true> {
   total?: T;
   actualShippingCost?: T;
   paymentFee?: T;
+  paymentFeeSource?: T;
   extraCosts?: T;
   status?: T;
   paidAt?: T;
@@ -768,6 +821,23 @@ export interface CustomersSelect<T extends boolean = true> {
       };
   orders?: T;
   marketingConsent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "marketing-expenses_select".
+ */
+export interface MarketingExpensesSelect<T extends boolean = true> {
+  date?: T;
+  channel?: T;
+  amount?: T;
+  vatRate?: T;
+  amountExVat?: T;
+  description?: T;
+  externalReference?: T;
+  periodFrom?: T;
+  periodTo?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -810,6 +880,56 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * Automatisering av gebyr og fraktkostnad, samt MVA-forutsetninger for markedsføring.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "economy-settings".
+ */
+export interface EconomySetting {
+  id: number;
+  /**
+   * Når på: nye ordre får automatisk beregnet betalingsgebyr ved opprettelse.
+   */
+  kustomEnabled?: boolean | null;
+  paymentProvider?: string | null;
+  fixedFee?: number | null;
+  percentageFee?: number | null;
+  /**
+   * Kun til MVA-/netto-splitt av gebyret i analysen. Legges IKKE oppå det beregnede gebyret.
+   */
+  feeVatRate?: number | null;
+  calculateFrom?: ('orderTotalInclShipping' | 'productTotalOnly') | null;
+  /**
+   * Når på: nye ordre får standard faktisk fraktkostnad ved opprettelse (kan overstyres manuelt).
+   */
+  applyDefaultShippingCost?: boolean | null;
+  defaultShippingCost?: number | null;
+  /**
+   * Fri frakt for kunden betyr ikke null reell fraktkostnad for bedriften.
+   */
+  freeShippingStillHasCost?: boolean | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "economy-settings_select".
+ */
+export interface EconomySettingsSelect<T extends boolean = true> {
+  kustomEnabled?: T;
+  paymentProvider?: T;
+  fixedFee?: T;
+  percentageFee?: T;
+  feeVatRate?: T;
+  calculateFrom?: T;
+  applyDefaultShippingCost?: T;
+  defaultShippingCost?: T;
+  freeShippingStillHasCost?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
