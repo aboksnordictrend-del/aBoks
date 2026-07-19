@@ -30,6 +30,9 @@ export const metadata: Metadata = {
   description:
     'aBoks organiserer nye, brukte, AA- og AAA-batterier i én smart boks. Tre rom. Full oversikt. Designet i Norge.',
   keywords: ['batteriorganisator', 'aBoks', 'batteriboks', 'AA batterier', 'AAA batterier', 'norsk design'],
+  other: {
+    'p:domain_verify': 'a01907e8f63a3c83a49938fcb7fd8326',
+  },
   openGraph: {
     type: 'website',
     locale: 'nb_NO',
