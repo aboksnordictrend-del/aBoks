@@ -1,0 +1,567 @@
+/* Marketing admin styles. Theme-aware via Payload's --theme-* variables so both light and
+   dark admin themes work; no hard-coded black/white. The channel-catalog section mirrors
+   the Analyse dashboard's visual language (elevation-50 surfaces, 12–14px radii, pill
+   badges, accent-tinted KPI cards, −3px hover lift). */
+
+/* ============================================================
+   Shared page chrome (Meta detail + full list). Unchanged.
+   ============================================================ */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.headerActions .btn {
+  margin: 0;
+}
+
+/* --- Summary cards (Meta detail) --- */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.summaryCard {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--theme-elevation-150, #e0e0e0);
+  border-radius: 6px;
+  background: var(--theme-elevation-0, #fff);
+}
+
+.summaryLabel {
+  font-size: 0.75rem;
+  opacity: 0.65;
+  margin-bottom: 0.25rem;
+}
+
+.summaryValue {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* --- Period filter --- */
+.filter {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--theme-elevation-150, #ccc);
+  border-radius: 4px;
+  background: var(--theme-input-bg, #fff);
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.filter .btn {
+  margin: 0;
+}
+
+/* --- Table --- */
+.tableWrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--theme-elevation-100, #eee);
+  white-space: nowrap;
+}
+
+.table th {
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.table td.num,
+.table th.num {
+  text-align: right;
+}
+
+.tableTotal {
+  font-weight: 600;
+}
+
+.tableTotal td {
+  border-top: 2px solid var(--theme-elevation-200, #ddd);
+  border-bottom: none;
+}
+
+.rowLink {
+  color: var(--theme-text, inherit);
+  text-decoration: none;
+}
+
+.rowLink:hover {
+  text-decoration: underline;
+}
+
+/* --- Generic states + back link --- */
+.state {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.stateError {
+  color: var(--theme-error-500, #e11d48);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.8;
+  margin-bottom: 1rem;
+}
+
+.backLink:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Channel catalog (Markedsføringskanaler)
+   ============================================================ */
+.catalogRoot {
+  --card-bg: var(--theme-elevation-50);
+  --card-border: var(--theme-elevation-100);
+  --muted: var(--theme-elevation-500);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+.catalogHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.catalogTitle {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.catalogSubtitle {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Secondary action in the page header. */
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--card-bg);
+  color: var(--theme-text);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.ghostBtn:hover {
+  background: var(--theme-elevation-100);
+  border-color: var(--theme-elevation-150);
+}
+
+.ghostBtn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ghostBtn:focus-visible,
+.chOpen:focus-visible {
+  outline: 2px solid var(--theme-success-500);
+  outline-offset: 2px;
+}
+
+/* --- Responsive grid: 1 / 2 / 4 columns --- */
+.catalogGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .catalogGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .catalogGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* --- Card --- */
+.chCard {
+  --accent: var(--theme-elevation-400);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 9%, var(--card-bg)) 0%,
+    var(--card-bg) 58%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--card-border));
+  border-radius: 14px;
+  padding: 1.15rem 1.2rem 1.2rem;
+  transition: transform 170ms ease, box-shadow 170ms ease, border-color 170ms ease;
+}
+
+.chCardActive:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--card-border));
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.chCardActive:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--card-border));
+}
+
+/* Not-yet-available integrations: present and legible, but visibly inert. */
+.chCardDisabled {
+  --accent: var(--theme-elevation-300);
+  background: var(--card-bg);
+  border-style: dashed;
+  cursor: default;
+}
+
+.chCardDisabled .chIcon {
+  filter: saturate(0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chCard {
+    transition: none;
+  }
+  .chCardActive:hover {
+    transform: none;
+  }
+}
+
+/* --- Card header --- */
+.chHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.chIcon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.chHeadText {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.chTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.chTagline {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* --- Status badge (text + colour, never colour alone) --- */
+.chBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--badge) 15%, transparent);
+  color: var(--badge);
+  border: 1px solid color-mix(in srgb, var(--badge) 32%, transparent);
+}
+
+.chBadgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--badge);
+  flex: 0 0 auto;
+}
+
+/* --- Card body --- */
+.chBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 1 1 auto;
+}
+
+.chPrimary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.chPrimaryLabel {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.chPrimaryValue {
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--theme-text);
+}
+
+.chMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 0.9rem;
+}
+
+.chMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+/* Full-width metric (e.g. a date range that would truncate in a half-width column). */
+.chMetricWide {
+  grid-column: 1 / -1;
+}
+
+.chMetricValue {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--theme-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chMetricLabel {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.chNote {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* --- Card footer --- */
+.chFoot {
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+.chOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  transition: background 160ms ease, gap 160ms ease;
+}
+
+.chCardActive:hover .chOpen {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  gap: 0.55rem;
+}
+
+.chOpen svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Stretched link: the whole active card is clickable without nesting a button in a link,
+   so keyboard navigation still sees exactly one control per card. */
+.chOpen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+}
+
+.chOpenDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--card-border);
+  cursor: not-allowed;
+}
+
+/* --- Catalog states --- */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--theme-elevation-100) 25%,
+    var(--theme-elevation-150) 37%,
+    var(--theme-elevation-100) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 14px;
+}
+
+.skelCard {
+  height: 236px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.catalogEmpty {
+  border-radius: 12px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  border: 1px dashed var(--card-border);
+  background: var(--card-bg);
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.catalogError {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  background: color-mix(in srgb, var(--theme-error-500) 10%, var(--card-bg));
+  border: 1px solid color-mix(in srgb, var(--theme-error-500) 35%, transparent);
+  color: var(--theme-text);
+  font-size: 0.85rem;
+}
+
+.catalogError svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--theme-error-500);
+  margin-top: 1px;
+}
+
+.catalogErrorTitle {
+  margin: 0 0 0.15rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .chPrimaryValue {
+    font-size: 1.45rem;
+  }
+  .catalogTitle {
+    font-size: 1.35rem;
+  }
+}

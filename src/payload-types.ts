@@ -489,6 +489,29 @@ export interface MarketingExpense {
    */
   periodFrom?: string | null;
   periodTo?: string | null;
+  /**
+   * Manuell med mindre den er importert automatisk fra Meta.
+   */
+  source?: ('manual' | 'meta-api') | null;
+  /**
+   * Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11.
+   */
+  externalKey?: string | null;
+  externalAccountId?: string | null;
+  externalDate?: string | null;
+  lastSyncedAt?: string | null;
+  /**
+   * Teknisk metadata fra siste import. Inneholder aldri tilgangstoken.
+   */
+  syncMetadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -838,6 +861,12 @@ export interface MarketingExpensesSelect<T extends boolean = true> {
   externalReference?: T;
   periodFrom?: T;
   periodTo?: T;
+  source?: T;
+  externalKey?: T;
+  externalAccountId?: T;
+  externalDate?: T;
+  lastSyncedAt?: T;
+  syncMetadata?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -902,6 +931,10 @@ export interface EconomySetting {
   feeVatRate?: number | null;
   calculateFrom?: ('orderTotalInclShipping' | 'productTotalOnly') | null;
   /**
+   * MVA-sats som brukes når Meta Ads-kostnader importeres automatisk. Sett til 0 dersom bedriften ikke er MVA-registrert eller fakturaen er uten MVA (reverse charge).
+   */
+  metaAdsVatRate?: number | null;
+  /**
    * Når på: nye ordre får standard faktisk fraktkostnad ved opprettelse (kan overstyres manuelt).
    */
   applyDefaultShippingCost?: boolean | null;
@@ -924,6 +957,7 @@ export interface EconomySettingsSelect<T extends boolean = true> {
   percentageFee?: T;
   feeVatRate?: T;
   calculateFrom?: T;
+  metaAdsVatRate?: T;
   applyDefaultShippingCost?: T;
   defaultShippingCost?: T;
   freeShippingStillHasCost?: T;

@@ -30,9 +30,24 @@ export const MarketingExpenses: CollectionConfig = {
     // record id. Payload resolves the select value to its option label for the title.
     useAsTitle: 'channel',
     group: 'Økonomi',
-    defaultColumns: ['date', 'channel', 'amount', 'amountExVat', 'description'],
+    defaultColumns: ['date', 'channel', 'amount', 'amountExVat', 'source', 'description'],
     description: 'Rapporterte markedsføringskostnader. Fordeles på valgt periode i analysen — aldri på enkeltordre.',
     listSearchableFields: ['description', 'externalReference'],
+    components: {
+      views: {
+        // Replace the default table with a channel catalog at the collection root.
+        list: { Component: '@/components/admin/marketing/MarketingChannelsView#default' },
+        // Per-channel detail pages + the full CRUD list, as custom collection routes.
+        meta: {
+          Component: '@/components/admin/marketing/meta/MetaMarketingView#default',
+          path: '/meta',
+        },
+        all: {
+          Component: '@/components/admin/marketing/AllExpensesView#default',
+          path: '/all',
+        },
+      },
+    },
   },
   access: {
     read: adminOnly,
@@ -126,6 +141,73 @@ export const MarketingExpenses: CollectionConfig = {
         }
         return true
       },
+    },
+    // --- Synkronisering (teknisk) -------------------------------------------------
+    // Populated only by the Meta sync. Manual records leave these empty and are always
+    // treated as `source: 'manual'`. Kept read-only + collapsed so manual entry stays
+    // uncluttered. Never overwritten for a manual record. See src/lib/meta/sync.ts.
+    {
+      name: 'source',
+      type: 'select',
+      label: 'Kilde',
+      defaultValue: 'manual',
+      options: [
+        { label: 'Manuell', value: 'manual' },
+        { label: 'Meta API', value: 'meta-api' },
+      ],
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        description: 'Manuell med mindre den er importert automatisk fra Meta.',
+      },
+    },
+    {
+      type: 'collapsible',
+      label: 'Synkronisering (automatisk)',
+      admin: {
+        initCollapsed: true,
+        condition: (data) => data?.source === 'meta-api',
+      },
+      fields: [
+        {
+          name: 'externalKey',
+          type: 'text',
+          label: 'Ekstern nøkkel',
+          unique: true,
+          index: true,
+          admin: {
+            readOnly: true,
+            description: 'Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11.',
+          },
+        },
+        {
+          name: 'externalAccountId',
+          type: 'text',
+          label: 'Ekstern konto-ID',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'externalDate',
+          type: 'text',
+          label: 'Ekstern dato (YYYY-MM-DD)',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'lastSyncedAt',
+          type: 'date',
+          label: 'Sist synkronisert',
+          admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+        },
+        {
+          name: 'syncMetadata',
+          type: 'json',
+          label: 'Synk-metadata',
+          admin: {
+            readOnly: true,
+            description: 'Teknisk metadata fra siste import. Inneholder aldri tilgangstoken.',
+          },
+        },
+      ],
     },
   ],
   timestamps: true,

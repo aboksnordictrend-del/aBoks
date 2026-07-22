@@ -78,6 +78,28 @@ export const EconomySettings: GlobalConfig = {
     },
     {
       type: 'collapsible',
+      label: 'Markedsføring',
+      admin: { initCollapsed: false },
+      fields: [
+        {
+          name: 'metaAdsVatRate',
+          type: 'number',
+          label: 'Meta Ads MVA-sats (%)',
+          min: 0,
+          max: 100,
+          // Default 25 mirrors the existing manual default (MarketingExpenses.vatRate),
+          // so importing Meta spend keeps the same net/ex-VAT logic that manual entries
+          // already use — nothing about the current analytics changes on day one.
+          defaultValue: 25,
+          admin: {
+            description:
+              'MVA-sats som brukes når Meta Ads-kostnader importeres automatisk. Sett til 0 dersom bedriften ikke er MVA-registrert eller fakturaen er uten MVA (reverse charge).',
+          },
+        },
+      ],
+    },
+    {
+      type: 'collapsible',
       label: 'Frakt',
       admin: { initCollapsed: false },
       fields: [

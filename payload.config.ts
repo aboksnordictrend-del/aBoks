@@ -16,6 +16,10 @@ import { Customers } from './src/collections/Customers'
 import { MarketingExpenses } from './src/collections/MarketingExpenses'
 import { EconomySettings } from './src/globals/EconomySettings'
 import { analyticsEndpoint } from './src/endpoints/analytics'
+import { metaSyncEndpoint } from './src/endpoints/metaSync'
+import { marketingChannelsEndpoint } from './src/endpoints/marketingChannels'
+import { metaExpensesEndpoint } from './src/endpoints/metaExpenses'
+import { buildCsrfOrigins } from './src/lib/csrfOrigins'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -27,6 +31,12 @@ const dirname = path.dirname(filename)
 const serverURL =
   process.env.NEXT_PUBLIC_SERVER_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
+// Origins trusted for cookie auth on state-changing (non-GET) requests. Derived from the
+// serverURL and the actual dev port (serverURL/PORT), so the admin panel authenticates no
+// matter which localhost port `next dev` bound (3000, 3001 …). Strict allowlist — never a
+// wildcard; production trusts only serverURL. See src/lib/csrfOrigins.ts.
+const csrfOrigins = buildCsrfOrigins(serverURL)
 
 export default buildConfig({
   ...(smtpConfigured
@@ -62,8 +72,14 @@ export default buildConfig({
   },
   collections: [Users, Products, ProductVariants, Media, Orders, Customers, MarketingExpenses],
   globals: [EconomySettings],
-  // Server-side, auth-guarded analytics aggregation → /api/analytics.
-  endpoints: [analyticsEndpoint],
+  // Server-side, auth-guarded endpoints. analytics → /api/analytics; admin-only marketing:
+  // channel catalog, Meta detail data, and the Meta Ads sync.
+  endpoints: [
+    analyticsEndpoint,
+    metaSyncEndpoint,
+    marketingChannelsEndpoint,
+    metaExpensesEndpoint,
+  ],
   // Plugin must always be registered so withPayload includes VercelBlobClientUploadHandler
   // in the importMap at build time. BLOB_READ_WRITE_TOKEN is a runtime-only Vercel env var
   // and is not available during `next build`, so a conditional plugins array would produce
@@ -107,5 +123,6 @@ export default buildConfig({
   },
   serverURL,
   cors: [serverURL],
+  csrf: csrfOrigins,
   sharp,
 })

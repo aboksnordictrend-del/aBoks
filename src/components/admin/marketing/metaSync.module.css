@@ -1,0 +1,99 @@
+.wrap {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.wrap > .btn {
+  margin: 0;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6vh 1rem 1rem;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--theme-elevation-0, #fff);
+  color: var(--theme-elevation-1000, #111);
+  border: 1px solid var(--theme-elevation-150, #e0e0e0);
+  border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 460px;
+  padding: 1.5rem;
+}
+
+.title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+.error {
+  margin: 0.75rem 0 0;
+  color: var(--theme-error-500, #e11d48);
+  font-size: 0.85rem;
+}
+
+.result {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 4px;
+  background: var(--theme-elevation-50, #f6f6f6);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.result strong {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.summary,
+.conflicts,
+.warnings {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.summary {
+  list-style: none;
+  padding-left: 0;
+}
+
+.warnings {
+  margin-top: 0.6rem;
+  color: var(--theme-warning-600, #b45309);
+}
+
+/* Total spend is informative, not the headline KPI of a sync. */
+.secondaryLine {
+  margin-top: 0.4rem;
+  opacity: 0.65;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.actions .btn {
+  margin: 0;
+}
