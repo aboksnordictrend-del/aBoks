@@ -53,6 +53,11 @@ export interface MarketingChannelDef {
   sourceValue: string
   /** Detail-page href, or null when no detail page exists yet. */
   href: string | null
+  /**
+   * POST endpoint for an incremental sync, or null when the channel has no importer yet.
+   * The card's quick "Oppdater" action posts here; the detail page uses the same path.
+   */
+  syncEndpoint: string | null
   /** Server env vars that must be present for the integration to be "connected". */
   envKeys: string[]
   /** False for channels that are listed but not yet buildable (no sync/detail page). */
@@ -65,6 +70,12 @@ export interface MarketingChannelCard {
   title: string
   description: string
   href: string | null
+  /**
+   * Incremental-sync endpoint for the card's quick "Oppdater" action, or null when the
+   * channel is not connected. Only ever set for an enabled (available + configured) card,
+   * so the quick action is offered exactly when a sync can succeed.
+   */
+  syncEndpoint: string | null
   enabled: boolean
   status: string
   summary: MarketingChannelSummary
@@ -103,6 +114,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     channelValue: 'meta',
     sourceValue: 'meta-api',
     href: MARKETING_ROUTES.meta,
+    syncEndpoint: MARKETING_API.metaSync,
     envKeys: ['META_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID'],
     available: true,
   },
@@ -113,6 +125,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     channelValue: 'google',
     sourceValue: 'google-ads',
     href: MARKETING_ROUTES.google,
+    syncEndpoint: MARKETING_API.googleSync,
     // GOOGLE_ADS_LOGIN_CUSTOMER_ID is deliberately not required: it is only needed when the
     // ad account sits under a manager (MCC) account, so requiring it would mark a valid
     // standalone setup as "Ikke konfigurert".
@@ -133,6 +146,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     channelValue: 'pinterest',
     sourceValue: 'pinterest-ads',
     href: null,
+    syncEndpoint: null,
     envKeys: [],
     available: false,
   },
@@ -143,6 +157,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     channelValue: 'tiktok',
     sourceValue: 'tiktok-ads',
     href: null,
+    syncEndpoint: null,
     envKeys: [],
     available: false,
   },
@@ -169,12 +184,15 @@ export function buildChannelCard(
   configured: boolean,
   summary: MarketingChannelSummary = EMPTY_SUMMARY,
 ): MarketingChannelCard {
+  const enabled = def.available && configured
   return {
     id: def.id,
     title: def.title,
     description: def.description,
     href: def.available ? def.href : null,
-    enabled: def.available && configured,
+    // Offer the quick sync only when a sync could actually succeed (connected channel).
+    syncEndpoint: enabled ? def.syncEndpoint : null,
+    enabled,
     status: channelStatusLabel(def, configured),
     summary,
   }

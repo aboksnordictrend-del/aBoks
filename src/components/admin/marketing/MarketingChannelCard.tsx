@@ -1,13 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { formatNOK } from '@/lib/analytics/money'
 import { STATUS, type MarketingChannelCard as Card } from '@/lib/marketing/channels'
+import { callAdsSync } from '@/lib/marketing/adsSync'
 import styles from './marketing.module.css'
 
-// Presentational only — every value comes from props. Accent colours are a purely visual
-// lookup here (never part of the API payload), so adding a channel needs no data change.
+// Every displayed value comes from props (accent colours are a purely visual lookup, never
+// part of the API payload). The one piece of behaviour the card owns is the quick "Oppdater"
+// action: it posts an incremental sync via the shared callAdsSync — the exact same call the
+// detail page makes — and asks the parent to refresh only this card's data on success.
 
 const ACCENTS: Record<string, string> = {
   meta: '#3b6fd4',
@@ -87,9 +90,91 @@ function ArrowIcon() {
   )
 }
 
-export default function MarketingChannelCard({ card }: { card: Card }) {
+/** Spinning ring shown while a quick sync is running. */
+function SpinnerIcon() {
+  return (
+    <svg className={styles.chSpin} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
+      <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M3.5 8.5l3 3 6-6.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function RefreshIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5V5h-2.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** Quick "Oppdater" phase for a single card. Kept local so only this card re-renders. */
+type QuickPhase = 'idle' | 'syncing' | 'success' | 'error'
+
+const SUCCESS_MS = 2000
+
+export default function MarketingChannelCard({
+  card,
+  onRefresh,
+}: {
+  card: Card
+  /** Refreshes just this card's data (by id) after a successful quick sync. */
+  onRefresh?: (id: string) => Promise<void>
+}) {
   const openable = Boolean(card.href)
+  const canQuickSync = Boolean(card.syncEndpoint)
   const { summary } = card
+
+  const [phase, setPhase] = useState<QuickPhase>('idle')
+  const [message, setMessage] = useState('')
+  const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clear a pending "back to idle" timer if the card unmounts mid-success.
+  useEffect(() => () => {
+    if (successTimer.current) clearTimeout(successTimer.current)
+  }, [])
+
+  const handleOppdater = useCallback(async () => {
+    if (!card.syncEndpoint || phase === 'syncing') return
+    if (successTimer.current) clearTimeout(successTimer.current)
+    setMessage('')
+    setPhase('syncing')
+
+    const call = await callAdsSync(card.syncEndpoint, 'incremental')
+
+    if (call.kind === 'success') {
+      // Pull this card's fresh totals before flipping to the success state, so the numbers
+      // and the ✓ appear together.
+      try {
+        await onRefresh?.(card.id)
+      } catch {
+        // A failed refresh must not turn a successful sync into an error — the data is
+        // already written; the card just keeps its previous figures until the next load.
+      }
+      setPhase('success')
+      successTimer.current = setTimeout(() => setPhase('idle'), SUCCESS_MS)
+      return
+    }
+
+    // Conflict and error both restore the normal button and surface a short message.
+    setPhase('error')
+    setMessage(
+      call.kind === 'conflict'
+        ? 'Manuelle kostnader overlapper perioden. Åpne kanalen for detaljer.'
+        : call.message,
+    )
+  }, [card.syncEndpoint, card.id, onRefresh, phase])
+
+  const quickLabel =
+    phase === 'syncing' ? 'Oppdaterer …' : phase === 'success' ? 'Oppdatert' : 'Oppdater'
 
   return (
     <article
@@ -136,9 +221,44 @@ export default function MarketingChannelCard({ card }: { card: Card }) {
       </div>
 
       <footer className={styles.chFoot}>
+        {/* Absolutely positioned above the footer so a failure never changes card height. */}
+        {phase === 'error' && message && (
+          <p className={styles.chQuickError} role="alert">
+            {message}
+          </p>
+        )}
+
+        {canQuickSync ? (
+          // Raised above the stretched Åpne link (z-index) so this stays independently
+          // clickable. Width is driven by flex, not by the label, so the text can change
+          // (Oppdater → Oppdaterer … → Oppdatert) without the button — or the row — resizing.
+          <button
+            type="button"
+            className={`${styles.chQuick} ${phase === 'success' ? styles.chQuickSuccess : ''}`}
+            onClick={handleOppdater}
+            disabled={phase === 'syncing'}
+            aria-busy={phase === 'syncing'}
+            aria-label={
+              phase === 'syncing'
+                ? `Oppdaterer ${card.title}`
+                : phase === 'success'
+                  ? `${card.title} oppdatert`
+                  : `Oppdater ${card.title}`
+            }
+          >
+            {phase === 'syncing' ? <SpinnerIcon /> : phase === 'success' ? <CheckIcon /> : <RefreshIcon />}
+            <span>{quickLabel}</span>
+          </button>
+        ) : (
+          <button type="button" className={styles.chQuickDisabled} disabled aria-disabled="true">
+            <RefreshIcon />
+            <span>Oppdater</span>
+          </button>
+        )}
+
         {openable ? (
-          // Stretched link (::after covers the card) — the whole card is clickable while
-          // remaining a single, focusable control.
+          // Stretched link (::after covers the card) — clicking the card opens the detail
+          // page. The quick button above sits over this overlay and is unaffected.
           <Link className={styles.chOpen} href={card.href!}>
             Åpne
             <ArrowIcon />
@@ -148,6 +268,11 @@ export default function MarketingChannelCard({ card }: { card: Card }) {
             Åpne
           </button>
         )}
+
+        {/* Announce success to assistive tech (the error uses role="alert" above). */}
+        <span className={styles.srOnly} role="status" aria-live="polite">
+          {phase === 'success' ? `${card.title} oppdatert` : ''}
+        </span>
       </footer>
     </article>
   )

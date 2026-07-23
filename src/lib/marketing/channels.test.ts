@@ -61,6 +61,14 @@ describe('marketing channel catalog', () => {
     // The constant the button uses resolves to the actually-registered endpoint path.
     assert.equal(`/api${metaSyncEndpoint.path}`, MARKETING_API.metaSync)
   })
+
+  it('exposes the incremental-sync endpoint only on a connected card (quick "Oppdater")', () => {
+    // Connected → the card carries its sync endpoint for the quick action.
+    const connected = buildChannelCard(meta, true)
+    assert.equal(connected.syncEndpoint, MARKETING_API.metaSync)
+    // Not configured → no quick sync offered (it could only fail).
+    assert.equal(buildChannelCard(meta, false).syncEndpoint, null)
+  })
 })
 
 describe('Google Ads card (#15)', () => {
@@ -128,5 +136,32 @@ describe('Google Ads card (#15)', () => {
       isChannelConfigured(google, { ...CONFIGURED_ENV, GOOGLE_ADS_REFRESH_TOKEN: '  ' }),
       false,
     )
+  })
+
+  it('offers the quick-sync endpoint only when connected', () => {
+    assert.equal(buildChannelCard(google, true).syncEndpoint, MARKETING_API.googleSync)
+    assert.equal(buildChannelCard(google, false).syncEndpoint, null)
+  })
+})
+
+describe('quick "Oppdater" availability across channels', () => {
+  it('every card exposes a syncEndpoint field; coming-soon channels never get one', () => {
+    for (const def of MARKETING_CHANNEL_DEFS) {
+      const card = buildChannelCard(def, true)
+      // The field is always present (the card UI reads it to enable/disable the action).
+      assert.ok('syncEndpoint' in card)
+      if (!def.available) {
+        // Pinterest / TikTok: listed but not buildable → no quick sync even if "configured".
+        assert.equal(card.syncEndpoint, null)
+      }
+    }
+  })
+
+  it('live channels carry a sync endpoint, coming-soon ones do not (def level)', () => {
+    const byId = Object.fromEntries(MARKETING_CHANNEL_DEFS.map((d) => [d.id, d]))
+    assert.equal(byId.meta.syncEndpoint, MARKETING_API.metaSync)
+    assert.equal(byId.google.syncEndpoint, MARKETING_API.googleSync)
+    assert.equal(byId.pinterest.syncEndpoint, null)
+    assert.equal(byId.tiktok.syncEndpoint, null)
   })
 })

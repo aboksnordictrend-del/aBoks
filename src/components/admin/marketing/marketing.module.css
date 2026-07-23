@@ -303,6 +303,9 @@
   .chCardActive:hover {
     transform: none;
   }
+  .chSpin {
+    animation-duration: 1.4s;
+  }
 }
 
 /* --- Card header --- */
@@ -435,13 +438,142 @@
   color: var(--muted);
 }
 
-/* --- Card footer --- */
+/* --- Card footer: two aligned actions (Oppdater + Åpne) --- */
 .chFoot {
+  position: relative; /* anchor for the absolutely-positioned quick-sync error */
   margin-top: auto;
   padding-top: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Quick "Oppdater" action. Width comes from flex, never from the label, so the text can
+   change (Oppdater → Oppdaterer … → Oppdatert) without the button or the row resizing —
+   the card never jumps. Raised above the stretched Åpne link so it stays clickable. */
+.chQuick {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid color-mix(in srgb, var(--accent) 78%, #000 8%);
+  transition: filter 150ms ease, opacity 150ms ease, background 150ms ease;
+}
+
+.chQuick:hover {
+  filter: brightness(1.06);
+}
+
+.chQuick:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.chQuick:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+.chQuick svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.chQuick span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Brief post-sync confirmation state. */
+.chQuickSuccess,
+.chQuickSuccess:hover {
+  background: var(--theme-success-500, #16a34a);
+  border-color: color-mix(in srgb, var(--theme-success-500, #16a34a) 80%, #000 10%);
+  filter: none;
+}
+
+/* Coming-soon channels: present but inert, mirroring .chOpenDisabled. */
+.chQuickDisabled {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--card-border);
+  cursor: not-allowed;
+}
+
+.chQuickDisabled svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+/* Spinning ring while a quick sync runs. */
+.chSpin {
+  animation: chspin 0.7s linear infinite;
+}
+
+@keyframes chspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Failure message: floats above the footer, so showing it never changes card height. */
+.chQuickError {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 0.4rem);
+  z-index: 2;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--theme-error-600, #be123c);
+  background: var(--theme-elevation-0, #fff);
+  border: 1px solid color-mix(in srgb, var(--theme-error-500, #e11d48) 45%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--theme-error-500, #e11d48) 16%, transparent);
+}
+
+/* Visually hidden, still announced by screen readers. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .chOpen {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;

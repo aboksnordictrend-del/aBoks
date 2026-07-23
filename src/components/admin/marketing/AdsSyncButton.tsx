@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatNOK } from '@/lib/analytics/money'
+import {
+  callAdsSync,
+  type AdsSyncMode,
+  type AdsSyncOutcome,
+  type AdsSyncResult,
+} from '@/lib/marketing/adsSync'
 import styles from './metaSync.module.css'
 
 // Provider-neutral sync actions for an ad channel (Meta Ads, Google Ads, …). The user never
@@ -10,41 +16,13 @@ import styles from './metaSync.module.css'
 // 14-day overlap, full = entire history). Viewing periods are a separate concern, owned by
 // the page filter and by Analyse.
 //
-// Extracted from MetaSyncButton, which is now a thin wrapper that passes the Meta strings —
-// so Meta's behaviour and copy are unchanged and Google Ads reuses the whole flow
-// (confirm → submitting → done/conflict/error, focus trap, Escape, double-click guard).
+// The POST + response classification lives in @/lib/marketing/adsSync (callAdsSync), shared
+// with the quick "Oppdater" action on a channel card so the two can never drift apart. This
+// component owns the detail-page UI: confirm → submitting → done/conflict/error, focus trap,
+// Escape, double-click guard.
 
-export type AdsSyncMode = 'incremental' | 'full'
-
-interface SyncConflict {
-  id: string
-  description?: string
-  periodFrom?: string
-  periodTo?: string
-  amount?: number
-}
-
-interface SyncResult {
-  success: boolean
-  mode: AdsSyncMode
-  initialSync: boolean
-  period: { since: string | null; until: string | null }
-  fetchedDays: number
-  created: number
-  updated: number
-  unchanged: number
-  skipped: number
-  totalSpend: number
-  currency: string
-  conflicts?: SyncConflict[]
-  warnings?: string[]
-  error?: string
-}
-
-export interface AdsSyncOutcome {
-  created: number
-  updated: number
-}
+// Re-exported for existing importers (MetaSyncButton, GoogleMarketingClient, …).
+export type { AdsSyncMode, AdsSyncOutcome } from '@/lib/marketing/adsSync'
 
 type Phase = 'idle' | 'confirmFull' | 'submitting' | 'done' | 'conflict' | 'error'
 
@@ -75,7 +53,7 @@ function formatDay(iso?: string | null): string {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso
 }
 
-function periodLabel(period: SyncResult['period']): string {
+function periodLabel(period: AdsSyncResult['period']): string {
   if (!period.since && !period.until) return 'hele den tilgjengelige perioden'
   return `${formatDay(period.since)}–${formatDay(period.until)}`
 }
@@ -94,7 +72,7 @@ export default function AdsSyncButton({
   const router = useRouter()
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState('')
-  const [result, setResult] = useState<SyncResult | null>(null)
+  const [result, setResult] = useState<AdsSyncResult | null>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const primaryRef = useRef<HTMLButtonElement>(null)
@@ -146,36 +124,25 @@ export default function AdsSyncButton({
     setError('')
     setResult(null)
 
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode }),
-      })
-      const body = (await res.json().catch(() => ({}))) as SyncResult
+    const call = await callAdsSync(endpoint, mode)
 
-      if (res.status === 409 && body.conflicts && body.conflicts.length > 0) {
-        setResult(body)
-        setPhase('conflict')
-        return
-      }
-      if (!res.ok || body.success === false) {
-        setPhase('error')
-        setError(body.error ?? `Synkronisering feilet (${res.status}).`)
-        return
-      }
-
-      setResult(body)
-      setPhase('done')
-      // Refresh the page's data for its *current* display filter — the filter itself is
-      // never changed by a sync.
-      onSynced?.({ created: body.created, updated: body.updated })
-      router.refresh()
-    } catch (err) {
-      setPhase('error')
-      setError(err instanceof Error ? err.message : 'Nettverksfeil.')
+    if (call.kind === 'conflict') {
+      setResult(call.result)
+      setPhase('conflict')
+      return
     }
+    if (call.kind === 'error') {
+      setPhase('error')
+      setError(call.message)
+      return
+    }
+
+    setResult(call.result)
+    setPhase('done')
+    // Refresh the page's data for its *current* display filter — the filter itself is
+    // never changed by a sync.
+    onSynced?.({ created: call.result.created, updated: call.result.updated })
+    router.refresh()
   }
 
   const heading = (() => {

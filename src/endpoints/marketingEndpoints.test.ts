@@ -78,11 +78,20 @@ describe('marketing/channels — admin happy path', () => {
         { id: 2, date: '2026-07-21T00:00:00.000Z', amount: 200, amountExVat: 160, source: 'meta-api', lastSyncedAt: '2026-07-22T10:00:00.000Z' },
       ],
     })
-    const channels = json.channels as Array<{ id: string; status: string; summary: { totalSpend: number; days: number } }>
+    const channels = json.channels as Array<{
+      id: string
+      status: string
+      syncEndpoint: string | null
+      summary: { totalSpend: number; days: number }
+    }>
     const meta = channels.find((c) => c.id === 'meta')!
     assert.equal(meta.status, 'Tilkoblet')
     assert.equal(meta.summary.totalSpend, 300)
     assert.equal(meta.summary.days, 2)
+    // The quick "Oppdater" action reads this off the card payload.
+    assert.equal(meta.syncEndpoint, '/api/admin/integrations/meta/sync')
+    // A coming-soon channel never carries one.
+    assert.equal(channels.find((c) => c.id === 'tiktok')!.syncEndpoint, null)
   })
 })
 

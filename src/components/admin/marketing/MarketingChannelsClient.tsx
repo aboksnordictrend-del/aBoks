@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { MARKETING_API, MARKETING_ROUTES, type MarketingChannelCard as Card } from '@/lib/marketing/channels'
 import MarketingChannelCard from './MarketingChannelCard'
@@ -75,6 +75,18 @@ export default function MarketingChannelsClient() {
     }
   }, [])
 
+  // Re-fetch the catalog and replace only the one card that was just synced. The endpoint
+  // recomputes every card, but merging a single entry keeps the others' data untouched — so
+  // a quick "Oppdater" refreshes exactly its own card, never the whole page.
+  const refreshCard = useCallback(async (id: string) => {
+    const res = await fetch(MARKETING_API.channels, { credentials: 'include' })
+    if (!res.ok) throw new Error(`Kunne ikke oppdatere kanal (${res.status}).`)
+    const body = (await res.json().catch(() => ({}))) as { channels?: Card[] }
+    const fresh = body.channels?.find((c) => c.id === id)
+    if (!fresh) return
+    setCards((prev) => prev.map((c) => (c.id === id ? fresh : c)))
+  }, [])
+
   return (
     <div className={styles.catalogRoot}>
       <header className={styles.catalogHeader}>
@@ -111,7 +123,7 @@ export default function MarketingChannelsClient() {
       {phase === 'ready' && cards.length > 0 && (
         <div className={styles.catalogGrid}>
           {cards.map((card) => (
-            <MarketingChannelCard key={card.id} card={card} />
+            <MarketingChannelCard key={card.id} card={card} onRefresh={refreshCard} />
           ))}
         </div>
       )}
