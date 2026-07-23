@@ -490,11 +490,11 @@ export interface MarketingExpense {
   periodFrom?: string | null;
   periodTo?: string | null;
   /**
-   * Manuell med mindre den er importert automatisk fra Meta.
+   * Manuell med mindre den er importert automatisk fra Meta eller Google Ads.
    */
-  source?: ('manual' | 'meta-api') | null;
+  source?: ('manual' | 'meta-api' | 'google-ads') | null;
   /**
-   * Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11.
+   * Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11 eller google:1234567890:2026-07-11.
    */
   externalKey?: string | null;
   externalAccountId?: string | null;

@@ -1,8 +1,8 @@
 // Admin-only catalog data for the Markedsføringskostnader landing page, registered as
 // GET /api/admin/marketing/channels. Returns one card per marketing channel with its
 // connection status (derived from server env *presence* only — never secret values) and a
-// spend summary computed from imported (meta-api) records. No account ids or tokens leave
-// this handler.
+// spend summary computed from that channel's imported records (meta-api, google-ads, …).
+// No account ids or tokens leave this handler.
 
 import type { Endpoint, PayloadRequest } from 'payload'
 import type { MarketingExpense } from '@/payload-types'
@@ -13,24 +13,25 @@ import {
   type MarketingChannelCard,
   type MarketingChannelSummary,
 } from '@/lib/marketing/channels'
-import { metaExpensesSummary, type MetaExpenseRow } from '@/lib/marketing/metaExpenses'
+import { expensesSummary, type ExpenseRow } from '@/lib/marketing/expenseSummary'
 
-/** Spend summary for a channel from its imported (meta-api) day records. */
+/** Spend summary for a channel from its own imported day records (never manual rows). */
 async function channelSummary(
   req: PayloadRequest,
   channelValue: string,
+  sourceValue: string,
 ): Promise<MarketingChannelSummary> {
   const result = await req.payload.find({
     collection: 'marketing-expenses',
     where: {
-      and: [{ channel: { equals: channelValue } }, { source: { equals: 'meta-api' } }],
+      and: [{ channel: { equals: channelValue } }, { source: { equals: sourceValue } }],
     },
     depth: 0,
     limit: 10_000,
     overrideAccess: false,
     user: req.user,
   })
-  const rows: MetaExpenseRow[] = result.docs.map((d: MarketingExpense) => ({
+  const rows: ExpenseRow[] = result.docs.map((d: MarketingExpense) => ({
     id: String(d.id),
     date: d.date,
     amount: typeof d.amount === 'number' ? d.amount : 0,
@@ -39,7 +40,7 @@ async function channelSummary(
     description: d.description,
     lastSyncedAt: d.lastSyncedAt,
   }))
-  const s = metaExpensesSummary(rows)
+  const s = expensesSummary(rows)
   return {
     totalSpend: s.totalInclVat,
     days: s.days,
@@ -65,7 +66,7 @@ export const marketingChannelsEndpoint: Endpoint = {
       for (const def of MARKETING_CHANNEL_DEFS) {
         const configured = isChannelConfigured(def, process.env)
         const summary = def.available
-          ? await channelSummary(req, def.channelValue)
+          ? await channelSummary(req, def.channelValue, def.sourceValue)
           : undefined
         cards.push(buildChannelCard(def, configured, summary))
       }

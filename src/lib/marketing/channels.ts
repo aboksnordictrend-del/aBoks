@@ -14,14 +14,21 @@ const ADMIN_BASE = `/admin/collections/${MARKETING_COLLECTION_SLUG}`
 export const MARKETING_ROUTES = {
   catalog: ADMIN_BASE,
   meta: `${ADMIN_BASE}/meta`,
+  google: `${ADMIN_BASE}/google`,
   all: `${ADMIN_BASE}/all`,
 } as const
 
-/** API paths. `metaSync` is the existing, unchanged sync endpoint. */
+/**
+ * API paths. `metaSync` is the existing, unchanged sync endpoint; the Google Ads endpoints
+ * follow the same `/api/admin/integrations/{provider}/…` convention.
+ */
 export const MARKETING_API = {
   channels: '/api/admin/marketing/channels',
   metaExpenses: '/api/admin/integrations/meta/expenses',
   metaSync: '/api/admin/integrations/meta/sync',
+  googleExpenses: '/api/admin/integrations/google/expenses',
+  googleSync: '/api/admin/integrations/google/sync',
+  googleStatus: '/api/admin/integrations/google/status',
 } as const
 
 /** Status labels (Norwegian Bokmål) shown on a channel card. */
@@ -39,6 +46,11 @@ export interface MarketingChannelDef {
   description: string
   /** MarketingExpenses.channel value this card aggregates. */
   channelValue: string
+  /**
+   * MarketingExpenses.source value written by this channel's importer. The card summary
+   * counts only imported rows, so manual entries never inflate an integration's totals.
+   */
+  sourceValue: string
   /** Detail-page href, or null when no detail page exists yet. */
   href: string | null
   /** Server env vars that must be present for the integration to be "connected". */
@@ -81,7 +93,7 @@ const EMPTY_SUMMARY: MarketingChannelSummary = {
   lastDate: null,
 }
 
-// Stage 1 ships Meta Ads only. The others are declared so the catalog already shows the
+// Meta Ads and Google Ads are live. The rest are declared so the catalog already shows the
 // roadmap; they render as "Kommer snart" and are disabled until a sync + detail page lands.
 export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
   {
@@ -89,6 +101,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     title: 'Meta Ads',
     description: 'Synkroniser annonseringskostnader fra Meta Ads.',
     channelValue: 'meta',
+    sourceValue: 'meta-api',
     href: MARKETING_ROUTES.meta,
     envKeys: ['META_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID'],
     available: true,
@@ -96,11 +109,21 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
   {
     id: 'google',
     title: 'Google Ads',
-    description: 'Kommer snart: synkroniser annonseringskostnader fra Google Ads.',
+    description: 'Synkroniser annonseringskostnader fra Google Ads.',
     channelValue: 'google',
-    href: null,
-    envKeys: [],
-    available: false,
+    sourceValue: 'google-ads',
+    href: MARKETING_ROUTES.google,
+    // GOOGLE_ADS_LOGIN_CUSTOMER_ID is deliberately not required: it is only needed when the
+    // ad account sits under a manager (MCC) account, so requiring it would mark a valid
+    // standalone setup as "Ikke konfigurert".
+    envKeys: [
+      'GOOGLE_ADS_CLIENT_ID',
+      'GOOGLE_ADS_CLIENT_SECRET',
+      'GOOGLE_ADS_DEVELOPER_TOKEN',
+      'GOOGLE_ADS_REFRESH_TOKEN',
+      'GOOGLE_ADS_CUSTOMER_ID',
+    ],
+    available: true,
   },
   {
     id: 'pinterest',
@@ -108,6 +131,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     description: 'Kommer snart: synkroniser annonseringskostnader fra Pinterest Ads.',
     // No dedicated channel value yet — falls back to "annet" until added to MARKETING_CHANNELS.
     channelValue: 'pinterest',
+    sourceValue: 'pinterest-ads',
     href: null,
     envKeys: [],
     available: false,
@@ -117,6 +141,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     title: 'TikTok Ads',
     description: 'Kommer snart: synkroniser annonseringskostnader fra TikTok Ads.',
     channelValue: 'tiktok',
+    sourceValue: 'tiktok-ads',
     href: null,
     envKeys: [],
     available: false,

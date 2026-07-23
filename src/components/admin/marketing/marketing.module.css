@@ -565,3 +565,81 @@
     font-size: 1.35rem;
   }
 }
+
+/* ============================================================
+   Connection panel (channel detail pages). Same surface language as
+   .summaryCard, laid out as a compact definition grid.
+   ============================================================ */
+.connection {
+  margin: 1.25rem 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--theme-elevation-150, #e0e0e0);
+  border-radius: 8px;
+  background: var(--theme-elevation-50, #fafafa);
+}
+
+.connHead {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.connHeadTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.connBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--badge, var(--theme-elevation-400));
+  color: var(--badge, var(--theme-elevation-400));
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.connBadgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.connGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem 1.25rem;
+}
+
+.connLabel {
+  font-size: 0.72rem;
+  opacity: 0.65;
+  margin-bottom: 0.15rem;
+}
+
+.connValue {
+  font-size: 0.88rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.connNotice {
+  margin: 0.9rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+  background: var(--theme-elevation-100, #f0f0f0);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.connNoticeError {
+  color: var(--theme-error-600, #be123c);
+  background: var(--theme-error-50, rgba(225, 29, 72, 0.08));
+}

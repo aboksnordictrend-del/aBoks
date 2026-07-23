@@ -96,6 +96,10 @@ export const EconomySettings: GlobalConfig = {
               'MVA-sats som brukes når Meta Ads-kostnader importeres automatisk. Sett til 0 dersom bedriften ikke er MVA-registrert eller fakturaen er uten MVA (reverse charge).',
           },
         },
+        // Google Ads has deliberately NO MVA setting: Google invoices Norwegian businesses
+        // for advertising under reverse charge, so the imported cost is already net and is
+        // counted in full (vatRate 0, fixed in src/lib/google/sync.ts). Adding a rate here
+        // would only let the analytics layer divide a net figure by 1.25.
       ],
     },
     {

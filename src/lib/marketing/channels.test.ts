@@ -49,8 +49,8 @@ describe('marketing channel catalog', () => {
   })
 
   it('marks not-yet-available channels as "Kommer snart" with no href', () => {
-    const google = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'google')!
-    const card = buildChannelCard(google, false)
+    const pinterest = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'pinterest')!
+    const card = buildChannelCard(pinterest, false)
     assert.equal(card.status, STATUS.comingSoon)
     assert.equal(card.href, null)
     assert.equal(card.enabled, false)
@@ -60,5 +60,73 @@ describe('marketing channel catalog', () => {
     assert.equal(MARKETING_API.metaSync, '/api/admin/integrations/meta/sync')
     // The constant the button uses resolves to the actually-registered endpoint path.
     assert.equal(`/api${metaSyncEndpoint.path}`, MARKETING_API.metaSync)
+  })
+})
+
+describe('Google Ads card (#15)', () => {
+  const google = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'google')!
+
+  const CONFIGURED_ENV = {
+    GOOGLE_ADS_CLIENT_ID: 'client-id',
+    GOOGLE_ADS_CLIENT_SECRET: 'secret',
+    GOOGLE_ADS_DEVELOPER_TOKEN: 'dev-token',
+    GOOGLE_ADS_REFRESH_TOKEN: 'refresh-token',
+    GOOGLE_ADS_CUSTOMER_ID: '1234567890',
+  }
+
+  it('is a live channel, not a "Kommer snart" placeholder', () => {
+    assert.equal(google.title, 'Google Ads')
+    assert.equal(google.available, true)
+    assert.equal(google.description, 'Synkroniser annonseringskostnader fra Google Ads.')
+    assert.ok(!/Kommer snart/i.test(google.description))
+  })
+
+  it('points at its own detail route', () => {
+    assert.equal(google.href, MARKETING_ROUTES.google)
+    assert.equal(google.href, '/admin/collections/marketing-expenses/google')
+  })
+
+  it('counts only google-ads rows, so manual entries never inflate the total', () => {
+    assert.equal(google.sourceValue, 'google-ads')
+    assert.equal(google.channelValue, 'google')
+  })
+
+  it('reports "Ikke konfigurert" — enabled false, but still openable — without env', () => {
+    const configured = isChannelConfigured(google, {})
+    assert.equal(configured, false)
+    const card = buildChannelCard(google, configured)
+    assert.equal(card.status, STATUS.notConfigured)
+    assert.equal(card.enabled, false)
+    // Still linked: the panel is where the missing configuration is explained.
+    assert.equal(card.href, MARKETING_ROUTES.google)
+  })
+
+  it('reports "Tilkoblet" with a summary when the env vars are present', () => {
+    const configured = isChannelConfigured(google, CONFIGURED_ENV)
+    assert.equal(configured, true)
+    const card = buildChannelCard(google, configured, {
+      totalSpend: 1234.56,
+      days: 14,
+      lastSyncedAt: '2026-07-23T08:00:00.000Z',
+      firstDate: '2026-07-09',
+      lastDate: '2026-07-22',
+    })
+    assert.equal(card.status, 'Tilkoblet')
+    assert.equal(card.enabled, true)
+    assert.equal(card.summary.totalSpend, 1234.56)
+    assert.equal(card.summary.days, 14)
+    assert.equal(card.summary.firstDate, '2026-07-09')
+  })
+
+  it('does not require the optional manager account id', () => {
+    assert.ok(!google.envKeys.includes('GOOGLE_ADS_LOGIN_CUSTOMER_ID'))
+    assert.equal(isChannelConfigured(google, CONFIGURED_ENV), true)
+  })
+
+  it('treats a blank env var as not configured', () => {
+    assert.equal(
+      isChannelConfigured(google, { ...CONFIGURED_ENV, GOOGLE_ADS_REFRESH_TOKEN: '  ' }),
+      false,
+    )
   })
 })
