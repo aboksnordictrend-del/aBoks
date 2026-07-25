@@ -86,11 +86,23 @@ const TRUST = [
   'Sendes innen 1–3 virkedager',
 ]
 
-const FUTURE = [
-  { name: 'aBoks Mini',        desc: 'Kompakt utgave laget for skuffen.',              image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aaBoks-blue.webp' },
-  { name: 'aBoks Huset – Gul', desc: 'Har du et gult hus? Da er dette noe for deg.',    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-gul-house.webp' },
-  { name: 'aBoks Huset – Rød', desc: 'Perfekt til det røde huset.',                    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-red-house.webp' },
+/** `href` is null for products that have no page yet — those images stay non-clickable. */
+const FUTURE: { name: string; desc: string; image: string; href: string | null }[] = [
+  { name: 'aBoks Mini',        desc: 'Holder AA-batteriene samlet og lett tilgjengelige. Kompakt design som passer perfekt i skuffer og skap.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aaBoks-blue.webp', href: '/produkter/aboks-mini' },
+  { name: 'aBoks Nano',        desc: 'Perfekt for deg som kun bruker AAA-batterier. Kompakt, stilren og enkel å plassere.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-Nano-olive-4x3.webp', href: '/produkter/aboks-nano' },
+  { name: 'aBoks Vegg',        desc: 'Snart tilgjengelig. Veggmontert oppbevaring som frigjør plass og holder batteriene lett tilgjengelige.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-vegg-kommer-snart.webp', href: null },
 ]
+
+/** Shared by the clickable and non-clickable variants so both keep identical framing. */
+const FUTURE_IMAGE_BOX: React.CSSProperties = {
+  aspectRatio: '4/3',
+  background: '#efe6d3',
+  borderBottom: '1px dashed #cdbf9f',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative',
+}
 
 function isLightColor(hex: string): boolean {
   const c = hex.replace('#', '')
@@ -610,8 +622,25 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'clamp(20px,2.4vw,28px)' }}>
               {FUTURE.map((p) => (
                 <div key={p.name} style={{ background: '#fff', borderRadius: '22px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(42,36,24,.05)' }}>
-                  {p.image && (
-                    <div style={{ aspectRatio: '4/3', background: '#efe6d3', borderBottom: '1px dashed #cdbf9f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  {p.image && (p.href ? (
+                    /* Only the image links — title, text and the rest of the card stay inert. */
+                    <Link
+                      href={p.href}
+                      data-btn
+                      aria-label={`Åpne ${p.name}`}
+                      className="group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#5e6a48]"
+                      style={{ ...FUTURE_IMAGE_BOX, cursor: 'pointer', textDecoration: 'none', overflow: 'hidden' }}
+                    >
+                      <Image
+                        src={p.image}
+                        alt={p.name}
+                        fill
+                        className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </Link>
+                  ) : (
+                    <div style={FUTURE_IMAGE_BOX}>
                       <Image
                         src={p.image}
                         alt={p.name}
@@ -619,7 +648,7 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                         style={{ objectFit: 'cover' }}
                       />
                     </div>
-                  )}
+                  ))}
                   <div style={{ padding: '24px 26px 28px' }}>
                     <h3 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '19px', color: '#1a1d17', margin: '0 0 8px' }}>{p.name}</h3>
                     <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', lineHeight: 1.55, color: '#6b6f63', margin: 0 }}>{p.desc}</p>
