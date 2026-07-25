@@ -313,6 +313,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                     { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                     { label: 'Historien',          href: '/#historien', hash: 'historien' },
                     { label: 'Inspirasjon',        href: '/inspirasjon' },
+                    { label: 'Anmeldelser',        href: '/anmeldelser' },
                     { label: 'Vanlige spørsmål',   href: '/vanlige-sporsmal' },
                   ],
                 },

@@ -51,6 +51,13 @@ export interface OrderDeliveredData {
   orderNumber: string
 }
 
+export interface ReviewInvitationData {
+  /** First name for the greeting ("Hei [FORNAVN]"), falling back to a neutral word. */
+  firstName: string
+  /** Absolute, production URL of the personal one-time review link. */
+  reviewUrl: string
+}
+
 export interface EmailTemplate {
   subject: string
   html: string

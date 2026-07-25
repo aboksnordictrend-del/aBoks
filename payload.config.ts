@@ -14,6 +14,9 @@ import { Media } from './src/collections/Media'
 import { Orders } from './src/collections/Orders'
 import { Customers } from './src/collections/Customers'
 import { MarketingExpenses } from './src/collections/MarketingExpenses'
+import { Reviews } from './src/collections/Reviews'
+import { ReviewInvitations } from './src/collections/ReviewInvitations'
+import { ReviewPhotos } from './src/collections/ReviewPhotos'
 import { EconomySettings } from './src/globals/EconomySettings'
 import { analyticsEndpoint } from './src/endpoints/analytics'
 import { metaSyncEndpoint } from './src/endpoints/metaSync'
@@ -73,7 +76,18 @@ export default buildConfig({
       afterNavLinks: ['@/components/admin/analytics/NavLink#default'],
     },
   },
-  collections: [Users, Products, ProductVariants, Media, Orders, Customers, MarketingExpenses],
+  collections: [
+    Users,
+    Products,
+    ProductVariants,
+    Media,
+    Orders,
+    Customers,
+    MarketingExpenses,
+    Reviews,
+    ReviewInvitations,
+    ReviewPhotos,
+  ],
   globals: [EconomySettings],
   // Server-side, auth-guarded endpoints. analytics → /api/analytics; admin-only marketing:
   // channel catalog, plus per-provider detail data and sync under
@@ -97,6 +111,12 @@ export default buildConfig({
       collections: {
         media: {
           // Required: without this, media.url is built from serverURL (→ localhost in prod)
+          disablePayloadAccessControl: true,
+        },
+        // Review photos live in Blob too. Access is enforced at query time (public pages
+        // only ever surface approved, consented photo URLs); the random blob key is the
+        // same unguessable-URL model used for product media.
+        'review-photos': {
           disablePayloadAccessControl: true,
         },
       },

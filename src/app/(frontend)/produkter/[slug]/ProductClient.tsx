@@ -17,6 +17,7 @@ import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
 import SaleCountdown from '@/components/SaleCountdown'
+import Stars from '@/components/reviews/Stars'
 
 interface Variant {
   id: string
@@ -74,6 +75,8 @@ interface Props {
   variants: Variant[]
   initialSku?: string
   breadcrumbs: Crumb[]
+  /** Real approved-review summary for this product. Absent/zero → no rating is shown. */
+  reviewSummary?: { count: number; average: number }
 }
 
 
@@ -98,7 +101,7 @@ function isLightColor(hex: string): boolean {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65
 }
 
-export default function ProductClient({ product, variants, initialSku, breadcrumbs }: Props) {
+export default function ProductClient({ product, variants, initialSku, breadcrumbs, reviewSummary }: Props) {
   const initialVariant = initialSku
     ? (variants.find((v) => v.sku === initialSku) ?? variants[0])
     : variants[0]
@@ -282,8 +285,19 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                     {formatPrice(product.price)}
                   </span>
                 )}
-                <span style={{ color: '#c9a76a', fontSize: '14px', letterSpacing: '2px' }}>★★★★★</span>
-                <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>128 anmeldelser</span>
+                {/* Real rating only — no reviews yet means no rating badge (spec §13). */}
+                {reviewSummary && reviewSummary.count > 0 && (
+                  <Link
+                    href={`/anmeldelser?product=${product.slug}`}
+                    aria-label={`${reviewSummary.average.toFixed(1).replace('.', ',')} av 5 stjerner, ${reviewSummary.count} anmeldelser`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
+                  >
+                    <Stars value={reviewSummary.average} size={15} showValue />
+                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63', textDecoration: 'underline' }}>
+                      {reviewSummary.count} {reviewSummary.count === 1 ? 'anmeldelse' : 'anmeldelser'}
+                    </span>
+                  </Link>
+                )}
               </div>
 
               {/* Sale countdown — сразу под ценой, левое выравнивание */}

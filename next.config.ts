@@ -2,6 +2,16 @@ import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // The review form (/anmeldelse/[token]) submits up to 5 photos through a Server Action.
+    // The default Server Actions body limit is 1 MB, which rejects the multipart POST with
+    // a 413 before the action ever runs. 45 MB = 5 files × 8 MB (the per-file cap enforced
+    // in the action and client) plus multipart overhead. The per-file 8 MB limit and the
+    // 5-photo cap are still enforced separately — this only raises the transport ceiling.
+    serverActions: {
+      bodySizeLimit: '45mb',
+    },
+  },
   async redirects() {
     return [
       {

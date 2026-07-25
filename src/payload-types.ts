@@ -74,6 +74,9 @@ export interface Config {
     orders: Order;
     customers: Customer;
     'marketing-expenses': MarketingExpense;
+    reviews: Review;
+    'review-invitations': ReviewInvitation;
+    'review-photos': ReviewPhoto;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +91,9 @@ export interface Config {
     orders: OrdersSelect<false> | OrdersSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
     'marketing-expenses': MarketingExpensesSelect<false> | MarketingExpensesSelect<true>;
+    reviews: ReviewsSelect<false> | ReviewsSelect<true>;
+    'review-invitations': ReviewInvitationsSelect<false> | ReviewInvitationsSelect<true>;
+    'review-photos': ReviewPhotosSelect<false> | ReviewPhotosSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -516,6 +522,95 @@ export interface MarketingExpense {
   createdAt: string;
 }
 /**
+ * Kundeanmeldelser. Godkjenn, avvis eller skjul før publisering.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews".
+ */
+export interface Review {
+  id: number;
+  rating: number;
+  status: 'pending' | 'approved' | 'rejected' | 'hidden';
+  /**
+   * Settes automatisk av serveren fra tilknyttet ordre.
+   */
+  verifiedPurchase?: boolean | null;
+  title?: string | null;
+  text: string;
+  photos?: (number | ReviewPhoto)[] | null;
+  customerName: string;
+  customerCity?: string | null;
+  product: number | Product;
+  variantName?: string | null;
+  /**
+   * Lagret ved innsending, uendret om produktet endres senere.
+   */
+  productSnapshot?: {
+    title?: string | null;
+    variantName?: string | null;
+    color?: string | null;
+  };
+  consentToPublishName?: boolean | null;
+  consentToPublishPhotos?: boolean | null;
+  /**
+   * Vises aldri offentlig.
+   */
+  moderationNote?: string | null;
+  order?: (number | null) | Order;
+  customer?: (number | null) | Customer;
+  invitation?: (number | null) | ReviewInvitation;
+  submittedAt?: string | null;
+  approvedAt?: string | null;
+  helpfulCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Kundebilder lastet opp med anmeldelser.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "review-photos".
+ */
+export interface ReviewPhoto {
+  id: number;
+  alt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * Anmeldelsesinvitasjoner (personlige engangslenker).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "review-invitations".
+ */
+export interface ReviewInvitation {
+  id: number;
+  email: string;
+  order: number | Order;
+  customer?: (number | null) | Customer;
+  /**
+   * Settes når kunden har sendt inn anmeldelsen.
+   */
+  review?: (number | null) | Review;
+  status: 'active' | 'used' | 'expired' | 'revoked';
+  tokenHash: string;
+  expiresAt: string;
+  usedAt?: string | null;
+  sentAt?: string | null;
+  resendCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -566,6 +661,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'marketing-expenses';
         value: number | MarketingExpense;
+      } | null)
+    | ({
+        relationTo: 'reviews';
+        value: number | Review;
+      } | null)
+    | ({
+        relationTo: 'review-invitations';
+        value: number | ReviewInvitation;
+      } | null)
+    | ({
+        relationTo: 'review-photos';
+        value: number | ReviewPhoto;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -869,6 +976,76 @@ export interface MarketingExpensesSelect<T extends boolean = true> {
   syncMetadata?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews_select".
+ */
+export interface ReviewsSelect<T extends boolean = true> {
+  rating?: T;
+  status?: T;
+  verifiedPurchase?: T;
+  title?: T;
+  text?: T;
+  photos?: T;
+  customerName?: T;
+  customerCity?: T;
+  product?: T;
+  variantName?: T;
+  productSnapshot?:
+    | T
+    | {
+        title?: T;
+        variantName?: T;
+        color?: T;
+      };
+  consentToPublishName?: T;
+  consentToPublishPhotos?: T;
+  moderationNote?: T;
+  order?: T;
+  customer?: T;
+  invitation?: T;
+  submittedAt?: T;
+  approvedAt?: T;
+  helpfulCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "review-invitations_select".
+ */
+export interface ReviewInvitationsSelect<T extends boolean = true> {
+  email?: T;
+  order?: T;
+  customer?: T;
+  review?: T;
+  status?: T;
+  tokenHash?: T;
+  expiresAt?: T;
+  usedAt?: T;
+  sentAt?: T;
+  resendCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "review-photos_select".
+ */
+export interface ReviewPhotosSelect<T extends boolean = true> {
+  alt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

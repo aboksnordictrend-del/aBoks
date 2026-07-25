@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import ProductClient from './ProductClient'
 import type { Crumb } from '@/components/Breadcrumbs'
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
+import { getProductReviewSummary } from '@/lib/reviewServer'
+import { SITE_URL } from '@/lib/site'
 
 function mediaUrl(val: unknown): string {
   if (typeof val === 'string') return val
@@ -61,6 +63,7 @@ export default async function ProductPage({
       : { label: 'Produkter', href: '/produkter' }
 
   const rawVariants = await getVariantsForProduct(String(product.id))
+  const reviewSummary = await getProductReviewSummary(String(product.id))
 
   const variants = rawVariants.map((v) => ({
     id: String(v.id),
@@ -99,8 +102,41 @@ export default async function ProductPage({
     answer: f.answer ?? '',
   })).filter((f) => f.question)
 
+  // Product structured data with aggregateRating — ONLY when real approved reviews exist
+  // (spec §12: never emit a fake aggregateRating). Placed on the product page rather than
+  // the Organization, which is where review/rating schema belongs.
+  const productJsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.title,
+    description: product.description ?? '',
+    url: `${SITE_URL}/produkter/${slug}`,
+    ...(productImages[0]?.src ? { image: productImages[0].src } : {}),
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: 'NOK',
+      price: (product.salePrice ?? product.price ?? 0).toString(),
+      availability: 'https://schema.org/InStock',
+      url: `${SITE_URL}/produkter/${slug}`,
+    },
+    ...(reviewSummary.count > 0
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: reviewSummary.average.toFixed(1),
+            reviewCount: reviewSummary.count,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
+  }
+
   return (
-    <ProductClient
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <ProductClient
+      reviewSummary={reviewSummary}
       product={{
         id: String(product.id),
         title: product.title,
@@ -126,6 +162,7 @@ export default async function ProductPage({
       variants={variants}
       initialSku={variant}
       breadcrumbs={[{ label: 'Hjem', href: '/' }, parentCrumb, { label: product.title }]}
-    />
+      />
+    </>
   )
 }

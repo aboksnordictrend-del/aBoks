@@ -2,6 +2,7 @@ export { createOrderConfirmationEmail } from './order-confirmation'
 export { createAdminOrderEmail } from './admin-order'
 export { createOrderShippedEmail } from './order-shipped'
 export { createOrderDeliveredEmail } from './order-delivered'
+export { createReviewInvitationEmail } from './review-invitation'
 export type {
   OrderItem,
   ShippingAddress,
@@ -9,5 +10,6 @@ export type {
   AdminOrderData,
   OrderShippedData,
   OrderDeliveredData,
+  ReviewInvitationData,
   EmailTemplate,
 } from './types'

@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 import { claimOrderEmails, sendOrderEmails } from './hooks/sendOrderEmails'
 import { snapshotOrderCosts } from './hooks/orderSnapshot'
 import { resendShippingEmail } from './endpoints/resendShippingEmail'
+import { sendReviewInvitation } from './endpoints/sendReviewInvitation'
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
@@ -278,6 +279,16 @@ export const Orders: CollectionConfig = {
         },
       },
     },
+    {
+      name: 'sendReviewInvitation',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/SendReviewInvitation#default',
+        },
+      },
+    },
     // Email sentinels. Written by the order-email hooks as an atomic claim in the
     // same UPDATE as the status change — that is what keeps sends idempotent.
     // Hidden in the admin UI, but plain columns in the database.
@@ -329,6 +340,6 @@ export const Orders: CollectionConfig = {
     beforeChange: [claimOrderEmails, snapshotOrderCosts],
     afterChange: [sendOrderEmails],
   },
-  endpoints: [resendShippingEmail],
+  endpoints: [resendShippingEmail, sendReviewInvitation],
   timestamps: true,
 }
