@@ -9,8 +9,7 @@ import type { CarouselHandle } from '@/components/Carousel'
 import Accordion from '@/components/Accordion'
 import SaleCountdown from '@/components/SaleCountdown'
 import HowItWorksSteps from '@/components/HowItWorksSteps'
-import { isSaleActive, getEffectivePrice, type SaleInfo } from '@/lib/pricing'
-import { formatPrice } from '@/lib/format'
+import { isSaleActive, type SaleInfo } from '@/lib/pricing'
 import { FAQS, COMPARTMENTS, CAPACITY } from '@/lib/content'
 
 const COLORS = [
@@ -64,12 +63,6 @@ const LIFESTYLE = [
   { src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp', alt: 'Tidløst design som varer.' },
 ]
 
-const FUTURE = [
-  { name: 'aBoks Mini', desc: 'Kompakt utgave laget for skuffen.' },
-  { name: 'aBoks Wall', desc: 'Veggmontert oppbevaring for garasjen.' },
-  { name: 'aBoks Pro', desc: 'Større kapasitet for verkstedet.' },
-]
-
 const ROOMS = [
   { label: 'Ved TV-en',           image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Ved-TV.png' },
   { label: 'I boden',             image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-boden.png' },
@@ -80,8 +73,6 @@ const ROOMS = [
   { label: 'I gangen',            image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-gangen.png' },
   { label: 'På vaskerommet',      image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-vaskerommet.png' },
 ]
-
-const PRICE = 499
 
 const homeTextLink: React.CSSProperties = {
   color: '#39402c',
@@ -105,7 +96,6 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
   const [colorId, setColorId] = useState('olive')
   const [saleExpired, setSaleExpired] = useState(false)
   const saleActive = !saleExpired && isSaleActive(price, sale)
-  const effectivePrice = saleExpired ? price : getEffectivePrice(price, sale)
   const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
   const prodCarouselRef   = useRef<CarouselHandle>(null)
   const lifeCarouselRef   = useRef<CarouselHandle>(null)
@@ -744,7 +734,7 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
                     transition: 'transform 0.15s ease, filter 0.15s ease',
                   }}
                 >
-                  Bestill nå · {formatPrice(effectivePrice)}
+                  Bestill nå
                 </Link>
                 <Link
                   href="/produkter"
