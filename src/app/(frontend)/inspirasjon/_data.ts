@@ -171,6 +171,45 @@ const articles: InspirasjonArticle[] = [
     imageHeight: 941,
     imageAlt: 'Fotball-VM 2026: Heia Norge – og heia miljøet – aBoks guide',
   },
+  {
+    category: 'Kunnskap & hverdag',
+    title: 'Hvordan fungerer batterier? Slik blir kjemi til strøm',
+    description:
+      'Et batteri er et kjemisk kraftverk i miniatyr. Her er den forståelige forklaringen på hvordan batterier fungerer – og hvorfor kunnskapen gjør hjemmet ditt både ryddigere og tryggere.',
+    date: 'Juli 2026',
+    publishedAt: '2026-07-26',
+    slug: '/inspirasjon/hvordan-fungerer-batterier',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Hvordan-fungerer-baterier.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
+    imageAlt: 'Hvordan fungerer batterier – anode, katode og elektrolytt forklart – aBoks guide',
+  },
+  {
+    category: 'Teknologi & bærekraft',
+    title: 'Hvordan fungerer trådløs strøm? Den komplette guiden for hjemmet',
+    description:
+      'Trådløs strøm har flyttet inn i norske hjem – i nattbordladeren, i øreproppene og i bilen. Men hva skjer egentlig i luftgapet mellom laderen og telefonen? Her er den forståelige forklaringen, tallene som overrasker, og de praktiske rådene som gjør hverdagen både tryggere og mer bærekraftig.',
+    date: 'Juli 2026',
+    publishedAt: '2026-07-27',
+    slug: '/inspirasjon/hvordan-fungerer-tradlos-strom',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Hvordan-fungerer-tr%C3%A5dlos-str%C3%B8m.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
+    imageAlt: 'Hvordan fungerer trådløs strøm – induksjon, Qi2 og ladesikkerhet – aBoks guide',
+  },
+  {
+    category: 'Bærekraft & smart hverdag',
+    title: 'Oppladbare eller engangsbatterier? Slik regner du ut hva som lønner seg',
+    description:
+      'Oppladbare eller engangsbatterier? Svaret avhenger ikke av batteriet, men av apparatet. Her er formelen som gir deg ditt eget break-even-punkt – pluss tallene som overrasker de fleste.',
+    date: 'Juli 2026',
+    publishedAt: '2026-07-28',
+    slug: '/inspirasjon/oppladbare-eller-engangsbatterier',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Oppladbare-eller-engangsbatterier.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
+    imageAlt: 'Oppladbare eller engangsbatterier – break-even, kostnad og miljø – aBoks guide',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {

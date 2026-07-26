@@ -8,7 +8,7 @@ export const FAQS = [
   { id: 'f1', question: 'Hvilke batterier passer i aBoks?', answer: 'aBoks har egne rom for AA- og AAA-batterier, pluss et eget rom for brukte batterier som skal leveres til gjenvinning.' },
   { id: 'f2', question: 'Hvor mange batterier får jeg plass til?', answer: 'Du får plass til 20 AA-batterier og 36 AAA-batterier, i tillegg til et romslig rom for brukte batterier.' },
   { id: 'f3', question: 'Hvilket materiale er aBoks laget av?', answer: 'aBoks er laget av et solid, matt materiale som tåler daglig bruk og er enkelt å holde rent.' },
-  { id: 'f4', question: 'Kan jeg henge aBoks på veggen?', answer: 'aBoks er designet for å stå støtt på benken eller i skuffen. En veggmontert løsning er på vei.' },
+  { id: 'f4', question: 'Kan jeg henge aBoks på veggen?', answer: 'Ja! Med aBoks Vegg kan du enkelt oppbevare batteriene på veggen og frigjøre plass i skuffer og på benken. Du finner den på produktsiden sammen med våre øvrige modeller.' },
   { id: 'f5', question: 'Hva er leverings- og returvilkårene?', answer: 'Vi sender innen 1–3 virkedager, tilbyr fri frakt over kr 650 og 100 dagers åpent kjøp.' },
 ]
 
