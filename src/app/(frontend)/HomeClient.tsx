@@ -243,12 +243,12 @@ export default function HomeClient({
                 padding: '16px 20px', borderRadius: '999px', background: '#39402c', color: '#faf6ee',
                 fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', textDecoration: 'none',
               }}>Bestill nå</Link>
-              <Link href={`/produkter/aboks?variant=${activeColor.sku}`} data-btn style={{
+              <Link href="/produkter" data-btn style={{
                 flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 padding: '16px 20px', borderRadius: '999px', background: 'rgba(255,255,255,0.18)', color: '#fff',
                 fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px',
                 border: '1.5px solid rgba(255,255,255,0.45)', textDecoration: 'none',
-              }}>Se produktet</Link>
+              }}>Se alle produkter</Link>
             </div>
             {saleActive && sale?.saleStartDate && sale?.saleEndDate && (
               <div style={{ width: '100%', maxWidth: '360px' }}>
@@ -858,7 +858,7 @@ function HeroContent({
           Bestill nå
         </Link>
         <Link
-          href={`/produkter/aboks?variant=${activeColor.sku}`}
+          href="/produkter"
           data-btn
           style={{
             display: 'inline-flex',
@@ -878,7 +878,7 @@ function HeroContent({
             transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease, border-color 0.2s ease',
           }}
         >
-          Se produktet
+          Se alle produkter
         </Link>
       </div>
       {sale?.saleStartDate && sale?.saleEndDate && (
