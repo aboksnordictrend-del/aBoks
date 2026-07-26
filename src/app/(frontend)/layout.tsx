@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Cormorant_Garamond, Manrope } from 'next/font/google'
 import Script from 'next/script'
+import { Analytics } from '@vercel/analytics/next'
 import '../globals.css'
 import Header from '@/components/HeaderServer'
 import Footer from '@/components/Footer'
@@ -82,6 +83,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           src="https://cdn-cookieyes.com/client_data/ffac5a38a403790cde2c588fe7db8a3d/script.js"
           strategy="afterInteractive"
         />
+        <Analytics />
       </body>
     </html>
   )
