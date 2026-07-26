@@ -93,6 +93,13 @@ const FUTURE: { name: string; desc: string; image: string; href: string | null }
   { name: 'aBoks Vegg',        desc: 'Snart tilgjengelig. Veggmontert oppbevaring som frigjør plass og holder batteriene lett tilgjengelige.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-vegg-kommer-snart.webp', href: null },
 ]
 
+// Assembly guide (PDF) shown only on the aBoks Vegg page. Matched on the CMS title — the
+// same key the homepage section uses (src/app/(frontend)/page.tsx), so an edited slug does
+// not silently hide the link.
+const VEGG_PRODUCT_TITLE = 'aBoks Vegg'
+const VEGG_ASSEMBLY_GUIDE_URL =
+  'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aboks-vegg/aBoks-Vegg-Monteringsveiledning.pdf'
+
 /** Shared by the clickable and non-clickable variants so both keep identical framing. */
 const FUTURE_IMAGE_BOX: React.CSSProperties = {
   aspectRatio: '4/3',
@@ -437,6 +444,39 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   items={product.details.map((d) => ({ id: d.id, question: d.title, answer: d.content }))}
                   borderColor="#e7e2d4"
                 />
+              )}
+
+              {/* Assembly guide — aBoks Vegg only */}
+              {product.title.trim().toLowerCase() === VEGG_PRODUCT_TITLE.toLowerCase() && (
+                <div style={{ textAlign: 'center', marginTop: '18px' }}>
+                  <a
+                    href={VEGG_ASSEMBLY_GUIDE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '7px',
+                      fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#5a6150',
+                      textDecoration: 'none', opacity: 0.85, transition: 'opacity 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      const el = e.currentTarget as HTMLAnchorElement
+                      el.style.opacity = '1'
+                      el.style.textDecoration = 'underline'
+                    }}
+                    onMouseLeave={(e) => {
+                      const el = e.currentTarget as HTMLAnchorElement
+                      el.style.opacity = '0.85'
+                      el.style.textDecoration = 'none'
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <path d="M7 10l5 5 5-5" />
+                      <path d="M12 15V3" />
+                    </svg>
+                    Last ned monteringsveiledning
+                  </a>
+                </div>
               )}
             </div>
           </div>
