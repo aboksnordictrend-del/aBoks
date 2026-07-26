@@ -14,9 +14,13 @@ import type {
 
 export const dynamic = 'force-dynamic'
 
+// Names exactly as they are snapshotted on an order line — one per product family, so the
+// preview shows that each keeps its own name instead of collapsing to "aBoks – <farge>".
 const MOCK_ITEMS = [
-  { productName: 'aBoks', variantName: 'Olivengrønn', quantity: 1, unitPrice: 399, lineTotal: 399 },
-  { productName: 'aBoks Mini', variantName: 'Sort', quantity: 1, unitPrice: 299, lineTotal: 299 },
+  { displayName: 'aBoks – Olivengrønn', quantity: 1, unitPrice: 399, lineTotal: 399 },
+  { displayName: 'aBoks Vegg – Mørk blå', quantity: 1, unitPrice: 399, lineTotal: 399 },
+  { displayName: 'aBoks Mini – Sort', quantity: 1, unitPrice: 299, lineTotal: 299 },
+  { displayName: 'aBoks Nano – Creme', quantity: 1, unitPrice: 199, lineTotal: 199 },
 ]
 
 const MOCK_ADDRESS = { address: 'Eksempelveien 12', postalCode: '7246', city: 'Sandstad' }
@@ -26,9 +30,9 @@ const MOCK_ORDER: OrderConfirmationData = {
   customerEmail: 'post@aboks.no',
   orderNumber: '1001',
   items: MOCK_ITEMS,
-  subtotal: 698,
+  subtotal: 1296,
   shipping: 0,
-  total: 698,
+  total: 1296,
   shippingAddress: MOCK_ADDRESS,
 }
 

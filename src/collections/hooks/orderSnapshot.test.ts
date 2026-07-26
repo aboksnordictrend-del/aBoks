@@ -1,10 +1,68 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { computeDefaultShipping, computeKustomFee, deriveLine } from './orderSnapshot'
+import {
+  computeDefaultShipping,
+  computeKustomFee,
+  deriveLine,
+  resolveLineDisplayName,
+} from './orderSnapshot'
 import type { EconomySetting } from '@/payload-types'
 
 const settings = (over: Partial<EconomySetting> = {}): EconomySetting =>
   ({ id: 1, updatedAt: '', createdAt: '', ...over }) as EconomySetting
+
+describe('resolveLineDisplayName', () => {
+  it("prefers the variant's own display name — the string the admin panel shows", () => {
+    assert.equal(
+      resolveLineDisplayName(
+        { variantName: 'Mørk blå' },
+        { id: 7, name: 'Mørk blå', displayName: 'aBoks Vegg – Mørk blå' },
+        { id: 3, title: 'aBoks Vegg' },
+      ),
+      'aBoks Vegg – Mørk blå',
+    )
+  })
+
+  it('keeps each product distinct for the same colour', () => {
+    const variants = [
+      { id: 1, name: 'Mørk blå', displayName: 'aBoks – Mørk blå' },
+      { id: 2, name: 'Mørk blå', displayName: 'aBoks Vegg – Mørk blå' },
+      { id: 3, name: 'Mørk blå', displayName: 'aBoks Mini – Mørk blå' },
+      { id: 4, name: 'Mørk blå', displayName: 'aBoks Nano – Mørk blå' },
+    ]
+    assert.deepEqual(
+      variants.map((v) => resolveLineDisplayName({ variantName: 'Mørk blå' }, v, null)),
+      ['aBoks – Mørk blå', 'aBoks Vegg – Mørk blå', 'aBoks Mini – Mørk blå', 'aBoks Nano – Mørk blå'],
+    )
+  })
+
+  it('rebuilds title + colour when the variant has no display name yet', () => {
+    assert.equal(
+      resolveLineDisplayName(
+        { variantName: 'Sort' },
+        { id: 7, name: 'Sort' },
+        { id: 3, title: 'aBoks Mini' },
+      ),
+      'aBoks Mini – Sort',
+    )
+  })
+
+  it("falls back to the line's own colour when the variant carries none", () => {
+    assert.equal(
+      resolveLineDisplayName({ variantName: 'Creme' }, null, { id: 3, title: 'aBoks Nano' }),
+      'aBoks Nano – Creme',
+    )
+  })
+
+  it('returns the title alone when there is no colour at all', () => {
+    assert.equal(resolveLineDisplayName({}, null, { id: 3, title: 'aBoks' }), 'aBoks')
+  })
+
+  it('returns null rather than inventing a product name', () => {
+    assert.equal(resolveLineDisplayName({ variantName: 'Sort' }, null, null), null)
+    assert.equal(resolveLineDisplayName({}, { id: 7, name: 'Sort' }, null), null)
+  })
+})
 
 describe('deriveLine', () => {
   it('returns nulls when unitCost is missing (old order line)', () => {

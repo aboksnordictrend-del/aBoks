@@ -22,8 +22,8 @@ const MOCK_ORDER = {
     phone: '+47 900 00 000',
   },
   items: [
-    { variantName: 'Olivengrønn', quantity: 1, unitPrice: 399, lineTotal: 399 },
-    { variantName: 'Sort', quantity: 1, unitPrice: 299, lineTotal: 299 },
+    { displayName: 'aBoks – Olivengrønn', variantName: 'Olivengrønn', quantity: 1, unitPrice: 399, lineTotal: 399 },
+    { displayName: 'aBoks Vegg – Sort', variantName: 'Sort', quantity: 1, unitPrice: 299, lineTotal: 299 },
   ],
   subtotal: 698,
   shipping: 0,

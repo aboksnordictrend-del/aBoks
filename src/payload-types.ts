@@ -379,6 +379,10 @@ export interface Order {
   items: {
     product?: (number | null) | Product;
     variant?: (number | null) | ProductVariant;
+    /**
+     * Lagres automatisk fra variantens visningsnavn da ordren ble opprettet. Brukes ordrett i e-post og kvittering.
+     */
+    displayName?: string | null;
     variantName?: string | null;
     quantity: number;
     unitPrice: number;
@@ -904,6 +908,7 @@ export interface OrdersSelect<T extends boolean = true> {
     | {
         product?: T;
         variant?: T;
+        displayName?: T;
         variantName?: T;
         quantity?: T;
         unitPrice?: T;

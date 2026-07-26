@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import type { Order } from '@/payload-types'
+import { orderLineDisplayName } from './orderLineName'
 
 /**
  * PDF receipt (Kvittering) for a delivered order.
@@ -97,9 +98,9 @@ function customerAddressOf(order: Order): string[] {
   return [info.address, cityLine].map((s) => (s ?? '').trim()).filter(Boolean)
 }
 
-function lineNameOf(item: NonNullable<Order['items']>[number]): string {
-  return ['aBoks', item.variantName].filter(Boolean).join(' – ')
-}
+// The name is read from the order snapshot, never rebuilt from the catalogue — a receipt
+// must show what was actually bought ("aBoks Vegg – Mørk blå"), not a guessed product name.
+const lineNameOf = orderLineDisplayName
 
 /**
  * Builds the exact labelled content of the receipt from the stored order. Pure and

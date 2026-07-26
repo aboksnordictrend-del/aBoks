@@ -32,8 +32,14 @@ const order = (overrides: Partial<Order> = {}): Order =>
       city: 'Oslo',
     },
     items: [
-      { variantName: 'Sort', quantity: 2, unitPrice: 499, lineTotal: 998 },
-      { variantName: 'Blå ørken', quantity: 1, unitPrice: 301, lineTotal: 301 },
+      { displayName: 'aBoks – Sort', variantName: 'Sort', quantity: 2, unitPrice: 499, lineTotal: 998 },
+      {
+        displayName: 'aBoks Vegg – Blå ørken',
+        variantName: 'Blå ørken',
+        quantity: 1,
+        unitPrice: 301,
+        lineTotal: 301,
+      },
     ],
     subtotal: 1299,
     shipping: 0,
@@ -98,7 +104,17 @@ describe('buildReceiptModel', () => {
     assert.equal(model.lines[0].quantity, 2)
     assert.equal(model.lines[0].unitPrice, '499,00 kr')
     assert.equal(model.lines[0].lineTotal, '998,00 kr')
-    assert.equal(model.lines[1].name, 'aBoks – Blå ørken')
+    // Snapshotted name printed verbatim — a Vegg line is never relabelled as plain aBoks.
+    assert.equal(model.lines[1].name, 'aBoks Vegg – Blå ørken')
+  })
+
+  it('prints the colour alone for a legacy line with no name snapshot', () => {
+    const model = buildReceiptModel(
+      order({
+        items: [{ variantName: 'Sort', quantity: 1, unitPrice: 499, lineTotal: 499 }],
+      } as Partial<Order>),
+    )
+    assert.equal(model.lines[0].name, 'Sort')
   })
 
   it('shows Gratis frakt when shipping is zero and an amount otherwise', () => {
@@ -159,7 +175,15 @@ describe('generateReceiptPdf', () => {
           postalCode: '9999',
           city: 'Båtsfjord',
         },
-        items: [{ variantName: 'Grønn ørkenutgave med et ekstra langt navn', quantity: 3, unitPrice: 399, lineTotal: 1197 }],
+        items: [
+          {
+            displayName: 'aBoks Vegg – Grønn ørkenutgave med et ekstra langt navn',
+            variantName: 'Grønn ørkenutgave med et ekstra langt navn',
+            quantity: 3,
+            unitPrice: 399,
+            lineTotal: 1197,
+          },
+        ],
         subtotal: 1197,
         total: 1197,
       }),

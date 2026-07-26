@@ -30,7 +30,9 @@ const baseOrder = (overrides: Partial<Order> = {}): Order =>
     orderNumber: 'AB-1001',
     status: 'confirmed',
     customerInfo: { email: 'kunde@example.com', firstName: 'Kari', lastName: 'Nordmann' },
-    items: [{ variantName: 'Sort', quantity: 1, unitPrice: 499, lineTotal: 499 }],
+    items: [
+      { displayName: 'aBoks Vegg – Sort', variantName: 'Sort', quantity: 1, unitPrice: 499, lineTotal: 499 },
+    ],
     subtotal: 499,
     shipping: 0,
     total: 499,

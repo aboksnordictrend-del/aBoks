@@ -122,6 +122,20 @@ export const Orders: CollectionConfig = {
           label: 'Variant',
         },
         {
+          // Historical name snapshot. Written server-side on creation from the variant's
+          // own Visningsnavn, so e-mails and the PDF receipt print the same string the
+          // admin panel shows ("aBoks Vegg – Mørk blå") and never re-derive it from the
+          // catalogue. Read-only: a later product rename must not rewrite past orders.
+          name: 'displayName',
+          type: 'text',
+          label: 'Produktnavn (som vist til kunden)',
+          admin: {
+            readOnly: true,
+            description:
+              'Lagres automatisk fra variantens visningsnavn da ordren ble opprettet. Brukes ordrett i e-post og kvittering.',
+          },
+        },
+        {
           name: 'variantName',
           type: 'text',
           label: 'Fargenavn',

@@ -8,6 +8,7 @@ import {
   type EmailTemplate,
 } from '@/emails'
 import { getEmailSendTimeoutMs, verifyMailTransport } from './mailTransport'
+import { orderLineDisplayName } from './orderLineName'
 import { generateReceiptPdf } from './receiptPdf'
 
 export const ADMIN_EMAIL = 'post@aboks.no'
@@ -103,9 +104,13 @@ export function customerNameOf(doc: Order): string {
   )
 }
 
+/**
+ * Order lines in the shape the templates render. The product name is *read* from the order
+ * snapshot, never recomputed from the catalogue — see @/lib/orderLineName.
+ */
 function itemsOf(doc: Order) {
   return (doc.items ?? []).map((item) => ({
-    variantName: item.variantName ?? undefined,
+    displayName: orderLineDisplayName(item),
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     lineTotal: item.lineTotal,

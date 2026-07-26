@@ -4,6 +4,7 @@ import { createKustomOrder, getKustomOrder } from '@/lib/kustom'
 import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
 import { allocateOrderNumber } from '@/lib/orderNumber'
+import { splitLineName } from '@/lib/orderLineName'
 import { VAT_RATE_BASIS_POINTS } from '@/lib/tax'
 import type { CartItem } from '@/store/cart'
 
@@ -14,6 +15,41 @@ const TAX_RATE = VAT_RATE_BASIS_POINTS
 
 function toOere(kr: number): number {
   return Math.round(kr * 100)
+}
+
+/**
+ * Display names for the cart's variants, resolved server-side from the catalogue.
+ *
+ * The cart only carries a colour ("Mørk blå"), which is meaningless on its own now that
+ * several products share colours — so the product name must come from the variant, never
+ * from a hardcoded literal. Used for the Kustom order-line names the customer sees while
+ * paying, and as the initial `displayName` on the pre-created order. Never throws: a
+ * catalogue read must not be able to block checkout.
+ */
+async function resolveVariantDisplayNames(items: CartItem[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>()
+  const ids = items.map((i) => Number(i.variantId)).filter((id) => Number.isFinite(id))
+  if (!ids.length) return names
+
+  try {
+    const payload = await getPayloadClient()
+    const { docs } = await payload.find({
+      collection: 'product-variants',
+      where: { id: { in: ids } },
+      limit: ids.length,
+      depth: 0,
+    })
+    for (const doc of docs) {
+      const displayName = typeof doc.displayName === 'string' ? doc.displayName.trim() : ''
+      if (displayName) names.set(String(doc.id), displayName)
+    }
+  } catch (err) {
+    console.error(
+      '[kasse] Failed to resolve variant display names:',
+      err instanceof Error ? err.message : err,
+    )
+  }
+  return names
 }
 
 // VAT is included in the price: tax = amount * rate / (10000 + rate)
@@ -41,6 +77,12 @@ export async function initKustomCheckout(
   const shippingKr = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST
   const total = subtotal + shippingKr
 
+  const variantNames = await resolveVariantDisplayNames(items)
+  // Falls back to the bare colour rather than guessing a product name — a wrong product
+  // name is worse than a missing one, and the order's own snapshot is fixed up server-side
+  // by the orders beforeChange hook regardless of what is sent to Kustom.
+  const lineNameOf = (item: CartItem) => variantNames.get(item.variantId) ?? item.colorName
+
   const orderLines: {
     type: 'physical' | 'shipping_fee'
     reference: string
@@ -57,7 +99,7 @@ export async function initKustomCheckout(
     return {
       type: 'physical',
       reference: item.variantId,
-      name: `aBoks · ${item.colorName}`,
+      name: lineNameOf(item),
       quantity: item.qty,
       quantity_unit: 'pcs',
       unit_price: toOere(item.price),
@@ -155,6 +197,7 @@ export async function initKustomCheckout(
         kustomOrderId: kustomOrder.order_id,
         items: items.map((item) => ({
           variant: Number(item.variantId),
+          displayName: lineNameOf(item),
           variantName: item.colorName,
           quantity: item.qty,
           unitPrice: item.price,
@@ -218,11 +261,13 @@ export async function getOrderConfirmation(kustomOrderId: string) {
   const orderItems = kustomOrder.order_lines
     .filter((l) => l.type === 'physical')
     .map((l) => {
-      const [rawName = 'aBoks', rawVariant = ''] = l.name.split(' · ')
+      // GA4 wants the product and the colour apart. The line name is the variant's display
+      // name ("aBoks Vegg – Mørk blå"), so split it — never assume the product is "aBoks".
+      const { productName, colorName } = splitLineName(l.name)
       return {
         itemId: l.reference,
-        itemName: rawName.trim(),
-        itemVariant: rawVariant.trim(),
+        itemName: productName,
+        itemVariant: colorName,
         price: l.unit_price / 100,
         quantity: l.quantity,
       }

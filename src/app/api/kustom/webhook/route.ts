@@ -3,6 +3,7 @@ import { getKustomOrder } from '@/lib/kustom'
 import { getPayloadClient } from '@/lib/payload'
 import { allocateOrderNumber } from '@/lib/orderNumber'
 import { syncCustomerForOrderSafe } from '@/lib/customers'
+import { colorNameFromLineName } from '@/lib/orderLineName'
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -81,10 +82,13 @@ export async function POST(req: NextRequest) {
           kustomOrderId: orderId,
           items: physicalLines.map(l => {
             const variantId = parseInt(l.reference, 10)
-            const [, colorName] = l.name.split(' · ')
             return {
               ...(Number.isFinite(variantId) ? { variant: variantId } : {}),
-              variantName: colorName?.trim() ?? l.name,
+              // The Kustom line name is the variant's full display name; both fields are
+              // re-resolved from the variant by the orders snapshot hook when the reference
+              // is usable, so these are only the last-resort values.
+              displayName: l.name.trim(),
+              variantName: colorNameFromLineName(l.name),
               quantity: l.quantity,
               unitPrice: l.unit_price / 100,
               lineTotal: l.total_amount / 100,

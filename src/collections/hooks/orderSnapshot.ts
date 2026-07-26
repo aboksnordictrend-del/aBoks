@@ -2,6 +2,7 @@ import type { CollectionBeforeChangeHook, PayloadRequest } from 'payload'
 import type { EconomySetting } from '@/payload-types'
 import { round2 } from '@/lib/analytics/money'
 import { VAT_RATE_PERCENT } from '@/lib/tax'
+import { formatVariantDisplayName } from './variantDisplayName'
 
 // Historical cost/VAT snapshot for order lines.
 //
@@ -21,10 +22,20 @@ import { VAT_RATE_PERCENT } from '@/lib/tax'
 // The same variant→product lookup also backfills the line's `product` relationship on
 // create: Kustom only sends a variant reference, so without this the order line would
 // store `variant` but leave `product` empty. Both are now always persisted.
+//
+// Display-name snapshot: the same lookup also freezes `displayName` — the variant's own
+// Visningsnavn ("aBoks Vegg – Mørk blå") — and normalises `variantName` to the variant's
+// colour. This is what e-mails and the PDF receipt print, so a line can never be shown
+// under a different product's name. It is a snapshot in the same sense as unitCost: never
+// recomputed on update, so renaming a product leaves historical orders alone. On update we
+// only *fill in* a line that has no name yet (a line added to an existing order, or a row
+// predating the column); an existing name is never overwritten.
 
 interface OrderLine {
   product?: number | { id: number } | null
   variant?: number | { id: number } | null
+  displayName?: string | null
+  variantName?: string | null
   quantity?: number | null
   lineTotal?: number | null
   unitCost?: number | null
@@ -33,6 +44,10 @@ interface OrderLine {
   lineProfit?: number | null
 }
 
+/** Minimal shapes of the two documents the snapshot reads. */
+type VariantDoc = { id: number; product?: OrderLine['product']; name?: string | null; displayName?: string | null }
+type ProductDoc = { id: number; title?: string | null; costPrice?: number | null }
+
 function idOf(rel: OrderLine['product'] | OrderLine['variant']): number | null {
   if (rel == null) return null
   if (typeof rel === 'number') return rel
@@ -40,32 +55,34 @@ function idOf(rel: OrderLine['product'] | OrderLine['variant']): number | null {
   return null
 }
 
-async function costFromProduct(req: PayloadRequest, productId: number): Promise<number | null> {
-  const product = await req.payload.findByID({ collection: 'products', id: productId, depth: 0 })
-  return typeof product?.costPrice === 'number' ? product.costPrice : null
-}
-
-/**
- * Determine the parent Product id for a create-time line, backfilling `line.product`
- * from the variant's parent when the line only carries a variant. Both the `product` and
- * `variant` relationships end up persisted. Returns the parent product id (or null).
- */
-async function resolveParentProduct(req: PayloadRequest, line: OrderLine): Promise<number | null> {
-  const existing = idOf(line.product)
-  if (existing != null) return existing
-
+async function loadVariant(req: PayloadRequest, line: OrderLine): Promise<VariantDoc | null> {
   const variantId = idOf(line.variant)
   if (variantId == null) return null
-
-  const variant = await req.payload.findByID({
+  return (await req.payload.findByID({
     collection: 'product-variants',
     id: variantId,
     depth: 0,
-  })
-  const productId = idOf(variant?.product as OrderLine['product'])
+  })) as VariantDoc | null
+}
+
+/**
+ * Determine the parent Product id, backfilling `line.product` from the already-loaded
+ * variant when the line only carries a variant. Both the `product` and `variant`
+ * relationships end up persisted. Returns the parent product id (or null).
+ */
+function resolveParentProduct(
+  req: PayloadRequest,
+  line: OrderLine,
+  variant: VariantDoc | null,
+): number | null {
+  const existing = idOf(line.product)
+  if (existing != null) return existing
+  if (variant == null) return null
+
+  const productId = idOf(variant.product)
   if (productId == null) {
     req.payload.logger.warn(
-      `[orderSnapshot] variant ${variantId} has no parent product — product left empty, unitCost estimated`,
+      `[orderSnapshot] variant ${variant.id} has no parent product — product left empty, unitCost estimated`,
     )
     return null
   }
@@ -73,17 +90,88 @@ async function resolveParentProduct(req: PayloadRequest, line: OrderLine): Promi
   return productId
 }
 
-/** Backfill `line.product` and resolve `unitCost` from the parent Product. */
+/**
+ * The exact string the customer will see for this line, resolved once, at write time.
+ *
+ * Preference order — the variant's own Visningsnavn first, because that is literally what
+ * the admin panel shows; then product title + colour, rebuilt with the *same* formatter the
+ * variant uses; then the product title alone. Returns null when nothing can be resolved, so
+ * the caller can fall back to whatever the line already carries instead of inventing a name.
+ */
+export function resolveLineDisplayName(
+  line: OrderLine,
+  variant: VariantDoc | null,
+  product: ProductDoc | null,
+): string | null {
+  const fromVariant = variant?.displayName?.trim()
+  if (fromVariant) return fromVariant
+
+  const title = product?.title?.trim()
+  const colorName = variant?.name?.trim() || line.variantName?.trim()
+  if (title && colorName) return formatVariantDisplayName(title, colorName)
+  if (title) return title
+  return null
+}
+
+/**
+ * Freeze the line's identity: `product`, `displayName`, `variantName` and the cost basis.
+ * Returns the resolved `unitCost` (null = no Kostpris configured, stays "estimated").
+ */
 async function applyCreateSnapshot(req: PayloadRequest, line: OrderLine): Promise<number | null> {
   try {
-    const productId = await resolveParentProduct(req, line)
-    return productId != null ? await costFromProduct(req, productId) : null
+    const variant = await loadVariant(req, line)
+    const productId = resolveParentProduct(req, line, variant)
+    const product =
+      productId != null
+        ? ((await req.payload.findByID({
+            collection: 'products',
+            id: productId,
+            depth: 0,
+          })) as ProductDoc | null)
+        : null
+
+    // Server-resolved name wins over anything the (public) checkout endpoint supplied.
+    const resolved = resolveLineDisplayName(line, variant, product)
+    if (resolved) line.displayName = resolved
+    // The variant is authoritative for the colour too, so a mis-parsed Kustom line name
+    // cannot leave a wrong "Fargenavn" behind.
+    const colorName = variant?.name?.trim()
+    if (colorName) line.variantName = colorName
+
+    return typeof product?.costPrice === 'number' ? product.costPrice : null
   } catch (err) {
-    // Never block order creation on a lookup — leave cost estimated.
+    // Never block order creation on a lookup — leave cost estimated and keep the name the
+    // line already carries (the checkout supplies the variant's display name up front).
     req.payload.logger.error(
       `[orderSnapshot] snapshot resolution failed: ${err instanceof Error ? err.message : 'unknown'}`,
     )
     return null
+  }
+}
+
+/**
+ * Fill `displayName` for a line that still has none — a line added to an existing order, or
+ * a row created before the column existed. Never overwrites a stored name.
+ */
+async function backfillDisplayName(req: PayloadRequest, line: OrderLine): Promise<void> {
+  if (line.displayName?.trim()) return
+  try {
+    const variant = await loadVariant(req, line)
+    const productId = idOf(line.product) ?? idOf(variant?.product ?? null)
+    const product =
+      productId != null
+        ? ((await req.payload.findByID({
+            collection: 'products',
+            id: productId,
+            depth: 0,
+          })) as ProductDoc | null)
+        : null
+    const resolved = resolveLineDisplayName(line, variant, product)
+    if (resolved) line.displayName = resolved
+  } catch (err) {
+    req.payload.logger.error(
+      `[orderSnapshot] display-name backfill failed: ${err instanceof Error ? err.message : 'unknown'}`,
+    )
   }
 }
 
@@ -188,10 +276,12 @@ export const snapshotOrderCosts: CollectionBeforeChangeHook = async ({ data, ope
   for (const line of lines as OrderLine[]) {
     if (operation === 'create') {
       // Server-formed snapshot: the orders-create endpoint is public (checkout), so the
-      // parent product, cost and VAT are always taken from live data and the tax source,
-      // never from client-supplied values. null unitCost = no Kostpris configured.
+      // parent product, display name, cost and VAT are always taken from live data and the
+      // tax source, never from client-supplied values. null unitCost = no Kostpris.
       line.unitCost = await applyCreateSnapshot(req, line)
       line.vatRate = VAT_RATE_PERCENT
+    } else {
+      await backfillDisplayName(req, line)
     }
     const derived = deriveLine(line)
     line.lineCost = derived.lineCost

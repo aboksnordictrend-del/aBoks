@@ -1,6 +1,11 @@
 export interface OrderItem {
-  productName?: string
-  variantName?: string
+  /**
+   * The finished product name for this line, exactly as snapshotted on the order
+   * ("aBoks Vegg – Mørk blå"). Templates print it verbatim — they must never compose a
+   * name from a product title and a colour, because an e-mail has no way of knowing which
+   * product a colour belongs to. Resolve it with `orderLineDisplayName()`.
+   */
+  displayName: string
   quantity: number
   unitPrice: number
   lineTotal: number
@@ -105,9 +110,8 @@ export function emailHtml(body: string): string {
 export function itemsTableHtml(items: OrderItem[]): string {
   const rows = items
     .map((item) => {
-      const name = [item.productName || 'aBoks', item.variantName].filter(Boolean).join(' – ')
       return `<tr>
-          <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;">${name}</td>
+          <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;">${item.displayName}</td>
           <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
           <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">${kr(item.lineTotal)}</td>
         </tr>`
@@ -126,9 +130,6 @@ export function itemsTableHtml(items: OrderItem[]): string {
 
 export function itemsTextList(items: OrderItem[]): string {
   return items
-    .map((item) => {
-      const name = [item.productName || 'aBoks', item.variantName].filter(Boolean).join(' - ')
-      return `  - ${name} x${item.quantity}  ${kr(item.lineTotal)}`
-    })
+    .map((item) => `  - ${item.displayName} x${item.quantity}  ${kr(item.lineTotal)}`)
     .join('\n')
 }
