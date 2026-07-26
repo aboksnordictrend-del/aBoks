@@ -51,6 +51,26 @@ export const getProductBySlug = unstable_cache(
   { revalidate: 3600, tags: ['products'] },
 )
 
+/**
+ * Published product looked up by its CMS name. Used where a page needs one specific
+ * product but must keep following it if the slug is edited in Payload — the slug is
+ * read off the returned doc rather than being written into the code.
+ */
+export const getPublishedProductByTitle = unstable_cache(
+  async (title: string) => {
+    const payload = await getPayloadClient()
+    const result = await payload.find({
+      collection: 'products',
+      where: { title: { equals: title }, published: { equals: true } },
+      depth: 2,
+      limit: 1,
+    })
+    return result.docs[0] ?? null
+  },
+  ['published-product-by-title'],
+  { revalidate: 3600, tags: ['products'] },
+)
+
 export const getVariantsForProduct = unstable_cache(
   async (productId: string) => {
     const payload = await getPayloadClient()

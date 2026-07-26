@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import HomeClient from './HomeClient'
-import { getProductBySlug } from '@/lib/payload'
+import { getProductBySlug, getPublishedProductByTitle } from '@/lib/payload'
+import { listBlobFolderImages } from '@/lib/blobImages'
+import type { AboksVeggSectionData } from '@/components/AboksVeggSection'
 import type { SaleInfo } from '@/lib/pricing'
 import { SITE_URL, SITE_NAME, LOGO_URL } from '@/lib/site'
 
@@ -49,6 +51,39 @@ const organizationJsonLd = {
   logo: LOGO_URL,
 }
 
+// Product name as it is written in Payload. The slug, images and link are all derived
+// from the CMS doc, so renaming the URL in Payload needs no code change.
+const VEGG_PRODUCT_TITLE = 'aBoks Vegg'
+// Blob Storage folder the section's carousel reads. Adding a file there makes it show up
+// on the next revalidation — the images are never listed in code.
+const VEGG_BLOB_FOLDER = 'aboks-vegg/'
+
+/**
+ * Assembles the "aBoks Vegg" homepage section. Returns null (section not rendered) if the
+ * product is missing from the CMS; an empty image list renders the section's own fallback.
+ */
+async function getVeggSection(): Promise<AboksVeggSectionData | null> {
+  try {
+    const product = await getPublishedProductByTitle(VEGG_PRODUCT_TITLE)
+    if (!product?.slug) {
+      console.warn(`[HOME] no published product found with title "${VEGG_PRODUCT_TITLE}"`)
+      return null
+    }
+    const blobs = await listBlobFolderImages(VEGG_BLOB_FOLDER)
+    return {
+      title: product.title,
+      href: `/produkter/${product.slug}`,
+      images: blobs.map((blob, i) => ({
+        src: blob.url,
+        alt: `${product.title} – produktbilde ${i + 1} av ${blobs.length}`,
+      })),
+    }
+  } catch (err) {
+    console.error('[HOME] Failed to build aBoks Vegg section:', err instanceof Error ? err.message : String(err))
+    return null
+  }
+}
+
 const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
@@ -77,6 +112,7 @@ export default async function HomePage() {
   } catch (err) {
     console.error('[HOME] Failed to fetch product from Payload:', err instanceof Error ? err.message : String(err))
   }
+  const vegg = await getVeggSection()
   return (
     <>
       <script
@@ -87,7 +123,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
-      <HomeClient sale={sale} price={price} />
+      <HomeClient sale={sale} price={price} vegg={vegg} />
     </>
   )
 }

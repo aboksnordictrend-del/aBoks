@@ -9,6 +9,7 @@ import type { CarouselHandle } from '@/components/Carousel'
 import Accordion from '@/components/Accordion'
 import SaleCountdown from '@/components/SaleCountdown'
 import HowItWorksSteps from '@/components/HowItWorksSteps'
+import AboksVeggSection, { type AboksVeggSectionData } from '@/components/AboksVeggSection'
 import { isSaleActive, type SaleInfo } from '@/lib/pricing'
 import { FAQS, COMPARTMENTS, CAPACITY } from '@/lib/content'
 
@@ -92,7 +93,15 @@ function fadeUp(delay = 0) {
 }
 
 
-export default function HomeClient({ sale, price }: { sale: SaleInfo | null; price: number }) {
+export default function HomeClient({
+  sale,
+  price,
+  vegg,
+}: {
+  sale: SaleInfo | null
+  price: number
+  vegg: AboksVeggSectionData | null
+}) {
   const [colorId, setColorId] = useState('olive')
   const [saleExpired, setSaleExpired] = useState(false)
   const saleActive = !saleExpired && isSaleActive(price, sale)
@@ -383,6 +392,9 @@ export default function HomeClient({ sale, price }: { sale: SaleInfo | null; pri
           </div>
         </div>
       </section>
+
+      {/* ==================== ABOKS VEGG (NEW PRODUCT) ==================== */}
+      <AboksVeggSection data={vegg} />
 
       {/* ==================== FEATURES ==================== */}
       <section style={{ background: '#faf6ee', padding: 'clamp(72px,9vw,120px) 0' }}>
