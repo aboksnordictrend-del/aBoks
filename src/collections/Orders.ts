@@ -1,8 +1,22 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, TextFieldSingleValidation } from 'payload'
 import { claimOrderEmails, sendOrderEmails } from './hooks/sendOrderEmails'
 import { snapshotOrderCosts } from './hooks/orderSnapshot'
+import { assignOrderNumber } from './hooks/orderNumber'
 import { resendShippingEmail } from './endpoints/resendShippingEmail'
 import { sendReviewInvitation } from './endpoints/sendReviewInvitation'
+
+/**
+ * The admin's Ordrenummer input is read-only and submits nothing, so an empty value on
+ * create is expected: `assignOrderNumber` (beforeValidate) allocates the number
+ * server-side before validation runs on a real create. The default `required` check would
+ * instead reject the form in the admin's form-state pass, where no collection hooks run.
+ * Requiredness still holds where it matters: NOT NULL + a unique index in Postgres, and an
+ * update can never blank an existing number.
+ */
+const validateOrderNumber: TextFieldSingleValidation = (value, { operation }) => {
+  if (operation === 'create') return true
+  return typeof value === 'string' && value.trim() !== '' ? true : 'Ordrenummer mangler.'
+}
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
@@ -27,7 +41,9 @@ export const Orders: CollectionConfig = {
       unique: true,
       admin: {
         readOnly: true,
+        description: 'Genereres automatisk når ordren lagres.',
       },
+      validate: validateOrderNumber,
     },
     {
       name: 'kustomOrderId',
@@ -337,6 +353,7 @@ export const Orders: CollectionConfig = {
     },
   ],
   hooks: {
+    beforeValidate: [assignOrderNumber],
     beforeChange: [claimOrderEmails, snapshotOrderCosts],
     afterChange: [sendOrderEmails],
   },

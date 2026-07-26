@@ -361,6 +361,9 @@ export interface ProductVariant {
  */
 export interface Order {
   id: number;
+  /**
+   * Genereres automatisk når ordren lagres.
+   */
   orderNumber: string;
   kustomOrderId?: string | null;
   customer?: (number | null) | Customer;

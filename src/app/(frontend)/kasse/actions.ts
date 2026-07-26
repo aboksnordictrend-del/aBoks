@@ -3,6 +3,7 @@
 import { createKustomOrder, getKustomOrder } from '@/lib/kustom'
 import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
+import { allocateOrderNumber } from '@/lib/orderNumber'
 import { VAT_RATE_BASIS_POINTS } from '@/lib/tax'
 import type { CartItem } from '@/store/cart'
 
@@ -86,7 +87,17 @@ export async function initKustomCheckout(
   const orderAmountOere = toOere(total)
   const orderTaxAmountOere = orderLines.reduce((s, l) => s + l.total_tax_amount, 0)
 
-  const orderNumber = generateOrderNumber()
+  // Allocated up front: Kustom needs it as merchant_reference before the Payload order
+  // row exists. Passing it into payload.create() below means the collection's
+  // assignOrderNumber hook leaves it untouched. A database hiccup here must not stop the
+  // customer from paying, so an unreachable allocator degrades to the old random number.
+  let orderNumber: string
+  try {
+    orderNumber = await allocateOrderNumber(await getPayloadClient())
+  } catch (err) {
+    console.error('[kasse] Failed to allocate order number:', err instanceof Error ? err.message : err)
+    orderNumber = generateOrderNumber()
+  }
 
   let kustomOrder
   try {

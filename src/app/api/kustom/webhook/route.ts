@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getKustomOrder } from '@/lib/kustom'
 import { getPayloadClient } from '@/lib/payload'
-import { generateOrderNumber } from '@/lib/format'
+import { allocateOrderNumber } from '@/lib/orderNumber'
 import { syncCustomerForOrderSafe } from '@/lib/customers'
 
 export async function POST(req: NextRequest) {
@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
       const shipping = shippingLine ? shippingLine.total_amount / 100 : 0
       const total = kustomOrder.order_amount / 100
 
-      // Use the merchant_reference we set at CREATE_ORDER, or generate a fallback
-      const orderNumber = kustomOrder.merchant_reference || generateOrderNumber()
+      // Use the merchant_reference we set at CREATE_ORDER, or allocate a fresh number
+      const orderNumber = kustomOrder.merchant_reference || (await allocateOrderNumber(payload))
 
       confirmedOrder = await payload.create({
         collection: 'orders',
