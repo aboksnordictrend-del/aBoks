@@ -1,3 +1,5 @@
+import { buildOrderSummaryRows, type OrderSummaryInput } from '@/lib/orders/renderOrderSummary'
+
 export interface OrderItem {
   /**
    * The finished product name for this line, exactly as snapshotted on the order
@@ -17,6 +19,15 @@ export interface ShippingAddress {
   city: string
 }
 
+/**
+ * The promo snapshot as stored on the order. Present only for a discounted order; every
+ * value is printed verbatim and never recomputed.
+ */
+export interface OrderDiscount {
+  code?: string | null
+  discountAmount?: number | null
+}
+
 export interface OrderConfirmationData {
   customerName: string
   customerEmail: string
@@ -25,6 +36,7 @@ export interface OrderConfirmationData {
   subtotal: number
   shipping: number
   total: number
+  discount?: OrderDiscount | null
   shippingAddress: ShippingAddress
 }
 
@@ -37,6 +49,7 @@ export interface AdminOrderData {
   subtotal: number
   shipping: number
   total: number
+  discount?: OrderDiscount | null
   shippingAddress: ShippingAddress
 }
 
@@ -69,7 +82,23 @@ export interface EmailTemplate {
   text: string
 }
 
-export const kr = (n: number): string => `kr ${n},-`
+/**
+ * The e-mail money format. The space after "kr" is a non-breaking space, as it always has
+ * been, so an amount never wraps across a line.
+ *
+ * A whole number keeps the established `kr 518,-` form ("and no øre"), so every existing
+ * e-mail renders exactly as before. A percentage discount is the first amount here that can
+ * carry øre, and `kr 44.9,-` would be wrong twice over — a decimal point, and a suffix
+ * claiming there are no øre — so a fractional amount prints as `kr 44,90` instead.
+ *
+ * Deliberately still the only formatter in the e-mail layer.
+ */
+export const kr = (n: number): string => {
+  const safe = Number.isFinite(n) ? n : 0
+  const rounded = Math.round(safe * 100) / 100
+  if (Number.isInteger(rounded)) return `kr ${rounded},-`
+  return `kr ${rounded.toFixed(2).replace('.', ',')}`
+}
 
 export function emailHtml(body: string): string {
   return `<!DOCTYPE html>
@@ -131,5 +160,53 @@ export function itemsTableHtml(items: OrderItem[]): string {
 export function itemsTextList(items: OrderItem[]): string {
   return items
     .map((item) => `  - ${item.displayName} x${item.quantity}  ${kr(item.lineTotal)}`)
+    .join('\n')
+}
+
+/**
+ * The Delsum / Frakt / Rabatt / Totalt block, shared by the confirmation and admin emails so
+ * the two can never disagree. Rows come from the single presentation helper; nothing here
+ * decides what an order is worth.
+ *
+ * The markup is unchanged from what both templates already emitted — an order with no
+ * discount renders byte-for-byte as before.
+ */
+export function summaryTableHtml(order: OrderSummaryInput, marginBottom = '24px'): string {
+  const rows = buildOrderSummaryRows(order)
+    .map((row) => {
+      if (row.strong) {
+        return `<tr style="border-top:2px solid #1a1d17;">
+        <td style="padding:10px 0 4px;font-size:16px;font-weight:bold;">${row.label}</td>
+        <td style="padding:10px 0 4px;font-size:16px;font-weight:bold;text-align:right;">${kr(row.amount)}</td>
+      </tr>`
+      }
+      if (row.free) {
+        return `<tr>
+        <td style="padding:6px 0;font-size:14px;color:#555;">${row.label}</td>
+        <td style="padding:6px 0;font-size:14px;text-align:right;color:#4a7c59;">Gratis</td>
+      </tr>`
+      }
+      const value = row.amount < 0 ? `−${kr(Math.abs(row.amount))}` : kr(row.amount)
+      const color = row.key === 'discount' ? '#4a7c59' : undefined
+      return `<tr>
+        <td style="padding:6px 0;font-size:14px;color:#555;">${row.label}</td>
+        <td style="padding:6px 0;font-size:14px;text-align:right;${color ? `color:${color};` : ''}">${value}</td>
+      </tr>`
+    })
+    .join('\n      ')
+
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 ${marginBottom};border-collapse:collapse;">
+      ${rows}
+    </table>`
+}
+
+/** Plain-text equivalent of `summaryTableHtml`, one `Label: beløp` line per row. */
+export function summaryTextLines(order: OrderSummaryInput): string {
+  return buildOrderSummaryRows(order)
+    .map((row) => {
+      if (row.free) return `${row.label}: Gratis`
+      const value = row.amount < 0 ? `−${kr(Math.abs(row.amount))}` : kr(row.amount)
+      return `${row.label}: ${value}`
+    })
     .join('\n')
 }

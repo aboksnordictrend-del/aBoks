@@ -117,6 +117,18 @@ function itemsOf(doc: Order) {
   }))
 }
 
+/**
+ * The stored promo snapshot, or null. Pure passthrough: the templates print the code and the
+ * amount as recorded at purchase, whatever has happened to the promo code since.
+ */
+function discountOf(doc: Order) {
+  const discount = doc.discount
+  if (!discount) return null
+  const amount = typeof discount.discountAmount === 'number' ? discount.discountAmount : 0
+  if (amount <= 0) return null
+  return { code: discount.code ?? null, discountAmount: amount }
+}
+
 function shippingAddressOf(doc: Order) {
   return {
     address: doc.customerInfo?.address ?? '',
@@ -146,6 +158,9 @@ export function buildOrderEmail(
         subtotal: doc.subtotal,
         shipping: doc.shipping ?? 0,
         total: doc.total,
+        // Read straight off the stored order — never re-validated, never recomputed, so a
+        // resend years later prints exactly what was paid.
+        discount: discountOf(doc),
         shippingAddress: shippingAddressOf(doc),
       }),
     }
@@ -163,6 +178,9 @@ export function buildOrderEmail(
         subtotal: doc.subtotal,
         shipping: doc.shipping ?? 0,
         total: doc.total,
+        // Read straight off the stored order — never re-validated, never recomputed, so a
+        // resend years later prints exactly what was paid.
+        discount: discountOf(doc),
         shippingAddress: shippingAddressOf(doc),
       }),
     }

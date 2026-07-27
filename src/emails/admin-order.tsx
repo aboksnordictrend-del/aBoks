@@ -1,5 +1,5 @@
 import type { AdminOrderData, EmailTemplate } from './types'
-import { kr, emailHtml, itemsTableHtml, itemsTextList } from './types'
+import { emailHtml, itemsTableHtml, itemsTextList, summaryTableHtml, summaryTextLines } from './types'
 
 export function createAdminOrderEmail(data: AdminOrderData): EmailTemplate {
   const {
@@ -11,8 +11,13 @@ export function createAdminOrderEmail(data: AdminOrderData): EmailTemplate {
     subtotal,
     shipping,
     total,
+    discount,
     shippingAddress,
   } = data
+
+  // Same stored-snapshot summary the customer receives, so admin and customer never see
+  // different numbers for the same order.
+  const summary = { subtotal, shipping, total, discount }
 
   const phoneRow = customerPhone
     ? `<tr>
@@ -51,20 +56,7 @@ export function createAdminOrderEmail(data: AdminOrderData): EmailTemplate {
     <h2 style="margin:0 0 4px;font-size:15px;font-weight:600;color:#1a1d17;border-bottom:2px solid #1a1d17;padding-bottom:8px;">Produkter</h2>
     ${itemsTableHtml(items)}
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 0;border-collapse:collapse;">
-      <tr>
-        <td style="padding:6px 0;font-size:14px;color:#555;">Delsum</td>
-        <td style="padding:6px 0;font-size:14px;text-align:right;">${kr(subtotal)}</td>
-      </tr>
-      <tr>
-        <td style="padding:6px 0;font-size:14px;color:#555;">Frakt</td>
-        <td style="padding:6px 0;font-size:14px;text-align:right;">${shipping > 0 ? kr(shipping) : 'Gratis'}</td>
-      </tr>
-      <tr style="border-top:2px solid #1a1d17;">
-        <td style="padding:10px 0 4px;font-size:16px;font-weight:bold;">Totalt</td>
-        <td style="padding:10px 0 4px;font-size:16px;font-weight:bold;text-align:right;">${kr(total)}</td>
-      </tr>
-    </table>
+    ${summaryTableHtml(summary, '0')}
   `
 
   const phoneLine = customerPhone ? `Telefon: ${customerPhone}` : ''
@@ -80,9 +72,7 @@ Adresse: ${shippingAddress.address}, ${shippingAddress.postalCode} ${shippingAdd
 PRODUKTER
 ${itemsTextList(items)}
 
-Delsum: ${kr(subtotal)}
-Frakt: ${shipping > 0 ? kr(shipping) : 'Gratis'}
-Totalt: ${kr(total)}
+${summaryTextLines(summary)}
 
 Logg inn i admin-panelet for å behandle ordren.`
 

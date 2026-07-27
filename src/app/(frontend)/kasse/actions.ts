@@ -5,6 +5,7 @@ import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
 import { allocateOrderNumber } from '@/lib/orderNumber'
 import { splitLineName } from '@/lib/orderLineName'
+import { buildOrderSummaryRows, type OrderSummaryRow } from '@/lib/orders/renderOrderSummary'
 import {
   CHECKOUT_MESSAGES,
   checkoutResultFromKustomOrder,
@@ -71,6 +72,10 @@ export async function getOrderConfirmation(kustomOrderId: string) {
 
   // merchant_reference holds the orderNumber we generated in initKustomCheckout
   let orderNumber: string = kustomOrder.merchant_reference ?? ''
+  // Summary rows come from the STORED order when it exists — that is the snapshot the
+  // receipt and the e-mails print, so the confirmation page shows the same figures. Kustom
+  // stays the fallback for the window before the webhook has written the order.
+  let storedSummary: OrderSummaryRow[] | null = null
 
   try {
     const payload = await getPayloadClient()
@@ -79,8 +84,17 @@ export async function getOrderConfirmation(kustomOrderId: string) {
       where: { kustomOrderId: { equals: kustomOrderId } },
       limit: 1,
     })
-    if (result.docs[0]?.orderNumber) {
-      orderNumber = result.docs[0].orderNumber
+    const order = result.docs[0]
+    if (order?.orderNumber) {
+      orderNumber = order.orderNumber
+    }
+    if (order) {
+      storedSummary = buildOrderSummaryRows({
+        subtotal: order.subtotal,
+        shipping: order.shipping,
+        total: order.total,
+        discount: order.discount,
+      })
     }
   } catch {
     // Payload unavailable — merchant_reference is already set above
@@ -111,6 +125,24 @@ export async function getOrderConfirmation(kustomOrderId: string) {
       }
     })
 
+  // Fallback rows, derived from the paid Kustom order, for the brief window before the
+  // webhook has written the local order. Same shape, same labels.
+  const kustomGrossOere = kustomOrder.order_lines
+    .filter((l) => l.type === 'physical')
+    .reduce((sum, l) => sum + l.unit_price * l.quantity, 0)
+  const kustomDiscountOere = kustomOrder.order_lines
+    .filter((l) => l.type === 'physical')
+    .reduce((sum, l) => sum + (l.total_discount_amount ?? 0), 0)
+
+  const summary =
+    storedSummary ??
+    buildOrderSummaryRows({
+      subtotal: kustomGrossOere / 100,
+      shipping: shippingKr,
+      total: kustomOrder.order_amount / 100,
+      discount: kustomDiscountOere > 0 ? { discountAmount: kustomDiscountOere / 100 } : null,
+    })
+
   return {
     status: kustomOrder.status,
     orderNumber,
@@ -118,5 +150,7 @@ export async function getOrderConfirmation(kustomOrderId: string) {
     totalKr: kustomOrder.order_amount / 100,
     shippingKr,
     orderItems,
+    /** Delsum / Frakt / Rabatt (CODE) / Totalt — ready to print. */
+    summary,
   }
 }

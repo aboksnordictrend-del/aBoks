@@ -7,6 +7,7 @@ import { useCartStore } from '@/store/cart'
 import { getOrderConfirmation } from '../actions'
 import { formatPrice } from '@/lib/format'
 import { trackPurchase } from '@/lib/analytics'
+import type { OrderSummaryRow } from '@/lib/orders/renderOrderSummary'
 
 interface Confirmation {
   status: string
@@ -14,6 +15,8 @@ interface Confirmation {
   email: string
   totalKr: number
   shippingKr: number
+  /** Delsum / Frakt / Rabatt (CODE) / Totalt, from the stored order snapshot. */
+  summary: OrderSummaryRow[]
   orderItems: Array<{
     itemId: string
     itemName: string
@@ -219,10 +222,57 @@ export default function BekreftlseClient() {
                 </p>
               )}
 
-              {confirmation?.totalKr != null && (
-                <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6057', margin: '0 0 32px' }}>
-                  Totalbeløp: <span style={{ fontWeight: 700, color: '#39402c' }}>{formatPrice(confirmation.totalKr)}</span>
-                </p>
+              {/* Delsum / Frakt / Rabatt (CODE) / Totalt, straight from the stored order —
+                  nothing here is recalculated, so the page, the e-mail and the receipt agree. */}
+              {confirmation?.summary?.length ? (
+                <div
+                  style={{
+                    maxWidth: '320px',
+                    margin: '0 auto 32px',
+                    textAlign: 'left',
+                    fontFamily: 'var(--font-manrope)',
+                    fontSize: '14px',
+                  }}
+                >
+                  {confirmation.summary.map((row) => (
+                    <div
+                      key={row.key}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '16px',
+                        padding: row.strong ? '10px 0 0' : '4px 0',
+                        marginTop: row.strong ? '6px' : 0,
+                        borderTop: row.strong ? '1px solid #e0d9c7' : undefined,
+                        fontWeight: row.strong ? 700 : 400,
+                        color: row.strong ? '#1a1d17' : '#6b6057',
+                      }}
+                    >
+                      <span>{row.label}</span>
+                      {row.free ? (
+                        <span style={{ fontWeight: 600, color: '#5f8253' }}>Gratis</span>
+                      ) : (
+                        <span
+                          style={{
+                            whiteSpace: 'nowrap',
+                            fontWeight: row.strong ? 700 : 600,
+                            color: row.key === 'discount' ? '#5f8253' : '#39402c',
+                          }}
+                        >
+                          {row.amount < 0
+                            ? `−${formatPrice(Math.abs(row.amount))}`
+                            : formatPrice(row.amount)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                confirmation?.totalKr != null && (
+                  <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6057', margin: '0 0 32px' }}>
+                    Totalbeløp: <span style={{ fontWeight: 700, color: '#39402c' }}>{formatPrice(confirmation.totalKr)}</span>
+                  </p>
+                )
               )}
 
               {!confirmation?.orderNumber && !confirmation?.totalKr && (

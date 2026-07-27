@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
 import type { Order } from '@/payload-types'
 import { orderLineDisplayName } from './orderLineName'
+import { buildOrderSummaryRows } from './orders/renderOrderSummary'
 
 /**
  * PDF receipt (Kvittering) for a delivered order.
@@ -104,9 +105,9 @@ const lineNameOf = orderLineDisplayName
 
 /**
  * Builds the exact labelled content of the receipt from the stored order. Pure and
- * deterministic — no MVA anywhere. Discount is inferred only from the stored amounts
- * (subtotal + frakt − total) so a purchase-time discount still shows without recomputing
- * anything from the catalogue.
+ * deterministic — no MVA anywhere. The discount is read from the order's own promo snapshot
+ * (falling back to the amount implied by the stored figures for orders that predate it), so a
+ * purchase-time discount still prints without recomputing anything from the catalogue.
  */
 export function buildReceiptModel(order: Order): ReceiptModel {
   const items = order.items ?? []
@@ -117,18 +118,27 @@ export function buildReceiptModel(order: Order): ReceiptModel {
     lineTotal: formatNok(item.lineTotal),
   }))
 
-  const shipping = order.shipping ?? 0
-  const discount = order.subtotal + shipping - order.total
-
-  const totals: ReceiptTotalRow[] = [{ label: 'Delsum', value: formatNok(order.subtotal) }]
-  totals.push({
-    label: 'Frakt',
-    value: shipping > 0 ? formatNok(shipping) : 'Gratis',
+  // Rows come from the shared order-summary helper, so the receipt, the confirmation e-mail,
+  // the admin e-mail and the confirmation page always agree. It reads the stored snapshot
+  // only — the promo code may since have expired or been deleted, and the receipt is
+  // unaffected. The closing label stays the receipt's own "Totalt betalt".
+  const totals: ReceiptTotalRow[] = buildOrderSummaryRows({
+    subtotal: order.subtotal,
+    shipping: order.shipping,
+    total: order.total,
+    discount: order.discount,
+  }).map((row) => {
+    if (row.key === 'shipping') {
+      return { label: row.label, value: row.free ? 'Gratis' : formatNok(row.amount) }
+    }
+    if (row.key === 'discount') {
+      return { label: row.label, value: `-${formatNok(Math.abs(row.amount))}` }
+    }
+    if (row.key === 'total') {
+      return { label: 'Totalt betalt', value: formatNok(row.amount), strong: true }
+    }
+    return { label: row.label, value: formatNok(row.amount) }
   })
-  if (discount > 0.005) {
-    totals.push({ label: 'Rabatt', value: `-${formatNok(discount)}` })
-  }
-  totals.push({ label: 'Totalt betalt', value: formatNok(order.total), strong: true })
 
   const model: ReceiptModel = {
     title: 'KVITTERING',
