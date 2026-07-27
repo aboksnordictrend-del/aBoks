@@ -56,3 +56,69 @@ describe('buildCsrfOrigins', () => {
     assert.ok(origins.includes('http://127.0.0.1:3000'))
   })
 })
+
+describe('buildCsrfOrigins — Vercel Preview deployments', () => {
+  const PROD = 'https://aboks.no'
+
+  it('trusts the preview deployment and branch hostnames', () => {
+    // The exact situation that broke admin saves: NEXT_PUBLIC_SERVER_URL is inherited from
+    // Production, so serverURL is the live domain while the admin is served from *.vercel.app.
+    const origins = buildCsrfOrigins(PROD, {
+      isDev: false,
+      isPreview: true,
+      previewHosts: ['aboks-abc123-team.vercel.app', 'aboks-git-promo-preview-team.vercel.app'],
+    })
+
+    assert.ok(origins.includes(PROD), 'the configured serverURL is still trusted')
+    assert.ok(origins.includes('https://aboks-abc123-team.vercel.app'))
+    assert.ok(origins.includes('https://aboks-git-promo-preview-team.vercel.app'))
+  })
+
+  it('normalises whatever shape Vercel provides', () => {
+    const origins = buildCsrfOrigins(PROD, {
+      isDev: false,
+      isPreview: true,
+      // VERCEL_URL is bare; a manually set value may carry protocol and a trailing slash.
+      previewHosts: ['aboks-a.vercel.app', 'https://aboks-b.vercel.app/', '  aboks-c.vercel.app  '],
+    })
+    assert.ok(origins.includes('https://aboks-a.vercel.app'))
+    assert.ok(origins.includes('https://aboks-b.vercel.app'))
+    assert.ok(origins.includes('https://aboks-c.vercel.app'))
+    assert.ok(origins.every((o) => !o.endsWith('/')), 'no trailing slashes')
+  })
+
+  it('ignores empty, missing and malformed hostnames', () => {
+    const origins = buildCsrfOrigins(PROD, {
+      isDev: false,
+      isPreview: true,
+      previewHosts: [undefined, null, '', '   ', 'http://', '::::'],
+    })
+    assert.deepEqual(origins, [PROD], 'nothing junk reaches the allowlist')
+  })
+
+  it('adds nothing in production — the live allowlist is unchanged', () => {
+    const origins = buildCsrfOrigins(PROD, {
+      isDev: false,
+      isPreview: false,
+      previewHosts: ['aboks-abc123-team.vercel.app'],
+    })
+    assert.deepEqual(origins, [PROD])
+  })
+
+  it('never widens to a wildcard or a foreign origin', () => {
+    const origins = buildCsrfOrigins(PROD, {
+      isDev: false,
+      isPreview: true,
+      previewHosts: ['aboks-abc123-team.vercel.app'],
+    })
+    assert.ok(!origins.includes('*'))
+    assert.ok(!origins.includes('https://evil.example'))
+    assert.equal(origins.length, 2)
+  })
+
+  it('still adds the localhost dev origins when running locally', () => {
+    const origins = buildCsrfOrigins('http://localhost:3000', { isDev: true, isPreview: false })
+    assert.ok(origins.includes('http://localhost:3000'))
+    assert.ok(origins.includes('http://127.0.0.1:3000'))
+  })
+})

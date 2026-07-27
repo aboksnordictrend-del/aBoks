@@ -28,6 +28,7 @@ import { googleSyncEndpoint } from './src/endpoints/googleSync'
 import { googleExpensesEndpoint } from './src/endpoints/googleExpenses'
 import { googleStatusEndpoint } from './src/endpoints/googleStatus'
 import { buildCsrfOrigins } from './src/lib/csrfOrigins'
+import { resolveApplicationOrigin } from './src/lib/appOrigin'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -36,9 +37,10 @@ const dirname = path.dirname(filename)
 // VERCEL_URL is auto-set by Vercel per deployment (no https:// prefix).
 // Without a correct serverURL, Payload's CSRF check rejects all server action
 // requests (Origin header mismatch → req.user = null → 500 on list views).
-const serverURL =
-  process.env.NEXT_PUBLIC_SERVER_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+// On a Vercel Preview this resolves to the deployment's own branch hostname instead, so the
+// admin, CSRF and CORS all agree with the origin the browser is actually on. Production and
+// local development are unchanged. See src/lib/appOrigin.ts.
+const serverURL = resolveApplicationOrigin()
 
 // Origins trusted for cookie auth on state-changing (non-GET) requests. Derived from the
 // serverURL and the actual dev port (serverURL/PORT), so the admin panel authenticates no

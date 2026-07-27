@@ -5,6 +5,7 @@ import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
 import { allocateOrderNumber } from '@/lib/orderNumber'
 import { splitLineName } from '@/lib/orderLineName'
+import { resolveApplicationOrigin } from '@/lib/appOrigin'
 import { buildOrderSummaryRows, type OrderSummaryRow } from '@/lib/orders/renderOrderSummary'
 import {
   CHECKOUT_MESSAGES,
@@ -26,7 +27,10 @@ import {
  * colour, subtotal, shipping, tax, discount or total crosses this boundary.
  */
 export async function initKustomCheckout(input: CheckoutInput): Promise<CheckoutResult> {
-  const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? 'https://aboks.no'
+  // The origin Kustom will call back on. On a Preview deployment this is the preview's own
+  // hostname, NOT the shared NEXT_PUBLIC_SERVER_URL — otherwise a Preview checkout would send
+  // its confirmation and push webhook to Production and confirm a real order there.
+  const serverUrl = resolveApplicationOrigin({ fallback: 'https://aboks.no' })
 
   if (serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1')) {
     console.warn(
