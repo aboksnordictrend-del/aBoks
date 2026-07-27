@@ -239,3 +239,55 @@ describe('crossCheckMerchantData', () => {
     assert.deepEqual(result, { ok: true })
   })
 })
+
+/* --------------------- audit hardening: subtotal / shipping split --------------------- */
+
+/** The full Kustom line shape, so the split checks have something to verify against. */
+const PAID_WITH_LINES = {
+  orderAmountOere: 47_310,
+  orderLines: [
+    { type: 'physical' as const, unit_price: 44_900, quantity: 1, total_amount: 40_410, total_discount_amount: 4_490 },
+    { type: 'shipping_fee' as const, unit_price: 6_900, quantity: 1, total_amount: 6_900, total_discount_amount: 0 },
+  ],
+}
+
+describe('crossCheckMerchantData — subtotal and shipping split', () => {
+  it('accepts a snapshot that matches the charged lines exactly', () => {
+    assert.deepEqual(crossCheckMerchantData(SNAPSHOT, PAID_WITH_LINES), { ok: true })
+  })
+
+  it('rejects a compensating shift between subtotal and shipping', () => {
+    // 51 800 + 0 − 4 490 === 47 310, so the arithmetic identity alone would pass this.
+    const shifted = { ...SNAPSHOT, subtotalBeforeDiscountOere: 51_800, shippingOere: 0 }
+    const result = crossCheckMerchantData(shifted, PAID_WITH_LINES)
+    assert.equal(result.ok, false)
+    if (result.ok) throw new Error('unreachable')
+    assert.ok(['subtotal_mismatch', 'shipping_mismatch'].includes(result.reason))
+  })
+
+  it('rejects a subtotal that does not match the summed line gross', () => {
+    const wrong = { ...SNAPSHOT, subtotalBeforeDiscountOere: 40_000, totalAfterDiscountOere: 47_310, shippingOere: 11_800 }
+    const result = crossCheckMerchantData(wrong, PAID_WITH_LINES)
+    assert.equal(result.ok, false)
+    if (result.ok) throw new Error('unreachable')
+    assert.equal(result.reason, 'subtotal_mismatch')
+  })
+
+  it('still works for a caller that supplies only the reduced line shape', () => {
+    // The two extra checks are skipped rather than failing an older/leaner caller.
+    assert.deepEqual(crossCheckMerchantData(SNAPSHOT, PAID), { ok: true })
+  })
+
+  it('accepts a free-shipping order with no shipping line', () => {
+    const freeShipping = { ...SNAPSHOT, subtotalBeforeDiscountOere: 70_000, shippingOere: 0, totalAfterDiscountOere: 65_510 }
+    assert.deepEqual(
+      crossCheckMerchantData(freeShipping, {
+        orderAmountOere: 65_510,
+        orderLines: [
+          { type: 'physical' as const, unit_price: 35_000, quantity: 2, total_amount: 65_510, total_discount_amount: 4_490 },
+        ],
+      }),
+      { ok: true },
+    )
+  })
+})

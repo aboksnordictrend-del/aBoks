@@ -239,13 +239,18 @@ export type CrossCheckFailure =
   | 'total_mismatch'
   | 'arithmetic_mismatch'
   | 'no_line_discounts'
+  | 'subtotal_mismatch'
+  | 'shipping_mismatch'
 
 export type CrossCheckResult = { ok: true } | { ok: false; reason: CrossCheckFailure }
 
 /** Money as Kustom actually charged it. This is the authority for a paid transaction. */
 export interface PaidKustomAmounts {
   orderAmountOere: number
-  orderLines: Pick<KustomOrderLine, 'type' | 'total_discount_amount'>[]
+  orderLines: (Pick<KustomOrderLine, 'type' | 'total_discount_amount'> &
+    // Optional: present on a real Kustom order, so the subtotal/shipping split is verified.
+    // Absent in reduced callers, where those two extra checks are simply skipped.
+    Partial<Pick<KustomOrderLine, 'unit_price' | 'quantity' | 'total_amount'>>)[]
 }
 
 /**
@@ -275,6 +280,31 @@ export function crossCheckMerchantData(
     promo.subtotalBeforeDiscountOere + promo.shippingOere - promo.discountAmountOere
   if (derived !== promo.totalAfterDiscountOere) {
     return { ok: false, reason: 'arithmetic_mismatch' }
+  }
+
+  // The identity above holds for any subtotal/shipping split that sums the same way, so pin
+  // both halves to the lines Kustom actually charged. Every order this code writes matches
+  // exactly — `subtotalBeforeDiscountOere` IS the summed line gross and `shippingOere` IS the
+  // shipping line — so this rejects nothing legitimate; it only closes the compensating-error
+  // gap. Checked only when the caller supplied the line detail, so an older caller passing a
+  // reduced line shape keeps working unchanged.
+  const physical = paid.orderLines.filter((l) => l.type === 'physical')
+  const hasLineDetail = physical.every(
+    (l) => typeof l.unit_price === 'number' && typeof l.quantity === 'number',
+  )
+  if (hasLineDetail && physical.length > 0) {
+    const grossOere = physical.reduce((sum, l) => sum + (l.unit_price ?? 0) * (l.quantity ?? 0), 0)
+    if (promo.subtotalBeforeDiscountOere !== grossOere) {
+      return { ok: false, reason: 'subtotal_mismatch' }
+    }
+  }
+
+  const shippingLines = paid.orderLines.filter((l) => l.type === 'shipping_fee')
+  if (shippingLines.every((l) => typeof l.total_amount === 'number')) {
+    const shippingOere = shippingLines.reduce((sum, l) => sum + (l.total_amount ?? 0), 0)
+    if (promo.shippingOere !== shippingOere) {
+      return { ok: false, reason: 'shipping_mismatch' }
+    }
   }
 
   return { ok: true }

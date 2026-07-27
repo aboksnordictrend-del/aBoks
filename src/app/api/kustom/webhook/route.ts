@@ -4,8 +4,30 @@ import { getPayloadClient } from '@/lib/payload'
 import { allocateOrderNumber } from '@/lib/orderNumber'
 import { syncCustomerForOrderSafe } from '@/lib/customers'
 import { colorNameFromLineName } from '@/lib/orderLineName'
-import { registerPromoUsageOnce } from '@/lib/promo/usageRegistration'
-import { restorePromoSnapshotPatch } from '@/lib/promo/webhookPromo'
+import { registerPromoUsageOnce, type RegisterUsageResult } from '@/lib/promo/usageRegistration'
+import { resolvePromoSnapshot } from '@/lib/promo/webhookPromo'
+
+/**
+ * A transient failure to record promo usage must be retried, and the only retry mechanism
+ * available is Kustom re-delivering the push — which it only does on a non-2xx response.
+ * The paid order itself is already committed by this point and is never rolled back; the
+ * next delivery takes the already-confirmed branch and simply re-attempts the audit row.
+ *
+ * Everything else is terminal and answers 2xx: `created`, `already_registered`, and every
+ * `not_applicable` reason (including `promo_not_found` for a deleted promo, which must never
+ * cause endless retries).
+ */
+function usageNeedsRetry(
+  result: RegisterUsageResult,
+): result is Extract<RegisterUsageResult, { status: 'retryable_error' }> {
+  return result.status === 'retryable_error'
+}
+
+const RETRY_RESPONSE = (kustomOrderId: string, reason: string) =>
+  NextResponse.json(
+    { ok: false, orderSaved: true, retry: true, reason, orderId: kustomOrderId },
+    { status: 503 },
+  )
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -46,13 +68,17 @@ export async function POST(req: NextRequest) {
         // order but the usage insert failed transiently, this is the only path a retry takes
         // — returning early without it would lose the record permanently.
         const usage = await registerPromoUsageOnce({ payload }, { kustomOrder, order })
+        if (usageNeedsRetry(usage)) {
+          // The order stays confirmed; only the audit row is outstanding.
+          return RETRY_RESPONSE(orderId, usage.reason)
+        }
         return NextResponse.json({ ok: true, skipped: true, usage: usage.status })
       }
 
       // Repair the promo snapshot if the best-effort pre-create left it missing or partial.
       // Never overwrites a snapshot that already names a different code — that is logged as
       // an integrity conflict and left for a human.
-      const snapshot = restorePromoSnapshotPatch(kustomOrder, order)
+      const snapshot = await resolvePromoSnapshot(payload, kustomOrder, order)
       if (snapshot.action === 'conflict') {
         console.error(
           JSON.stringify({
@@ -106,6 +132,41 @@ export async function POST(req: NextRequest) {
       const shipping = shippingLine ? shippingLine.total_amount / 100 : 0
       const total = kustomOrder.order_amount / 100
 
+      // The discount AMOUNT comes from the Kustom lines; the promo IDENTITY comes from
+      // merchant_data, which is the only place Option A preserves it. `resolvePromoSnapshot`
+      // cross-checks the two against the paid amounts, and omits the promo relationship when
+      // the record has since been deleted — a dangling foreign key here would fail the whole
+      // create and lose a paid order.
+      //
+      // When merchant_data is absent or unusable the money is still reconstructed correctly:
+      // the order simply keeps no code, and no usage is registered, rather than an identity
+      // being invented.
+      let reconstructedDiscount: Record<string, unknown> = {}
+      if (discountOere > 0) {
+        const restored = await resolvePromoSnapshot(payload, kustomOrder, {})
+        if (restored.action === 'restore') {
+          reconstructedDiscount = restored.patch
+        } else {
+          console.warn(
+            JSON.stringify({
+              scope: 'kustom-webhook',
+              event: 'reconstruct-without-promo-identity',
+              kustomOrderId: orderId,
+              discountOere,
+            }),
+          )
+          reconstructedDiscount = {
+            discount: {
+              discountAmount: discountOere / 100,
+              subtotalBeforeDiscount: subtotal,
+              subtotalAfterDiscount: (grossOere - discountOere) / 100,
+              totalBeforeDiscount: (grossOere + (shippingLine?.total_amount ?? 0)) / 100,
+              totalAfterDiscount: total,
+            },
+          }
+        }
+      }
+
       // Use the merchant_reference we set at CREATE_ORDER, or allocate a fresh number
       const orderNumber = kustomOrder.merchant_reference || (await allocateOrderNumber(payload))
 
@@ -134,36 +195,7 @@ export async function POST(req: NextRequest) {
           subtotal,
           shipping,
           total,
-          // The discount AMOUNT comes from the Kustom lines; the promo IDENTITY comes from
-          // merchant_data, which is the only place Option A preserves it. `restorePromoSnapshotPatch`
-          // cross-checks the two against the paid amounts before trusting either.
-          //
-          // When merchant_data is absent or unusable the money is still reconstructed
-          // correctly below — the order is simply left without a code, and no usage is
-          // registered, rather than inventing an identity.
-          ...(discountOere > 0
-            ? (() => {
-                const restored = restorePromoSnapshotPatch(kustomOrder, {})
-                if (restored.action === 'restore') return restored.patch
-                console.warn(
-                  JSON.stringify({
-                    scope: 'kustom-webhook',
-                    event: 'reconstruct-without-promo-identity',
-                    kustomOrderId: orderId,
-                    discountOere,
-                  }),
-                )
-                return {
-                  discount: {
-                    discountAmount: discountOere / 100,
-                    subtotalBeforeDiscount: subtotal,
-                    subtotalAfterDiscount: (grossOere - discountOere) / 100,
-                    totalBeforeDiscount: (grossOere + (shippingLine?.total_amount ?? 0)) / 100,
-                    totalAfterDiscount: total,
-                  },
-                }
-              })()
-            : {}),
+          ...reconstructedDiscount,
           status: 'confirmed',
           paidAt: new Date().toISOString(),
           customerInfo: {
@@ -193,7 +225,7 @@ export async function POST(req: NextRequest) {
     // the push until it gets a 2xx, and the already-confirmed branch above picks the
     // registration up on the next delivery.
     const usageResult = await registerPromoUsageOnce({ payload }, { kustomOrder, order: confirmedOrder })
-    if (usageResult.status === 'retryable_error') {
+    if (usageNeedsRetry(usageResult)) {
       console.error(
         JSON.stringify({
           scope: 'kustom-webhook',
@@ -239,6 +271,13 @@ export async function POST(req: NextRequest) {
           invErr instanceof Error ? invErr.message : invErr,
         )
       }
+    }
+
+    // Inventory has been deducted and the order is committed. If only the promo audit row is
+    // outstanding, ask Kustom to deliver again: every step above is idempotent, so a repeat
+    // delivery is safe and is the one thing that can still record the usage.
+    if (usageNeedsRetry(usageResult)) {
+      return RETRY_RESPONSE(orderId, usageResult.reason)
     }
 
     return NextResponse.json({ ok: true })

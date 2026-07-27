@@ -181,6 +181,7 @@ function normalizeOrder(order: Order): AnalyticsOrder {
     shippingCharged: order.shipping ?? 0,
     discountAmount,
     promoCode: order.discount?.code?.trim() || undefined,
+    paidTotal: typeof order.total === 'number' ? order.total : undefined,
     actualShippingCost: extras.actualShippingCost ?? 0,
     paymentFee: extras.paymentFee ?? 0,
     extraCosts: extras.extraCosts ?? 0,
@@ -641,12 +642,18 @@ async function fetchPromoPerformance(
         id: order.id,
         orderNumber: order.orderNumber,
         status: order.status,
-        paidTotal: round2(
-          order.lines.reduce(
-            (sum, l) => sum + Math.max(0, l.quantity * l.unitPrice - (l.discountAllocated ?? 0)),
-            0,
-          ) + order.shippingCharged,
-        ),
+        // The amount actually paid, as stored on the order. Only an order with no stored
+        // total at all (malformed legacy data) falls back to the line-derived figure.
+        paidTotal:
+          typeof order.paidTotal === 'number'
+            ? round2(order.paidTotal)
+            : round2(
+                order.lines.reduce(
+                  (sum, l) =>
+                    sum + Math.max(0, l.quantity * l.unitPrice - (l.discountAllocated ?? 0)),
+                  0,
+                ) + order.shippingCharged,
+              ),
         promoCode: order.promoCode,
         date: order.date,
       })),

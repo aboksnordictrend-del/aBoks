@@ -168,3 +168,71 @@ describe('computeDefaultShipping', () => {
     )
   })
 })
+
+/* ------------------------------ audit fix 4: line profit vs discount ------------------------------ */
+
+describe('deriveLine — promo discount', () => {
+  it('is unchanged for a line with no discount', () => {
+    // 125 incl. 25 % → 100 net, less 40 cost.
+    assert.deepEqual(deriveLine({ quantity: 1, lineTotal: 125, unitCost: 40, vatRate: 25 }), {
+      lineCost: 40,
+      lineProfit: 60,
+    })
+  })
+
+  it('is unchanged when discountAmount is absent, null or zero', () => {
+    const base = { quantity: 1, lineTotal: 125, unitCost: 40, vatRate: 25 }
+    const expected = { lineCost: 40, lineProfit: 60 }
+    assert.deepEqual(deriveLine(base), expected)
+    assert.deepEqual(deriveLine({ ...base, discountAmount: null }), expected)
+    assert.deepEqual(deriveLine({ ...base, discountAmount: 0 }), expected)
+  })
+
+  it('subtracts a fixed line discount from the revenue side only', () => {
+    // 125 − 25 = 100 paid incl. VAT → 80 net; cost is untouched at 40.
+    assert.deepEqual(
+      deriveLine({ quantity: 1, lineTotal: 125, unitCost: 40, vatRate: 25, discountAmount: 25 }),
+      { lineCost: 40, lineProfit: 40 },
+    )
+  })
+
+  it('handles a discount equal to the whole line', () => {
+    assert.deepEqual(
+      deriveLine({ quantity: 1, lineTotal: 125, unitCost: 40, vatRate: 25, discountAmount: 125 }),
+      { lineCost: 40, lineProfit: -40 },
+    )
+  })
+
+  it('never lets an excessive or malformed discount invert the line', () => {
+    for (const discountAmount of [500, Number.NaN, Number.POSITIVE_INFINITY, -50]) {
+      const result = deriveLine({
+        quantity: 1,
+        lineTotal: 125,
+        unitCost: 40,
+        vatRate: 25,
+        discountAmount,
+      })
+      assert.ok(Number.isFinite(result.lineProfit!), `${discountAmount} produced a non-finite profit`)
+      assert.ok(result.lineProfit! >= -40, 'revenue is floored at zero, so profit bottoms at −cost')
+    }
+  })
+
+  it('applies the same rule at a zero VAT rate', () => {
+    assert.deepEqual(
+      deriveLine({ quantity: 1, lineTotal: 100, unitCost: 40, vatRate: 0, discountAmount: 20 }),
+      { lineCost: 40, lineProfit: 40 },
+    )
+  })
+
+  it('keeps cost proportional to quantity, never to the discount', () => {
+    const result = deriveLine({
+      quantity: 3,
+      lineTotal: 375,
+      unitCost: 40,
+      vatRate: 25,
+      discountAmount: 75,
+    })
+    assert.equal(result.lineCost, 120, 'cost is 3 × 40 regardless of the discount')
+    assert.equal(result.lineProfit, 120, '(375 − 75) / 1.25 − 120')
+  })
+})

@@ -1,3 +1,4 @@
+import type { Payload } from 'payload'
 import type { KustomOrder } from '@/lib/kustom'
 import { normalizePromoCode } from './constants'
 import { resolvePaidPromo } from './usageRegistration'
@@ -38,6 +39,16 @@ export interface OrderPromoSnapshotLike {
 export function restorePromoSnapshotPatch(
   kustomOrder: KustomOrder,
   order: OrderPromoSnapshotLike,
+  /**
+   * Whether the referenced `promo-codes` row still exists.
+   *
+   * Defaults to false, and false means the `promoCode` relationship is left out of the patch
+   * entirely. `orders.discount_promo_code_id` carries a foreign key, and Payload validates
+   * only the *format* of a relationship id, never its existence — so writing an id for a
+   * deleted promo reaches Postgres and is rejected, which would take the whole order write
+   * down with it. Omitting is always safe; including is what has to be earned.
+   */
+  promoRecordExists = false,
 ): SnapshotDecision {
   const resolved = resolvePaidPromo(kustomOrder)
   if (!resolved.ok) {
@@ -66,7 +77,9 @@ export function restorePromoSnapshotPatch(
     action: 'restore',
     patch: {
       discount: {
-        promoCode: Number(promo.promoCodeId),
+        // Convenience only. The snapshot below is the historical truth and every renderer
+        // reads `code`, so a deleted promo costs the order nothing but a clickable link.
+        ...(promoRecordExists ? { promoCode: Number(promo.promoCodeId) } : {}),
         code: promo.code,
         discountType: promo.type,
         discountValue: promo.value,
@@ -78,4 +91,52 @@ export function restorePromoSnapshotPatch(
       },
     },
   }
+}
+
+/**
+ * Does this `promo-codes` row still exist?
+ *
+ * A read-only existence probe, deliberately failing CLOSED: any lookup error is reported as
+ * "does not exist", so a database hiccup makes the order write omit an optional relationship
+ * rather than risk a foreign-key failure on a paid order.
+ */
+export async function promoRecordExists(
+  payload: Payload,
+  promoCodeId: string | number | null | undefined,
+): Promise<boolean> {
+  const id = typeof promoCodeId === 'string' || typeof promoCodeId === 'number' ? promoCodeId : null
+  if (id == null || String(id).trim() === '') return false
+  try {
+    const doc = await payload.findByID({
+      collection: 'promo-codes',
+      id,
+      depth: 0,
+      overrideAccess: true,
+      disableErrors: true,
+    })
+    return Boolean(doc)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The snapshot decision, with the promo relationship resolved against the database.
+ *
+ * This is what the webhook calls. `restorePromoSnapshotPatch` stays pure and directly
+ * testable; this wrapper adds the one lookup needed to decide whether the optional
+ * relationship may safely be written.
+ */
+export async function resolvePromoSnapshot(
+  payload: Payload,
+  kustomOrder: KustomOrder,
+  order: OrderPromoSnapshotLike,
+): Promise<SnapshotDecision> {
+  // Cheap pre-check: only pay for the lookup when there is something to restore.
+  const preview = restorePromoSnapshotPatch(kustomOrder, order, false)
+  if (preview.action !== 'restore') return preview
+
+  const paid = resolvePaidPromo(kustomOrder)
+  const exists = paid.ok ? await promoRecordExists(payload, paid.promo.promoCodeId) : false
+  return restorePromoSnapshotPatch(kustomOrder, order, exists)
 }

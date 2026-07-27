@@ -100,6 +100,30 @@ export const kr = (n: number): string => {
   return `kr ${rounded.toFixed(2).replace('.', ',')}`
 }
 
+/**
+ * Escapes text before it is interpolated into e-mail HTML.
+ *
+ * These templates are string-built, not React-rendered, so nothing escapes for us. Most of
+ * the values are customer-controlled — the name, address, phone and e-mail all come from the
+ * address the buyer typed into Kustom — and they land in the customer's own confirmation and
+ * in the admin notification. Unescaped, a name containing markup breaks the layout of both
+ * and can inject links into the shop owner's mailbox.
+ *
+ * Covers the five characters that matter in both element content and quoted attributes, so
+ * the same helper is safe for `mailto:` hrefs. Plain-text bodies are deliberately NOT escaped
+ * — entities there would be shown literally. JSX values elsewhere in the project already
+ * escape themselves and must not be passed through this.
+ */
+export function escapeHtml(value: unknown): string {
+  if (value == null) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export function emailHtml(body: string): string {
   return `<!DOCTYPE html>
 <html lang="nb">
@@ -140,7 +164,7 @@ export function itemsTableHtml(items: OrderItem[]): string {
   const rows = items
     .map((item) => {
       return `<tr>
-          <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;">${item.displayName}</td>
+          <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;">${escapeHtml(item.displayName)}</td>
           <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
           <td style="padding:10px 8px;font-size:14px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">${kr(item.lineTotal)}</td>
         </tr>`
@@ -176,20 +200,20 @@ export function summaryTableHtml(order: OrderSummaryInput, marginBottom = '24px'
     .map((row) => {
       if (row.strong) {
         return `<tr style="border-top:2px solid #1a1d17;">
-        <td style="padding:10px 0 4px;font-size:16px;font-weight:bold;">${row.label}</td>
+        <td style="padding:10px 0 4px;font-size:16px;font-weight:bold;">${escapeHtml(row.label)}</td>
         <td style="padding:10px 0 4px;font-size:16px;font-weight:bold;text-align:right;">${kr(row.amount)}</td>
       </tr>`
       }
       if (row.free) {
         return `<tr>
-        <td style="padding:6px 0;font-size:14px;color:#555;">${row.label}</td>
+        <td style="padding:6px 0;font-size:14px;color:#555;">${escapeHtml(row.label)}</td>
         <td style="padding:6px 0;font-size:14px;text-align:right;color:#4a7c59;">Gratis</td>
       </tr>`
       }
       const value = row.amount < 0 ? `−${kr(Math.abs(row.amount))}` : kr(row.amount)
       const color = row.key === 'discount' ? '#4a7c59' : undefined
       return `<tr>
-        <td style="padding:6px 0;font-size:14px;color:#555;">${row.label}</td>
+        <td style="padding:6px 0;font-size:14px;color:#555;">${escapeHtml(row.label)}</td>
         <td style="padding:6px 0;font-size:14px;text-align:right;${color ? `color:${color};` : ''}">${value}</td>
       </tr>`
     })

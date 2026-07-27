@@ -60,6 +60,16 @@ export interface AnalyticsOrder {
   shippingCharged: number
   /** Order-level promo discount actually granted, in kroner. 0 when there was none. */
   discountAmount?: number
+  /**
+   * The stored `order.total` — the amount actually paid, exactly as recorded.
+   *
+   * Used where the real transaction value is required (promo revenue). It is deliberately
+   * NOT used for the line-based aggregations, which stay derived from line values so product
+   * and variant revenue keep summing to the same figures. For an order written by checkout
+   * the two agree by construction; for a legacy or hand-corrected order the stored total is
+   * the truth.
+   */
+  paidTotal?: number
   /** Snapshotted promo code, when the order carries one. Never re-resolved from the DB. */
   promoCode?: string
   /** Real shipping cost to the business, in kroner (0 until entered). */

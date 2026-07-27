@@ -1,5 +1,5 @@
 import type { OrderConfirmationData, EmailTemplate } from './types'
-import { emailHtml, itemsTableHtml, itemsTextList, summaryTableHtml, summaryTextLines } from './types'
+import { emailHtml, escapeHtml, itemsTableHtml, itemsTextList, summaryTableHtml, summaryTextLines } from './types'
 
 export function createOrderConfirmationEmail(data: OrderConfirmationData): EmailTemplate {
   const { customerName, orderNumber, items, subtotal, shipping, total, discount, shippingAddress } =
@@ -10,13 +10,13 @@ export function createOrderConfirmationEmail(data: OrderConfirmationData): Email
   const summary = { subtotal, shipping, total, discount }
 
   const body = `
-    <h1 style="margin:0 0 8px;font-size:22px;font-weight:bold;color:#1a1d17;">Takk for bestillingen, ${customerName}!</h1>
+    <h1 style="margin:0 0 8px;font-size:22px;font-weight:bold;color:#1a1d17;">Takk for bestillingen, ${escapeHtml(customerName)}!</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
       Vi har mottatt din bestilling og behandler den nå. Du vil få en ny e-post når ordren er sendt.
     </p>
 
     <p style="margin:0 0 4px;font-size:13px;color:#999;text-transform:uppercase;letter-spacing:1px;">Ordrenummer</p>
-    <p style="margin:0 0 24px;font-size:18px;font-weight:bold;color:#1a1d17;">#${orderNumber}</p>
+    <p style="margin:0 0 24px;font-size:18px;font-weight:bold;color:#1a1d17;">#${escapeHtml(orderNumber)}</p>
 
     <h2 style="margin:0 0 4px;font-size:15px;font-weight:600;color:#1a1d17;border-bottom:2px solid #1a1d17;padding-bottom:8px;">Bestilte produkter</h2>
     ${itemsTableHtml(items)}
@@ -25,8 +25,8 @@ export function createOrderConfirmationEmail(data: OrderConfirmationData): Email
 
     <h2 style="margin:0 0 8px;font-size:15px;font-weight:600;color:#1a1d17;border-bottom:2px solid #1a1d17;padding-bottom:8px;">Leveringsadresse</h2>
     <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.8;">
-      ${shippingAddress.address}<br>
-      ${shippingAddress.postalCode} ${shippingAddress.city}
+      ${escapeHtml(shippingAddress.address)}<br>
+      ${escapeHtml(shippingAddress.postalCode)} ${escapeHtml(shippingAddress.city)}
     </p>
 
     <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">

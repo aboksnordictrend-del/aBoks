@@ -261,3 +261,84 @@ describe('PDF receipt model', () => {
     assert.equal(model.lines[0].quantity, 1)
   })
 })
+
+/* ------------------------------ audit fix 5: HTML escaping ------------------------------ */
+
+const HOSTILE = {
+  script: '<script>alert(1)</script>',
+  img: '<img src=x onerror=alert(1)>',
+  amp: 'Sergej & Pavel',
+  quoted: '"quoted" <name>',
+}
+
+describe('email HTML escaping', () => {
+  it('escapes a customer name carrying markup', () => {
+    const email = createOrderConfirmationEmail({ ...PLAIN, customerName: HOSTILE.script })
+    assert.ok(!email.html.includes('<script>'), 'no executable markup survives')
+    assert.ok(email.html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'))
+  })
+
+  it('escapes an event-handler injection in the address', () => {
+    const email = createOrderConfirmationEmail({
+      ...PLAIN,
+      shippingAddress: { address: HOSTILE.img, postalCode: '0155', city: HOSTILE.script },
+    })
+    // The property that matters is that the injected payload never becomes a live tag.
+    // (`onerror=alert(1)` survives as literal text between escaped entities, which is inert;
+    // and the document legitimately contains the aBoks logo <img>, so a bare '<img' check
+    // would be meaningless.)
+    assert.ok(!email.html.includes('<img src=x'), 'the injected tag never opens')
+    assert.ok(!email.html.includes('onerror=alert(1)>'), 'no attribute can close a tag')
+    assert.ok(email.html.includes('&lt;img src=x onerror=alert(1)&gt;'))
+  })
+
+  it('escapes ampersands and quotes without mangling the text', () => {
+    const email = createOrderConfirmationEmail({ ...PLAIN, customerName: HOSTILE.amp })
+    assert.ok(email.html.includes('Sergej &amp; Pavel'))
+    // The plain-text body stays human-readable — entities there would be shown literally.
+    assert.ok(email.text.includes('Sergej & Pavel'))
+  })
+
+  it('escapes every customer field in the admin e-mail, including the mailto href', () => {
+    const email = createAdminOrderEmail({
+      ...PLAIN,
+      customerName: HOSTILE.quoted,
+      customerEmail: '"evil"@x.no',
+      customerPhone: HOSTILE.img,
+      shippingAddress: { address: HOSTILE.script, postalCode: '0155', city: HOSTILE.amp },
+    })
+    assert.ok(!email.html.includes('<script>'))
+    assert.ok(!email.html.includes('<img src=x'))
+    assert.ok(email.html.includes('&quot;quoted&quot; &lt;name&gt;'))
+    // A quote in the address must not break out of the href attribute.
+    assert.ok(!email.html.includes('href="mailto:"evil"@x.no"'))
+    assert.ok(email.html.includes('&quot;evil&quot;@x.no'))
+    assert.ok(email.html.includes('0155 Sergej &amp; Pavel'))
+  })
+
+  it('escapes the product display name', () => {
+    const email = createOrderConfirmationEmail({
+      ...PLAIN,
+      items: [{ displayName: HOSTILE.img, quantity: 1, unitPrice: 449, lineTotal: 449 }],
+    })
+    assert.ok(!email.html.includes('<img src=x'))
+    assert.ok(email.html.includes('&lt;img src=x'))
+  })
+
+  it('escapes the promo code in the discount row', () => {
+    const email = createOrderConfirmationEmail({
+      ...DISCOUNTED,
+      discount: { code: HOSTILE.script, discountAmount: 44.9 },
+    })
+    assert.ok(!email.html.includes('<script>'))
+    assert.ok(email.html.includes('Rabatt (&lt;script&gt;'))
+  })
+
+  it('leaves an ordinary order byte-identical apart from nothing', () => {
+    // No hostile input: escaping must not alter normal output at all.
+    const email = createOrderConfirmationEmail(PLAIN)
+    assert.ok(email.html.includes('Takk for bestillingen, Kari Nordmann!'))
+    assert.ok(email.html.includes('aBoks Vegg – Mørk blå'))
+    assert.ok(!email.html.includes('&amp;'), 'nothing was needlessly escaped')
+  })
+})

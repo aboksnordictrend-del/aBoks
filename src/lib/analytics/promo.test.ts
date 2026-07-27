@@ -249,3 +249,21 @@ describe('computePromoPerformance — output shape', () => {
     assert.equal(row.averageOrderValue, 0)
   })
 })
+
+/* ------------------------------ audit fix 3: revenue source ------------------------------ */
+
+describe('computePromoPerformance — revenue comes from the stored order total', () => {
+  it('uses the stored paid total even when it differs from the line sum', () => {
+    // A hand-corrected order: the stored total is the money that actually moved.
+    const corrected: PromoOrderInput = { ...ORDER, paidTotal: 400 }
+    const row = rowFor(computePromoPerformance([USAGE], [corrected], [META]), 'WELCOME10')!
+    assert.equal(row.revenue, 400)
+    assert.equal(row.averageOrderValue, 400)
+    assert.equal(row.usages[0].orderTotal, 400)
+  })
+
+  it('is unchanged for an ordinary current order', () => {
+    const row = rowFor(computePromoPerformance([USAGE], [ORDER], [META]), 'WELCOME10')!
+    assert.equal(row.revenue, 473.1)
+  })
+})

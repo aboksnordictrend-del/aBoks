@@ -38,6 +38,8 @@ interface OrderLine {
   variantName?: string | null
   quantity?: number | null
   lineTotal?: number | null
+  /** This line's share of the order's promo discount, in kroner (Stage 7). */
+  discountAmount?: number | null
   unitCost?: number | null
   vatRate?: number | null
   lineCost?: number | null
@@ -175,13 +177,26 @@ async function backfillDisplayName(req: PayloadRequest, line: OrderLine): Promis
   }
 }
 
-/** lineCost = unitCost × quantity; lineProfit = (lineTotal ex-VAT) − lineCost. */
+/**
+ * lineCost = unitCost × quantity; lineProfit = (revenue actually received, ex-VAT) − lineCost.
+ *
+ * `lineTotal` is the line's pre-discount value and `discountAmount` its share of the order's
+ * promo discount, so the revenue this line really earned is the difference. Without that
+ * subtraction, every discounted line reported a profit it never made.
+ *
+ * The VAT formula is unchanged, and so is the cost side — a discount reduces what the
+ * customer paid, never what the goods cost. A line with no discount behaves exactly as
+ * before. Revenue is floored at zero so a malformed or oversized stored discount can never
+ * invert the line.
+ */
 export function deriveLine(line: OrderLine): { lineCost: number | null; lineProfit: number | null } {
   if (typeof line.unitCost !== 'number') return { lineCost: null, lineProfit: null }
   const quantity = line.quantity ?? 0
   const lineCost = round2(line.unitCost * quantity)
   const vatRate = line.vatRate ?? 0
-  const netLineRevenue = (line.lineTotal ?? 0) / (1 + vatRate / 100)
+  const discount = typeof line.discountAmount === 'number' && line.discountAmount > 0 ? line.discountAmount : 0
+  const grossRevenue = Math.max(0, (line.lineTotal ?? 0) - discount)
+  const netLineRevenue = grossRevenue / (1 + vatRate / 100)
   return { lineCost, lineProfit: round2(netLineRevenue - lineCost) }
 }
 

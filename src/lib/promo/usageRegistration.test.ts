@@ -9,7 +9,7 @@ import {
   usageKustomOrderKey,
   type RegisterUsageResult,
 } from './usageRegistration'
-import { restorePromoSnapshotPatch } from './webhookPromo'
+import { resolvePromoSnapshot, restorePromoSnapshotPatch } from './webhookPromo'
 
 /* ------------------------------ fixtures ------------------------------ */
 
@@ -416,7 +416,8 @@ describe('registerPromoUsageOnce — logging', () => {
 
 describe('restorePromoSnapshotPatch', () => {
   it('restores a full snapshot for an order that has none', () => {
-    const decision = restorePromoSnapshotPatch(kustomOrder(), {})
+    // `true` = the promo record still exists, so the convenience relationship may be written.
+    const decision = restorePromoSnapshotPatch(kustomOrder(), {}, true)
     assert.equal(decision.action, 'restore')
     if (decision.action !== 'restore') throw new Error('unreachable')
 
@@ -464,5 +465,98 @@ describe('restorePromoSnapshotPatch', () => {
       action: 'none',
       reason: 'unusable_promo_data',
     })
+  })
+})
+
+/* ------------------------------ audit fix 1: deleted promo ------------------------------ */
+
+describe('restorePromoSnapshotPatch — deleted promo record', () => {
+  it('omits the promo relationship by default, keeping every snapshot value', () => {
+    // orders.discount_promo_code_id carries a foreign key and Payload validates only the id
+    // FORMAT, never existence — so a dangling id would reach Postgres and fail the order
+    // write. Omitting is the safe default.
+    const decision = restorePromoSnapshotPatch(kustomOrder(), {})
+    assert.equal(decision.action, 'restore')
+    if (decision.action !== 'restore') throw new Error('unreachable')
+
+    const discount = (decision.patch as { discount: Record<string, unknown> }).discount
+    assert.equal('promoCode' in discount, false, 'no dangling relationship id')
+    // The historical truth survives in full.
+    assert.equal(discount.code, 'WELCOME10')
+    assert.equal(discount.discountType, 'percentage')
+    assert.equal(discount.discountValue, 10)
+    assert.equal(discount.discountAmount, 44.9)
+    assert.equal(discount.subtotalBeforeDiscount, 449)
+    assert.equal(discount.totalAfterDiscount, 473.1)
+  })
+
+  it('does not discard the discount snapshot merely because the relation is gone', () => {
+    const decision = restorePromoSnapshotPatch(kustomOrder(), {}, false)
+    assert.equal(decision.action, 'restore')
+  })
+})
+
+describe('resolvePromoSnapshot — relationship resolution', () => {
+  const payloadWith = (promoDoc: unknown, opts: { throws?: boolean } = {}) =>
+    ({
+      findByID: async () => {
+        if (opts.throws) throw new Error('connection terminated')
+        return promoDoc
+      },
+    }) as unknown as Payload
+
+  it('includes the relationship when the promo record still exists', async () => {
+    const decision = await resolvePromoSnapshot(payloadWith({ id: 7 }), kustomOrder(), {})
+    assert.equal(decision.action, 'restore')
+    if (decision.action !== 'restore') throw new Error('unreachable')
+    const discount = (decision.patch as { discount: Record<string, unknown> }).discount
+    assert.equal(discount.promoCode, 7)
+  })
+
+  it('omits it when the promo record has been deleted', async () => {
+    const decision = await resolvePromoSnapshot(payloadWith(null), kustomOrder(), {})
+    assert.equal(decision.action, 'restore')
+    if (decision.action !== 'restore') throw new Error('unreachable')
+    const discount = (decision.patch as { discount: Record<string, unknown> }).discount
+    assert.equal('promoCode' in discount, false)
+    assert.equal(discount.code, 'WELCOME10', 'the snapshot is still restored')
+  })
+
+  it('fails closed when the lookup itself errors', async () => {
+    const decision = await resolvePromoSnapshot(payloadWith(null, { throws: true }), kustomOrder(), {})
+    assert.equal(decision.action, 'restore')
+    if (decision.action !== 'restore') throw new Error('unreachable')
+    assert.equal('promoCode' in (decision.patch as { discount: Record<string, unknown> }).discount, false)
+  })
+
+  it('does not pay for a lookup when there is nothing to restore', async () => {
+    let looked = false
+    const payload = {
+      findByID: async () => {
+        looked = true
+        return { id: 7 }
+      },
+    } as unknown as Payload
+
+    // An order with no promo at all.
+    const decision = await resolvePromoSnapshot(payload, undiscountedOrder(), {})
+    assert.deepEqual(decision, { action: 'none', reason: 'no_promo' })
+    assert.equal(looked, false)
+  })
+
+  it('still reports a conflicting snapshot without touching the database', async () => {
+    let looked = false
+    const payload = {
+      findByID: async () => {
+        looked = true
+        return { id: 7 }
+      },
+    } as unknown as Payload
+
+    const decision = await resolvePromoSnapshot(payload, kustomOrder(), {
+      discount: { code: 'SOMMER20', discountAmount: 100 },
+    })
+    assert.equal(decision.action, 'conflict')
+    assert.equal(looked, false)
   })
 })
