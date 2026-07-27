@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
 import { trackViewCart, trackBeginCheckout } from '@/lib/analytics'
+import PromoCodeField from '@/components/PromoCodeField'
+import { usePromoCode } from '@/lib/promo/usePromoCode'
+import { buildSummaryRows } from '@/lib/promo/cartPromo'
 
 export default function CartClient() {
   const { items, removeItem, incrementItem, decrementItem, subtotal, shipping, orderTotal } = useCartStore()
@@ -13,6 +16,18 @@ export default function CartClient() {
   const shippingCost = shipping()
   const total = orderTotal()
   const hasCart = items.length > 0
+
+  const promo = usePromoCode()
+  // With a code applied these figures come from the server (computed from live catalogue
+  // prices); without one they are the cart's own, exactly as before. The client never
+  // derives a discount — see src/lib/promo/cartPromo.ts.
+  const summaryRows = buildSummaryRows(
+    { subtotal: sub, shipping: shippingCost, total },
+    promo.totals,
+  )
+  // The checkout total is still the undiscounted one until the Kustom stage lands; tracking
+  // keeps using it so analytics stays consistent with what is actually charged today.
+  const checkoutTotal = total
 
   // view_cart: fires once when the cart page mounts and has items
   useEffect(() => {
@@ -135,18 +150,35 @@ export default function CartClient() {
                 }}
               >
                 <h2 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17', margin: '0 0 22px' }}>Oppsummering</h2>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>Delsum</span>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#1a1d17' }}>{formatPrice(sub)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '18px' }}>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>Frakt</span>
-                  {shippingCost === 0 ? (
-                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#5f8253' }}>Gratis</span>
-                  ) : (
-                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#1a1d17' }}>{formatPrice(shippingCost)}</span>
-                  )}
-                </div>
+
+                <PromoCodeField promo={promo} />
+
+                {summaryRows
+                  .filter((row) => row.key !== 'total')
+                  .map((row) => (
+                    <div
+                      key={row.key}
+                      style={{ display: 'flex', justifyContent: 'space-between', marginBottom: row.key === 'shipping' ? '18px' : '14px' }}
+                    >
+                      <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>{row.label}</span>
+                      {row.free ? (
+                        <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#5f8253' }}>Gratis</span>
+                      ) : (
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-manrope)',
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            color: row.key === 'discount' ? '#5f8253' : '#1a1d17',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {row.value < 0 ? `−${formatPrice(Math.abs(row.value))}` : formatPrice(row.value)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+
                 {shippingCost > 0 && (
                   <div style={{ marginBottom: '14px', marginTop: '-10px' }}>
                     <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#6b6057' }}>
@@ -156,12 +188,14 @@ export default function CartClient() {
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '18px', borderTop: '1px solid #e7e2d4', marginBottom: '24px' }}>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', fontWeight: 700, color: '#1a1d17' }}>Totalt</span>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '20px', fontWeight: 700, color: '#1a1d17' }}>{formatPrice(total)}</span>
+                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '20px', fontWeight: 700, color: '#1a1d17' }}>
+                    {formatPrice(summaryRows.find((row) => row.key === 'total')!.value)}
+                  </span>
                 </div>
                 <Link
                   href="/kasse"
                   data-btn
-                  onClick={() => trackBeginCheckout(items, total)}
+                  onClick={() => trackBeginCheckout(items, checkoutTotal)}
                   style={{
                     width: '100%',
                     display: 'inline-flex',
