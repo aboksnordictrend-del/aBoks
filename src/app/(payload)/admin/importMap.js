@@ -1,5 +1,6 @@
 import { default as default_b00d41c867b522ef3c42210cfd96ba24 } from '@/components/admin/ResendShippingEmail'
 import { default as default_f66c89f6032ef643e074b39a9575a6eb } from '@/components/admin/SendReviewInvitation'
+import { default as default_4f7fe3d4c7717409bc070473e8212fe3 } from '@/components/admin/PromoCodeUsage'
 import { default as default_3357797c56031bdeee9b0c4cffc2942b } from '@/components/admin/marketing/MarketingChannelsView'
 import { default as default_bba035f4e82e87fc16fb8369eefc73af } from '@/components/admin/marketing/meta/MetaMarketingView'
 import { default as default_a0af3ce36fd7dea958a24f7e562573d5 } from '@/components/admin/marketing/google/GoogleMarketingView'
@@ -13,6 +14,7 @@ import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 export const importMap = {
   "@/components/admin/ResendShippingEmail#default": default_b00d41c867b522ef3c42210cfd96ba24,
   "@/components/admin/SendReviewInvitation#default": default_f66c89f6032ef643e074b39a9575a6eb,
+  "@/components/admin/PromoCodeUsage#default": default_4f7fe3d4c7717409bc070473e8212fe3,
   "@/components/admin/marketing/MarketingChannelsView#default": default_3357797c56031bdeee9b0c4cffc2942b,
   "@/components/admin/marketing/meta/MetaMarketingView#default": default_bba035f4e82e87fc16fb8369eefc73af,
   "@/components/admin/marketing/google/GoogleMarketingView#default": default_a0af3ce36fd7dea958a24f7e562573d5,

@@ -1,4 +1,5 @@
 import type { CollectionConfig, TextFieldSingleValidation } from 'payload'
+import { DISCOUNT_TYPE_OPTIONS } from '@/lib/promo/constants'
 import { claimOrderEmails, sendOrderEmails } from './hooks/sendOrderEmails'
 import { snapshotOrderCosts } from './hooks/orderSnapshot'
 import { assignOrderNumber } from './hooks/orderNumber'
@@ -159,6 +160,22 @@ export const Orders: CollectionConfig = {
           label: 'Linjesum (kr)',
           required: true,
         },
+        {
+          // This line's share of the order's promo-code discount, in kroner. `unitPrice` and
+          // `lineTotal` stay at the full purchase price — the discount is recorded next to
+          // them, never folded into them — so the catalogue price the customer saw is still
+          // readable on the order. The per-line split exists so revenue and profit can be
+          // attributed to the right product/variant instead of only to the order as a whole.
+          // Null/0 on every order without a promo code, which is every existing order.
+          name: 'discountAmount',
+          type: 'number',
+          label: 'Rabatt på linjen (kr)',
+          min: 0,
+          admin: {
+            readOnly: true,
+            description: 'Andel av rabattkoden som er fordelt på denne linjen.',
+          },
+        },
         // --- Historical financial snapshot (written server-side on order creation) ---
         // unitCost / vatRate are captured once at creation so later changes to a product's
         // Kostpris or the VAT rate never rewrite historical analytics. unitCost stays
@@ -219,6 +236,108 @@ export const Orders: CollectionConfig = {
       type: 'number',
       label: 'Totalt (kr)',
       required: true,
+    },
+    // --- Promo-code snapshot (written server-side when the order is created) ---
+    //
+    // A frozen copy of the discount as it was applied, so the order stays correct after the
+    // promo code is edited, deactivated or deleted. The relationship is only a pointer for
+    // convenience — every figure needed to reproduce the order is stored as plain text and
+    // numbers alongside it.
+    //
+    // How it fits the existing money fields, which keep their current meaning:
+    //   subtotal = goods BEFORE discount   ·   shipping = as charged   ·   total = actually paid
+    //   → subtotal + shipping − total === discount.discountAmount
+    // That identity is what the PDF receipt already relies on to print its "Rabatt" row.
+    //
+    // Read-only: these must keep matching what the customer was actually charged through
+    // Kustom. Correcting an order means correcting it at the source, not editing the snapshot.
+    {
+      name: 'discount',
+      type: 'group',
+      label: 'Rabatt',
+      admin: {
+        description: 'Rabattkode brukt på ordren. Tom for ordre uten rabattkode.',
+      },
+      fields: [
+        {
+          name: 'promoCode',
+          type: 'relationship',
+          relationTo: 'promo-codes',
+          label: 'Promokode (referanse)',
+          admin: {
+            readOnly: true,
+            description: 'Kan bli tom hvis koden slettes senere — feltene under består.',
+          },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'code',
+              type: 'text',
+              label: 'Rabattkode',
+              admin: { width: '34%', readOnly: true },
+            },
+            {
+              name: 'discountType',
+              type: 'select',
+              label: 'Rabattype',
+              options: DISCOUNT_TYPE_OPTIONS,
+              admin: { width: '33%', readOnly: true },
+            },
+            {
+              name: 'discountValue',
+              type: 'number',
+              label: 'Rabattverdi',
+              admin: { width: '33%', readOnly: true },
+            },
+          ],
+        },
+        {
+          name: 'discountAmount',
+          type: 'number',
+          label: 'Rabattbeløp (kr)',
+          min: 0,
+          admin: {
+            readOnly: true,
+            description: 'Faktisk rabatt i kroner. Gjelder aldri frakt.',
+          },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'subtotalBeforeDiscount',
+              type: 'number',
+              label: 'Varesum før rabatt (kr)',
+              admin: { width: '50%', readOnly: true },
+            },
+            {
+              name: 'subtotalAfterDiscount',
+              type: 'number',
+              label: 'Varesum etter rabatt (kr)',
+              admin: { width: '50%', readOnly: true },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'totalBeforeDiscount',
+              type: 'number',
+              label: 'Totalt før rabatt (kr)',
+              admin: { width: '50%', readOnly: true },
+            },
+            {
+              name: 'totalAfterDiscount',
+              type: 'number',
+              label: 'Totalt etter rabatt (kr)',
+              admin: { width: '50%', readOnly: true },
+            },
+          ],
+        },
+      ],
     },
     // --- Variable-cost fields, filled in manually by an admin after fulfilment ---
     // All optional; the dashboard treats a missing value as 0 and keeps working.

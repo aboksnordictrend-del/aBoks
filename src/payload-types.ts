@@ -72,6 +72,8 @@ export interface Config {
     'product-variants': ProductVariant;
     media: Media;
     orders: Order;
+    'promo-codes': PromoCode;
+    'promo-code-usages': PromoCodeUsage;
     customers: Customer;
     'marketing-expenses': MarketingExpense;
     reviews: Review;
@@ -89,6 +91,8 @@ export interface Config {
     'product-variants': ProductVariantsSelect<false> | ProductVariantsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     orders: OrdersSelect<false> | OrdersSelect<true>;
+    'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
+    'promo-code-usages': PromoCodeUsagesSelect<false> | PromoCodeUsagesSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
     'marketing-expenses': MarketingExpensesSelect<false> | MarketingExpensesSelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
@@ -388,6 +392,10 @@ export interface Order {
     unitPrice: number;
     lineTotal: number;
     /**
+     * Andel av rabattkoden som er fordelt på denne linjen.
+     */
+    discountAmount?: number | null;
+    /**
      * Kostpris per enhet på bestillingstidspunktet (uten MVA). Fylles automatisk fra produkt/variant. Kan rettes manuelt.
      */
     unitCost?: number | null;
@@ -408,6 +416,26 @@ export interface Order {
   subtotal: number;
   shipping?: number | null;
   total: number;
+  /**
+   * Rabattkode brukt på ordren. Tom for ordre uten rabattkode.
+   */
+  discount?: {
+    /**
+     * Kan bli tom hvis koden slettes senere — feltene under består.
+     */
+    promoCode?: (number | null) | PromoCode;
+    code?: string | null;
+    discountType?: ('percentage' | 'fixed') | null;
+    discountValue?: number | null;
+    /**
+     * Faktisk rabatt i kroner. Gjelder aldri frakt.
+     */
+    discountAmount?: number | null;
+    subtotalBeforeDiscount?: number | null;
+    subtotalAfterDiscount?: number | null;
+    totalBeforeDiscount?: number | null;
+    totalAfterDiscount?: number | null;
+  };
   /**
    * Bedriftens reelle fraktkostnad for denne ordren. Kan skille seg fra frakten kunden betalte.
    */
@@ -464,6 +492,82 @@ export interface Customer {
   };
   orders?: (number | Order)[] | null;
   marketingConsent?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Rabattkoder kunden kan bruke i handlekurven.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "promo-codes".
+ */
+export interface PromoCode {
+  id: number;
+  /**
+   * Lagres alltid med STORE BOKSTAVER. Kunden kan skrive den som de vil.
+   */
+  code: string;
+  /**
+   * Fjern avkryssingen for å skru av koden uten å slette den.
+   */
+  active?: boolean | null;
+  /**
+   * Vises kun her i admin — aldri for kunden.
+   */
+  name?: string | null;
+  discountType: 'percentage' | 'fixed';
+  /**
+   * Prosent (1–100) eller et fast beløp i kroner.
+   */
+  discountValue: number;
+  usageMode: 'unlimited' | 'single_use_global' | 'once_per_customer' | 'limited';
+  /**
+   * Antall betalte ordre koden kan brukes på totalt.
+   */
+  maxUses?: number | null;
+  /**
+   * La stå tom for å gjelde umiddelbart.
+   */
+  startsAt?: string | null;
+  /**
+   * La stå tom for at koden aldri utløper.
+   */
+  expiresAt?: string | null;
+  /**
+   * Måles mot varesummen før rabatt og uten frakt. La stå tom for ingen minstesum.
+   */
+  minimumOrderAmount?: number | null;
+  /**
+   * La stå tom for at koden gjelder alle produkter. Velges produkter, gis rabatt bare på ordrelinjer med disse produktene — varianter følger produktet sitt.
+   */
+  applicableProducts?: (number | Product)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Registrerte, betalte bruk av rabattkoder. Skrives automatisk.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "promo-code-usages".
+ */
+export interface PromoCodeUsage {
+  id: number;
+  promoCode?: (number | null) | PromoCode;
+  order?: (number | null) | Order;
+  orderNumber?: string | null;
+  /**
+   * Alltid små bokstaver — grunnlaget for «én gang per kunde».
+   */
+  email?: string | null;
+  discountAmount?: number | null;
+  currency?: string | null;
+  /**
+   * Tidspunktet betalingen ble bekreftet.
+   */
+  usedAt?: string | null;
+  kustomOrderId?: string | null;
+  orderKey?: string | null;
+  uniquenessKey?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -660,6 +764,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'orders';
         value: number | Order;
+      } | null)
+    | ({
+        relationTo: 'promo-codes';
+        value: number | PromoCode;
+      } | null)
+    | ({
+        relationTo: 'promo-code-usages';
+        value: number | PromoCodeUsage;
       } | null)
     | ({
         relationTo: 'customers';
@@ -913,6 +1025,7 @@ export interface OrdersSelect<T extends boolean = true> {
         quantity?: T;
         unitPrice?: T;
         lineTotal?: T;
+        discountAmount?: T;
         unitCost?: T;
         vatRate?: T;
         lineCost?: T;
@@ -922,6 +1035,19 @@ export interface OrdersSelect<T extends boolean = true> {
   subtotal?: T;
   shipping?: T;
   total?: T;
+  discount?:
+    | T
+    | {
+        promoCode?: T;
+        code?: T;
+        discountType?: T;
+        discountValue?: T;
+        discountAmount?: T;
+        subtotalBeforeDiscount?: T;
+        subtotalAfterDiscount?: T;
+        totalBeforeDiscount?: T;
+        totalAfterDiscount?: T;
+      };
   actualShippingCost?: T;
   paymentFee?: T;
   paymentFeeSource?: T;
@@ -937,6 +1063,43 @@ export interface OrdersSelect<T extends boolean = true> {
   receiptEmailSentAt?: T;
   receiptEmailMessageId?: T;
   receiptEmailError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "promo-codes_select".
+ */
+export interface PromoCodesSelect<T extends boolean = true> {
+  code?: T;
+  active?: T;
+  name?: T;
+  discountType?: T;
+  discountValue?: T;
+  usageMode?: T;
+  maxUses?: T;
+  startsAt?: T;
+  expiresAt?: T;
+  minimumOrderAmount?: T;
+  applicableProducts?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "promo-code-usages_select".
+ */
+export interface PromoCodeUsagesSelect<T extends boolean = true> {
+  promoCode?: T;
+  order?: T;
+  orderNumber?: T;
+  email?: T;
+  discountAmount?: T;
+  currency?: T;
+  usedAt?: T;
+  kustomOrderId?: T;
+  orderKey?: T;
+  uniquenessKey?: T;
   updatedAt?: T;
   createdAt?: T;
 }
