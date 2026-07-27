@@ -40,6 +40,12 @@ export interface KustomCreateOrderPayload {
   order_lines: KustomOrderLine[]
   merchant_urls: KustomMerchantUrls
   merchant_reference?: string
+  /**
+   * Merchant state round-tripped through the checkout and returned on the order. Carries the
+   * promo-code identity, which the `total_discount_amount` representation cannot express —
+   * see @/lib/promo/kustomMerchantData. Server-derived values only; never customer data.
+   */
+  merchant_data?: string
   billing_countries?: string[]
   shipping_countries?: string[]
 }

@@ -24,6 +24,11 @@ export type PromoFailureReason =
   | 'expired'
   /** Stored configuration is unusable (bad value, percentage > 100, limited without maxUses). */
   | 'invalid_configuration'
+  /**
+   * The code is configured with a usage ceiling (single-use, limited count, once-per-customer)
+   * that the first launch does not support. See ./supportPolicy.ts.
+   */
+  | 'not_supported'
   /** The eligible subtotal is below the code's `minimumOrderAmount`. */
   | 'minimum_not_reached'
   /** The code is product-restricted and the cart contains none of those products. */

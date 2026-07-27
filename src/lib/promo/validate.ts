@@ -10,6 +10,7 @@ import {
   type UsageMode,
 } from './constants'
 import { allocateDiscount } from './allocate'
+import { PROMO_UNSUPPORTED_MESSAGE, checkPromoLaunchSupport } from './supportPolicy'
 import type {
   PromoFailureReason,
   PromoLineDiscount,
@@ -51,6 +52,7 @@ const FAILURE_MESSAGE: Record<Exclude<PromoFailureReason, 'minimum_not_reached'>
   not_started: 'Denne rabattkoden er ikke gyldig ennå.',
   expired: 'Denne rabattkoden er utløpt.',
   invalid_configuration: 'Denne rabattkoden kan ikke brukes. Ta gjerne kontakt med oss.',
+  not_supported: PROMO_UNSUPPORTED_MESSAGE,
   no_eligible_products: 'Rabattkoden gjelder ikke produktene i handlekurven.',
   global_usage_consumed: 'Denne rabattkoden er allerede brukt.',
   max_uses_reached: 'Denne rabattkoden er brukt opp.',
@@ -252,6 +254,18 @@ export async function validatePromoCode(
   const maxUses = typeof doc.maxUses === 'number' ? doc.maxUses : null
   if (usageMode === 'limited' && (maxUses == null || !Number.isInteger(maxUses) || maxUses < 1)) {
     return fail('invalid_configuration')
+  }
+
+  // ── First-launch policy ──
+  // Enforced here, in the authoritative validator, so it holds for the public endpoint, for
+  // checkout and for any future internal caller alike — not just for the admin form. A row
+  // that predates the policy, or was written straight to the database, is refused too.
+  const support = checkPromoLaunchSupport({ usageMode: doc.usageMode, maxUses: doc.maxUses })
+  if (!support.supported) {
+    payload.logger?.warn?.(
+      `[promo] code ${promoCodeId} refused: ${support.reason} (usageMode=${doc.usageMode ?? 'null'}, maxUses=${doc.maxUses ?? 'null'})`,
+    )
+    return fail('not_supported')
   }
 
   // ── Which lines the code applies to ──

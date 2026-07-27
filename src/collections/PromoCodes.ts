@@ -1,6 +1,7 @@
 import type {
   CollectionConfig,
   DateField,
+  SelectFieldSingleValidation,
   NumberFieldSingleValidation,
   TextFieldSingleValidation,
 } from 'payload'
@@ -11,6 +12,7 @@ import {
   type DiscountType,
   type UsageMode,
 } from '@/lib/promo/constants'
+import { checkPromoLaunchSupport } from '@/lib/promo/supportPolicy'
 
 /**
  * Promo / discount codes (`Promokoder`).
@@ -30,6 +32,7 @@ import {
 type PromoSiblingData = {
   discountType?: DiscountType | null
   usageMode?: UsageMode | null
+  maxUses?: number | null
   startsAt?: string | null
 }
 
@@ -95,6 +98,24 @@ const validateMaxUses: NumberFieldSingleValidation = (value, { siblingData }) =>
 // Payload exports no `DateFieldSingleValidation`, so the signature is taken off the field
 // type itself — same contract, no hand-written duplicate of it.
 type DateValidation = NonNullable<DateField['validate']>
+
+/**
+ * Blocks saving a configuration the customer-facing system cannot honour.
+ *
+ * The select above already hides the unsupported modes, but that is only the form: a value
+ * could still arrive through the REST/GraphQL API, a seed script, or an older row being
+ * re-saved. This runs on every write. It is a convenience guard — the real enforcement is in
+ * `validatePromoCode`, which refuses an unsupported code no matter how it got into the table.
+ */
+const validateUsageMode: SelectFieldSingleValidation = (value, { siblingData }) => {
+  const { maxUses } = (siblingData ?? {}) as PromoSiblingData
+  const decision = checkPromoLaunchSupport({
+    usageMode: typeof value === 'string' ? value : null,
+    maxUses: typeof maxUses === 'number' ? maxUses : null,
+  })
+  if (decision.supported) return true
+  return 'Foreløpig støttes bare gjenbrukbare rabattkoder uten bruksgrense. Velg «Ubegrenset», og fjern eventuelt «Maks antall bruk».'
+}
 
 /** When both dates are set, the window must be a real one. */
 const validateExpiresAt: DateValidation = (value, { siblingData }) => {
@@ -206,8 +227,19 @@ export const PromoCodes: CollectionConfig = {
           label: 'Bruksbegrensning',
           required: true,
           defaultValue: 'unlimited',
-          options: USAGE_MODE_OPTIONS,
-          admin: { width: '50%' },
+          // Only the modes the current launch actually supports are offered. The other
+          // values remain in the database enum (and in USAGE_MODE_OPTIONS) so existing rows
+          // stay readable and the feature can be switched on later without a migration —
+          // see @/lib/promo/supportPolicy.
+          options: USAGE_MODE_OPTIONS.filter(
+            (option) => checkPromoLaunchSupport({ usageMode: option.value }).supported,
+          ),
+          admin: {
+            width: '50%',
+            description:
+              'Foreløpig støttes bare gjenbrukbare koder uten bruksgrense. Engangskoder, «kun X ganger» og «én gang per kunde» kommer senere.',
+          },
+          validate: validateUsageMode,
         },
         {
           name: 'maxUses',
@@ -216,6 +248,8 @@ export const PromoCodes: CollectionConfig = {
           min: 1,
           admin: {
             width: '50%',
+            // Never shown while `limited` cannot be selected; kept so the stored value on any
+            // pre-existing row is preserved rather than blanked on the next save.
             condition: (data) => data?.usageMode === 'limited',
             description: 'Antall betalte ordre koden kan brukes på totalt.',
           },

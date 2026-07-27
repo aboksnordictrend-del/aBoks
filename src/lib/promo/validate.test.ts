@@ -384,113 +384,54 @@ describe('validatePromoCode — minimum order amount', () => {
   })
 })
 
-describe('validatePromoCode — usage allowance (advisory)', () => {
-  it('accepts a single-use code that has never been used', async () => {
-    const { payload } = fakePayload({
-      codes: [{ ...CODE, usageMode: 'single_use_global' }],
-      usages: [],
-    })
-    expectValid(await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }))
-  })
+describe('validatePromoCode — usage allowance', () => {
+  // Usage counting exists in the validator for the limited/single-use/once-per-customer
+  // modes, but at launch none of those modes is supported: the policy check refuses them
+  // first, so the counting path is deliberately unreachable. These tests pin that down —
+  // the guarantee that matters is that a limited code can never behave like an unlimited
+  // one, not that the (dormant) counter works.
 
-  it('detects that a single-use code is already consumed', async () => {
-    const { payload } = fakePayload({
-      codes: [{ ...CODE, usageMode: 'single_use_global' }],
-      usages: [{ promoCode: 7, order: 100 }],
-    })
-    expectInvalid(
-      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
-      'global_usage_consumed',
-    )
-  })
-
-  it('does not count the order being revalidated against itself', async () => {
-    const { payload } = fakePayload({
-      codes: [{ ...CODE, usageMode: 'single_use_global' }],
-      usages: [{ promoCode: 7, order: 100 }],
-    })
-    expectValid(
-      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART, orderId: 100 }),
-    )
-  })
-
-  it('stops a limited code at maxUses', async () => {
-    const twoUses = [
-      { promoCode: 7, order: 1 },
-      { promoCode: 7, order: 2 },
-    ]
-    const limited = { ...CODE, usageMode: 'limited', maxUses: 3 }
-
-    const under = fakePayload({ codes: [limited], usages: twoUses })
-    expectValid(await validatePromoCode(under.payload, { code: 'WELCOME10', cart: SINGLE_CART }))
-
-    const at = fakePayload({ codes: [limited], usages: [...twoUses, { promoCode: 7, order: 3 }] })
-    expectInvalid(
-      await validatePromoCode(at.payload, { code: 'WELCOME10', cart: SINGLE_CART }),
-      'max_uses_reached',
-    )
-  })
-
-  it('requires an email for a once-per-customer code', async () => {
-    const { payload } = fakePayload({ codes: [{ ...CODE, usageMode: 'once_per_customer' }] })
-    expectInvalid(
-      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
-      'email_required',
-    )
-    expectInvalid(
-      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART, email: '  ' }),
-      'email_required',
-    )
-  })
-
-  it('blocks the same customer and allows a different one, comparing normalised emails', async () => {
-    const codes = [{ ...CODE, usageMode: 'once_per_customer' }]
-    const usages = [{ promoCode: 7, order: 1, email: 'kari@example.no' }]
-
-    const same = fakePayload({ codes, usages })
-    expectInvalid(
-      await validatePromoCode(same.payload, {
-        code: 'WELCOME10',
-        cart: SINGLE_CART,
-        // Different case and padding — the same person.
-        email: '  Kari@Example.NO ',
-      }),
-      'already_used_by_customer',
-    )
-    // The lookup really did use the normalised form.
-    assert.ok(
-      JSON.stringify(same.usageQueries).includes('kari@example.no'),
-      'the usage query must ask for the normalised email',
-    )
-
-    const other = fakePayload({ codes, usages })
-    expectValid(
-      await validatePromoCode(other.payload, {
-        code: 'WELCOME10',
-        cart: SINGLE_CART,
-        email: 'ola@example.no',
-      }),
-    )
-  })
-
-  it('never queries usage for an unlimited code', async () => {
+  it('never counts usage for an unlimited code', async () => {
     const { payload, usageQueries } = fakePayload({ codes: [CODE] })
     expectValid(await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }))
-    assert.equal(usageQueries.length, 0)
+    assert.deepEqual(usageQueries, [])
   })
 
-  it('reports a failing usage lookup as retryable', async () => {
-    const { payload } = fakePayload({
-      codes: [{ ...CODE, usageMode: 'single_use_global' }],
-      throwOn: 'promo-code-usages',
-    })
-    expectInvalid(
-      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
-      'lookup_failed',
+  it('refuses every counted mode before any usage query is made', async () => {
+    const counted: Partial<FakePromoCode>[] = [
+      { usageMode: 'single_use_global' },
+      { usageMode: 'limited', maxUses: 3 },
+      { usageMode: 'once_per_customer' },
+    ]
+    for (const overrides of counted) {
+      const { payload, usageQueries } = fakePayload({ codes: [{ ...CODE, ...overrides }], usages: [] })
+      expectInvalid(
+        await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
+        'not_supported',
+      )
+      assert.deepEqual(usageQueries, [], 'the usage table is never consulted')
+    }
+  })
+
+  it('refuses a once-per-customer code with or without an email', async () => {
+    for (const email of [undefined, 'kari@example.no']) {
+      const { payload } = fakePayload({ codes: [{ ...CODE, usageMode: 'once_per_customer' }] })
+      expectInvalid(
+        await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART, email }),
+        'not_supported',
+      )
+    }
+  })
+
+  it('a supported code still reaches the discount calculation with no usage lookup', async () => {
+    const { payload, usageQueries } = fakePayload({ codes: [CODE], usages: [] })
+    const r = expectValid(
+      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART, orderId: 100 }),
     )
+    assert.equal(r.discountAmountOere, 4_490)
+    assert.deepEqual(usageQueries, [])
   })
 })
-
 describe('validatePromoCode — allocation and totals', () => {
   it('line discounts sum exactly to the order discount', async () => {
     const cart = cartOf(
@@ -570,5 +511,97 @@ describe('validatePromoCode — allocation and totals', () => {
     ]) {
       assert.ok(Number.isInteger(value), `${value} is not whole øre`)
     }
+  })
+})
+
+/* ------------------------------ launch support policy ------------------------------ */
+
+describe('validatePromoCode — first-launch support policy', () => {
+  it('accepts a reusable unlimited code (percentage and fixed)', async () => {
+    for (const overrides of [
+      { discountType: 'percentage', discountValue: 10 },
+      { discountType: 'fixed', discountValue: 100 },
+    ]) {
+      const { payload } = fakePayload({ codes: [{ ...CODE, ...overrides }] })
+      expectValid(await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }))
+    }
+  })
+
+  it('keeps accepting the features that are still supported', async () => {
+    const supported: Partial<FakePromoCode>[] = [
+      { expiresAt: daysFromNow(30) },
+      { startsAt: daysFromNow(-1) },
+      { minimumOrderAmount: 100 },
+      { applicableProducts: [1] },
+    ]
+    for (const overrides of supported) {
+      const { payload } = fakePayload({ codes: [{ ...CODE, ...overrides }] })
+      expectValid(await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }))
+    }
+  })
+
+  it('rejects every usage-limited mode with the safe Norwegian message', async () => {
+    const unsupported: Partial<FakePromoCode>[] = [
+      { usageMode: 'single_use_global' },
+      { usageMode: 'limited', maxUses: 50 },
+      { usageMode: 'once_per_customer' },
+      // A stale ceiling left on an otherwise unlimited code must fail closed too.
+      { usageMode: 'unlimited', maxUses: 5 },
+    ]
+    for (const overrides of unsupported) {
+      const { payload } = fakePayload({ codes: [{ ...CODE, ...overrides }] })
+      const result = expectInvalid(
+        await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
+        'not_supported',
+      )
+      assert.equal(result.message, 'Denne rabattkoden er ikke tilgjengelig akkurat nå.')
+    }
+  })
+
+  it('never leaks which restriction was configured', async () => {
+    const { payload } = fakePayload({ codes: [{ ...CODE, usageMode: 'limited', maxUses: 3 }] })
+    const result = expectInvalid(
+      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
+      'not_supported',
+    )
+    for (const leak of ['limited', 'maxUses', '3', 'single', 'kunde']) {
+      assert.ok(!result.message.includes(leak), `message must not mention ${leak}`)
+    }
+  })
+
+  it('rejects a legacy row that bypassed admin validation entirely', async () => {
+    // Written straight to the database with a mode the admin form can no longer produce.
+    const { payload } = fakePayload({
+      codes: [{ ...CODE, usageMode: 'single_use_global' }],
+      usages: [],
+    })
+    expectInvalid(
+      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
+      'not_supported',
+    )
+  })
+
+  it('rejects a mode the schema does not know at all', async () => {
+    // Reported as invalid configuration rather than "not supported" — either way it fails
+    // closed, and either way no discount is granted.
+    const { payload } = fakePayload({ codes: [{ ...CODE, usageMode: 'some_future_mode' as never }] })
+    expectInvalid(
+      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
+      'invalid_configuration',
+    )
+  })
+
+  it('never silently treats a limited code as unlimited', async () => {
+    // No usage rows exist, so an unlimited code would sail through — the policy must still
+    // refuse, and must not fall back to the usage-count path.
+    const { payload, usageQueries } = fakePayload({
+      codes: [{ ...CODE, usageMode: 'limited', maxUses: 99 }],
+      usages: [],
+    })
+    expectInvalid(
+      await validatePromoCode(payload, { code: 'WELCOME10', cart: SINGLE_CART }),
+      'not_supported',
+    )
+    assert.deepEqual(usageQueries, [], 'usage counting must not even be attempted')
   })
 })

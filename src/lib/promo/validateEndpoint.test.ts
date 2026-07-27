@@ -416,21 +416,24 @@ describe('handlePromoValidation — business answers are HTTP 200', () => {
     expectFailure(await post({ code: 'WELCOME10', items: CART }, deps({ payload })), 200, 'inactive')
   })
 
-  it('reports a once-per-customer code submitted without an email', async () => {
-    const { payload } = fakePayload({ codes: [{ ...WELCOME, usageMode: 'once_per_customer' }] })
-    const body = expectFailure(
-      await post({ code: 'WELCOME10', items: CART }, deps({ payload })),
-      200,
-      'email_required',
-    )
-    assert.equal(body.message, 'Denne rabattkoden krever at du oppgir e-postadressen din.')
+  it('rejects every usage-limited mode as unsupported at launch', async () => {
+    for (const usageMode of ['once_per_customer', 'single_use_global', 'limited']) {
+      const { payload } = fakePayload({
+        codes: [{ ...WELCOME, usageMode, ...(usageMode === 'limited' ? { maxUses: 5 } : {}) }],
+      })
+      const body = expectFailure(
+        await post({ code: 'WELCOME10', items: CART }, deps({ payload })),
+        200,
+        'not_supported',
+      )
+      assert.equal(body.message, 'Denne rabattkoden er ikke tilgjengelig akkurat nå.')
+      // The reason for the refusal is never disclosed.
+      assert.ok(!/kunde|én gang|begrenset|maks/i.test(body.message))
+    }
   })
 
-  it('accepts the same code once an email is supplied', async () => {
-    const { payload } = fakePayload({
-      codes: [{ ...WELCOME, usageMode: 'once_per_customer' }],
-      usages: [],
-    })
+  it('accepts a reusable code with an email supplied', async () => {
+    const { payload } = fakePayload({ codes: [WELCOME], usages: [] })
     const result = await post(
       { code: 'WELCOME10', items: CART, email: '  Kari@Example.NO ' },
       deps({ payload }),
@@ -581,20 +584,16 @@ describe('handlePromoValidation — read-only', () => {
     }
   })
 
-  it('only ever reads the four expected collections', async () => {
-    const { payload, reads } = fakePayload({
-      codes: [{ ...WELCOME, usageMode: 'single_use_global' }],
-      usages: [],
-    })
+  it('only ever reads the catalogue and the promo code itself', async () => {
+    // At launch only reusable codes are supported, so the usage table is not even consulted
+    // during validation — it is written once, after payment, by the webhook.
+    const { payload, reads } = fakePayload({ codes: [WELCOME], usages: [] })
     await post({ code: 'WELCOME10', items: CART }, deps({ payload }))
-    assert.deepEqual(reads, ['product-variants', 'products', 'promo-codes', 'promo-code-usages'])
+    assert.deepEqual(reads, ['product-variants', 'products', 'promo-codes'])
   })
 
-  it('validating a one-time code does not consume it — a second call still succeeds', async () => {
-    const fake = fakePayload({
-      codes: [{ ...WELCOME, usageMode: 'single_use_global' }],
-      usages: [],
-    })
+  it('validating a code does not consume it — a second call still succeeds', async () => {
+    const fake = fakePayload({ codes: [WELCOME], usages: [] })
     const first = await post({ code: 'WELCOME10', items: CART }, deps({ payload: fake.payload }))
     const second = await post({ code: 'WELCOME10', items: CART }, deps({ payload: fake.payload }))
 

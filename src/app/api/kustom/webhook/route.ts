@@ -4,6 +4,8 @@ import { getPayloadClient } from '@/lib/payload'
 import { allocateOrderNumber } from '@/lib/orderNumber'
 import { syncCustomerForOrderSafe } from '@/lib/customers'
 import { colorNameFromLineName } from '@/lib/orderLineName'
+import { registerPromoUsageOnce } from '@/lib/promo/usageRegistration'
+import { restorePromoSnapshotPatch } from '@/lib/promo/webhookPromo'
 
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -40,7 +42,29 @@ export async function POST(req: NextRequest) {
       // the link if an earlier delivery of this webhook failed halfway.
       if (order.status === 'confirmed') {
         await syncCustomerForOrderSafe(payload, order)
-        return NextResponse.json({ ok: true, skipped: true })
+        // Promo usage is retried here too, deliberately. If the first delivery confirmed the
+        // order but the usage insert failed transiently, this is the only path a retry takes
+        // — returning early without it would lose the record permanently.
+        const usage = await registerPromoUsageOnce({ payload }, { kustomOrder, order })
+        return NextResponse.json({ ok: true, skipped: true, usage: usage.status })
+      }
+
+      // Repair the promo snapshot if the best-effort pre-create left it missing or partial.
+      // Never overwrites a snapshot that already names a different code — that is logged as
+      // an integrity conflict and left for a human.
+      const snapshot = restorePromoSnapshotPatch(kustomOrder, order)
+      if (snapshot.action === 'conflict') {
+        console.error(
+          JSON.stringify({
+            scope: 'kustom-webhook',
+            event: 'integrity-conflict',
+            reason: 'order_promo_conflict',
+            orderId: String(order.id),
+            kustomOrderId: orderId,
+            storedCode: snapshot.storedCode,
+            paidCode: snapshot.paidCode,
+          }),
+        )
       }
 
       confirmedOrder = await payload.update({
@@ -51,6 +75,7 @@ export async function POST(req: NextRequest) {
           // Stamp the payment date once. A replayed webhook keeps the original value,
           // and a manual status change never reaches this path.
           paidAt: order.paidAt ?? new Date().toISOString(),
+          ...(snapshot.action === 'restore' ? snapshot.patch : {}),
           customerInfo: {
             email: addr?.email ?? '',
             firstName: addr?.given_name ?? '',
@@ -109,20 +134,35 @@ export async function POST(req: NextRequest) {
           subtotal,
           shipping,
           total,
-          // The discount AMOUNT is recoverable from the Kustom lines; the promo code itself
-          // is not (Option A carries no named discount line). This path only runs when the
-          // pre-create in initKustomCheckout failed, so the code is normally already stored.
-          // Re-attaching it here is Stage 8 work — see the notes on merchant_data.
+          // The discount AMOUNT comes from the Kustom lines; the promo IDENTITY comes from
+          // merchant_data, which is the only place Option A preserves it. `restorePromoSnapshotPatch`
+          // cross-checks the two against the paid amounts before trusting either.
+          //
+          // When merchant_data is absent or unusable the money is still reconstructed
+          // correctly below — the order is simply left without a code, and no usage is
+          // registered, rather than inventing an identity.
           ...(discountOere > 0
-            ? {
-                discount: {
-                  discountAmount: discountOere / 100,
-                  subtotalBeforeDiscount: subtotal,
-                  subtotalAfterDiscount: (grossOere - discountOere) / 100,
-                  totalBeforeDiscount: (grossOere + (shippingLine?.total_amount ?? 0)) / 100,
-                  totalAfterDiscount: total,
-                },
-              }
+            ? (() => {
+                const restored = restorePromoSnapshotPatch(kustomOrder, {})
+                if (restored.action === 'restore') return restored.patch
+                console.warn(
+                  JSON.stringify({
+                    scope: 'kustom-webhook',
+                    event: 'reconstruct-without-promo-identity',
+                    kustomOrderId: orderId,
+                    discountOere,
+                  }),
+                )
+                return {
+                  discount: {
+                    discountAmount: discountOere / 100,
+                    subtotalBeforeDiscount: subtotal,
+                    subtotalAfterDiscount: (grossOere - discountOere) / 100,
+                    totalBeforeDiscount: (grossOere + (shippingLine?.total_amount ?? 0)) / 100,
+                    totalAfterDiscount: total,
+                  },
+                }
+              })()
             : {}),
           status: 'confirmed',
           paidAt: new Date().toISOString(),
@@ -144,6 +184,26 @@ export async function POST(req: NextRequest) {
     // Find-or-create the Customer for this buyer and link the order to it.
     // Runs after the order write has committed so a sync failure can never roll it back.
     await syncCustomerForOrderSafe(payload, confirmedOrder)
+
+    // Register the promo use — once, and only now that the order is confirmed paid.
+    //
+    // Deliberately after the order write has committed and outside any transaction with it:
+    // the audit row must never be able to roll back a genuinely paid order. A transient
+    // failure here leaves the order confirmed and returns 'retryable_error'; Kustom retries
+    // the push until it gets a 2xx, and the already-confirmed branch above picks the
+    // registration up on the next delivery.
+    const usageResult = await registerPromoUsageOnce({ payload }, { kustomOrder, order: confirmedOrder })
+    if (usageResult.status === 'retryable_error') {
+      console.error(
+        JSON.stringify({
+          scope: 'kustom-webhook',
+          event: 'promo-usage-retryable',
+          orderId: String(confirmedOrder.id),
+          kustomOrderId: orderId,
+          reason: usageResult.reason,
+        }),
+      )
+    }
 
     // Deduct inventory — run regardless of create vs. update path
     const itemsToProcess = confirmedOrder.items ?? []

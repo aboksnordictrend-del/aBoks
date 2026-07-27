@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 import { oereToKr, priceCart, type CartLineInput } from '@/lib/cartPricing'
 import type { KustomCreateOrderPayload, KustomOrder } from '@/lib/kustom'
 import { validatePromoCode } from './validate'
+import { buildKustomMerchantData } from './kustomMerchantData'
 import { MAX_CART_LINES } from './validateEndpoint'
 import {
   assertKustomOrderInvariants,
@@ -321,6 +322,23 @@ export async function createTrustedCheckout(
         push: `${deps.serverUrl}/api/kustom/webhook?order_id={checkout.order.id}`,
       },
       merchant_reference: orderNumber,
+      // Added only here, after pricing, validation, allocation, the invariants and the local
+      // parity check have all passed — so the amounts it carries are exactly the ones on the
+      // order lines. Undefined (and therefore absent) when no promo was applied.
+      merchant_data: buildKustomMerchantData(
+        promo
+          ? {
+              code: promo.code,
+              promoCodeId: promo.promoCodeId,
+              type: promo.discountType,
+              value: promo.discountValue,
+              discountAmountOere: build.totals.discountOere,
+              subtotalBeforeDiscountOere: build.totals.subtotalOere,
+              shippingOere: build.totals.shippingOere,
+              totalAfterDiscountOere: build.orderAmountOere,
+            }
+          : null,
+      ),
       billing_countries: ['NO'],
       shipping_countries: ['NO'],
     })

@@ -403,20 +403,28 @@ describe('createTrustedCheckout — promo no longer usable', () => {
     await rejects(harness({ codes: [{ ...WELCOME, active: false }] }), 'inactive')
   })
 
-  it('blocks an exhausted single-use code', async () => {
+  // Usage-limited modes are not supported at launch (see ./supportPolicy.ts), so they are
+  // refused as `not_supported` before any counting happens. What matters here is unchanged:
+  // Kustom is never called and no order is created.
+  it('blocks a single-use code', async () => {
     const h = harness({
       codes: [{ ...WELCOME, usageMode: 'single_use_global' }],
       usages: [{ promoCode: 7, order: 99 }],
     })
-    await rejects(h, 'global_usage_consumed')
+    await rejects(h, 'not_supported')
   })
 
-  it('blocks an exhausted limited code', async () => {
+  it('blocks a limited-count code', async () => {
     const h = harness({
       codes: [{ ...WELCOME, usageMode: 'limited', maxUses: 2 }],
       usages: [{ promoCode: 7, order: 1 }, { promoCode: 7, order: 2 }],
     })
-    await rejects(h, 'max_uses_reached')
+    await rejects(h, 'not_supported')
+  })
+
+  it('blocks a once-per-customer code', async () => {
+    const h = harness({ codes: [{ ...WELCOME, usageMode: 'once_per_customer' }] })
+    await rejects(h, 'not_supported')
   })
 
   it('blocks a code below its minimum', async () => {
@@ -445,16 +453,14 @@ describe('createTrustedCheckout — promo lookup temporarily unavailable', () =>
     assert.ok(!result.message.includes('Postgres'), 'no database detail reaches the customer')
   })
 
-  it('does the same when the usage lookup fails', async () => {
-    const h = harness({
-      codes: [{ ...WELCOME, usageMode: 'single_use_global' }],
-      throwOn: 'promo-code-usages',
-    })
+  it('does the same when the promo lookup fails on a supported code', async () => {
+    const h = harness({ throwOn: 'promo-codes' })
     expectFail(
-      await createTrustedCheckout(h.deps, { ...CART, promoCode: 'WELCOME10' }),
+      await createTrustedCheckout(h.deps, { ...CART, promoCode: 'ABOKS100' }),
       'promo_unavailable',
     )
     assert.deepEqual(h.kustomCalls, [])
+    assert.deepEqual(h.writes, [])
   })
 })
 
