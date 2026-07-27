@@ -31,7 +31,19 @@ export function toNet(gross: number, vatRate: number): number {
   return gross / (1 + vatRate / 100)
 }
 
-const lineGross = (l: AnalyticsLine): number => l.quantity * l.unitPrice
+/**
+ * Revenue for a line is what was actually paid for it: the catalogue value less this line's
+ * share of the promo discount, which was allocated and stored at purchase.
+ *
+ * The discount is applied here and nowhere else — every aggregate below is built from
+ * `lineGross`, so it can never be subtracted twice. Cost is deliberately untouched: a
+ * discount reduces what the customer paid, not what the goods cost us. Clamped at zero so a
+ * malformed legacy row can never produce negative revenue.
+ */
+const lineGross = (l: AnalyticsLine): number =>
+  Math.max(0, l.quantity * l.unitPrice - (l.discountAllocated ?? 0))
+/** Catalogue value of the line before any discount — used only to report the discount. */
+const lineGrossBeforeDiscount = (l: AnalyticsLine): number => l.quantity * l.unitPrice
 const lineNet = (l: AnalyticsLine): number => toNet(lineGross(l), l.vatRate)
 const lineCost = (l: AnalyticsLine): number => l.quantity * l.unitCost
 
@@ -79,6 +91,7 @@ export function computeSummary(orders: AnalyticsOrder[], extras: SummaryExtras =
   let paymentFees = 0
   let extraCosts = 0
   let paidOrders = 0
+  let discountTotal = 0
 
   for (const order of orders) {
     if (PAID_STATUS_SET.has(order.status)) paidOrders += 1
@@ -86,6 +99,9 @@ export function computeSummary(orders: AnalyticsOrder[], extras: SummaryExtras =
     actualShippingCost += order.actualShippingCost
     paymentFees += order.paymentFee
     extraCosts += order.extraCosts
+    // Reported for the promo section only. It is NOT an expense — the discount has already
+    // reduced revenue through lineGross, and subtracting it again would double-count it.
+    discountTotal += order.discountAmount ?? 0
     for (const line of order.lines) {
       productGross += lineGross(line)
       productNet += lineNet(line)
@@ -110,6 +126,7 @@ export function computeSummary(orders: AnalyticsOrder[], extras: SummaryExtras =
     paidOrders,
     cancelledOrders,
     revenueGross: round2(revenueGross),
+    discountTotal: round2(discountTotal),
     revenueNet: round2(revenueNet),
     vatAmount: round2(vatAmount),
     averageOrderValue: orderCount > 0 ? round2(revenueGross / orderCount) : 0,
@@ -377,11 +394,13 @@ export function computeVariants(orders: AnalyticsOrder[]): VariantRow[] {
 export function computeOrderFinancials(order: AnalyticsOrder): OrderFinancialRow {
   let unitsSold = 0
   let productGross = 0
+  let productGrossBefore = 0
   let productNet = 0
   let productCost = 0
   for (const line of order.lines) {
     unitsSold += line.quantity
     productGross += lineGross(line)
+    productGrossBefore += lineGrossBeforeDiscount(line)
     productNet += lineNet(line)
     productCost += lineCost(line)
   }
@@ -395,6 +414,10 @@ export function computeOrderFinancials(order: AnalyticsOrder): OrderFinancialRow
     orderNumber: order.orderNumber,
     date: order.date,
     status: order.status,
+    // Snapshot values, blank/zero for an order without a promo.
+    promoCode: order.promoCode ?? '',
+    discountAmount: round2(order.discountAmount ?? 0),
+    revenueBeforeDiscount: round2(productGrossBefore + order.shippingCharged),
     unitsSold,
     revenueGross: round2(revenueGross),
     revenueNet: round2(revenueNet),

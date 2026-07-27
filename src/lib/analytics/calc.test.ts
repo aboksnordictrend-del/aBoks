@@ -356,3 +356,188 @@ describe('CSV export', () => {
     assert.ok(headerLine.includes(';'))
   })
 })
+
+/* ------------------------------ discounted orders ------------------------------ */
+
+describe('discounted orders — revenue', () => {
+  it('leaves an order with no discount exactly as before', () => {
+    const s = computeSummary([order({ shippingCharged: 69 })])
+    assert.equal(s.revenueGross, 169)
+    assert.equal(s.discountTotal, 0)
+    assert.equal(s.grossProfit, 60) // 100 net − 40 cost
+  })
+
+  it('uses the paid amount for a percentage-discounted order', () => {
+    const discounted = order({
+      shippingCharged: 69,
+      discountAmount: 10,
+      promoCode: 'WELCOME10',
+      lines: [line({ discountAllocated: 10 })],
+    })
+    const s = computeSummary([discounted])
+    assert.equal(s.revenueGross, 159, '100 − 10 + 69')
+    assert.equal(s.discountTotal, 10)
+  })
+
+  it('uses the paid amount for a fixed-discount order', () => {
+    const s = computeSummary([
+      order({ discountAmount: 25, lines: [line({ discountAllocated: 25 })] }),
+    ])
+    assert.equal(s.revenueGross, 75)
+  })
+
+  it('does not reduce shipping', () => {
+    const s = computeSummary([
+      order({ shippingCharged: 69, discountAmount: 10, lines: [line({ discountAllocated: 10 })] }),
+    ])
+    assert.equal(s.shippingCharged, 69)
+  })
+
+  it('never subtracts the discount twice', () => {
+    // Product revenue is reduced once, inside the line; discountTotal is reporting only.
+    const s = computeSummary([
+      order({ shippingCharged: 69, discountAmount: 10, lines: [line({ discountAllocated: 10 })] }),
+    ])
+    assert.equal(s.revenueGross, 159)
+    assert.equal(s.revenueGross + s.discountTotal, 169, 'the pre-discount amount')
+  })
+
+  it('sums discounted lines plus shipping to the paid total', () => {
+    const o = order({
+      shippingCharged: 69,
+      discountAmount: 30,
+      lines: [
+        line({ variantId: 'a', quantity: 2, unitPrice: 100, discountAllocated: 20 }),
+        line({ variantId: 'b', quantity: 1, unitPrice: 50, discountAllocated: 10 }),
+      ],
+    })
+    const s = computeSummary([o])
+    assert.equal(s.revenueGross, 289, '(200−20) + (50−10) + 69')
+  })
+
+  it('reduces the average order value and the average unit price', () => {
+    const s = computeSummary([
+      order({ discountAmount: 20, lines: [line({ quantity: 2, discountAllocated: 20 })] }),
+    ])
+    assert.equal(s.averageOrderValue, 180)
+    assert.equal(s.avgUnitPrice, 90)
+  })
+})
+
+describe('discounted orders — cost, profit and margin', () => {
+  const discounted = order({
+    discountAmount: 20,
+    lines: [line({ unitPrice: 100, unitCost: 40, vatRate: 0, discountAllocated: 20 })],
+  })
+
+  it('leaves product cost untouched by the discount', () => {
+    assert.equal(computeSummary([discounted]).productCost, 40)
+  })
+
+  it('reduces gross profit by exactly the discount', () => {
+    const before = computeSummary([order()]).grossProfit
+    assert.equal(computeSummary([discounted]).grossProfit, before - 20)
+  })
+
+  it('computes margin on the discounted revenue', () => {
+    const s = computeSummary([discounted])
+    // (80 − 40) / 80
+    assert.equal(s.marginPercent, 50)
+  })
+
+  it('reduces contribution profit by the discount, not twice', () => {
+    const s = computeSummary([discounted])
+    assert.equal(s.contributionProfit, 40, '80 revenue − 40 cost')
+  })
+
+  it('produces no Infinity or NaN at zero revenue', () => {
+    const s = computeSummary([
+      order({ discountAmount: 100, lines: [line({ discountAllocated: 100 })] }),
+    ])
+    assert.equal(s.revenueGross, 0)
+    assert.equal(s.marginPercent, 0)
+    assert.ok(Number.isFinite(s.grossProfit))
+  })
+
+  it('never produces negative line revenue from malformed input', () => {
+    const s = computeSummary([
+      order({ lines: [line({ unitPrice: 100, discountAllocated: 500 })] }),
+    ])
+    assert.equal(s.revenueGross, 0)
+    assert.ok(Number.isFinite(s.revenueNet))
+  })
+})
+
+describe('discounted orders — VAT and net revenue', () => {
+  it('computes VAT from the discounted amount', () => {
+    const s = computeSummary([
+      order({ discountAmount: 25, lines: [line({ unitPrice: 125, vatRate: 25, discountAllocated: 25 })] }),
+    ])
+    // Paid 100 incl. 25 % → net 80, VAT 20.
+    assert.equal(s.revenueGross, 100)
+    assert.equal(s.revenueNet, 80)
+    assert.equal(s.vatAmount, 20)
+    assert.equal(s.revenueGross - s.vatAmount, s.revenueNet)
+  })
+})
+
+describe('discounted orders — products, variants, timeline, recent, CSV', () => {
+  const o = order({
+    shippingCharged: 69,
+    discountAmount: 30,
+    promoCode: 'WELCOME10',
+    lines: [
+      line({ variantId: 'a', variantName: 'Sort', quantity: 2, unitPrice: 100, discountAllocated: 20 }),
+      line({ variantId: 'b', variantName: 'Blå', quantity: 1, unitPrice: 50, discountAllocated: 10 }),
+    ],
+  })
+
+  it('reduces product revenue by the allocated discount', () => {
+    const [product] = computeProducts([o])
+    assert.equal(product.revenueGross, 220, '180 + 40')
+  })
+
+  it('reduces variant revenue by each line’s own allocation', () => {
+    const variants = computeVariants([o])
+    assert.equal(variants.find((v) => v.variantId === 'a')?.revenueGross, 180)
+    assert.equal(variants.find((v) => v.variantId === 'b')?.revenueGross, 40)
+  })
+
+  it('reduces timeline revenue', () => {
+    const points = computeTimeline([o], { from: '2026-03-01T00:00:00.000Z', to: '2026-03-31T00:00:00.000Z' }, 'month')
+    assert.equal(points[0].revenue, 289)
+  })
+
+  it('reduces recent-order revenue and profit', () => {
+    const [recent] = computeRecentOrders([o])
+    assert.equal(recent.revenueGross, 289)
+    assert.equal(recent.cost, 120, 'cost is unaffected by the discount')
+  })
+
+  it('reports the promo on the order financial row', () => {
+    const row = computeOrderFinancials(o)
+    assert.equal(row.promoCode, 'WELCOME10')
+    assert.equal(row.discountAmount, 30)
+    assert.equal(row.revenueGross, 289)
+    assert.equal(row.revenueBeforeDiscount, 319)
+  })
+
+  it('leaves the promo columns blank for an ordinary order', () => {
+    const row = computeOrderFinancials(order())
+    assert.equal(row.promoCode, '')
+    assert.equal(row.discountAmount, 0)
+  })
+
+  it('writes the promo columns into the orders CSV', () => {
+    const csv = ordersCsv([o])
+    assert.ok(csv.includes('Rabattkode'))
+    assert.ok(csv.includes('WELCOME10'))
+    assert.ok(csv.includes('289'), 'revenue equals the paid amount')
+  })
+
+  it('keeps the products CSV consistent with the discounted product rows', () => {
+    const csv = productsCsv(computeProducts([o]), { from: '2026-03-01', to: '2026-03-31' })
+    assert.ok(csv.includes('180'))
+    assert.ok(!csv.includes('319'), 'no pre-discount revenue leaks into the export')
+  })
+})

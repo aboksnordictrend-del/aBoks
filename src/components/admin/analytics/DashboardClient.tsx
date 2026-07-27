@@ -133,6 +133,7 @@ const KPI_ICONS: Record<keyof Summary, ReactNode> = {
   paidOrders: svg(<><path d="M6 7h12l-1 12H7L6 7z" /><path d="M9.5 13l1.8 1.8L15 11" /></>),
   cancelledOrders: svg(<><path d="M6 7h12l-1 12H7L6 7z" /><path d="M10 11l4 4M14 11l-4 4" /></>),
   revenueGross: svg(<><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></>),
+  discountTotal: svg(<><path d="M8 16L16 8" /><circle cx="9" cy="9" r="1.6" /><circle cx="15" cy="15" r="1.6" /></>),
   averageOrderValue: svg(<><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" /><path d="M9 8h6M9 12h6" /></>),
   unitsSold: svg(<><path d="M12 3l8 4-8 4-8-4 8-4z" /><path d="M4 7v10l8 4 8-4V7M12 11v10" /></>),
   avgUnitsPerOrder: svg(<><path d="M12 3l8 4-8 4-8-4 8-4z" /><path d="M4 7v10l8 4 8-4V7" /></>),
@@ -467,6 +468,8 @@ export default function DashboardClient() {
           <VariantsBlock variants={data.variants} />
 
           <MatrixBlock products={data.products} />
+
+          <PromoBlock promo={data.promo} />
 
           <div className={styles.cols2}>
             <ProductsWithoutSalesBlock items={data.productsWithoutSales} />
@@ -1069,6 +1072,109 @@ function ProductsWithoutSalesBlock({ items }: { items: ProductWithoutSales[] }) 
 }
 
 /* ------------------------------ Recent orders ------------------------------ */
+
+/**
+ * Promo-code usage and performance for the selected period.
+ *
+ * Read-only, and built entirely from the analytics response — the figures are stored
+ * snapshots (the discount from the usage row, the revenue from the paid order total), never
+ * recalculated from the current promo configuration. A code that has since expired, been
+ * deactivated or been deleted still appears with its history intact.
+ *
+ * Deliberately carries no personal data: order numbers link to the order page, where an
+ * admin who needs the customer can look them up under the existing access controls.
+ */
+function PromoBlock({ promo }: { promo: AnalyticsResponse['promo'] }) {
+  const [openCode, setOpenCode] = useState<string | null>(null)
+
+  return (
+    <section className={styles.section}>
+      <h2 className={styles.sectionTitle}>Promokoder</h2>
+      <div className={styles.card}>
+        {promo.rows.length === 0 ? (
+          <div className={styles.empty}>Ingen rabattkoder brukt i perioden.</div>
+        ) : (
+          <div className={styles.tableScroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Kode</th>
+                  <th className={styles.hideSm}>Type</th>
+                  <th>Bruk</th>
+                  <th>Rabatt gitt</th>
+                  <th>Omsetning</th>
+                  <th className={styles.hideSm}>Snittordre</th>
+                  <th className={styles.hideSm}>Siste bruk</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promo.rows.map((row) => (
+                  <Fragment key={row.code}>
+                    <tr
+                      onClick={() => setOpenCode(openCode === row.code ? null : row.code)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td>
+                        <Chevron open={openCode === row.code} /> {row.code}
+                      </td>
+                      <td className={styles.hideSm}>
+                        {row.discountType === 'percentage'
+                          ? `${row.discountValue ?? '—'} %`
+                          : row.discountType === 'fixed'
+                            ? formatNOK(row.discountValue ?? 0)
+                            : '—'}
+                      </td>
+                      <td>{formatInt(row.uses)}</td>
+                      <td>{formatNOK(row.discountGranted)}</td>
+                      <td>{formatNOK(row.revenue)}</td>
+                      <td className={styles.hideSm}>{formatNOK(row.averageOrderValue)}</td>
+                      <td className={styles.hideSm}>{row.lastUsedAt?.slice(0, 10) ?? '—'}</td>
+                      <td>
+                        {!row.exists ? 'Slettet' : row.active ? 'Aktiv' : 'Inaktiv'}
+                      </td>
+                    </tr>
+                    {openCode === row.code &&
+                      row.usages.map((usage) => (
+                        <tr key={`${row.code}-${usage.orderId}`}>
+                          <td colSpan={2} style={{ paddingLeft: '1.75rem' }}>
+                            <a
+                              className={styles.link}
+                              href={`/admin/collections/orders/${usage.orderId}`}
+                            >
+                              {usage.orderNumber || usage.orderId}
+                            </a>
+                          </td>
+                          <td>
+                            <StatusBadge status={usage.status} />
+                          </td>
+                          <td>{formatNOK(usage.discountAmount)}</td>
+                          <td>{formatNOK(usage.orderTotal)}</td>
+                          <td className={styles.hideSm} colSpan={3}>
+                            {usage.usedAt.slice(0, 10)}
+                          </td>
+                        </tr>
+                      ))}
+                  </Fragment>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className={styles.hideSm}>Totalt</td>
+                  <td className={styles.hideSm} />
+                  <td>{formatInt(promo.totalUses)}</td>
+                  <td>{formatNOK(promo.totalDiscount)}</td>
+                  <td>{formatNOK(promo.revenueWithPromo)}</td>
+                  <td className={styles.hideSm} colSpan={3} />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
 
 function RecentOrders({ orders }: { orders: AnalyticsResponse['recentOrders'] }) {
   return (

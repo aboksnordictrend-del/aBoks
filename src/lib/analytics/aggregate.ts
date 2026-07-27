@@ -23,6 +23,14 @@ import {
   type MarketingExpenseInput,
 } from './marketing'
 import { round2 } from './money'
+import { resolveLineDiscounts, resolveOrderDiscount, type StoredOrderMoney } from './orderFinancials'
+import {
+  EMPTY_PROMO_PERFORMANCE,
+  computePromoPerformance,
+  type PromoCodeMeta,
+  type PromoPerformance,
+  type PromoUsageInput,
+} from './promo'
 import { resolvePeriod, type Grouping, type Period, type PresetKey } from './period'
 import type {
   AnalyticsLine,
@@ -135,7 +143,13 @@ function resolveUnitCost(line: Order['items'][number]): { unitCost: number; esti
 
 function normalizeOrder(order: Order): AnalyticsOrder {
   const extras = order as Order & OrderExtras
-  const lines: AnalyticsLine[] = (order.items ?? []).map((line) => {
+  // Per-line discount shares, read from the order's stored allocation (Stage 7) or, for a
+  // legacy order, split deterministically from its stored order-level discount. Resolved
+  // once per order, never from the catalogue and never from the promo record.
+  const lineDiscounts = resolveLineDiscounts(order as StoredOrderMoney)
+  const discountAmount = resolveOrderDiscount(order as StoredOrderMoney)
+
+  const lines: AnalyticsLine[] = (order.items ?? []).map((line, index) => {
     const { unitCost, estimated } = resolveUnitCost(line)
     const vat = (line as LineExtras).vatRate
     const vatStored = typeof vat === 'number'
@@ -150,6 +164,7 @@ function normalizeOrder(order: Order): AnalyticsOrder {
       colorHex: meta.colorHex,
       quantity: line.quantity ?? 0,
       unitPrice: line.unitPrice ?? 0,
+      discountAllocated: lineDiscounts[index] ?? 0,
       unitCost,
       costEstimated: estimated,
       vatRate: vatStored ? vat : ASSUMED_VAT_RATE,
@@ -164,6 +179,8 @@ function normalizeOrder(order: Order): AnalyticsOrder {
     customerName: customerName(order),
     date: extras.paidAt ?? order.createdAt,
     shippingCharged: order.shipping ?? 0,
+    discountAmount,
+    promoCode: order.discount?.code?.trim() || undefined,
     actualShippingCost: extras.actualShippingCost ?? 0,
     paymentFee: extras.paymentFee ?? 0,
     extraCosts: extras.extraCosts ?? 0,
@@ -558,6 +575,91 @@ async function computeNewCustomers(
   return { count, unkeyed }
 }
 
+/**
+ * Promo performance for the orders already loaded for this period.
+ *
+ * Exactly two extra queries, both bounded and both keyed on data we already have — no lookup
+ * per promo code, per usage or per order:
+ *
+ *   1. every usage row whose `order` is one of the period's orders;
+ *   2. the promo-code documents those usages point at, for labels only.
+ *
+ * Attribution therefore follows the order's own date, the same rule the rest of the dashboard
+ * uses, and a usage attached to a pending or cancelled order simply is not in the set.
+ * Any failure degrades to an empty section rather than taking the dashboard down.
+ */
+async function fetchPromoPerformance(
+  payload: Payload,
+  orders: AnalyticsOrder[],
+): Promise<PromoPerformance> {
+  const orderIds = orders.map((order) => order.id)
+  if (orderIds.length === 0) return EMPTY_PROMO_PERFORMANCE
+
+  try {
+    const usageResult = await payload.find({
+      collection: 'promo-code-usages',
+      where: { order: { in: orderIds } },
+      depth: 0,
+      limit: MAX_ORDERS,
+      pagination: false,
+    })
+
+    const usages: PromoUsageInput[] = usageResult.docs.map((doc) => ({
+      promoCodeId: doc.promoCode != null ? String(doc.promoCode) : null,
+      orderKey: doc.orderKey ?? null,
+      orderId: doc.order != null ? String(doc.order) : null,
+      orderNumber: doc.orderNumber ?? null,
+      kustomOrderId: doc.kustomOrderId ?? null,
+      discountAmount: doc.discountAmount ?? null,
+      usedAt: doc.usedAt ?? null,
+      // Deliberately NOT copied: `email`. Promo reporting carries no personal data.
+    }))
+
+    const promoIds = [...new Set(usages.map((u) => u.promoCodeId).filter(Boolean))] as string[]
+    let codes: PromoCodeMeta[] = []
+    if (promoIds.length > 0) {
+      const codeResult = await payload.find({
+        collection: 'promo-codes',
+        where: { id: { in: promoIds } },
+        depth: 0,
+        limit: promoIds.length,
+      })
+      codes = codeResult.docs.map((doc) => ({
+        id: String(doc.id),
+        code: doc.code,
+        active: doc.active,
+        discountType: doc.discountType,
+        discountValue: doc.discountValue,
+        startsAt: doc.startsAt,
+        expiresAt: doc.expiresAt,
+      }))
+    }
+
+    return computePromoPerformance(
+      usages,
+      orders.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        paidTotal: round2(
+          order.lines.reduce(
+            (sum, l) => sum + Math.max(0, l.quantity * l.unitPrice - (l.discountAllocated ?? 0)),
+            0,
+          ) + order.shippingCharged,
+        ),
+        promoCode: order.promoCode,
+        date: order.date,
+      })),
+      codes,
+    )
+  } catch (err) {
+    payload.logger.warn(
+      `[analytics] promo performance lookup failed: ${err instanceof Error ? err.message : 'unknown'}`,
+    )
+    return EMPTY_PROMO_PERFORMANCE
+  }
+}
+
 /** Build the marketing summary (ratios, channels) for the current period. */
 function buildMarketing(
   expenses: MarketingExpenseInput[],
@@ -653,6 +755,8 @@ export async function runAnalyticsDetailed(
     newCustomers: newPrevious.count,
   })
 
+  const promo = await fetchPromoPerformance(payload, current)
+
   const products = computeProducts(current)
   const soldVariantIds = new Set<string>()
   for (const p of products) for (const v of p.variants) if (v.variantId) soldVariantIds.add(v.variantId)
@@ -672,6 +776,7 @@ export async function runAnalyticsDetailed(
     variants: flattenVariants(products),
     productsWithoutSales,
     marketing,
+    promo,
     recentOrders: computeRecentOrders(current),
     warnings: buildWarnings(current, {
       paidAtMissing,

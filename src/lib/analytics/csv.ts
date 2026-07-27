@@ -92,10 +92,15 @@ export function marketingCsv(expenses: MarketingExpenseInput[]): string {
 
 /** Per-order financials, no personal data. */
 export function ordersCsv(orders: AnalyticsOrder[]): string {
+  // Existing columns keep their names, order and meaning. Four promo columns are appended at
+  // the end so any saved spreadsheet or filter that referenced a column position still works.
+  // `Brutto omsetning` is, and has always been, what the customer actually paid — for a
+  // discounted order that is now the post-discount amount, matching the stored order total.
   const headers = [
     'Ordrenummer', 'Dato', 'Status', 'Antall', 'Brutto omsetning', 'Netto omsetning',
     'MVA', 'Vareforbruk', 'Frakt betalt', 'Faktisk fraktkostnad', 'Betalingsgebyr',
     'Ekstra kostnader', 'Bruttofortjeneste', 'Dekningsbidrag',
+    'Rabattkode', 'Rabatt', 'Omsetning før rabatt', 'Margin %',
   ]
   const rows = orders
     .map(computeOrderFinancials)
@@ -115,6 +120,12 @@ export function ordersCsv(orders: AnalyticsOrder[]): string {
       r.extraCosts,
       r.grossProfit,
       r.contributionProfit,
+      // Blank and 0 for an order without a promo, per the sheet's existing conventions.
+      r.promoCode,
+      r.discountAmount,
+      r.revenueBeforeDiscount,
+      // Margin on the revenue actually received; 0 rather than Infinity/NaN at zero revenue.
+      r.revenueNet > 0 ? Math.round((r.grossProfit / r.revenueNet) * 10000) / 100 : 0,
     ])
   return toCsv(headers, rows)
 }

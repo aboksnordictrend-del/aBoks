@@ -5,6 +5,7 @@
 // unaffected by future schema changes.
 
 import type { Grouping, PresetKey } from './period'
+import type { PromoPerformance } from './promo'
 
 export type { Period } from './period'
 
@@ -24,8 +25,14 @@ export interface AnalyticsLine {
   /** Variant colour hex from the live variant, when the relationship is present. */
   colorHex?: string
   quantity: number
-  /** Gross unit price incl. VAT, in kroner (as charged to the customer). */
+  /** Gross unit price incl. VAT, in kroner (the catalogue price at purchase). */
   unitPrice: number
+  /**
+   * This line's share of the order's promo discount, in kroner, as stored at purchase
+   * (Stage 7) or, for a legacy order, allocated deterministically from the stored order
+   * discount. Revenue for the line is `quantity × unitPrice − discountAllocated`.
+   */
+  discountAllocated?: number
   /** Cost per unit excl. VAT, in kroner. 0 when unknown. */
   unitCost: number
   /** True when unitCost had no snapshot/live source and was assumed 0. */
@@ -51,6 +58,10 @@ export interface AnalyticsOrder {
   date: string
   /** Shipping the customer paid, in kroner. */
   shippingCharged: number
+  /** Order-level promo discount actually granted, in kroner. 0 when there was none. */
+  discountAmount?: number
+  /** Snapshotted promo code, when the order carries one. Never re-resolved from the DB. */
+  promoCode?: string
   /** Real shipping cost to the business, in kroner (0 until entered). */
   actualShippingCost: number
   /** Payment processor fee, in kroner (0 until entered). */
@@ -66,8 +77,10 @@ export interface Summary {
   paidOrders: number
   /** Cancelled orders in the period (fetched separately — never counted as revenue). */
   cancelledOrders: number
-  /** Total paid by customers incl. VAT and shipping. */
+  /** Total paid by customers incl. VAT and shipping — after any promo discount. */
   revenueGross: number
+  /** Promo discount granted in the period, in kroner. Reported, never double-counted. */
+  discountTotal: number
   /** Product + shipping revenue excl. VAT. */
   revenueNet: number
   vatAmount: number
@@ -232,6 +245,12 @@ export interface OrderFinancialRow {
   orderNumber: string
   date: string
   status: string
+  /** Snapshotted promo code, or '' when the order had none. */
+  promoCode: string
+  /** Discount granted, in kroner. 0 when there was none. */
+  discountAmount: number
+  /** What the order would have cost without the promo — reporting only. */
+  revenueBeforeDiscount: number
   unitsSold: number
   revenueGross: number
   revenueNet: number
@@ -255,6 +274,8 @@ export interface AnalyticsResponse {
   variants: VariantRow[]
   productsWithoutSales: ProductWithoutSales[]
   marketing: MarketingSummary
+  /** Promo-code usage and performance for the period. Empty when no code was used. */
+  promo: PromoPerformance
   recentOrders: RecentOrder[]
   warnings: Warning[]
 }
