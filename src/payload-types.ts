@@ -534,7 +534,7 @@ export interface PromoCode {
    */
   expiresAt?: string | null;
   /**
-   * Måles mot varesummen før rabatt og uten frakt. La stå tom for ingen minstesum.
+   * Måles mot summen av de kvalifiserte varelinjene — før rabatt og uten frakt. For en kode uten produktbegrensning er det hele varesummen. La stå tom for ingen minstesum.
    */
   minimumOrderAmount?: number | null;
   /**

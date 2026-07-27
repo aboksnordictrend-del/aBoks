@@ -68,7 +68,16 @@ export async function POST(req: NextRequest) {
       const physicalLines = (kustomOrder.order_lines ?? []).filter(l => l.type === 'physical')
       const shippingLine = (kustomOrder.order_lines ?? []).find(l => l.type === 'shipping_fee')
 
-      const subtotal = physicalLines.reduce((s, l) => s + l.total_amount, 0) / 100
+      // Promo discounts ride on the physical lines as `total_discount_amount` (Kustom
+      // "Option A"), so `total_amount` is already net. `subtotal` must stay the PRE-discount
+      // goods sum for the order's own identity to hold —
+      //   subtotal + shipping − total === discount
+      // — which is what the PDF receipt reads to print its "Rabatt" row. Summing
+      // `total_amount` here instead would rebuild a discounted order as an undiscounted one.
+      const grossOere = physicalLines.reduce((s, l) => s + l.unit_price * l.quantity, 0)
+      const discountOere = physicalLines.reduce((s, l) => s + (l.total_discount_amount ?? 0), 0)
+
+      const subtotal = grossOere / 100
       const shipping = shippingLine ? shippingLine.total_amount / 100 : 0
       const total = kustomOrder.order_amount / 100
 
@@ -91,12 +100,30 @@ export async function POST(req: NextRequest) {
               variantName: colorNameFromLineName(l.name),
               quantity: l.quantity,
               unitPrice: l.unit_price / 100,
-              lineTotal: l.total_amount / 100,
+              // Pre-discount line value, with the promo share recorded alongside it — the
+              // same shape initKustomCheckout writes.
+              lineTotal: (l.unit_price * l.quantity) / 100,
+              discountAmount: (l.total_discount_amount ?? 0) / 100,
             }
           }),
           subtotal,
           shipping,
           total,
+          // The discount AMOUNT is recoverable from the Kustom lines; the promo code itself
+          // is not (Option A carries no named discount line). This path only runs when the
+          // pre-create in initKustomCheckout failed, so the code is normally already stored.
+          // Re-attaching it here is Stage 8 work — see the notes on merchant_data.
+          ...(discountOere > 0
+            ? {
+                discount: {
+                  discountAmount: discountOere / 100,
+                  subtotalBeforeDiscount: subtotal,
+                  subtotalAfterDiscount: (grossOere - discountOere) / 100,
+                  totalBeforeDiscount: (grossOere + (shippingLine?.total_amount ?? 0)) / 100,
+                  totalAfterDiscount: total,
+                },
+              }
+            : {}),
           status: 'confirmed',
           paidAt: new Date().toISOString(),
           customerInfo: {

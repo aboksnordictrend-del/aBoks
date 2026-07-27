@@ -19,6 +19,8 @@ interface Confirmation {
     itemName: string
     itemVariant: string
     price: number
+    /** Promo-code discount per unit, present only on discounted lines. */
+    discount?: number
     quantity: number
   }>
 }
@@ -73,6 +75,7 @@ export default function BekreftlseClient() {
               item_name: item.itemName,
               item_variant: item.itemVariant || undefined,
               price: item.price,
+              ...(item.discount ? { discount: item.discount } : {}),
               quantity: item.quantity,
               item_category: 'Battery Organizer',
             })),

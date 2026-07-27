@@ -5,228 +5,61 @@ import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
 import { allocateOrderNumber } from '@/lib/orderNumber'
 import { splitLineName } from '@/lib/orderLineName'
-import { VAT_RATE_BASIS_POINTS } from '@/lib/tax'
-import type { CartItem } from '@/store/cart'
-
-const FREE_SHIPPING_THRESHOLD = 650
-const SHIPPING_COST = 69
-// Norwegian MVA in Kustom basis points — single source of truth in @/lib/tax.
-const TAX_RATE = VAT_RATE_BASIS_POINTS
-
-function toOere(kr: number): number {
-  return Math.round(kr * 100)
-}
+import {
+  CHECKOUT_MESSAGES,
+  checkoutResultFromKustomOrder,
+  createTrustedCheckout,
+  type CheckoutInput,
+  type CheckoutResult,
+} from '@/lib/promo/checkoutFlow'
 
 /**
- * Display names for the cart's variants, resolved server-side from the catalogue.
+ * Server actions for the checkout page.
  *
- * The cart only carries a colour ("Mørk blå"), which is meaningless on its own now that
- * several products share colours — so the product name must come from the variant, never
- * from a hardcoded literal. Used for the Kustom order-line names the customer sees while
- * paying, and as the initial `displayName` on the pre-created order. Never throws: a
- * catalogue read must not be able to block checkout.
+ * Deliberately thin: all of the checkout logic — the trust boundary, trusted pricing, promo
+ * revalidation, Kustom line construction, the invariants and the pending order — lives in
+ * `@/lib/promo/checkoutFlow`, which takes its dependencies as arguments and is therefore
+ * testable without the Payload config, a database or api.kustom.co.
+ *
+ * The browser sends only `{ items: [{ variantId, quantity }], promoCode? }`. No price, name,
+ * colour, subtotal, shipping, tax, discount or total crosses this boundary.
  */
-async function resolveVariantDisplayNames(items: CartItem[]): Promise<Map<string, string>> {
-  const names = new Map<string, string>()
-  const ids = items.map((i) => Number(i.variantId)).filter((id) => Number.isFinite(id))
-  if (!ids.length) return names
-
-  try {
-    const payload = await getPayloadClient()
-    const { docs } = await payload.find({
-      collection: 'product-variants',
-      where: { id: { in: ids } },
-      limit: ids.length,
-      depth: 0,
-    })
-    for (const doc of docs) {
-      const displayName = typeof doc.displayName === 'string' ? doc.displayName.trim() : ''
-      if (displayName) names.set(String(doc.id), displayName)
-    }
-  } catch (err) {
-    console.error(
-      '[kasse] Failed to resolve variant display names:',
-      err instanceof Error ? err.message : err,
-    )
-  }
-  return names
-}
-
-// VAT is included in the price: tax = amount * rate / (10000 + rate)
-function lineTax(totalAmountOere: number): number {
-  return Math.round((totalAmountOere * TAX_RATE) / (10000 + TAX_RATE))
-}
-
-export async function initKustomCheckout(
-  items: CartItem[],
-): Promise<{ kustomOrderId: string; htmlSnippet: string }> {
-  if (!items.length) throw new Error('Handlekurven er tom')
-
+export async function initKustomCheckout(input: CheckoutInput): Promise<CheckoutResult> {
   const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? 'https://aboks.no'
 
-  // Safe log: verify which base URL Kustom will receive — no secrets here
-  console.log('[kasse] initKustomCheckout serverUrl:', serverUrl)
   if (serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1')) {
     console.warn(
       '[kasse] merchant_urls contain localhost — Kustom requires public HTTPS URLs. ' +
-      'Set NEXT_PUBLIC_SERVER_URL to your ngrok/Vercel URL for live testing.',
+        'Set NEXT_PUBLIC_SERVER_URL to your ngrok/Vercel URL for live testing.',
     )
   }
 
-  const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0)
-  const shippingKr = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST
-  const total = subtotal + shippingKr
+  const payload = await getPayloadClient()
 
-  const variantNames = await resolveVariantDisplayNames(items)
-  // Falls back to the bare colour rather than guessing a product name — a wrong product
-  // name is worse than a missing one, and the order's own snapshot is fixed up server-side
-  // by the orders beforeChange hook regardless of what is sent to Kustom.
-  const lineNameOf = (item: CartItem) => variantNames.get(item.variantId) ?? item.colorName
-
-  const orderLines: {
-    type: 'physical' | 'shipping_fee'
-    reference: string
-    name: string
-    quantity: number
-    quantity_unit: string
-    unit_price: number
-    tax_rate: number
-    total_amount: number
-    total_discount_amount: number
-    total_tax_amount: number
-  }[] = items.map((item) => {
-    const lineTotal = toOere(item.qty * item.price)
-    return {
-      type: 'physical',
-      reference: item.variantId,
-      name: lineNameOf(item),
-      quantity: item.qty,
-      quantity_unit: 'pcs',
-      unit_price: toOere(item.price),
-      tax_rate: TAX_RATE,
-      total_amount: lineTotal,
-      total_discount_amount: 0,
-      total_tax_amount: lineTax(lineTotal),
-    }
-  })
-
-  if (shippingKr > 0) {
-    const shippingOere = toOere(shippingKr)
-    orderLines.push({
-      type: 'shipping_fee',
-      reference: 'FRAKT-STD',
-      name: 'Frakt',
-      quantity: 1,
-      quantity_unit: 'pcs',
-      unit_price: shippingOere,
-      tax_rate: TAX_RATE,
-      total_amount: shippingOere,
-      total_discount_amount: 0,
-      total_tax_amount: lineTax(shippingOere),
-    })
-  }
-
-  const orderAmountOere = toOere(total)
-  const orderTaxAmountOere = orderLines.reduce((s, l) => s + l.total_tax_amount, 0)
-
-  // Allocated up front: Kustom needs it as merchant_reference before the Payload order
-  // row exists. Passing it into payload.create() below means the collection's
-  // assignOrderNumber hook leaves it untouched. A database hiccup here must not stop the
-  // customer from paying, so an unreachable allocator degrades to the old random number.
-  let orderNumber: string
-  try {
-    orderNumber = await allocateOrderNumber(await getPayloadClient())
-  } catch (err) {
-    console.error('[kasse] Failed to allocate order number:', err instanceof Error ? err.message : err)
-    orderNumber = generateOrderNumber()
-  }
-
-  let kustomOrder
-  try {
-    kustomOrder = await createKustomOrder({
-      purchase_country: 'NO',
-      purchase_currency: 'NOK',
-      locale: 'nb-NO',
-      order_amount: orderAmountOere,
-      order_tax_amount: orderTaxAmountOere,
-      order_lines: orderLines,
-      merchant_urls: {
-        terms: `${serverUrl}/kjopsvilkar`,
-        checkout: `${serverUrl}/kasse?order_id={checkout.order.id}`,
-        confirmation: `${serverUrl}/kasse/bekreftelse?order_id={checkout.order.id}`,
-        push: `${serverUrl}/api/kustom/webhook?order_id={checkout.order.id}`,
-      },
-      merchant_reference: orderNumber,
-      billing_countries: ['NO'],
-      shipping_countries: ['NO'],
-    })
-  } catch (err) {
-    console.error('[kasse] Kustom create order failed:', err instanceof Error ? err.message : err)
-    throw new Error('Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.')
-  }
-
-  // Detect account-level misconfiguration: no checkout widget AND no payment
-  // methods enabled on the merchant account in the Kustom Portal.
-  // Note: html_snippet === 'deducted' is normal — it is not an error indicator.
-  const noPaymentMethods =
-    (kustomOrder.external_payment_methods?.length ?? 0) === 0 &&
-    (kustomOrder.external_checkouts?.length ?? 0) === 0
-  if (!kustomOrder.html_snippet && noPaymentMethods) {
-    console.error(
-      '[kasse] Kustom returned no usable checkout widget. ' +
-      'html_snippet=%s external_payment_methods=%d external_checkouts=%d — ' +
-      'Enable payment methods in the Kustom Portal under Elements/Integrations.',
-      kustomOrder.html_snippet,
-      kustomOrder.external_payment_methods?.length ?? 0,
-      kustomOrder.external_checkouts?.length ?? 0,
-    )
-    throw new Error(
-      'Ingen betalingsmetoder er aktivert for nettbutikken. Kontakt oss på post@aboks.no for hjelp.',
-    )
-  }
-
-  // Create a pending order in Payload CMS before payment.
-  // This is non-blocking: a DB failure must not prevent the checkout widget from loading.
-  // The webhook will attempt to re-create/update the order after payment completes.
-  try {
-    const payload = await getPayloadClient()
-    await payload.create({
-      collection: 'orders',
-      data: {
-        orderNumber,
-        kustomOrderId: kustomOrder.order_id,
-        items: items.map((item) => ({
-          variant: Number(item.variantId),
-          displayName: lineNameOf(item),
-          variantName: item.colorName,
-          quantity: item.qty,
-          unitPrice: item.price,
-          lineTotal: item.qty * item.price,
-        })),
-        subtotal,
-        shipping: shippingKr,
-        total,
-        status: 'pending',
-      },
-    })
-  } catch (err) {
-    // Log the error but do not block checkout — the user can still pay.
-    console.error('[kasse] Failed to pre-create order in Payload CMS:', err instanceof Error ? err.message : err)
-  }
-
-  return {
-    kustomOrderId: kustomOrder.order_id,
-    htmlSnippet: kustomOrder.html_snippet ?? '',
-  }
+  return createTrustedCheckout(
+    {
+      payload,
+      createOrder: createKustomOrder,
+      allocateOrderNumber,
+      fallbackOrderNumber: generateOrderNumber,
+      serverUrl,
+    },
+    input,
+  )
 }
 
-export async function fetchExistingCheckout(
-  orderId: string,
-): Promise<{ kustomOrderId: string; htmlSnippet: string }> {
-  const kustomOrder = await getKustomOrder(orderId)
-  return {
-    kustomOrderId: kustomOrder.order_id,
-    htmlSnippet: kustomOrder.html_snippet ?? '',
+/** Re-opens an existing Kustom checkout (the customer came back via Kustom's own URL). */
+export async function fetchExistingCheckout(orderId: string): Promise<CheckoutResult> {
+  try {
+    const kustomOrder = await getKustomOrder(orderId)
+    return checkoutResultFromKustomOrder(kustomOrder)
+  } catch (err) {
+    console.error('[kasse] Kustom get order failed:', err instanceof Error ? err.message : err)
+    return {
+      ok: false,
+      type: 'payment_unavailable',
+      message: CHECKOUT_MESSAGES.paymentUnavailable,
+    }
   }
 }
 
@@ -264,11 +97,16 @@ export async function getOrderConfirmation(kustomOrderId: string) {
       // GA4 wants the product and the colour apart. The line name is the variant's display
       // name ("aBoks Vegg – Mørk blå"), so split it — never assume the product is "aBoks".
       const { productName, colorName } = splitLineName(l.name)
+      // `price` stays the ordinary unit price and the promo share is reported separately, as
+      // GA4 expects. The event's `value` is Kustom's order_amount, which is already net, so
+      // revenue is correct either way — this makes the item rows agree with it.
+      const unitDiscount = l.quantity > 0 ? (l.total_discount_amount ?? 0) / l.quantity : 0
       return {
         itemId: l.reference,
         itemName: productName,
         itemVariant: colorName,
         price: l.unit_price / 100,
+        ...(unitDiscount > 0 ? { discount: unitDiscount / 100 } : {}),
         quantity: l.quantity,
       }
     })

@@ -7,12 +7,15 @@ import { useSearchParams } from 'next/navigation'
 import { useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
 import { initKustomCheckout, fetchExistingCheckout } from './actions'
+import type { CheckoutTotals } from '@/lib/promo/checkoutFlow'
+import {
+  checkoutStateFromResult,
+  displayTotalsFor,
+  shouldRenderWidget,
+  toCheckoutRequest,
+  type CheckoutViewState,
+} from '@/lib/promo/checkoutView'
 import { trackAddShippingInfo, trackAddPaymentInfo } from '@/lib/analytics'
-
-type CheckoutState =
-  | { phase: 'loading' }
-  | { phase: 'error'; message: string }
-  | { phase: 'ready'; kustomOrderId: string; htmlSnippet: string }
 
 function renderSnippet(htmlSnippet: string, container: HTMLElement) {
   container.innerHTML = htmlSnippet
@@ -31,18 +34,27 @@ function renderSnippet(htmlSnippet: string, container: HTMLElement) {
 }
 
 export default function CheckoutClient() {
-  const { items, subtotal, shipping, orderTotal } = useCartStore()
+  const { items, promoCode, subtotal, shipping, orderTotal } = useCartStore()
   const searchParams = useSearchParams()
   const existingOrderId = searchParams.get('order_id')
 
-  const [state, setState] = useState<CheckoutState>({ phase: 'loading' })
+  const [state, setState] = useState<CheckoutViewState>({ phase: 'loading' })
   const containerRef = useRef<HTMLDivElement>(null)
   const initiated = useRef(false)
 
-  const sub = subtotal()
-  const shippingCost = shipping()
-  const total = orderTotal()
   const hasCart = items.length > 0
+
+  // Local figures are shown only until the server answers; from then on the summary uses the
+  // server's own, which are the ones the customer will actually be charged.
+  const localTotals: CheckoutTotals = {
+    subtotal: subtotal(),
+    discount: 0,
+    shipping: shipping(),
+    total: orderTotal(),
+  }
+  const displayTotals = displayTotalsFor(state, localTotals)
+  const trustedLines = state.phase === 'ready' ? state.lines : null
+  const appliedPromoCode = state.phase === 'ready' ? state.promoCode : promoCode
 
   useEffect(() => {
     if (!hasCart || initiated.current) return
@@ -52,35 +64,38 @@ export default function CheckoutClient() {
       try {
         const result = existingOrderId
           ? await fetchExistingCheckout(existingOrderId)
-          : await initKustomCheckout(items)
-        setState({ phase: 'ready', ...result })
-      } catch (err) {
-        // Next.js 15 sanitises server action errors in production — err.message is always
-        // the generic "An error occurred in the Server Components render…" string, not the
-        // original message. Always show a user-friendly Norwegian message instead.
-        const raw = err instanceof Error ? err.message : ''
-        const message = raw && !raw.startsWith('An error occurred in the Server Components')
-          ? raw
-          : 'Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.'
-        setState({ phase: 'error', message })
+          // Identifiers and quantities only — no price, name, colour or total crosses to the
+          // server, which prices everything from the catalogue itself.
+          : await initKustomCheckout(toCheckoutRequest(items, promoCode))
+        setState(checkoutStateFromResult(result))
+      } catch {
+        // A thrown server action (network drop, sanitised production error) never carries a
+        // usable message, so it becomes the fixed Norwegian one.
+        setState({
+          phase: 'error',
+          message: 'Betalingstjenesten er ikke tilgjengelig akkurat nå. Prøv igjen om litt.',
+        })
       }
     }
 
     run()
-  }, [hasCart, items, existingOrderId])
+  }, [hasCart, items, promoCode, existingOrderId])
 
   useEffect(() => {
-    if (state.phase === 'ready' && containerRef.current) {
+    // Gated on the same predicate the container's visibility uses, so a rejected promo or a
+    // stale cart can never end up with a payment widget injected behind the message.
+    if (shouldRenderWidget(state) && state.phase === 'ready' && containerRef.current) {
       renderSnippet(state.htmlSnippet, containerRef.current)
     }
   }, [state])
 
-  // add_shipping_info + add_payment_info: fire once when Kustom checkout widget loads
+  // add_shipping_info + add_payment_info: fire once when the Kustom widget loads, using the
+  // server's trusted total rather than the cart's local one.
   useEffect(() => {
     if (state.phase !== 'ready') return
-    const shippingTier = shippingCost === 0 ? 'Free' : 'Standard'
-    trackAddShippingInfo(items, total, shippingTier)
-    trackAddPaymentInfo(items, total)
+    const shippingTier = state.totals.shipping === 0 ? 'Free' : 'Standard'
+    trackAddShippingInfo(items, state.totals.total, shippingTier)
+    trackAddPaymentInfo(items, state.totals.total)
   }, [state.phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!hasCart) {
@@ -232,8 +247,77 @@ export default function CheckoutClient() {
                 </div>
               )}
 
-              {/* Kustom snippet is injected here */}
-              <div ref={containerRef} style={{ display: state.phase === 'ready' ? 'block' : 'none' }} />
+              {(state.phase === 'promo_rejected' || state.phase === 'cart_invalid') && (
+                <div
+                  style={{
+                    minHeight: '200px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '16px',
+                    background: '#fff',
+                    borderRadius: '22px',
+                    padding: '40px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '999px',
+                      background: '#fdf6ed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b08a4a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </div>
+
+                  <h2 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '17px', color: '#1a1d17', margin: 0 }}>
+                    {state.phase === 'promo_rejected' ? 'Rabattkoden kan ikke brukes' : 'Handlekurven må oppdateres'}
+                  </h2>
+
+                  <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#3a3f33', maxWidth: '360px', margin: 0, lineHeight: 1.55 }}>
+                    {state.message}
+                  </p>
+
+                  {state.phase === 'promo_rejected' && (
+                    <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6057', maxWidth: '360px', margin: 0, lineHeight: 1.5 }}>
+                      Du er ikke belastet. Gå tilbake til handlekurven for å fjerne eller endre koden.
+                    </p>
+                  )}
+
+                  <Link
+                    href="/handlekurv"
+                    data-btn
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '13px 30px',
+                      borderRadius: '999px',
+                      background: '#39402c',
+                      color: '#faf6ee',
+                      fontFamily: 'var(--font-manrope)',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Tilbake til handlekurv
+                  </Link>
+                </div>
+              )}
+
+              {/* Kustom snippet is injected here — never for a rejected promo or a stale cart */}
+              <div ref={containerRef} style={{ display: shouldRenderWidget(state) ? 'block' : 'none' }} />
             </div>
 
             {/* Order summary */}
@@ -260,34 +344,39 @@ export default function CheckoutClient() {
               </h2>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '22px' }}>
-                {items.map((item) => (
-                  <div key={item.variantId} style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                    <div
-                      style={{
-                        flexShrink: 0,
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        background: '#e7d9bd',
-                        position: 'relative',
-                      }}
-                    >
-                      <Image src={item.colorImage} alt={item.colorName} fill style={{ objectFit: 'cover' }} sizes="56px" />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', color: '#1a1d17' }}>
-                        aBoks · {item.colorName}
+                {items.map((item) => {
+                  // Once the server has answered, the amount shown is the one it priced.
+                  const trustedLine = trustedLines?.find((l) => l.variantId === item.variantId)
+                  const lineTotal = trustedLine ? trustedLine.lineTotal : item.qty * item.price
+                  return (
+                    <div key={item.variantId} style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          background: '#e7d9bd',
+                          position: 'relative',
+                        }}
+                      >
+                        <Image src={item.colorImage} alt={item.colorName} fill style={{ objectFit: 'cover' }} sizes="56px" />
                       </div>
-                      <div style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>
-                        Antall: {item.qty}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', color: '#1a1d17' }}>
+                          {trustedLine ? trustedLine.displayName : `aBoks · ${item.colorName}`}
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>
+                          Antall: {trustedLine ? trustedLine.quantity : item.qty}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', color: '#1a1d17' }}>
+                        {formatPrice(lineTotal)}
                       </div>
                     </div>
-                    <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', color: '#1a1d17' }}>
-                      {formatPrice(item.qty * item.price)}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div
@@ -301,22 +390,33 @@ export default function CheckoutClient() {
               >
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>Delsum</span>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#1a1d17' }}>
-                  {formatPrice(sub)}
+                  {formatPrice(displayTotals.subtotal)}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: shippingCost > 0 ? '6px' : '18px' }}>
+              {displayTotals.discount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>
+                    {appliedPromoCode ? `Rabatt ${appliedPromoCode}` : 'Rabatt'}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#5f8253', whiteSpace: 'nowrap' }}>
+                    −{formatPrice(displayTotals.discount)}
+                  </span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: displayTotals.shipping > 0 ? '6px' : '18px' }}>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', color: '#6b6f63' }}>Frakt</span>
-                {shippingCost === 0 ? (
+                {displayTotals.shipping === 0 ? (
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#5f8253' }}>Gratis</span>
                 ) : (
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', fontWeight: 600, color: '#1a1d17' }}>
-                    {formatPrice(shippingCost)}
+                    {formatPrice(displayTotals.shipping)}
                   </span>
                 )}
               </div>
 
-              {shippingCost > 0 && (
+              {displayTotals.shipping > 0 && (
                 <div style={{ marginBottom: '18px' }}>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#6b6057' }}>
                     Gratis frakt ved kjøp over kr 650
@@ -335,7 +435,7 @@ export default function CheckoutClient() {
               >
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', fontWeight: 700, color: '#1a1d17' }}>Totalt</span>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '20px', fontWeight: 700, color: '#1a1d17' }}>
-                  {formatPrice(total)}
+                  {formatPrice(displayTotals.total)}
                 </span>
               </div>
 

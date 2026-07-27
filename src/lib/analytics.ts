@@ -9,6 +9,13 @@ export interface GA4Item {
   item_name: string
   item_variant?: string
   price: number
+  /**
+   * Promo-code discount per unit, in kroner. GA4's convention is that `price` stays the
+   * ordinary unit price and the reduction is reported here, so item rows reconcile with the
+   * event's `value` (which is the amount actually charged). Absent when nothing was
+   * discounted.
+   */
+  discount?: number
   quantity: number
   item_category: string
 }
