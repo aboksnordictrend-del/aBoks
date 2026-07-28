@@ -418,6 +418,45 @@ export const PromoCodes: CollectionConfig = {
             },
           ],
         },
+        // Payment details for the manual transfer, recorded for the administrator's
+        // convenience. Reference only: nothing here is read by the commission calculation,
+        // the statistics, the payout endpoint, the payout snapshot or the partner e-mail.
+        // Stored exactly as typed — no validation, formatting, masking or normalisation, so
+        // a foreign account number or an unusual format is never mangled.
+        {
+          name: 'partnerBankAccount',
+          type: 'text',
+          label: 'Kontonummer',
+          admin: {
+            condition: isPartnerCode,
+            description: 'Partnerens kontonummer for manuelle utbetalinger.',
+          },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'partnerAccountOwner',
+              type: 'text',
+              label: 'Kontoeier',
+              admin: {
+                width: '50%',
+                condition: isPartnerCode,
+                description: 'Navnet på kontoeieren dersom det avviker fra partnernavnet.',
+              },
+            },
+            {
+              name: 'partnerOrganizationNumber',
+              type: 'text',
+              label: 'Organisasjonsnummer',
+              admin: {
+                width: '50%',
+                condition: isPartnerCode,
+                description: 'Valgfritt organisasjonsnummer dersom partneren er et firma.',
+              },
+            },
+          ],
+        },
         {
           type: 'row',
           fields: [

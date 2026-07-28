@@ -270,3 +270,103 @@ describe('PromoCodes — existing ordinary codes are unaffected', () => {
     }
   })
 })
+
+/* ------------------------------ partner payment details ------------------------------ */
+
+/**
+ * Three informational fields recorded for manual transfers. They are reference data only:
+ * nothing reads them, so these tests check that they exist, follow the same visibility rule
+ * as the rest of the partner section, and carry no validation that could alter what an
+ * administrator typed.
+ */
+const PAYMENT_DETAIL_FIELDS = [
+  'partnerBankAccount',
+  'partnerAccountOwner',
+  'partnerOrganizationNumber',
+] as const
+
+describe('PromoCodes — partner payment details', () => {
+  it('adds all three fields as optional text', () => {
+    for (const name of PAYMENT_DETAIL_FIELDS) {
+      const field = fieldNamed(name) as { type: string; required?: unknown }
+      assert.equal(field.type, 'text', name)
+      assert.notEqual(field.required, true, `${name} must stay optional`)
+    }
+  })
+
+  it('labels them in Norwegian', () => {
+    const labels: Record<string, string> = {
+      partnerBankAccount: 'Kontonummer',
+      partnerAccountOwner: 'Kontoeier',
+      partnerOrganizationNumber: 'Organisasjonsnummer',
+    }
+
+    for (const [name, label] of Object.entries(labels)) {
+      assert.equal((fieldNamed(name) as { label?: unknown }).label, label, name)
+    }
+  })
+
+  it('places them inside «Partner og provisjon», after Telefon and before Provisjon', () => {
+    const section = (PromoCodes.fields as Field[]).find(
+      (f) => f.type === 'collapsible' && f.label === 'Partner og provisjon',
+    )
+    assert.ok(section, 'the partner section must exist')
+
+    const order = flatten((section as { fields: Field[] }).fields)
+      .filter((f): f is Field & { name: string } => 'name' in f && typeof f.name === 'string')
+      .map((f) => f.name)
+
+    const phone = order.indexOf('partnerPhone')
+    const rate = order.indexOf('commissionRate')
+    assert.ok(phone >= 0 && rate >= 0, 'precondition: the neighbours exist')
+
+    for (const name of PAYMENT_DETAIL_FIELDS) {
+      const at = order.indexOf(name)
+      assert.ok(at > phone, `${name} must come after Telefon`)
+      assert.ok(at < rate, `${name} must come before Provisjon`)
+    }
+  })
+
+  it('hides them when the code is not a partner code', () => {
+    for (const name of PAYMENT_DETAIL_FIELDS) {
+      assert.equal(conditionFor(name)(ORDINARY, ORDINARY, {}), false, name)
+    }
+  })
+
+  it('shows them when the code is a partner code', () => {
+    for (const name of PAYMENT_DETAIL_FIELDS) {
+      assert.equal(conditionFor(name)(PARTNER, PARTNER, {}), true, name)
+    }
+  })
+
+  it('follows exactly the same visibility rule as the other partner fields', () => {
+    for (const data of [{}, { isPartnerCode: null }, { isPartnerCode: 'true' }, undefined]) {
+      for (const name of PAYMENT_DETAIL_FIELDS) {
+        assert.equal(conditionFor(name)(data, data, {}), false, `${name} / ${JSON.stringify(data)}`)
+      }
+    }
+  })
+
+  it('carries no validation, so a value is stored exactly as typed', () => {
+    for (const name of PAYMENT_DETAIL_FIELDS) {
+      const field = fieldNamed(name) as { validate?: unknown; hooks?: unknown; maxLength?: unknown }
+      assert.equal(field.validate, undefined, `${name} must have no custom validation`)
+      assert.equal(field.hooks, undefined, `${name} must have no normalising hook`)
+      assert.equal(field.maxLength, undefined, `${name} must not truncate`)
+    }
+  })
+
+  it('leaves ordinary promo codes savable without any of them', () => {
+    // The partner section as a whole is still optional for a code like WELCOME10.
+    const welcome10 = { code: 'WELCOME10', discountType: 'percentage' as const, discountValue: 10 }
+    assert.equal(validatorFor('partnerName')(undefined, { siblingData: welcome10 }), true)
+    assert.equal(validatorFor('commissionRate')(undefined, { siblingData: welcome10 }), true)
+  })
+
+  it('is not exposed as a list column', () => {
+    const columns = PromoCodes.admin?.defaultColumns ?? []
+    for (const name of PAYMENT_DETAIL_FIELDS) {
+      assert.equal(columns.includes(name), false, `${name} must stay off the list view`)
+    }
+  })
+})

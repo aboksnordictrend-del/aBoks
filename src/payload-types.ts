@@ -557,6 +557,18 @@ export interface PromoCode {
   partnerEmail?: string | null;
   partnerPhone?: string | null;
   /**
+   * Partnerens kontonummer for manuelle utbetalinger.
+   */
+  partnerBankAccount?: string | null;
+  /**
+   * Navnet på kontoeieren dersom det avviker fra partnernavnet.
+   */
+  partnerAccountOwner?: string | null;
+  /**
+   * Valgfritt organisasjonsnummer dersom partneren er et firma.
+   */
+  partnerOrganizationNumber?: string | null;
+  /**
    * Provisjon beregnes kun av varesummen, inkludert MVA. Frakt regnes aldri med.
    */
   commissionRate?: number | null;
@@ -1183,6 +1195,9 @@ export interface PromoCodesSelect<T extends boolean = true> {
   partnerName?: T;
   partnerEmail?: T;
   partnerPhone?: T;
+  partnerBankAccount?: T;
+  partnerAccountOwner?: T;
+  partnerOrganizationNumber?: T;
   commissionRate?: T;
   commissionBase?: T;
   partnerNote?: T;
