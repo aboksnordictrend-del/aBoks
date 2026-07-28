@@ -325,14 +325,41 @@ export default function HomeClient({
               Problemet
             </p>
             <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(32px,4vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 24px' }}>
-              Batterier overalt – og aldri når du trenger dem.
+              Batterier på feil sted skaper mer enn bare rot.
             </h2>
-            <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '18px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 18px' }}>
-              Løse batterier i kjøkkenskuffen, i sekken, i garasjen. Du vet aldri hvilke som er fulle, og de tomme blir liggende altfor lenge.
+            <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '18px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 32px' }}>
+              Løse batterier skaper uorden i hjemmet, men feil oppbevaring og sortering kan også føre til brann og unødvendig belastning på miljøet.
             </p>
-            <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '18px', lineHeight: 1.65, color: '#3a3f33', margin: 0 }}>
-              Resultatet er rot, kasting av gode batterier og brukte celler som aldri når gjenvinningen.
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(24px,3vw,32px)' }}>
+              {[
+                {
+                  title: 'Rot hjemme',
+                  text: 'Løse batterier blir liggende i skuffer, vesker og skap, og det blir vanskelig å skille mellom nye og brukte.',
+                },
+                {
+                  title: 'Brannfare',
+                  text: 'Batterier som havner i restavfallet kan bli skadet og forårsake brann under transport og avfallshåndtering.',
+                },
+                {
+                  title: 'Bedre for miljøet',
+                  text: 'Riktig sortering sørger for at batterier blir gjenvunnet på en trygg måte og hindrer at skadelige stoffer havner i naturen.',
+                },
+              ].map((item) => (
+                <div key={item.title} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+                  <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f8253" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '4px' }}>
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                  <div>
+                    <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '17px', lineHeight: 1.5, color: '#1a1d17', margin: '0 0 6px' }}>
+                      {item.title}
+                    </p>
+                    <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', lineHeight: 1.65, color: '#3a3f33', margin: 0 }}>
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </motion.div>
           <motion.div {...fadeUp(0.1)} style={{ position: 'relative', aspectRatio: '4/3', borderRadius: '22px', overflow: 'hidden', background: '#efe6d3' }}>
             <Image src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/problem-visual.webp" alt="Løse batterier i en skuff" fill style={{ objectFit: 'cover' }} sizes="(max-width: 768px) 100vw, 50vw" />
@@ -364,7 +391,7 @@ export default function HomeClient({
             <motion.div {...fadeUp(0.1)} className="order-1 md:order-2 md:pl-[40px]">
               <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 18px' }}>Løsningen</p>
               <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(32px,4vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 24px' }}>
-                Én boks. Tre rom.{' '}
+                Én aBoks. Tre rom.{' '}
                 <em style={{ fontStyle: 'italic', color: '#39402c' }}>Full oversikt.</em>
               </h2>
               <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '18px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 20px' }}>
@@ -430,7 +457,7 @@ export default function HomeClient({
               Passer overalt i hjemmet
             </p>
             <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(32px,4vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: '0 0 20px' }}>
-              Én boks. <em>Mange steder.</em>
+              Én aBoks. <em>Mange steder.</em>
             </h2>
             <p style={{ fontFamily: 'var(--font-manrope)', fontSize: 'clamp(15px,1.4vw,17.5px)', lineHeight: 1.7, color: '#6b6f63', margin: 0, maxWidth: '540px' }}>
               aBoks er laget for å passe naturlig inn i hjemmet – enten den står ved TV-en, på kjøkkenet, i boden eller på hjemmekontoret.
