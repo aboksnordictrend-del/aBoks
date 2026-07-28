@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 import type { KustomOrder } from '@/lib/kustom'
 import { PROMO_CURRENCY, normalizePromoCode } from './constants'
 import { checkPromoLaunchSupport } from './supportPolicy'
+import { calculateCommission, toCommissionSnapshotKr } from '@/lib/partner/commission'
 import {
   crossCheckMerchantData,
   parseKustomMerchantData,
@@ -83,6 +84,37 @@ export function redactErrorMessage(err: unknown): string {
     .replace(/[a-z][a-z0-9+.-]*:\/\/\S*@\S*/gi, '[redacted-uri]')
     .replace(/\b(password|secret|token|api[_-]?key)\s*[=:]\s*\S+/gi, '$1=[redacted]')
     .slice(0, 200)
+}
+
+/**
+ * Reads a Payload `number` field off a document, for the one case where getting it wrong is
+ * expensive: the commission rate.
+ *
+ * Verified rather than assumed. `@payloadcms/drizzle` builds every Payload number field as
+ * `numeric(name, { mode: 'number' })`, and drizzle's `PgNumericNumber.mapFromDriverValue`
+ * returns `Number(value)` — so the adapter already hands back a JS number, which is what
+ * `validatePromoCode` has relied on for `discountValue` since launch.
+ *
+ * The string branch is defence in depth against the single outcome that must never happen
+ * quietly: a partner with a correctly configured rate earning nothing because the value
+ * arrived serialised. It is deliberately narrow — a strict decimal literal only, never a
+ * general `Number()` coercion — so '', '  ', 'abc', '1e5' and true all fall through.
+ *
+ * The two failure shapes are distinct on purpose, and map onto the calculation's own reasons:
+ *   absent  → null  → `rate_missing`
+ *   garbage → NaN   → `rate_not_finite`
+ */
+export function readNumericField(value: unknown): number | null {
+  if (value == null) return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : Number.NaN
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+      const parsed = Number(trimmed)
+      if (Number.isFinite(parsed)) return parsed
+    }
+  }
+  return Number.NaN
 }
 
 /**
@@ -197,7 +229,22 @@ export async function registerPromoUsageOnce(
   }
 
   // The promo must still exist, and still be the code that id refers to.
-  let promoDoc: { id: number | string; code?: string | null; usageMode?: string | null; maxUses?: number | null } | undefined
+  //
+  // The partner fields are read off this SAME document — no second query. `commissionRate` is
+  // typed `unknown` deliberately: it is a `numeric` column, and `readNumericField` is what
+  // decides whether the value is usable rather than a cast pretending it always is.
+  let promoDoc:
+    | {
+        id: number | string
+        code?: string | null
+        usageMode?: string | null
+        maxUses?: number | null
+        isPartnerCode?: boolean | null
+        partnerName?: string | null
+        commissionRate?: unknown
+        commissionBase?: string | null
+      }
+    | undefined
   try {
     promoDoc = (await payload.findByID({
       collection: 'promo-codes',
@@ -264,23 +311,77 @@ export async function registerPromoUsageOnce(
     return { status: 'retryable_error', reason: 'usage_lookup_failed' }
   }
 
+  // ── Financial + commission snapshot ──
+  //
+  // Every amount comes from `promo`, the merchant_data snapshot already cross-checked against
+  // what Kustom actually charged, and every setting from the promo document already fetched
+  // above. No extra query, no client input, no re-reading of current prices.
+  //
+  // Computed here — after the duplicate fast path — so a replayed webhook neither recomputes
+  // nor re-logs. The values are frozen onto the row: editing the code later cannot change what
+  // this usage earned, and nothing recalculates it on read.
+  const orderNumber = order.orderNumber ?? kustomOrder.merchant_reference ?? null
+
+  const commission = calculateCommission({
+    isPartnerCode: promoDoc.isPartnerCode === true,
+    commissionRate: readNumericField(promoDoc.commissionRate),
+    commissionBase: promoDoc.commissionBase,
+    subtotalBeforeDiscountOere: promo.subtotalBeforeDiscountOere,
+    discountAmountOere: promo.discountAmountOere,
+    // Passed for the audit snapshot only — the commission module never reads it into a base.
+    shippingOere: promo.shippingOere,
+  })
+  const snapshot = toCommissionSnapshotKr(commission)
+
+  // A misconfigured partner code still registers its usage — the order is paid and the audit
+  // row has to exist — but it earns nothing, and that must never pass silently. Only for
+  // partner codes: an ordinary code having no rate or base is normal, not an anomaly.
+  if (commission.isPartnerCommission && commission.adjustments.length > 0) {
+    log({
+      event: 'integrity-warning',
+      reason: 'commission_configuration',
+      adjustments: commission.adjustments,
+      promoCodeId: promo.promoCodeId,
+      code: promo.code,
+      orderNumber,
+      kustomOrderId: kustomOrder.order_id,
+    })
+  }
+
+  // Frozen at creation, never derived from the live promo record afterwards.
+  const partnerNameSnapshot =
+    commission.isPartnerCommission && typeof promoDoc.partnerName === 'string'
+      ? promoDoc.partnerName.trim() || null
+      : null
+
   try {
     const created = await payload.create({
       collection: 'promo-code-usages',
       data: {
         promoCode: Number(promo.promoCodeId),
         order: Number(order.id),
-        orderNumber: order.orderNumber ?? kustomOrder.merchant_reference ?? null,
+        orderNumber,
         // Left null on purpose: once-per-customer is not supported at launch, so there is no
         // reason to copy a customer's address into the audit table.
         email: null,
-        discountAmount: promo.discountAmountOere / 100,
+        // The existing column, populated from the same snapshot as everything else. There is
+        // deliberately no second discount field.
+        discountAmount: snapshot.discountAmount,
         currency: PROMO_CURRENCY,
         usedAt: new Date().toISOString(),
         kustomOrderId: kustomOrder.order_id,
         orderKey,
         // Reusable codes are unconstrained; NULL repeats freely under the unique index.
         uniquenessKey: null,
+
+        orderAmountBeforeDiscount: snapshot.orderAmountBeforeDiscount,
+        orderAmountAfterDiscount: snapshot.orderAmountAfterDiscount,
+        shippingAmount: snapshot.shippingAmount,
+        isPartnerUsage: commission.isPartnerCommission,
+        partnerNameSnapshot,
+        commissionRateSnapshot: snapshot.commissionRateSnapshot,
+        commissionBaseSnapshot: snapshot.commissionBaseSnapshot,
+        commissionAmount: snapshot.commissionAmount,
       },
       overrideAccess: true,
     })
@@ -292,6 +393,8 @@ export async function registerPromoUsageOnce(
       promoCodeId: promo.promoCodeId,
       code: promo.code,
       discountOere: promo.discountAmountOere,
+      isPartnerUsage: commission.isPartnerCommission,
+      commissionOere: commission.commissionAmountOere,
     })
     return { status: 'created', usageId: String(created.id) }
   } catch (err) {

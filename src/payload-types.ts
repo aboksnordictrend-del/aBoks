@@ -74,6 +74,7 @@ export interface Config {
     orders: Order;
     'promo-codes': PromoCode;
     'promo-code-usages': PromoCodeUsage;
+    'partner-payouts': PartnerPayout;
     customers: Customer;
     'marketing-expenses': MarketingExpense;
     reviews: Review;
@@ -93,6 +94,7 @@ export interface Config {
     orders: OrdersSelect<false> | OrdersSelect<true>;
     'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
     'promo-code-usages': PromoCodeUsagesSelect<false> | PromoCodeUsagesSelect<true>;
+    'partner-payouts': PartnerPayoutsSelect<false> | PartnerPayoutsSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
     'marketing-expenses': MarketingExpensesSelect<false> | MarketingExpensesSelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
@@ -520,7 +522,10 @@ export interface PromoCode {
    * Prosent (1–100) eller et fast beløp i kroner.
    */
   discountValue: number;
-  usageMode: 'unlimited' | 'single_use_global' | 'once_per_customer' | 'limited';
+  /**
+   * Foreløpig støttes bare gjenbrukbare koder uten bruksgrense. Engangskoder, «kun X ganger» og «én gang per kunde» kommer senere.
+   */
+  usageMode: 'unlimited';
   /**
    * Antall betalte ordre koden kan brukes på totalt.
    */
@@ -541,6 +546,28 @@ export interface PromoCode {
    * La stå tom for at koden gjelder alle produkter. Velges produkter, gis rabatt bare på ordrelinjer med disse produktene — varianter følger produktet sitt.
    */
   applicableProducts?: (number | Product)[] | null;
+  /**
+   * Aktiver dersom rabattkoden tilhører en samarbeidspartner eller influencer.
+   */
+  isPartnerCode?: boolean | null;
+  /**
+   * Navnet provisjonen føres på. Vises kun i admin.
+   */
+  partnerName?: string | null;
+  partnerEmail?: string | null;
+  partnerPhone?: string | null;
+  /**
+   * Provisjon beregnes kun av varesummen, inkludert MVA. Frakt regnes aldri med.
+   */
+  commissionRate?: number | null;
+  /**
+   * «Etter rabatt» bruker varesummen minus rabattkoden. «Før rabatt» bruker varesummen slik den var før rabatten. Frakt er utelatt i begge tilfeller.
+   */
+  commissionBase?: ('orderAfterDiscount' | 'orderBeforeDiscount') | null;
+  /**
+   * Avtalevilkår, kontaktinfo o.l. Vises aldri for kunden.
+   */
+  partnerNote?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -559,8 +586,37 @@ export interface PromoCodeUsage {
    * Alltid små bokstaver — grunnlaget for «én gang per kunde».
    */
   email?: string | null;
+  /**
+   * Varer inkl. MVA, uten frakt.
+   */
+  orderAmountBeforeDiscount?: number | null;
   discountAmount?: number | null;
+  /**
+   * Varesum før rabatt minus rabatten. Fortsatt uten frakt.
+   */
+  orderAmountAfterDiscount?: number | null;
+  /**
+   * Kun for regnskap og rapportering. Inngår aldri i provisjonen.
+   */
+  shippingAmount?: number | null;
   currency?: string | null;
+  /**
+   * Var koden en partnerkode da bruken ble registrert?
+   */
+  isPartnerUsage?: boolean | null;
+  /**
+   * Navnet slik det var på betalingstidspunktet.
+   */
+  partnerNameSnapshot?: string | null;
+  /**
+   * Satsen som faktisk ble brukt. 0 for vanlige rabattkoder.
+   */
+  commissionRateSnapshot?: number | null;
+  commissionBaseSnapshot?: ('orderAfterDiscount' | 'orderBeforeDiscount') | null;
+  /**
+   * Provisjon beregnes kun av varesummen, inkludert MVA. Frakt regnes aldri med.
+   */
+  commissionAmount?: number | null;
   /**
    * Tidspunktet betalingen ble bekreftet.
    */
@@ -568,6 +624,43 @@ export interface PromoCodeUsage {
   kustomOrderId?: string | null;
   orderKey?: string | null;
   uniquenessKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Registrer en utbetaling som allerede er utført via bank, Vipps eller annen betalingsmåte. Systemet sender aldri penger selv.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "partner-payouts".
+ */
+export interface PartnerPayout {
+  id: number;
+  /**
+   * Låst etter registrering.
+   */
+  promoCode: number | PromoCode;
+  /**
+   * Kopiert fra rabattkoden da utbetalingen ble registrert.
+   */
+  partnerNameSnapshot: string;
+  /**
+   * Utbetalt beløp i kroner. Låst etter registrering.
+   */
+  amount: number;
+  payoutDate: string;
+  paymentMethod: 'bankTransfer' | 'vipps' | 'other';
+  /**
+   * Bankreferanse, Vipps-id e.l. Kan endres senere.
+   */
+  reference?: string | null;
+  /**
+   * Internt notat. Kan endres senere.
+   */
+  note?: string | null;
+  /**
+   * Settes automatisk fra den innloggede brukeren.
+   */
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -772,6 +865,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'promo-code-usages';
         value: number | PromoCodeUsage;
+      } | null)
+    | ({
+        relationTo: 'partner-payouts';
+        value: number | PartnerPayout;
       } | null)
     | ({
         relationTo: 'customers';
@@ -1082,6 +1179,13 @@ export interface PromoCodesSelect<T extends boolean = true> {
   expiresAt?: T;
   minimumOrderAmount?: T;
   applicableProducts?: T;
+  isPartnerCode?: T;
+  partnerName?: T;
+  partnerEmail?: T;
+  partnerPhone?: T;
+  commissionRate?: T;
+  commissionBase?: T;
+  partnerNote?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1094,12 +1198,36 @@ export interface PromoCodeUsagesSelect<T extends boolean = true> {
   order?: T;
   orderNumber?: T;
   email?: T;
+  orderAmountBeforeDiscount?: T;
   discountAmount?: T;
+  orderAmountAfterDiscount?: T;
+  shippingAmount?: T;
   currency?: T;
+  isPartnerUsage?: T;
+  partnerNameSnapshot?: T;
+  commissionRateSnapshot?: T;
+  commissionBaseSnapshot?: T;
+  commissionAmount?: T;
   usedAt?: T;
   kustomOrderId?: T;
   orderKey?: T;
   uniquenessKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "partner-payouts_select".
+ */
+export interface PartnerPayoutsSelect<T extends boolean = true> {
+  promoCode?: T;
+  partnerNameSnapshot?: T;
+  amount?: T;
+  payoutDate?: T;
+  paymentMethod?: T;
+  reference?: T;
+  note?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

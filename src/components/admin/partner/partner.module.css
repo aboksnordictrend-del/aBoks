@@ -1,0 +1,316 @@
+/* Partner statistics on the promo-code edit page.
+
+   Theme-aware via Payload's own --theme-* variables so light and dark admin themes both
+   work; no hard-coded black or white. Mirrors the visual language already established by
+   the marketing/analytics admin views (elevation-50 surfaces, 12px radii, pill badges)
+   rather than introducing a second look. */
+
+/* Set apart from «Partner og provisjon» above it: a rule plus generous space, so the
+   statistics read as their own part of the page rather than a continuation of the form. */
+.section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--theme-elevation-100);
+}
+
+.heading {
+  margin: 0 0 0.3rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.subheading {
+  margin: 2rem 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.intro {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  opacity: 0.65;
+}
+
+/* The methodology note — secondary to the description above it. */
+.note {
+  margin: -0.85rem 0 1.25rem;
+  font-size: 0.76rem;
+  opacity: 0.5;
+  line-height: 1.5;
+}
+
+/* --- Summary cards --- */
+
+.cards {
+  display: grid;
+  /* Four across on desktop, 2 x 2 on tablet, stacked on mobile — driven by available
+     width rather than device guesses, so it also behaves inside Payload's narrower
+     document column. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 1024px) {
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  background: var(--theme-elevation-50);
+  border: 1px solid var(--theme-elevation-100);
+  border-radius: 12px;
+  padding: 1.25rem 1.35rem;
+  min-width: 0;
+}
+
+/* The outstanding balance is the number an admin is actually looking for. Marked with a
+   subtle left accent, a slightly stronger surface and a firmer border — all drawn from
+   Payload's neutral elevation scale. Deliberately no green, red or amber: this is a fact,
+   not a status. */
+.cardHighlight {
+  background: var(--theme-elevation-100);
+  border-color: var(--theme-elevation-200);
+  border-left: 3px solid var(--theme-elevation-400);
+  /* Keep the text aligned with the other three despite the thicker left edge. */
+  padding-left: calc(1.35rem - 2px);
+}
+
+.cardTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
+  margin-bottom: 0.5rem;
+}
+
+.cardValue {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  /* Long amounts must wrap rather than widen the card and push the grid sideways. */
+  overflow-wrap: anywhere;
+}
+
+.cardHelp {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  opacity: 0.45;
+}
+
+/* --- Detail rows --- */
+
+/* Two columns: label left, value hard right. `auto` on the value column keeps every number
+   sharing one right edge, and tabular figures make the digits line up vertically. */
+.details {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 1.5rem;
+  font-size: 0.84rem;
+  max-width: 32rem;
+  border: 1px solid var(--theme-elevation-100);
+  border-radius: 12px;
+  padding: 0.35rem 1.15rem;
+}
+
+.detailLabel,
+.detailValue {
+  padding: 0.62rem 0;
+  border-bottom: 1px solid var(--theme-elevation-100);
+}
+
+/* No rule under the final pair. */
+.details > .detailLabel:nth-last-child(2),
+.details > .detailValue:last-child {
+  border-bottom: none;
+}
+
+.detailLabel {
+  opacity: 0.7;
+}
+
+.detailValue {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-weight: 500;
+}
+
+/* --- Tables --- */
+
+/* Wide financial tables scroll inside their own box; the document must never scroll
+   sideways as a whole. */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--theme-elevation-100);
+  border-radius: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-elevation-100);
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
+  background: var(--theme-elevation-50);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row that does not contribute to the totals reads as secondary. */
+.rowMuted {
+  opacity: 0.55;
+}
+
+/* Empty state as a quiet panel rather than a loose line of text, so an empty table still
+   reads as a deliberate section with edges. */
+.empty {
+  padding: 1.75rem 1.25rem;
+  font-size: 0.84rem;
+  opacity: 0.6;
+  text-align: center;
+  background: var(--theme-elevation-50);
+  border: 1px solid var(--theme-elevation-100);
+  border-radius: 12px;
+}
+
+/* --- Payout action + modal (Stage 6) --- */
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+/* Payload's Button carries its own bottom margin in a form context; not wanted inline here. */
+.actionRow button {
+  margin: 0;
+}
+
+.actionHint {
+  font-size: 0.78rem;
+  opacity: 0.55;
+}
+
+.modalIntro {
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  line-height: 1.6;
+  max-width: 34rem;
+}
+
+/* The amount, stated once and not editable. Same treatment as the highlighted card so the
+   two read as the same number. */
+.payoutAmount {
+  margin: 1.25rem 0;
+  padding: 1.15rem 1.35rem;
+  background: var(--theme-elevation-100);
+  border: 1px solid var(--theme-elevation-200);
+  border-left: 3px solid var(--theme-elevation-400);
+  border-radius: 12px;
+  max-width: 32rem;
+}
+
+.select,
+.input,
+.textarea {
+  width: 100%;
+  max-width: 32rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--theme-elevation-800);
+  background: var(--theme-input-bg, var(--theme-elevation-0));
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 4px;
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.select:disabled,
+.input:disabled,
+.textarea:disabled {
+  opacity: 0.6;
+}
+
+.modalError {
+  margin: 1rem 0 0;
+  padding: 0.7rem 0.9rem;
+  max-width: 32rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  border: 1px solid var(--theme-error-250, var(--theme-elevation-200));
+  border-radius: 8px;
+  background: var(--theme-error-50, var(--theme-elevation-50));
+  color: var(--theme-error-600, inherit);
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.75rem;
+  flex-wrap: wrap;
+}
+
+.modalActions button {
+  margin: 0;
+}
+
+/* --- Status badges --- */
+
+.badge {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid var(--theme-elevation-150);
+  background: var(--theme-elevation-50);
+}
+
+/* Counted towards the totals. */
+.badgeCounted {
+  background: var(--theme-elevation-100);
+  border-color: var(--theme-elevation-200);
+}
+
+/* Not counted. Deliberately quiet rather than red — an excluded row is information,
+   not an error. */
+.badgeExcluded {
+  background: transparent;
+  opacity: 0.8;
+}

@@ -76,6 +76,26 @@ export interface ReviewInvitationData {
   reviewUrl: string
 }
 
+/**
+ * A registered partner payout. Every value is server-derived — the partner's own name and
+ * code, the figures the accounting module produced, and the amount actually written to the
+ * ledger. Nothing here comes from a browser.
+ */
+export interface PartnerPayoutData {
+  partnerName: string
+  promoCode: string
+  validUsageCount: number
+  /** Merchandise after discount, excluding shipping. */
+  revenueAfterDiscount: number
+  payoutAmount: number
+  /** ISO timestamp; formatted by the template. */
+  payoutDate: string
+  /** The Norwegian label ("Bankoverføring"), resolved from the collection's own options. */
+  paymentMethod: string
+  /** Omitted from the e-mail entirely when absent. */
+  reference?: string | null
+}
+
 export interface EmailTemplate {
   subject: string
   html: string

@@ -1,0 +1,16 @@
+{
+  // Test-only compiler settings. Extends the real tsconfig and changes exactly one thing:
+  // the JSX runtime.
+  //
+  // The app compiles with "jsx": "preserve" because Next.js does its own JSX transform, and
+  // components therefore never import React. The test runner has no such step, so esbuild
+  // falls back to the classic runtime and every rendered component fails with
+  // "React is not defined". "react-jsx" makes the transform self-contained.
+  //
+  // Used only by `npm test` (tsx --tsconfig). `npm run typecheck` and `next build` still read
+  // the untouched tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  }
+}

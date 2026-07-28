@@ -5,6 +5,7 @@ import type { KustomOrder } from '@/lib/kustom'
 import { buildKustomMerchantData, type TrustedPromoSnapshot } from './kustomMerchantData'
 import {
   isUniqueViolation,
+  readNumericField,
   registerPromoUsageOnce,
   usageKustomOrderKey,
   type RegisterUsageResult,
@@ -104,7 +105,18 @@ interface Harness {
 
 function harness(
   opts: {
-    promo?: { id: number; code: string; usageMode?: string; maxUses?: number } | null
+    promo?: {
+      id: number
+      code: string
+      usageMode?: string
+      maxUses?: number
+      // Partner configuration, read off the same document the writer already fetches.
+      // `commissionRate` is `unknown` so a test can hand over whatever the adapter might.
+      isPartnerCode?: boolean
+      partnerName?: string | null
+      commissionRate?: unknown
+      commissionBase?: string | null
+    } | null
     findThrows?: boolean
     createThrows?: Error
     promoLookupThrows?: boolean
@@ -558,5 +570,376 @@ describe('resolvePromoSnapshot — relationship resolution', () => {
     })
     assert.equal(decision.action, 'conflict')
     assert.equal(looked, false)
+  })
+})
+
+/* ========================================================================== */
+/*  Stage 3 — financial + commission snapshot                                  */
+/* ========================================================================== */
+
+/**
+ * The fixture order throughout this section is the SNAPSHOT constant at the top of the file:
+ * 449,00 kr of goods, 44,90 kr off, 69,00 kr shipping, 473,10 kr paid.
+ *
+ * Every expectation below is therefore checkable by hand, and the shipping figure is the one
+ * that must never appear in a commission.
+ */
+const PARTNER_PROMO = {
+  id: 7,
+  code: 'WELCOME10',
+  usageMode: 'unlimited',
+  isPartnerCode: true,
+  partnerName: 'Ola Nordmann' as string | null,
+  commissionRate: 10 as unknown,
+  commissionBase: 'orderAfterDiscount' as string | null,
+}
+
+/** Registers one usage and returns the row that was written. */
+async function registerAndRead(h: Harness, order = kustomOrder()) {
+  const result = await registerPromoUsageOnce(h.deps, { kustomOrder: order, order: ORDER })
+  assert.equal(result.status, 'created')
+  assert.equal(h.usages.length, 1)
+  return h.usages[0]
+}
+
+const warnings = (h: Harness) =>
+  h.logs.filter((l) => l.event === 'integrity-warning' && l.reason === 'commission_configuration')
+
+/* ------------------------------ ordinary codes ------------------------------ */
+
+describe('Stage 3 — ordinary promo codes earn nothing', () => {
+  it('registers the usage with a zeroed commission and a full money snapshot', async () => {
+    const h = harness() // default promo: no partner configuration at all
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.isPartnerUsage, false)
+    assert.equal(usage.commissionRateSnapshot, 0)
+    assert.equal(usage.commissionAmount, 0)
+    assert.equal(usage.partnerNameSnapshot, null)
+
+    // The money snapshot is recorded for every code, partner or not.
+    assert.equal(usage.orderAmountBeforeDiscount, 449)
+    assert.equal(usage.discountAmount, 44.9)
+    assert.equal(usage.orderAmountAfterDiscount, 404.1)
+    assert.equal(usage.shippingAmount, 69)
+  })
+
+  it('emits no commission warning for a code that was never a partner code', async () => {
+    const h = harness()
+    await registerAndRead(h)
+    assert.deepEqual(warnings(h), [])
+  })
+
+  it('treats an explicitly non-partner code the same, even with a stray rate', async () => {
+    const h = harness({
+      promo: { id: 7, code: 'WELCOME10', isPartnerCode: false, commissionRate: 25 },
+    })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.isPartnerUsage, false)
+    assert.equal(usage.commissionAmount, 0)
+    assert.deepEqual(warnings(h), [])
+  })
+})
+
+/* ------------------------------ the two bases ------------------------------ */
+
+describe('Stage 3 — partner commission', () => {
+  it('after-discount base: 10 % of 404,10 kr is 40,41 kr', async () => {
+    const h = harness({ promo: PARTNER_PROMO })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.isPartnerUsage, true)
+    assert.equal(usage.orderAmountBeforeDiscount, 449)
+    assert.equal(usage.discountAmount, 44.9)
+    assert.equal(usage.orderAmountAfterDiscount, 404.1)
+    assert.equal(usage.shippingAmount, 69)
+    assert.equal(usage.commissionAmount, 40.41)
+    assert.deepEqual(warnings(h), [])
+  })
+
+  it('before-discount base uses the 449,00 kr merchandise, never the 473,10 kr paid', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionBase: 'orderBeforeDiscount' } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionAmount, 44.9)
+    // 10 % of the paid total (473,10 kr incl. shipping) would have been 47,31 kr.
+    assert.notEqual(usage.commissionAmount, 47.31)
+  })
+
+  it('records the rate and base actually used', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionRate: 12.5 } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionRateSnapshot, 12.5)
+    assert.equal(usage.commissionBaseSnapshot, 'orderAfterDiscount')
+    assert.equal(usage.commissionAmount, 50.51)
+  })
+})
+
+/* ------------------------------ shipping exclusion ------------------------------ */
+
+describe('Stage 3 — shipping never enters the commission', () => {
+  /** The same goods and discount, with the shipping line swapped out. */
+  const orderWithShipping = (shippingOere: number) => {
+    const promoSnapshot: TrustedPromoSnapshot = {
+      ...SNAPSHOT,
+      shippingOere,
+      totalAfterDiscountOere:
+        SNAPSHOT.subtotalBeforeDiscountOere - SNAPSHOT.discountAmountOere + shippingOere,
+    }
+
+    const lines = [
+      {
+        type: 'physical',
+        reference: '10',
+        name: 'aBoks Vegg – Mørk blå',
+        quantity: 1,
+        quantity_unit: 'pcs',
+        unit_price: 44_900,
+        tax_rate: 2_500,
+        total_amount: 40_410,
+        total_discount_amount: 4_490,
+        total_tax_amount: 8_082,
+      },
+      ...(shippingOere > 0
+        ? [
+            {
+              type: 'shipping_fee',
+              reference: 'FRAKT-STD',
+              name: 'Frakt',
+              quantity: 1,
+              quantity_unit: 'pcs',
+              unit_price: shippingOere,
+              tax_rate: 2_500,
+              total_amount: shippingOere,
+              total_discount_amount: 0,
+              total_tax_amount: Math.round(shippingOere / 5),
+            },
+          ]
+        : []),
+    ]
+
+    return kustomOrder(
+      {
+        order_amount: promoSnapshot.totalAfterDiscountOere,
+        order_lines: lines,
+      } as Partial<KustomOrder>,
+      promoSnapshot,
+    )
+  }
+
+  it('produces an identical commission for free, standard and expensive shipping', async () => {
+    const commissions: unknown[] = []
+
+    for (const shippingOere of [0, 6_900, 19_900]) {
+      const h = harness({ promo: PARTNER_PROMO })
+      const usage = await registerAndRead(h, orderWithShipping(shippingOere))
+
+      commissions.push(usage.commissionAmount)
+      // Shipping IS recorded — it just never reaches the commission.
+      assert.equal(usage.shippingAmount, shippingOere / 100)
+      assert.equal(usage.orderAmountAfterDiscount, 404.1)
+    }
+
+    assert.deepEqual(commissions, [40.41, 40.41, 40.41])
+  })
+})
+
+/* ------------------------------ immutability of the snapshot ------------------------------ */
+
+describe('Stage 3 — the snapshot is frozen at creation', () => {
+  it('copies the partner name rather than referencing the live record', async () => {
+    const promo = { ...PARTNER_PROMO }
+    const h = harness({ promo })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.partnerNameSnapshot, 'Ola Nordmann')
+
+    // Renaming the partner afterwards cannot reach the row that was already written.
+    promo.partnerName = 'Kari Nordmann'
+    assert.equal(usage.partnerNameSnapshot, 'Ola Nordmann')
+  })
+
+  it('writes the rate and base as values, so later edits cannot rewrite history', async () => {
+    const promo = { ...PARTNER_PROMO }
+    const h = harness({ promo })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionRateSnapshot, 10)
+    assert.equal(usage.commissionAmount, 40.41)
+
+    // The promo is edited to a completely different agreement.
+    promo.commissionRate = 50
+    promo.commissionBase = 'orderBeforeDiscount'
+
+    assert.equal(usage.commissionRateSnapshot, 10, 'rate must not follow the promo code')
+    assert.equal(usage.commissionAmount, 40.41, 'commission must not be recomputed')
+    assert.equal(usage.commissionBaseSnapshot, 'orderAfterDiscount')
+  })
+
+  it('trims a padded partner name and stores an empty one as null', async () => {
+    const padded = await registerAndRead(
+      harness({ promo: { ...PARTNER_PROMO, partnerName: '  Ola Nordmann  ' } }),
+    )
+    assert.equal(padded.partnerNameSnapshot, 'Ola Nordmann')
+
+    const blank = await registerAndRead(harness({ promo: { ...PARTNER_PROMO, partnerName: '   ' } }))
+    assert.equal(blank.partnerNameSnapshot, null)
+  })
+})
+
+/* ------------------------------ malformed configuration ------------------------------ */
+
+describe('Stage 3 — a malformed partner configuration never breaks the paid order', () => {
+  it('missing rate: the usage is still registered, earns 0, and warns rate_missing', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionRate: undefined } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.isPartnerUsage, true)
+    assert.equal(usage.commissionAmount, 0)
+    assert.equal(usage.commissionRateSnapshot, 0)
+
+    const warned = warnings(h)
+    assert.equal(warned.length, 1)
+    assert.deepEqual(warned[0].adjustments, ['rate_missing'])
+    // Useful, non-sensitive context only.
+    assert.equal(warned[0].promoCodeId, '7')
+    assert.equal(warned[0].code, 'WELCOME10')
+    assert.equal(warned[0].orderNumber, 'AB-028412')
+    assert.equal(warned[0].kustomOrderId, 'kustom-abc-123')
+  })
+
+  it('never logs an email, phone or address alongside the warning', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionRate: undefined } })
+    await registerAndRead(h)
+
+    const serialized = JSON.stringify(warnings(h)[0]).toLowerCase()
+    for (const forbidden of ['email', 'phone', 'address', 'postal']) {
+      assert.equal(serialized.includes(forbidden), false, forbidden)
+    }
+  })
+
+  it('out-of-range rate: earns 0 rather than being clamped up, and warns', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionRate: 5_000 } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionAmount, 0)
+    assert.deepEqual(warnings(h)[0].adjustments, ['rate_out_of_range'])
+  })
+
+  it('negative rate: earns 0 and warns', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionRate: -10 } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionAmount, 0)
+    assert.deepEqual(warnings(h)[0].adjustments, ['rate_out_of_range'])
+  })
+
+  it('unrecognised base: falls back to after-discount, still pays, and warns', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionBase: 'orderPlusShipping' } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionBaseSnapshot, 'orderAfterDiscount')
+    assert.equal(usage.commissionAmount, 40.41)
+    assert.deepEqual(warnings(h)[0].adjustments, ['base_unrecognised'])
+  })
+
+  it('a partner code with no name still registers, with a null snapshot', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, partnerName: null } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.isPartnerUsage, true)
+    assert.equal(usage.partnerNameSnapshot, null)
+    assert.equal(usage.commissionAmount, 40.41)
+  })
+})
+
+/* ------------------------------ the numeric column type ------------------------------ */
+
+describe('readNumericField — how a numeric column actually arrives', () => {
+  it('passes a finite number straight through (the verified adapter behaviour)', () => {
+    for (const value of [0, 10, 12.5, 100, -3]) {
+      assert.equal(readNumericField(value), value)
+    }
+  })
+
+  it('distinguishes absent from unusable, so the adjustment codes stay precise', () => {
+    assert.equal(readNumericField(null), null, 'absent → rate_missing')
+    assert.equal(readNumericField(undefined), null, 'absent → rate_missing')
+    assert.ok(Number.isNaN(readNumericField('abc') as number), 'garbage → rate_not_finite')
+  })
+
+  it('accepts a strict decimal string, in case the adapter ever serialises one', () => {
+    assert.equal(readNumericField('10'), 10)
+    assert.equal(readNumericField('12.5'), 12.5)
+    assert.equal(readNumericField(' 12.50 '), 12.5)
+  })
+
+  it('refuses anything that is not a plain decimal literal', () => {
+    for (const value of ['', '   ', '1e5', '0x10', 'ten', '1,5', true, {}, [], Number.NaN]) {
+      assert.ok(Number.isNaN(readNumericField(value) as number), String(JSON.stringify(value)))
+    }
+  })
+
+  it('a serialised rate still pays the partner correctly end to end', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionRate: '10' } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionRateSnapshot, 10)
+    assert.equal(usage.commissionAmount, 40.41)
+    assert.deepEqual(warnings(h), [], 'a usable value must not be reported as an anomaly')
+  })
+
+  it('an unusable string fails closed to 0 and warns', async () => {
+    const h = harness({ promo: { ...PARTNER_PROMO, commissionRate: 'ti prosent' } })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.commissionAmount, 0)
+    assert.deepEqual(warnings(h)[0].adjustments, ['rate_not_finite'])
+  })
+})
+
+/* ------------------------------ duplicate delivery ------------------------------ */
+
+describe('Stage 3 — a replayed webhook duplicates neither usage nor commission', () => {
+  it('registers once and reports the replay as already_registered', async () => {
+    const h = harness({ promo: PARTNER_PROMO, enforceUnique: true })
+
+    const first = await registerPromoUsageOnce(h.deps, { kustomOrder: kustomOrder(), order: ORDER })
+    const second = await registerPromoUsageOnce(h.deps, { kustomOrder: kustomOrder(), order: ORDER })
+    const third = await registerPromoUsageOnce(h.deps, { kustomOrder: kustomOrder(), order: ORDER })
+
+    assert.equal(first.status, 'created')
+    assert.equal(second.status, 'already_registered')
+    assert.equal(third.status, 'already_registered')
+
+    assert.equal(h.usages.length, 1, 'exactly one usage row')
+    assert.equal(h.usages[0].commissionAmount, 40.41)
+
+    // Σ commission over every row is the single commission, not a multiple of it.
+    const total = h.usages.reduce((sum, u) => sum + (u.commissionAmount as number), 0)
+    assert.equal(total, 40.41)
+  })
+
+  it('does not recompute or re-log the commission on a replay', async () => {
+    const h = harness({
+      promo: { ...PARTNER_PROMO, commissionRate: undefined },
+      enforceUnique: true,
+    })
+
+    await registerPromoUsageOnce(h.deps, { kustomOrder: kustomOrder(), order: ORDER })
+    await registerPromoUsageOnce(h.deps, { kustomOrder: kustomOrder(), order: ORDER })
+
+    // The warning belongs to the registration, not to every delivery of the webhook.
+    assert.equal(warnings(h).length, 1)
+  })
+
+  it('keeps the orderKey identity unchanged', async () => {
+    const h = harness({ promo: PARTNER_PROMO })
+    const usage = await registerAndRead(h)
+
+    assert.equal(usage.orderKey, 'kustom:7:kustom-abc-123')
+    assert.equal(usage.uniquenessKey, null)
   })
 })

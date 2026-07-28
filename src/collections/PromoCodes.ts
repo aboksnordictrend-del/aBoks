@@ -13,6 +13,15 @@ import {
   type UsageMode,
 } from '@/lib/promo/constants'
 import { checkPromoLaunchSupport } from '@/lib/promo/supportPolicy'
+import {
+  COMMISSION_BASE_DESCRIPTION,
+  COMMISSION_BASE_OPTIONS,
+  COMMISSION_SCOPE_DESCRIPTION,
+  DEFAULT_COMMISSION_BASE,
+  MAX_COMMISSION_RATE,
+  MIN_COMMISSION_RATE,
+} from '@/lib/partner/constants'
+import { validateCommissionRate } from '@/lib/partner/commission'
 
 /**
  * Promo / discount codes (`Promokoder`).
@@ -28,13 +37,25 @@ import { checkPromoLaunchSupport } from '@/lib/promo/supportPolicy'
  * it matters (deciding whether a one-time code is still available).
  */
 
-/** Fields whose value is only meaningful together with `discountType` / `usageMode`. */
+/** Fields whose value is only meaningful together with another field on the document. */
 type PromoSiblingData = {
   discountType?: DiscountType | null
   usageMode?: UsageMode | null
   maxUses?: number | null
   startsAt?: string | null
+  isPartnerCode?: boolean | null
 }
+
+/**
+ * True for a code marked as belonging to a partner.
+ *
+ * The partner fields sit inside a top-level `collapsible`, which is presentational only — its
+ * children are ordinary siblings of `isPartnerCode` in the document data, exactly as the
+ * `row` fields above are. So both the conditions and the validators read the flag the same way
+ * `validateMaxUses` reads `usageMode`.
+ */
+const isPartnerCode = (data: unknown): boolean =>
+  (data as PromoSiblingData | undefined)?.isPartnerCode === true
 
 /**
  * Non-empty after normalisation, and not already taken by another document.
@@ -117,6 +138,30 @@ const validateUsageMode: SelectFieldSingleValidation = (value, { siblingData }) 
   return 'Foreløpig støttes bare gjenbrukbare rabattkoder uten bruksgrense. Velg «Ubegrenset», og fjern eventuelt «Maks antall bruk».'
 }
 
+/**
+ * Required — and non-empty — only on a partner code.
+ *
+ * The name is what identifies who gets paid, so a partner code without one would produce
+ * commission with no payee. An ordinary code may leave it blank, which is the normal case.
+ */
+const validatePartnerName: TextFieldSingleValidation = (value, { siblingData }) => {
+  if (!isPartnerCode(siblingData)) return true
+  if (typeof value !== 'string' || value.trim() === '') {
+    return 'Partner / eier må fylles ut for en partnerkode.'
+  }
+  return true
+}
+
+/**
+ * Delegates to the shared partner module — the same function the commission calculation is
+ * built around, so the form can never accept a rate the arithmetic would refuse. Nothing about
+ * ranges or messages is restated here; only the requiredness, which depends on this document.
+ */
+const validateCommissionRateField: NumberFieldSingleValidation = (value, { siblingData }) => {
+  const result = validateCommissionRate(value, { required: isPartnerCode(siblingData) })
+  return result.ok ? true : result.message
+}
+
 /** When both dates are set, the window must be a real one. */
 const validateExpiresAt: DateValidation = (value, { siblingData }) => {
   if (!value) return true
@@ -135,7 +180,18 @@ export const PromoCodes: CollectionConfig = {
   admin: {
     useAsTitle: 'code',
     group: 'Butikk',
-    defaultColumns: ['code', 'discountType', 'discountValue', 'usageMode', 'active', 'expiresAt'],
+    // Real columns only. Aggregates (uses, earned commission, outstanding balance) live on the
+    // edit page instead — as list columns they would cost one query per row.
+    defaultColumns: [
+      'code',
+      'discountType',
+      'discountValue',
+      'usageMode',
+      'partnerName',
+      'commissionRate',
+      'active',
+      'expiresAt',
+    ],
     listSearchableFields: ['code', 'name'],
     description: 'Rabattkoder kunden kan bruke i handlekurven.',
   },
@@ -310,6 +366,114 @@ export const PromoCodes: CollectionConfig = {
           },
         },
       ],
+    },
+    {
+      // Partner / influencer settings. Everything below is configuration only: it decides what
+      // a FUTURE paid usage will earn. Nothing here is retroactive — a usage record snapshots
+      // the rate and base that applied at the moment it was written, so editing these values
+      // never changes what has already been earned.
+      //
+      // An ordinary promo code leaves the checkbox off and is completely unaffected: every
+      // field is optional at the schema level, the conditions hide them, and the validators
+      // below only bite once `isPartnerCode` is true.
+      type: 'collapsible',
+      label: 'Partner og provisjon',
+      admin: { initCollapsed: true },
+      fields: [
+        {
+          name: 'isPartnerCode',
+          type: 'checkbox',
+          label: 'Partnerkode',
+          defaultValue: false,
+          admin: {
+            description:
+              'Aktiver dersom rabattkoden tilhører en samarbeidspartner eller influencer.',
+          },
+        },
+        {
+          name: 'partnerName',
+          type: 'text',
+          label: 'Partner / eier',
+          admin: {
+            condition: isPartnerCode,
+            description: 'Navnet provisjonen føres på. Vises kun i admin.',
+            placeholder: 'Ola Nordmann',
+          },
+          validate: validatePartnerName,
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'partnerEmail',
+              type: 'email',
+              label: 'E-post',
+              admin: { width: '50%', condition: isPartnerCode },
+            },
+            {
+              name: 'partnerPhone',
+              type: 'text',
+              label: 'Telefon',
+              admin: { width: '50%', condition: isPartnerCode },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'commissionRate',
+              type: 'number',
+              label: 'Provisjon (%)',
+              min: MIN_COMMISSION_RATE,
+              max: MAX_COMMISSION_RATE,
+              admin: {
+                width: '50%',
+                condition: isPartnerCode,
+                description: COMMISSION_SCOPE_DESCRIPTION,
+              },
+              validate: validateCommissionRateField,
+            },
+            {
+              name: 'commissionBase',
+              type: 'select',
+              label: 'Beregn provisjon fra',
+              defaultValue: DEFAULT_COMMISSION_BASE,
+              options: COMMISSION_BASE_OPTIONS,
+              admin: {
+                width: '50%',
+                condition: isPartnerCode,
+                description: COMMISSION_BASE_DESCRIPTION,
+              },
+            },
+          ],
+        },
+        {
+          name: 'partnerNote',
+          type: 'textarea',
+          label: 'Internt notat',
+          admin: {
+            condition: isPartnerCode,
+            description: 'Avtalevilkår, kontaktinfo o.l. Vises aldri for kunden.',
+          },
+        },
+      ],
+    },
+    {
+      // «Partnerstatistikk» — read-only, and rendered by a SERVER component, so the figures
+      // are loaded during the page render instead of from the browser. That is what keeps
+      // this feature free of any new API route. Derived entirely from promo-code-usages and
+      // partner-payouts; nothing is stored on this document.
+      name: 'partnerStatistics',
+      type: 'ui',
+      admin: {
+        // The component also returns null for an ordinary code — this condition just hides
+        // the section immediately when the checkbox is toggled, without a save.
+        condition: isPartnerCode,
+        components: {
+          Field: '@/components/admin/partner/PartnerStatistics#default',
+        },
+      },
     },
     {
       // Derived from promo-code-usages, never stored. See the file header.

@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { PROMO_CURRENCY } from '@/lib/promo/constants'
+import { COMMISSION_BASE_OPTIONS, COMMISSION_SCOPE_DESCRIPTION } from '@/lib/partner/constants'
 
 /**
  * Successful promo-code uses (`Bruk av promokoder`) — the source of truth for whether a code
@@ -75,20 +76,130 @@ export const PromoCodeUsages: CollectionConfig = {
       ],
     },
     {
-      type: 'row',
+      // The frozen financial picture of the order this code was used on.
+      //
+      // Written once, by the usage writer, from the promo snapshot that was cross-checked
+      // against the amounts Kustom actually charged. Nothing here is ever recomputed: editing
+      // the promo code, renaming the partner, changing the rate or cancelling the order leaves
+      // every value below exactly as it was at the moment the payment was confirmed.
+      //
+      // Rows written before this section existed carry NULL in the new fields. They are not
+      // backfilled — see the file header — because the amounts could only be guessed.
+      type: 'collapsible',
+      label: 'Økonomisk øyeblikksbilde',
+      admin: {
+        description:
+          'Frosset da betalingen ble bekreftet. Endres aldri, heller ikke om rabattkoden redigeres senere. Tomme felter betyr en eldre registrering uten beløpsdata.',
+      },
       fields: [
         {
-          name: 'discountAmount',
-          type: 'number',
-          label: 'Rabattbeløp',
-          admin: { width: '50%', readOnly: true },
+          type: 'row',
+          fields: [
+            {
+              name: 'orderAmountBeforeDiscount',
+              type: 'number',
+              label: 'Varesum før rabatt',
+              admin: {
+                width: '50%',
+                readOnly: true,
+                description: 'Varer inkl. MVA, uten frakt.',
+              },
+            },
+            {
+              name: 'discountAmount',
+              type: 'number',
+              label: 'Rabattbeløp',
+              admin: { width: '50%', readOnly: true },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'orderAmountAfterDiscount',
+              type: 'number',
+              label: 'Varesum etter rabatt',
+              admin: {
+                width: '50%',
+                readOnly: true,
+                description: 'Varesum før rabatt minus rabatten. Fortsatt uten frakt.',
+              },
+            },
+            {
+              name: 'shippingAmount',
+              type: 'number',
+              label: 'Frakt',
+              admin: {
+                width: '50%',
+                readOnly: true,
+                description: 'Kun for regnskap og rapportering. Inngår aldri i provisjonen.',
+              },
+            },
+          ],
         },
         {
           name: 'currency',
           type: 'text',
           label: 'Valuta',
           defaultValue: PROMO_CURRENCY,
-          admin: { width: '50%', readOnly: true },
+          admin: { readOnly: true },
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'isPartnerUsage',
+              type: 'checkbox',
+              label: 'Partnerkode',
+              admin: {
+                width: '50%',
+                readOnly: true,
+                description: 'Var koden en partnerkode da bruken ble registrert?',
+              },
+            },
+            {
+              name: 'partnerNameSnapshot',
+              type: 'text',
+              label: 'Partner / eier',
+              admin: {
+                width: '50%',
+                readOnly: true,
+                description: 'Navnet slik det var på betalingstidspunktet.',
+              },
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'commissionRateSnapshot',
+              type: 'number',
+              label: 'Provisjonssats (%)',
+              admin: {
+                width: '50%',
+                readOnly: true,
+                description: 'Satsen som faktisk ble brukt. 0 for vanlige rabattkoder.',
+              },
+            },
+            {
+              name: 'commissionBaseSnapshot',
+              type: 'select',
+              label: 'Beregnet fra',
+              options: COMMISSION_BASE_OPTIONS,
+              admin: { width: '50%', readOnly: true },
+            },
+          ],
+        },
+        {
+          name: 'commissionAmount',
+          type: 'number',
+          label: 'Provisjon',
+          admin: {
+            readOnly: true,
+            description: COMMISSION_SCOPE_DESCRIPTION,
+          },
         },
       ],
     },
