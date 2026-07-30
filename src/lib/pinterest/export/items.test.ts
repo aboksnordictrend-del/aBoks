@@ -258,7 +258,7 @@ describe('product export', () => {
     assert.deepEqual(items.map((i) => i.mediaUrl), urls)
   })
 
-  it('gives every gallery image the same title, description and destination', () => {
+  it('shares the description and destination across a gallery, but never the title', () => {
     const { items } = build(
       {
         products: [
@@ -273,11 +273,15 @@ describe('product export', () => {
       },
       ONLY('products'),
     )
-    assert.equal(items[0].title, items[1].title)
+    // Pinterest only requires the titles to differ.
     assert.equal(items[0].description, items[1].description)
     assert.equal(items[0].destinationUrl, items[1].destinationUrl)
-    // No "Bilde 2" / "Photo 3" suffixes.
-    for (const row of items) assert.equal(row.title, 'aBoks')
+    assert.notEqual(items[0].title, items[1].title)
+    // The first row keeps the product's own copy; the second gets a natural variation.
+    assert.equal(items[0].title, 'aBoks')
+    assert.ok(items[1].title.length > 0)
+    // No "Bilde 2" / "Photo 3" / numeric suffixes anywhere.
+    for (const row of items) assert.ok(!/\d/.test(row.title), row.title)
   })
 
   it('emits the main image exactly once — it is gallery entry 0, not a separate row', () => {
@@ -408,19 +412,19 @@ describe('gallery sourceId', () => {
     )
   })
 
-  it('keeps ids unique across products that share an image', () => {
+  it('gives two products that share an image distinct ids, though only one row survives', () => {
     const shared = media('https://blob.example.com/shared.webp')
-    const { items } = build(
-      {
-        products: [
-          product({ id: 1, slug: 'a', images: [{ image: shared }] }),
-          product({ id: 2, slug: 'b', images: [{ image: shared }] }),
-        ],
-      },
-      ONLY('products'),
+    const a = product({ id: 1, slug: 'a', images: [{ image: shared }] })
+    const b = product({ id: 2, slug: 'b', images: [{ image: shared }] })
+
+    assert.notEqual(
+      productImageSourceId('1', shared, shared.url!),
+      productImageSourceId('2', shared, shared.url!),
     )
-    assert.equal(items.length, 2, 'different destinations, so both survive dedup')
-    assert.equal(new Set(items.map((i) => i.sourceId)).size, 2)
+    // One image is one Pin, whichever products reference it.
+    const { items } = build({ products: [a, b] }, ONLY('products'))
+    assert.equal(items.length, 1)
+    assert.equal(items[0].destinationUrl, 'https://aboks.no/produkter/a', 'first occurrence wins')
   })
 })
 
@@ -451,14 +455,16 @@ describe('variant export', () => {
     assert.equal(skipped[0].reason, 'Mangler eget bilde.')
   })
 
-  it('skips a variant that reuses the parent image', () => {
+  it('exports a variant that reuses the parent main image, and wins the duplicate', () => {
     const shared = 'https://blob.example.com/aboks-main.webp'
-    const { items, skipped } = build(
+    const { items } = build(
       { products: [product()], variants: [variant({ image: media(shared) })] },
-      ONLY('variants'),
+      ALL,
     )
-    assert.equal(items.length, 0)
-    assert.equal(skipped[0].reason, 'Bruker samme bilde som hovedproduktet.')
+    // One image, one Pin — and the variant outranks the product row for it.
+    assert.equal(items.length, 1)
+    assert.equal(items[0].sourceType, 'variant')
+    assert.equal(items[0].mediaUrl, shared)
   })
 
   it('skips a variant whose parent is unpublished', () => {
@@ -519,18 +525,22 @@ describe('variant export', () => {
     assert.ok(items.some((i) => i.mediaUrl === olive.url && i.sourceType === 'product'))
   })
 
-  it('only defers to a variant of the same product', () => {
+  it('lets a variant claim an image that another product also lists', () => {
     const shared = media('https://blob.example.com/shared.webp')
     const other = product({ id: 2, slug: 'annet', images: [{ image: shared }] })
-    const owner = product({ id: 1, slug: 'aboks', images: [{ image: media('https://blob.example.com/main.webp') }] })
-    const { items } = build(
+    const owner = product({
+      id: 1,
+      slug: 'aboks',
+      images: [{ image: media('https://blob.example.com/main.webp') }],
+    })
+    const { items, skipped } = build(
       { products: [owner, other], variants: [variant({ product: 1, image: shared })] },
       ALL,
     )
-    // Product 2's gallery keeps the image — the variant belongs to product 1.
-    assert.ok(
-      items.some((i) => i.sourceType === 'product' && i.destinationUrl.endsWith('/annet')),
-    )
+    const sharedRows = items.filter((i) => i.mediaUrl === shared.url)
+    assert.equal(sharedRows.length, 1, 'one image, one Pin — across products too')
+    assert.equal(sharedRows[0].sourceType, 'variant')
+    assert.ok(skipped.some((s) => s.sourceType === 'product' && /Duplikat/.test(s.reason)))
   })
 
   it('percent-encodes a SKU with characters that need it', () => {
@@ -599,54 +609,117 @@ describe('source selection', () => {
   })
 })
 
-describe('deduplication', () => {
-  it('keeps the curated homepage row when its copy genuinely differs', () => {
+describe('deduplication — one image, one Pin', () => {
+  const MAIN = 'https://blob.example.com/aboks-main.webp'
+
+  it('drops the homepage row when the image is already a product image', () => {
     const dupe = homepage({
       id: 'dupe',
-      imageUrl: 'https://blob.example.com/aboks-main.webp',
+      imageUrl: MAIN,
       destinationPath: '/produkter/aboks',
       title: 'Orden i skuffen på 30 sekunder',
     })
     const { items, skipped } = build({ products: [product()], homepage: [dupe] }, ALL)
     assert.equal(items.length, 1)
-    assert.equal(items[0].sourceType, 'homepage')
-    assert.equal(items[0].title, 'Orden i skuffen på 30 sekunder')
-    assert.ok(skipped.some((s) => s.reason.startsWith('Duplikat')))
+    assert.equal(items[0].sourceType, 'product', 'the catalogue is canonical')
+    assert.ok(skipped.some((s) => s.sourceType === 'homepage' && /Duplikat/.test(s.reason)))
   })
 
-  it('keeps the product row when the curated copy adds nothing', () => {
-    const echo = homepage({
-      id: 'echo',
-      imageUrl: 'https://blob.example.com/aboks-main.webp',
-      destinationPath: '/produkter/aboks',
-      // Identical to what the product row already produces.
-      title: 'aBoks',
-      description: 'Fast plass til batteriene.',
+  it('drops it even when the destination differs — the source must not matter', () => {
+    const elsewhere = homepage({
+      id: 'same-image',
+      imageUrl: MAIN,
+      destinationPath: '/slik-fungerer-det',
     })
-    const { items } = build({ products: [product()], homepage: [echo] }, ALL)
+    const { items, skipped } = build({ products: [product()], homepage: [elsewhere] }, ALL)
+    assert.equal(items.length, 1)
+    assert.equal(items[0].sourceType, 'product')
+    assert.ok(skipped.some((s) => s.sourceType === 'homepage'))
+  })
+
+  it('drops it even when the curated copy is richer', () => {
+    const curated = homepage({
+      id: 'curated',
+      imageUrl: MAIN,
+      destinationPath: '/produkter',
+      title: 'En helt annen og mye bedre tittel',
+      description: 'En helt annen beskrivelse.',
+    })
+    const { items } = build({ products: [product()], homepage: [curated] }, ALL)
     assert.equal(items.length, 1)
     assert.equal(items[0].sourceType, 'product')
   })
 
-  it('resolves a collision the same way regardless of which side is seen first', () => {
-    const pair = homepage({
-      id: 'x',
-      imageUrl: 'https://blob.example.com/aboks-main.webp',
-      destinationPath: '/produkter/aboks',
-      title: 'Kuratert tittel',
-    })
-    const a = build({ products: [product()], homepage: [pair] }, ALL)
-    const b = build({ homepage: [pair], products: [product()] }, ALL)
-    assert.deepEqual(a.items, b.items)
+  it('prefers the variant over a product image', () => {
+    const shared = media('https://blob.example.com/olive.webp')
+    const parent = product({ images: [{ image: shared }] })
+    const { items } = build({ products: [parent], variants: [variant({ image: shared })] }, ALL)
+    assert.equal(items.length, 1)
+    assert.equal(items[0].sourceType, 'variant')
   })
 
-  it('keeps rows that share an image but differ in destination', () => {
-    const same = homepage({
-      id: 'same-image',
-      imageUrl: 'https://blob.example.com/aboks-main.webp',
-      destinationPath: '/slik-fungerer-det',
-    })
-    assert.equal(build({ products: [product()], homepage: [same] }, ALL).items.length, 2)
+  it('prefers the variant over a homepage image', () => {
+    const url = 'https://blob.example.com/olive.webp'
+    const parent = product({ images: [{ image: media('https://blob.example.com/main.webp') }] })
+    const { items } = build(
+      {
+        products: [parent],
+        variants: [variant({ image: media(url) })],
+        homepage: [homepage({ id: 'olive-promo', imageUrl: url })],
+      },
+      ALL,
+    )
+    assert.equal(items.filter((i) => i.mediaUrl === url).length, 1)
+    assert.equal(items.find((i) => i.mediaUrl === url)!.sourceType, 'variant')
+  })
+
+  it('resolves a three-way duplicate down to the variant', () => {
+    const url = 'https://blob.example.com/everywhere.webp'
+    const parent = product({ images: [{ image: media(url) }] })
+    const { items, skipped } = build(
+      {
+        products: [parent],
+        variants: [variant({ image: media(url) })],
+        homepage: [homepage({ id: 'everywhere', imageUrl: url })],
+      },
+      ALL,
+    )
+    assert.equal(items.length, 1)
+    assert.equal(items[0].sourceType, 'variant')
+    // Both losers are reported, not silently dropped.
+    assert.equal(skipped.filter((s) => /variant-pin|Duplikat/.test(s.reason)).length, 2)
+  })
+
+  it('reports the duplicate in "Hoppet over" naming the surviving source', () => {
+    const dupe = homepage({ id: 'dupe', imageUrl: MAIN, destinationPath: '/produkter' })
+    const { skipped } = build({ products: [product()], homepage: [dupe] }, ALL)
+    const entry = skipped.find((s) => s.sourceType === 'homepage')!
+    assert.ok(entry, 'the dropped homepage row is listed')
+    assert.equal(entry.reason, 'Duplikat — samme bilde eksporteres allerede som produkt-pin.')
+  })
+
+  it('never emits the same image twice under two source badges', () => {
+    const url = 'https://blob.example.com/shared.webp'
+    const { items } = build(
+      {
+        products: [product({ images: [{ image: media(url) }] })],
+        variants: [variant({ image: media(url) })],
+        homepage: [homepage({ id: 'h', imageUrl: url })],
+      },
+      ALL,
+    )
+    const byImage = new Map<string, number>()
+    for (const row of items) byImage.set(row.mediaUrl, (byImage.get(row.mediaUrl) ?? 0) + 1)
+    for (const [image, count] of byImage) assert.equal(count, 1, image)
+  })
+
+  it('resolves a collision identically whichever side is built first', () => {
+    const shared = media('https://blob.example.com/aboks-main.webp')
+    const p = product({ images: [{ image: shared }] })
+    const h = homepage({ id: 'x', imageUrl: shared.url!, destinationPath: '/produkter/aboks' })
+    const a = build({ products: [p], homepage: [h] }, ALL)
+    const b = build({ homepage: [h], products: [p] }, ALL)
+    assert.deepEqual(a.items, b.items)
   })
 })
 

@@ -14,12 +14,29 @@ import {
   normalizeUrlForComparison,
   resolveMediaUrl,
 } from './urls'
+import { DEFAULT_PRODUCT_NAME, pickUniqueTitle, type TitleContext } from './titles'
 import type {
   PinterestExportItem,
   PinterestExportPreview,
   PinterestExportSkip,
   PinterestSourceSelection,
+  PinterestSourceType,
 } from './types'
+
+/**
+ * A row before its final title is chosen. `ctx` is what the title generator needs to phrase
+ * this row differently from every other row in the same export.
+ */
+interface DraftRow {
+  item: PinterestExportItem
+  ctx: TitleContext
+  /**
+   * Epoch milliseconds used only to order the export, newest first. Never reaches the CSV —
+   * Pinterest has no such column — and never leaves this module on the item itself.
+   * `undefined` means "no usable date", which sorts after everything dated.
+   */
+  sortTimestamp?: number
+}
 
 /** Pinterest's documented ceiling: "up to 200 images or videos at the same time". */
 export const PINTEREST_ROW_LIMIT = 200
@@ -66,10 +83,50 @@ function productTitle(product: Product): string {
   return normalizeText(product.seo?.title || product.title, TITLE_MAX)
 }
 
-/** The product's main image — the first row of the `images` array. */
-function mainImage(product: Product): Media | number | null {
-  const first = product.images?.[0]
-  return first?.image ?? null
+/** An ISO date string as epoch ms, or undefined when it is missing, blank or unparseable. */
+export function parseTimestamp(value: unknown): number | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined
+  const ms = Date.parse(value)
+  return Number.isFinite(ms) ? ms : undefined
+}
+
+/**
+ * When the image itself was added: `media.createdAt`, falling back to `media.updatedAt`.
+ *
+ * Deliberately the MEDIA document's date, not the product's — a photo added to an old product
+ * today is new content and belongs at the top. Returns undefined for an unresolved
+ * relationship (a bare id) or a document carrying no usable timestamp.
+ */
+export function mediaTimestamp(media: number | Media | null | undefined): number | undefined {
+  if (!media || typeof media !== 'object') return undefined
+  return parseTimestamp(media.createdAt) ?? parseTimestamp(media.updatedAt)
+}
+
+/**
+ * Newest image first.
+ *
+ * Recency is the primary key and source type is deliberately NOT part of it — a homepage image
+ * added this week outranks a product photo from last year. Ties fall back to the original
+ * index, which is the existing deterministic order (gallery order within a product, then
+ * products → variants → homepage), so an export with no dates at all is byte-identical to
+ * what it was before. Undated rows sort after every dated row.
+ */
+function sortByRecency(drafts: readonly DraftRow[]): DraftRow[] {
+  return drafts
+    .map((draft, index) => ({ draft, index }))
+    .sort((a, b) => {
+      const at = a.draft.sortTimestamp
+      const bt = b.draft.sortTimestamp
+      if (at !== undefined && bt !== undefined) {
+        if (at !== bt) return bt - at
+      } else if (at !== undefined) {
+        return -1
+      } else if (bt !== undefined) {
+        return 1
+      }
+      return a.index - b.index
+    })
+    .map((entry) => entry.draft)
 }
 
 /** FNV-1a (32-bit). Deterministic and dependency-free; only ever used to build an id. */
@@ -105,39 +162,45 @@ export function productImageSourceId(
   return `product:${productId}:url:${hash32(normalizeUrlForComparison(mediaUrl))}`
 }
 
-/** The dedup key: a normalized (image, destination) pair. */
-function pairKey(item: PinterestExportItem): string {
-  return JSON.stringify([
-    normalizeUrlForComparison(item.mediaUrl),
-    normalizeUrlForComparison(item.destinationUrl),
-  ])
+/**
+ * The dedup key: the normalized image URL, and nothing else.
+ *
+ * One physical image may only ever produce one Pin. The destination, the source type, the
+ * sourceId, the title and the description are all deliberately excluded — the same photograph
+ * pinned twice under two badges is exactly the duplicate Pinterest penalizes.
+ */
+function imageKey(item: PinterestExportItem): string {
+  return normalizeUrlForComparison(item.mediaUrl)
+}
+
+/** Lower rank wins. Variant → Product → Homepage. */
+const SOURCE_RANK: Record<PinterestSourceType, number> = {
+  variant: 0,
+  product: 1,
+  homepage: 2,
+}
+
+/** Norwegian noun for the winning source, used in the "Hoppet over" reason. */
+const SOURCE_NOUN: Record<PinterestSourceType, string> = {
+  variant: 'variant-pin',
+  product: 'produkt-pin',
+  homepage: 'forside-pin',
 }
 
 /**
- * Which of two rows that resolved to the same (image, destination) pair survives.
- *
- * Deterministic and independent of array order:
- *   • variant beats product — the variant row carries the colour name and colour-specific copy,
- *     so it is strictly the more specific description of the same photograph;
- *   • variant beats homepage, for the same reason;
- *   • homepage beats product ONLY when its curated title or description actually differs from
- *     the product's. A curated entry that says the same thing adds nothing, so the catalogue
- *     row — which stays in sync with Payload — wins;
- *   • two rows of the same type: the first one wins, which preserves gallery order.
+ * Which of two rows that resolved to the same image survives. Deterministic and independent of
+ * array order:
+ *   • variant first — it carries the colour name, the colour keyword and a link that
+ *     preselects that colour, so it is strictly the most specific row for that photograph;
+ *   • product next — the catalogue is the canonical source and stays in sync with Payload;
+ *   • homepage last — a curated entry only survives when the image appears nowhere else;
+ *   • equal rank: the first occurrence wins, which preserves gallery order.
  */
 export function preferItem(
   existing: PinterestExportItem,
   candidate: PinterestExportItem,
 ): PinterestExportItem {
-  if (existing.sourceType === candidate.sourceType) return existing
-  if (candidate.sourceType === 'variant') return candidate
-  if (existing.sourceType === 'variant') return existing
-
-  const [homepageRow, productRow] =
-    candidate.sourceType === 'homepage' ? [candidate, existing] : [existing, candidate]
-  const curatedDiffers =
-    homepageRow.title !== productRow.title || homepageRow.description !== productRow.description
-  return curatedDiffers ? homepageRow : productRow
+  return SOURCE_RANK[candidate.sourceType] < SOURCE_RANK[existing.sourceType] ? candidate : existing
 }
 
 /**
@@ -160,9 +223,9 @@ export function buildExportItems(
   const limit = options.limit ?? PINTEREST_ROW_LIMIT
   const homepage = input.homepage ?? PINTEREST_HOMEPAGE_ITEMS
 
-  const productRows: PinterestExportItem[] = []
-  const variantRows: PinterestExportItem[] = []
-  const homepageRows: PinterestExportItem[] = []
+  const productRows: DraftRow[] = []
+  const variantRows: DraftRow[] = []
+  const homepageRows: DraftRow[] = []
   const skipped: PinterestExportSkip[] = []
   /** variant row sourceId → the id of the product it belongs to. */
   const variantOwnerByRowId = new Map<string, string>()
@@ -170,13 +233,6 @@ export function buildExportItems(
   const publishedById = new Map<string, Product>()
   for (const product of input.products) {
     if (product.published) publishedById.set(String(product.id), product)
-  }
-
-  // Main image URL per product — needed both for the product row and to detect a variant that
-  // merely reuses the parent image.
-  const mainImageUrlById = new Map<string, string | null>()
-  for (const [id, product] of publishedById) {
-    mainImageUrlById.set(id, resolveMediaUrl(mainImage(product), baseUrl))
   }
 
   // ── Variants ────────────────────────────────────────────────────────────────────────────
@@ -220,18 +276,9 @@ export function buildExportItems(
         })
         continue
       }
-      // A variant whose image resolves to the parent's main image would produce a duplicate
-      // Pin with a different link — excluded by requirement, not merely deduplicated.
-      if (mediaUrl === mainImageUrlById.get(String(product.id))) {
-        skipped.push({
-          sourceType: 'variant',
-          sourceId,
-          label,
-          reason: 'Bruker samme bilde som hovedproduktet.',
-        })
-        continue
-      }
-
+      // A variant sharing a photograph with its parent gallery — including the main image —
+      // is NOT skipped here. Image identity is settled once, centrally, by the dedup pass
+      // below, where the variant outranks the product row for exactly this reason.
       const title = normalizeText(
         variant.displayName || `${product.title} – ${variant.name}`,
         TITLE_MAX,
@@ -250,13 +297,21 @@ export function buildExportItems(
 
       variantOwnerByRowId.set(sourceId, String(product.id))
       variantRows.push({
-        sourceType: 'variant',
-        sourceId,
-        title,
-        description: productDescription(product),
-        mediaUrl,
-        destinationUrl: canonicalUrl(path, baseUrl),
-        keywords: normalizeText(variant.name, KEYWORDS_MAX),
+        item: {
+          sourceType: 'variant',
+          sourceId,
+          title,
+          description: productDescription(product),
+          mediaUrl,
+          destinationUrl: canonicalUrl(path, baseUrl),
+          keywords: normalizeText(variant.name, KEYWORDS_MAX),
+        },
+        ctx: {
+          base: title,
+          productName: product.title || DEFAULT_PRODUCT_NAME,
+          colour: variant.name,
+        },
+        sortTimestamp: mediaTimestamp(variant.image),
       })
     }
   }
@@ -265,11 +320,11 @@ export function buildExportItems(
   // gallery image in this set is skipped: the variant row is the same photograph with a more
   // specific title, the colour as a keyword and the colour preselected on the product page.
   const variantMediaByProduct = new Map<string, Set<string>>()
-  for (const row of variantRows) {
-    const owner = variantOwnerByRowId.get(row.sourceId)
+  for (const { item } of variantRows) {
+    const owner = variantOwnerByRowId.get(item.sourceId)
     if (!owner) continue
     const set = variantMediaByProduct.get(owner) ?? new Set<string>()
-    set.add(normalizeUrlForComparison(row.mediaUrl))
+    set.add(normalizeUrlForComparison(item.mediaUrl))
     variantMediaByProduct.set(owner, set)
   }
 
@@ -346,13 +401,20 @@ export function buildExportItems(
         }
 
         productRows.push({
-          sourceType: 'product',
-          sourceId: productImageSourceId(productId, row.image, mediaUrl),
-          title,
-          description,
-          mediaUrl,
-          destinationUrl,
-          keywords: '',
+          item: {
+            sourceType: 'product',
+            sourceId: productImageSourceId(productId, row.image, mediaUrl),
+            title,
+            description,
+            mediaUrl,
+            destinationUrl,
+            keywords: '',
+          },
+          // Every gallery image of a product shares this context; the generator is what makes
+          // their final titles differ.
+          ctx: { base: title, productName: product.title || DEFAULT_PRODUCT_NAME },
+          // The image's own date, so a photo added today to an old product sorts to the top.
+          sortTimestamp: mediaTimestamp(row.image),
         })
       }
     }
@@ -395,51 +457,68 @@ export function buildExportItems(
       }
 
       homepageRows.push({
-        sourceType: 'homepage',
-        sourceId,
-        title,
-        description: normalizeText(entry.description, DESCRIPTION_MAX),
-        mediaUrl,
-        destinationUrl,
-        keywords: normalizeText(entry.keywords, KEYWORDS_MAX),
+        item: {
+          sourceType: 'homepage',
+          sourceId,
+          title,
+          description: normalizeText(entry.description, DESCRIPTION_MAX),
+          mediaUrl,
+          destinationUrl,
+          keywords: normalizeText(entry.keywords, KEYWORDS_MAX),
+        },
+        ctx: { base: title, productName: DEFAULT_PRODUCT_NAME },
+        // Optional curated date; without one the entry keeps its configured order, below
+        // everything that does have a date.
+        sortTimestamp: parseTimestamp(entry.createdAt),
       })
     }
   }
 
-  // ── Centralized deduplication on the normalized (image, destination) pair ───────────────
-  // One pass over products → variants → homepage. On a collision `preferItem` picks the
-  // winner and the loser is reported as a skip, so nothing disappears silently. The winner
-  // keeps the loser's slot, which preserves gallery order in the preview.
+  // ── Centralized deduplication on the image alone ────────────────────────────────────────
+  // One pass over products → variants → homepage, keyed only on the normalized image URL. On
+  // a collision `preferItem` picks the winner by source rank and the loser is reported as a
+  // skip, so nothing disappears silently. The winner keeps the loser's slot, which preserves
+  // gallery order in the preview.
   const collected = [...productRows, ...variantRows, ...homepageRows]
   const slotByKey = new Map<string, number>()
-  const unique: (PinterestExportItem | null)[] = []
+  const unique: DraftRow[] = []
 
-  for (const item of collected) {
-    const key = pairKey(item)
+  for (const draft of collected) {
+    const key = imageKey(draft.item)
     const slot = slotByKey.get(key)
     if (slot === undefined) {
       slotByKey.set(key, unique.length)
-      unique.push(item)
+      unique.push(draft)
       continue
     }
 
-    const existing = unique[slot]!
-    const winner = preferItem(existing, item)
-    const loser = winner === existing ? item : existing
-    unique[slot] = winner
+    const existing = unique[slot]
+    const winnerItem = preferItem(existing.item, draft.item)
+    const loser = winnerItem === existing.item ? draft : existing
+    unique[slot] = winnerItem === existing.item ? existing : draft
     skipped.push({
-      sourceType: loser.sourceType,
-      sourceId: loser.sourceId,
-      label: loser.title,
-      reason: 'Duplikat — samme bilde og samme mål-URL.',
+      sourceType: loser.item.sourceType,
+      sourceId: loser.item.sourceId,
+      label: loser.item.title,
+      reason: `Duplikat — samme bilde eksporteres allerede som ${SOURCE_NOUN[unique[slot].item.sourceType]}.`,
     })
   }
 
-  const deduped = unique.filter((i): i is PinterestExportItem => i !== null)
+  // ── Newest images first ─────────────────────────────────────────────────────────────────
+  // After dedup (so a duplicate can never displace the row that actually survived) and before
+  // the row cap (so the cap keeps the NEWEST 200, not the first 200 encountered).
+  const ordered = sortByRecency(unique)
 
   // ── Pinterest's 200-row ceiling ─────────────────────────────────────────────────────────
-  const items = deduped.slice(0, limit)
-  const omitted = deduped.length - items.length
+  const capped = ordered.slice(0, limit)
+  const omitted = ordered.length - capped.length
+
+  // ── Unique titles ───────────────────────────────────────────────────────────────────────
+  // Applied last, so no phrasing is spent on a row that dedup or the row cap removed.
+  // Pinterest rejects a file containing the same Title twice, and `used` is shared across
+  // every row, so uniqueness holds across products and sources — not just within a gallery.
+  const usedTitles = new Set<string>()
+  const items = capped.map(({ item, ctx }) => ({ ...item, title: pickUniqueTitle(ctx, usedTitles) }))
 
   return {
     items,

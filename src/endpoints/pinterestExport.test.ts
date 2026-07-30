@@ -65,6 +65,38 @@ function makeReq({ user, query = {}, body, products = [productDoc], variants = [
 
 const call = (endpoint: Endpoint, opts: MockOpts) => endpoint.handler!(makeReq(opts))
 
+/** Split one CSV record into fields, honouring RFC 4180 quoting. */
+function csvFields(line: string): string[] {
+  const fields: string[] = []
+  let field = ''
+  let quoted = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') {
+        field += '"'
+        i++
+      } else if (ch === '"') {
+        quoted = false
+      } else {
+        field += ch
+      }
+    } else if (ch === '"') {
+      quoted = true
+    } else if (ch === ',') {
+      fields.push(field)
+      field = ''
+    } else {
+      field += ch
+    }
+  }
+  fields.push(field)
+  return fields
+}
+
+/** Data rows of a CSV body, as parsed field arrays. */
+const csvRows = (body: string) => body.trimEnd().split('\r\n').slice(1).map(csvFields)
+
 function item(overrides: Partial<PinterestExportItem> = {}): PinterestExportItem {
   return {
     sourceType: 'product',
@@ -361,6 +393,69 @@ describe('pinterest export — edits reach the file', () => {
     const text = await res.text()
     assert.ok(text.includes('Redigert tittel æøå'))
     assert.equal(text.trimEnd().split('\r\n').length, 2)
+  })
+
+  it('serves the CSV in exactly the previewed order, newest image first', async () => {
+    const products = [
+      {
+        ...productDoc,
+        images: [
+          { image: { id: 1, alt: 'a', url: 'https://blob.example.com/gammel.webp', createdAt: '2023-01-01T00:00:00.000Z' } },
+          { image: { id: 2, alt: 'a', url: 'https://blob.example.com/nyest.webp', createdAt: '2026-07-28T00:00:00.000Z' } },
+          { image: { id: 3, alt: 'a', url: 'https://blob.example.com/udatert.webp' } },
+          { image: { id: 4, alt: 'a', url: 'https://blob.example.com/midt.webp', createdAt: '2025-03-03T00:00:00.000Z' } },
+        ],
+      },
+    ]
+    const opts = { user: { role: 'admin' }, products, variants: [] as unknown[] }
+
+    const preview = await call(pinterestExportPreviewEndpoint, opts)
+    const { items } = (await preview.json()) as { items: PinterestExportItem[] }
+    const previewOrder = items.map((i) => i.mediaUrl)
+
+    const csv = await call(pinterestExportEndpoint, { ...opts, body: { board: 'Tavle' } })
+    const csvOrder = csvRows(await csv.text()).map((fields) => fields[1])
+
+    assert.deepEqual(csvOrder, previewOrder, 'preview and CSV must agree row for row')
+    assert.deepEqual(previewOrder.slice(0, 3), [
+      'https://blob.example.com/nyest.webp',
+      'https://blob.example.com/midt.webp',
+      'https://blob.example.com/gammel.webp',
+    ])
+    // The undated image trails every dated one, ahead of the curated homepage rows.
+    assert.equal(previewOrder[3], 'https://blob.example.com/udatert.webp')
+  })
+
+  it('never writes the same Title twice — Pinterest rejects a file that does', async () => {
+    // A wide export: two products with real galleries, a variant and the curated homepage list.
+    const products = [
+      {
+        ...productDoc,
+        images: Array.from({ length: 12 }, (_, i) => ({
+          image: { id: 100 + i, alt: 'a', url: `https://blob.example.com/p1-${i}.webp` },
+        })),
+      },
+      {
+        ...productDoc,
+        id: 2,
+        slug: 'aboks-vegg',
+        images: Array.from({ length: 12 }, (_, i) => ({
+          image: { id: 200 + i, alt: 'a', url: `https://blob.example.com/p2-${i}.webp` },
+        })),
+      },
+    ]
+
+    const res = await call(pinterestExportEndpoint, {
+      user: { role: 'admin' },
+      body: { board: 'Tavle' },
+      products,
+    })
+    assert.equal(res.status, 200)
+
+    const titles = csvRows(await res.text()).map((fields) => fields[0].toLowerCase())
+    assert.ok(titles.length >= 25, `expected a wide export, got ${titles.length} rows`)
+    assert.equal(new Set(titles).size, titles.length, 'every Title in the file is unique')
+    for (const t of titles) assert.ok(!/\b(bilde|photo|image)\s*\d/.test(t), t)
   })
 
   it('matches an edit to the right gallery image, not to its sibling', async () => {

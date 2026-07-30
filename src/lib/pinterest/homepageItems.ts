@@ -9,7 +9,9 @@
 //   • product-focused promotional imagery only (the product in use, or the product itself);
 //   • the image must already be published on the live site and publicly reachable over https;
 //   • `destinationPath` must be an existing canonical route — do not invent one;
-//   • keep titles ≤ 100 and descriptions ≤ 500 characters (they are truncated otherwise).
+//   • keep titles ≤ 100 and descriptions ≤ 500 characters (they are truncated otherwise);
+//   • set `createdAt` if the image should sort by its own date — the export lists newest
+//     first, and undated entries follow the dated ones in the order written here.
 
 export interface PinterestHomepageItem {
   /** Stable id. Used as the export's sourceId, so changing it re-creates the row identity. */
@@ -22,6 +24,13 @@ export interface PinterestHomepageItem {
   destinationPath: string
   /** Comma-separated keyword list, or ''. */
   keywords: string
+  /**
+   * Optional ISO date for when this promotional image was produced, e.g. '2026-07-15'.
+   * The export sorts newest first; entries without a date keep the order they appear in
+   * below and are placed after every dated row. Set it when you add fresh campaign imagery
+   * that should lead the export.
+   */
+  createdAt?: string
 }
 
 const BLOB = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com'

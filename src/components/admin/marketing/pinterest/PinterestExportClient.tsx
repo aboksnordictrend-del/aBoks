@@ -324,6 +324,8 @@ export default function PinterestExportClient() {
       )}
 
       {!noSources && phase === 'ready' && items.length > 0 && (
+        <>
+        <p className={styles.hint}>Sortering: Nyeste først</p>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -430,6 +432,7 @@ export default function PinterestExportClient() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* ── Skipped ─────────────────────────────────────────────────────────────────── */}
