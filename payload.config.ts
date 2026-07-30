@@ -28,6 +28,9 @@ import { metaExpensesEndpoint } from './src/endpoints/metaExpenses'
 import { googleSyncEndpoint } from './src/endpoints/googleSync'
 import { googleExpensesEndpoint } from './src/endpoints/googleExpenses'
 import { googleStatusEndpoint } from './src/endpoints/googleStatus'
+import { pinterestSyncEndpoint } from './src/endpoints/pinterestSync'
+import { pinterestExpensesEndpoint } from './src/endpoints/pinterestExpenses'
+import { pinterestStatusEndpoint } from './src/endpoints/pinterestStatus'
 import { buildCsrfOrigins } from './src/lib/csrfOrigins'
 import { resolveApplicationOrigin } from './src/lib/appOrigin'
 
@@ -99,7 +102,7 @@ export default buildConfig({
   globals: [EconomySettings],
   // Server-side, auth-guarded endpoints. analytics → /api/analytics; admin-only marketing:
   // channel catalog, plus per-provider detail data and sync under
-  // /api/admin/integrations/{meta,google}/….
+  // /api/admin/integrations/{meta,google,pinterest}/….
   endpoints: [
     analyticsEndpoint,
     metaSyncEndpoint,
@@ -108,6 +111,9 @@ export default buildConfig({
     googleSyncEndpoint,
     googleExpensesEndpoint,
     googleStatusEndpoint,
+    pinterestSyncEndpoint,
+    pinterestExpensesEndpoint,
+    pinterestStatusEndpoint,
   ],
   // Plugin must always be registered so withPayload includes VercelBlobClientUploadHandler
   // in the importMap at build time. BLOB_READ_WRITE_TOKEN is a runtime-only Vercel env var

@@ -688,7 +688,7 @@ export interface MarketingExpense {
    * Kostnadsdato. Uten periode nedenfor teller hele beløpet på denne datoen.
    */
   date: string;
-  channel: 'meta' | 'google' | 'tiktok' | 'snapchat' | 'influencer' | 'annet';
+  channel: 'meta' | 'google' | 'pinterest' | 'tiktok' | 'snapchat' | 'influencer' | 'annet';
   /**
    * Beløpet du faktisk betalte, inkludert MVA.
    */
@@ -712,11 +712,11 @@ export interface MarketingExpense {
   periodFrom?: string | null;
   periodTo?: string | null;
   /**
-   * Manuell med mindre den er importert automatisk fra Meta eller Google Ads.
+   * Manuell med mindre den er importert automatisk fra Meta, Google Ads eller Pinterest Ads.
    */
-  source?: ('manual' | 'meta-api' | 'google-ads') | null;
+  source?: ('manual' | 'meta-api' | 'google-ads' | 'pinterest-ads') | null;
   /**
-   * Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11 eller google:1234567890:2026-07-11.
+   * Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11, google:1234567890:2026-07-11 eller pinterest:549755885175:2026-07-11.
    */
   externalKey?: string | null;
   externalAccountId?: string | null;

@@ -49,8 +49,8 @@ describe('marketing channel catalog', () => {
   })
 
   it('marks not-yet-available channels as "Kommer snart" with no href', () => {
-    const pinterest = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'pinterest')!
-    const card = buildChannelCard(pinterest, false)
+    const tiktok = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'tiktok')!
+    const card = buildChannelCard(tiktok, false)
     assert.equal(card.status, STATUS.comingSoon)
     assert.equal(card.href, null)
     assert.equal(card.enabled, false)
@@ -144,6 +144,77 @@ describe('Google Ads card (#15)', () => {
   })
 })
 
+describe('Pinterest Ads card', () => {
+  const pinterest = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'pinterest')!
+
+  const CONFIGURED_ENV = {
+    PINTEREST_ACCESS_TOKEN: 'token',
+    PINTEREST_AD_ACCOUNT_ID: '549755885175',
+  }
+
+  it('is a live channel, not a "Kommer snart" placeholder', () => {
+    assert.equal(pinterest.title, 'Pinterest Ads')
+    assert.equal(pinterest.available, true)
+    assert.equal(pinterest.description, 'Synkroniser annonseringskostnader fra Pinterest Ads.')
+    assert.ok(!/Kommer snart/i.test(pinterest.description))
+  })
+
+  it('points at its own detail route', () => {
+    assert.equal(pinterest.href, MARKETING_ROUTES.pinterest)
+    assert.equal(pinterest.href, '/admin/collections/marketing-expenses/pinterest')
+  })
+
+  it('counts only pinterest-ads rows, so manual entries never inflate the total', () => {
+    assert.equal(pinterest.sourceValue, 'pinterest-ads')
+    assert.equal(pinterest.channelValue, 'pinterest')
+  })
+
+  it('reports "Ikke konfigurert" — enabled false, but still openable — without env', () => {
+    const configured = isChannelConfigured(pinterest, {})
+    assert.equal(configured, false)
+    const card = buildChannelCard(pinterest, configured)
+    assert.equal(card.status, STATUS.notConfigured)
+    assert.equal(card.enabled, false)
+    // Still linked: the panel is where the missing configuration is explained.
+    assert.equal(card.href, MARKETING_ROUTES.pinterest)
+  })
+
+  it('reports "Tilkoblet" with a summary when the env vars are present', () => {
+    const configured = isChannelConfigured(pinterest, CONFIGURED_ENV)
+    assert.equal(configured, true)
+    const card = buildChannelCard(pinterest, configured, {
+      totalSpend: 987.65,
+      days: 7,
+      lastSyncedAt: '2026-07-30T08:00:00.000Z',
+      firstDate: '2026-07-24',
+      lastDate: '2026-07-30',
+    })
+    assert.equal(card.status, 'Tilkoblet')
+    assert.equal(card.enabled, true)
+    assert.equal(card.summary.totalSpend, 987.65)
+    assert.equal(card.summary.days, 7)
+    assert.equal(card.summary.firstDate, '2026-07-24')
+  })
+
+  it('does not require the optional app credentials', () => {
+    assert.ok(!pinterest.envKeys.includes('PINTEREST_APP_ID'))
+    assert.ok(!pinterest.envKeys.includes('PINTEREST_APP_SECRET'))
+    assert.equal(isChannelConfigured(pinterest, CONFIGURED_ENV), true)
+  })
+
+  it('treats a blank env var as not configured', () => {
+    assert.equal(
+      isChannelConfigured(pinterest, { ...CONFIGURED_ENV, PINTEREST_ACCESS_TOKEN: '  ' }),
+      false,
+    )
+  })
+
+  it('offers the quick-sync endpoint only when connected', () => {
+    assert.equal(buildChannelCard(pinterest, true).syncEndpoint, MARKETING_API.pinterestSync)
+    assert.equal(buildChannelCard(pinterest, false).syncEndpoint, null)
+  })
+})
+
 describe('quick "Oppdater" availability across channels', () => {
   it('every card exposes a syncEndpoint field; coming-soon channels never get one', () => {
     for (const def of MARKETING_CHANNEL_DEFS) {
@@ -151,7 +222,7 @@ describe('quick "Oppdater" availability across channels', () => {
       // The field is always present (the card UI reads it to enable/disable the action).
       assert.ok('syncEndpoint' in card)
       if (!def.available) {
-        // Pinterest / TikTok: listed but not buildable → no quick sync even if "configured".
+        // TikTok: listed but not buildable → no quick sync even if "configured".
         assert.equal(card.syncEndpoint, null)
       }
     }
@@ -161,7 +232,7 @@ describe('quick "Oppdater" availability across channels', () => {
     const byId = Object.fromEntries(MARKETING_CHANNEL_DEFS.map((d) => [d.id, d]))
     assert.equal(byId.meta.syncEndpoint, MARKETING_API.metaSync)
     assert.equal(byId.google.syncEndpoint, MARKETING_API.googleSync)
-    assert.equal(byId.pinterest.syncEndpoint, null)
+    assert.equal(byId.pinterest.syncEndpoint, MARKETING_API.pinterestSync)
     assert.equal(byId.tiktok.syncEndpoint, null)
   })
 })

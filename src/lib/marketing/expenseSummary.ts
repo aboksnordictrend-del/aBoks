@@ -1,5 +1,5 @@
 // Provider-neutral summary maths for an imported marketing-expenses table (Meta Ads,
-// Google Ads, …). No I/O and no Payload types, so it is fully unit-testable.
+// Google Ads, Pinterest Ads, …). No I/O and no Payload types, so it is fully unit-testable.
 //
 // The totals here are *computed* from the displayed rows — they are never written back as a
 // MarketingExpense, so analytics can never double-count them.
@@ -18,7 +18,7 @@ export interface ExpenseRow {
   amount: number
   /** Amount excl. MVA, NOK. */
   amountExVat: number
-  /** 'manual' | 'meta-api' | 'google-ads' | … */
+  /** 'manual' | 'meta-api' | 'google-ads' | 'pinterest-ads' | … */
   source: string
   description?: string | null
   /** ISO timestamp of the last sync for imported rows. */

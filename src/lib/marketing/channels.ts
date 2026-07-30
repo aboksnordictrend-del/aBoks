@@ -1,4 +1,4 @@
-// Extensible marketing-channel catalog. Adding a future channel (Google/Pinterest/TikTok)
+// Extensible marketing-channel catalog. Adding a future channel (TikTok/Snapchat/…)
 // is a matter of appending a definition here and — once it has a sync — a detail view;
 // the catalog page and its data endpoint iterate this list and need no rewrite.
 //
@@ -15,12 +15,13 @@ export const MARKETING_ROUTES = {
   catalog: ADMIN_BASE,
   meta: `${ADMIN_BASE}/meta`,
   google: `${ADMIN_BASE}/google`,
+  pinterest: `${ADMIN_BASE}/pinterest`,
   all: `${ADMIN_BASE}/all`,
 } as const
 
 /**
- * API paths. `metaSync` is the existing, unchanged sync endpoint; the Google Ads endpoints
- * follow the same `/api/admin/integrations/{provider}/…` convention.
+ * API paths. `metaSync` is the existing, unchanged sync endpoint; the Google Ads and
+ * Pinterest Ads endpoints follow the same `/api/admin/integrations/{provider}/…` convention.
  */
 export const MARKETING_API = {
   channels: '/api/admin/marketing/channels',
@@ -29,6 +30,9 @@ export const MARKETING_API = {
   googleExpenses: '/api/admin/integrations/google/expenses',
   googleSync: '/api/admin/integrations/google/sync',
   googleStatus: '/api/admin/integrations/google/status',
+  pinterestExpenses: '/api/admin/integrations/pinterest/expenses',
+  pinterestSync: '/api/admin/integrations/pinterest/sync',
+  pinterestStatus: '/api/admin/integrations/pinterest/status',
 } as const
 
 /** Status labels (Norwegian Bokmål) shown on a channel card. */
@@ -104,8 +108,9 @@ const EMPTY_SUMMARY: MarketingChannelSummary = {
   lastDate: null,
 }
 
-// Meta Ads and Google Ads are live. The rest are declared so the catalog already shows the
-// roadmap; they render as "Kommer snart" and are disabled until a sync + detail page lands.
+// Meta Ads, Google Ads and Pinterest Ads are live. The rest are declared so the catalog
+// already shows the roadmap; they render as "Kommer snart" and are disabled until a sync +
+// detail page lands.
 export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
   {
     id: 'meta',
@@ -141,14 +146,17 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
   {
     id: 'pinterest',
     title: 'Pinterest Ads',
-    description: 'Kommer snart: synkroniser annonseringskostnader fra Pinterest Ads.',
-    // No dedicated channel value yet — falls back to "annet" until added to MARKETING_CHANNELS.
+    description: 'Synkroniser annonseringskostnader fra Pinterest Ads.',
     channelValue: 'pinterest',
     sourceValue: 'pinterest-ads',
-    href: null,
-    syncEndpoint: null,
-    envKeys: [],
-    available: false,
+    href: MARKETING_ROUTES.pinterest,
+    syncEndpoint: MARKETING_API.pinterestSync,
+    // PINTEREST_APP_ID / PINTEREST_APP_SECRET are deliberately not required: a v5 call
+    // authenticates with the bearer token alone, so requiring the app credentials would mark
+    // a valid token-based setup as "Ikke konfigurert". Same reasoning as
+    // GOOGLE_ADS_LOGIN_CUSTOMER_ID above. See src/lib/pinterest/config.ts.
+    envKeys: ['PINTEREST_ACCESS_TOKEN', 'PINTEREST_AD_ACCOUNT_ID'],
+    available: true,
   },
   {
     id: 'tiktok',

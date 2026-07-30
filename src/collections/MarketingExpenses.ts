@@ -46,6 +46,10 @@ export const MarketingExpenses: CollectionConfig = {
           Component: '@/components/admin/marketing/google/GoogleMarketingView#default',
           path: '/google',
         },
+        pinterest: {
+          Component: '@/components/admin/marketing/pinterest/PinterestMarketingView#default',
+          path: '/pinterest',
+        },
         all: {
           Component: '@/components/admin/marketing/AllExpensesView#default',
           path: '/all',
@@ -147,10 +151,10 @@ export const MarketingExpenses: CollectionConfig = {
       },
     },
     // --- Synkronisering (teknisk) -------------------------------------------------
-    // Populated only by an automatic sync (Meta, Google Ads). Manual records leave these
-    // empty and are always treated as `source: 'manual'`. Kept read-only + collapsed so
-    // manual entry stays uncluttered. Never overwritten for a manual record.
-    // See src/lib/meta/sync.ts and src/lib/google/sync.ts.
+    // Populated only by an automatic sync (Meta, Google Ads, Pinterest Ads). Manual records
+    // leave these empty and are always treated as `source: 'manual'`. Kept read-only +
+    // collapsed so manual entry stays uncluttered. Never overwritten for a manual record.
+    // See src/lib/meta/sync.ts, src/lib/google/sync.ts and src/lib/pinterest/sync.ts.
     {
       name: 'source',
       type: 'select',
@@ -161,11 +165,13 @@ export const MarketingExpenses: CollectionConfig = {
         { label: 'Manuell', value: 'manual' },
         { label: 'Meta API', value: 'meta-api' },
         { label: 'Google Ads API', value: 'google-ads' },
+        { label: 'Pinterest Ads API', value: 'pinterest-ads' },
       ],
       admin: {
         readOnly: true,
         position: 'sidebar',
-        description: 'Manuell med mindre den er importert automatisk fra Meta eller Google Ads.',
+        description:
+          'Manuell med mindre den er importert automatisk fra Meta, Google Ads eller Pinterest Ads.',
       },
     },
     {
@@ -173,7 +179,10 @@ export const MarketingExpenses: CollectionConfig = {
       label: 'Synkronisering (automatisk)',
       admin: {
         initCollapsed: true,
-        condition: (data) => data?.source === 'meta-api' || data?.source === 'google-ads',
+        condition: (data) =>
+          data?.source === 'meta-api' ||
+          data?.source === 'google-ads' ||
+          data?.source === 'pinterest-ads',
       },
       fields: [
         {
@@ -185,7 +194,7 @@ export const MarketingExpenses: CollectionConfig = {
           admin: {
             readOnly: true,
             description:
-              'Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11 eller google:1234567890:2026-07-11.',
+              'Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11, google:1234567890:2026-07-11 eller pinterest:549755885175:2026-07-11.',
           },
         },
         {

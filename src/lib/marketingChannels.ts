@@ -5,6 +5,7 @@
 export const MARKETING_CHANNELS = [
   { value: 'meta', label: 'Meta Ads' },
   { value: 'google', label: 'Google Ads' },
+  { value: 'pinterest', label: 'Pinterest Ads' },
   { value: 'tiktok', label: 'TikTok Ads' },
   { value: 'snapchat', label: 'Snapchat Ads' },
   { value: 'influencer', label: 'Influencer' },
