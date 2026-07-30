@@ -26,7 +26,12 @@ import type { PinterestExportItem, PinterestSourceSelection } from '@/lib/pinter
 /** 200 rows of edited copy, with headroom. Anything larger is a malformed or hostile body. */
 const MAX_BODY_BYTES = 500_000
 
-const ALL_SOURCES: PinterestSourceSelection = { products: true, variants: true, homepage: true }
+const ALL_SOURCES: PinterestSourceSelection = {
+  products: true,
+  variants: true,
+  homepage: true,
+  blob: true,
+}
 
 function requireAdmin(req: PayloadRequest): Response | null {
   if (!req.user) {
@@ -47,6 +52,7 @@ export function parseSources(raw: unknown): PinterestSourceSelection {
     products: wanted.has('products'),
     variants: wanted.has('variants'),
     homepage: wanted.has('homepage'),
+    blob: wanted.has('blob'),
   }
 }
 
@@ -55,16 +61,25 @@ function parseSourcesObject(raw: unknown): PinterestSourceSelection {
   if (!raw || typeof raw !== 'object') return { ...ALL_SOURCES }
   const obj = raw as Record<string, unknown>
   const pick = (k: keyof PinterestSourceSelection) => obj[k] !== false
-  return { products: pick('products'), variants: pick('variants'), homepage: pick('homepage') }
+  return {
+    products: pick('products'),
+    variants: pick('variants'),
+    homepage: pick('homepage'),
+    blob: pick('blob'),
+  }
 }
 
-/** One row as the preview submits it back. Only the three text fields are honoured. */
+/**
+ * One row as the preview submits it back. Only the three text fields and a destination
+ * *chosen from the server's own allowlist* are honoured — never a URL of the client's making.
+ */
 interface SubmittedRow {
   sourceType?: unknown
   sourceId?: unknown
   title?: unknown
   description?: unknown
   keywords?: unknown
+  destinationUrl?: unknown
   enabled?: unknown
 }
 
@@ -95,8 +110,11 @@ async function readBody(req: PayloadRequest): Promise<Record<string, unknown>> {
 export function applySubmittedRows(
   serverItems: readonly PinterestExportItem[],
   submitted: readonly SubmittedRow[],
+  /** Destinations the server itself produced. A value outside this set is ignored. */
+  allowedDestinations: readonly string[] = [],
 ): PinterestExportItem[] {
   const byKey = new Map(serverItems.map((i) => [`${i.sourceType}:${i.sourceId}`, i]))
+  const allowed = new Set(allowedDestinations)
   const used = new Set<string>()
   const out: PinterestExportItem[] = []
 
@@ -109,8 +127,15 @@ export function applySubmittedRows(
     used.add(key)
 
     const title = typeof row.title === 'string' ? normalizeText(row.title, TITLE_MAX) : base.title
+    // Exact membership in the server's allowlist, never a parsed or "sanitized" client URL.
+    const destinationUrl =
+      typeof row.destinationUrl === 'string' && allowed.has(row.destinationUrl)
+        ? row.destinationUrl
+        : base.destinationUrl
+
     out.push({
       ...base,
+      destinationUrl,
       // An edit that empties the title would produce an invalid Pin; fall back to the original.
       title: title || base.title,
       description:
@@ -188,9 +213,16 @@ export const pinterestExportEndpoint: Endpoint = {
         sources,
       })
 
+      // preview here is a FRESH server-side derivation — the Blob folder is re-listed and the
+      // catalogue re-read on every POST, so a submitted row can only ever select from what
+      // the server just computed. Client-supplied media URLs are never read at all.
       const submitted = Array.isArray(body.rows) ? (body.rows as SubmittedRow[]) : null
       const chosen = submitted
-        ? applySubmittedRows(preview.items, submitted)
+        ? applySubmittedRows(
+            preview.items,
+            submitted,
+            preview.destinationOptions.map((o) => o.url),
+          )
         : [...preview.items]
 
       // preview.items is already capped, but an explicit slice keeps the guarantee local to

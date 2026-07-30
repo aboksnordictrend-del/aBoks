@@ -5,14 +5,18 @@
 // are indistinguishable downstream. Adding a fourth source means producing more items — no
 // change to the CSV writer, the preview table or the endpoint.
 
-/** Which part of the site an item was derived from. */
-export type PinterestSourceType = 'product' | 'variant' | 'homepage'
+/**
+ * Which part of the site an item was derived from. `blob` is the curated `Pinterest/` folder
+ * in Vercel Blob — supplementary imagery that belongs to no product, variant or homepage entry.
+ */
+export type PinterestSourceType = 'product' | 'variant' | 'homepage' | 'blob'
 
-/** The three source toggles on the export page. */
+/** The four source toggles on the export page. */
 export interface PinterestSourceSelection {
   products: boolean
   variants: boolean
   homepage: boolean
+  blob: boolean
 }
 
 /**
@@ -51,6 +55,7 @@ export interface PinterestExportCounts {
   products: number
   variants: number
   homepage: number
+  blob: number
   total: number
 }
 
@@ -65,4 +70,23 @@ export interface PinterestExportPreview {
   baseUrl: string
   /** Set when NEXT_PUBLIC_SERVER_URL was unusable and the production fallback was applied. */
   baseUrlFallback: boolean
+  /**
+   * Non-fatal problems worth showing above the table — currently only a failed Blob listing.
+   * A warning never stops the other sources from rendering.
+   */
+  warnings: string[]
+  /**
+   * Every destination a row is allowed to point at: `/produkter` plus one entry per published
+   * product. This is the allowlist the destination picker offers and the POST re-validates
+   * against, so a crafted body can never redirect a Pin off the canonical domain.
+   */
+  destinationOptions: PinterestDestinationOption[]
+}
+
+/** One entry in the destination allowlist. */
+export interface PinterestDestinationOption {
+  /** Absolute canonical URL — what actually goes in the CSV's Link column. */
+  url: string
+  /** Human label for the picker, e.g. "aBoks Vegg" or "Alle produkter". */
+  label: string
 }

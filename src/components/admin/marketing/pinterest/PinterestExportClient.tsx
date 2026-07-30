@@ -3,6 +3,11 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { MARKETING_API, MARKETING_ROUTES } from '@/lib/marketing/channels'
+import {
+  applyBulkSelection,
+  bulkSelectionState,
+  countSelected,
+} from '@/lib/pinterest/export/selection'
 import { DESCRIPTION_MAX, TITLE_MAX } from '@/lib/pinterest/export/text'
 import type {
   PinterestExportItem,
@@ -27,6 +32,7 @@ const SOURCE_LABEL: Record<PinterestSourceType, string> = {
   product: 'Produkt',
   variant: 'Variant',
   homepage: 'Forside',
+  blob: 'Pinterest-mappe',
 }
 
 interface RowEdit {
@@ -34,6 +40,8 @@ interface RowEdit {
   title: string
   description: string
   keywords: string
+  /** Only editable for Pinterest-mappe rows, and only to a value from the server allowlist. */
+  destinationUrl: string
 }
 
 type PreviewResponse = PinterestExportPreview & { limit: number; error?: string }
@@ -44,11 +52,56 @@ function countClass(value: string, max: number): string {
   return `${styles.counter} ${Array.from(value).length > max ? styles.counterOver : ''}`.trim()
 }
 
+export interface BulkSelectionToolbarProps {
+  canSelectAll: boolean
+  canClearAll: boolean
+  onSelectAll: () => void
+  onClearAll: () => void
+}
+
+/**
+ * The row above the preview table: the sort note on the left, the bulk actions on the right.
+ * Real `<button>` elements with the native `disabled` attribute, so they are keyboard
+ * reachable and announce their state without any ARIA of our own. Styling comes from
+ * Payload's own `btn` classes, so focus rings match the rest of the admin.
+ */
+export function BulkSelectionToolbar({
+  canSelectAll,
+  canClearAll,
+  onSelectAll,
+  onClearAll,
+}: BulkSelectionToolbarProps) {
+  return (
+    <div className={styles.tableToolbar}>
+      <p className={styles.hint}>Sortering: Nyeste først</p>
+      <div className={styles.tableToolbarActions}>
+        <button
+          type="button"
+          className="btn btn--style-secondary btn--size-small"
+          onClick={onSelectAll}
+          disabled={!canSelectAll}
+        >
+          Velg alle
+        </button>
+        <button
+          type="button"
+          className="btn btn--style-secondary btn--size-small"
+          onClick={onClearAll}
+          disabled={!canClearAll}
+        >
+          Fjern alle valg
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function PinterestExportClient() {
   const [sources, setSources] = useState<PinterestSourceSelection>({
     products: true,
     variants: true,
     homepage: true,
+    blob: true,
   })
   const [board, setBoard] = useState('')
   const [phase, setPhase] = useState<Phase>('loading')
@@ -114,6 +167,7 @@ export default function PinterestExportClient() {
             title: item.title,
             description: item.description,
             keywords: item.keywords,
+            destinationUrl: item.destinationUrl,
           }
         }
         return next
@@ -135,8 +189,23 @@ export default function PinterestExportClient() {
   }, [])
 
   const items = preview?.items ?? []
-  const enabledCount = items.filter((i) => edits[itemKey(i)]?.enabled !== false).length
+  /** Keys of the rows currently on screen — the exact set the bulk buttons act on. */
+  const visibleKeys = useMemo(() => items.map(itemKey), [items])
+  const enabledCount = countSelected(visibleKeys, edits)
+  const { canSelectAll, canClearAll } = bulkSelectionState(visibleKeys, edits)
   const noSources = selectedSources.length === 0
+
+  /**
+   * Flip every visible row on or off. Touches nothing but each row's `enabled` flag: the
+   * source filters, the fetched preview, the sort order and every edited title, description,
+   * keyword list and destination are all left exactly as they were.
+   */
+  const setAllSelected = useCallback(
+    (enabled: boolean) => {
+      setEdits((prev) => applyBulkSelection(visibleKeys, prev, enabled))
+    },
+    [visibleKeys],
+  )
 
   const download = useCallback(async () => {
     setDownloadError('')
@@ -158,6 +227,8 @@ export default function PinterestExportClient() {
               title: edit?.title ?? item.title,
               description: edit?.description ?? item.description,
               keywords: edit?.keywords ?? item.keywords,
+              // Server-side allowlisted; anything else is ignored there.
+              destinationUrl: edit?.destinationUrl ?? item.destinationUrl,
             }
           }),
         }),
@@ -211,6 +282,7 @@ export default function PinterestExportClient() {
             ['products', 'Produkter'],
             ['variants', 'Varianter'],
             ['homepage', 'Forside'],
+            ['blob', 'Pinterest-mappe'],
           ] as [keyof PinterestSourceSelection, string][]
         ).map(([key, label]) => (
           <label key={key} className={styles.check}>
@@ -257,6 +329,13 @@ export default function PinterestExportClient() {
         </p>
       )}
 
+      {/* A source that could not be read (currently only Blob) warns without blocking the rest. */}
+      {preview?.warnings?.map((warning) => (
+        <p key={warning} className={`${styles.notice} ${styles.noticeWarn}`} role="status">
+          {warning}
+        </p>
+      ))}
+
       {/* ── Summary ─────────────────────────────────────────────────────────────────── */}
       <div className={styles.summaryGrid}>
         <div className={styles.summaryCard}>
@@ -272,6 +351,10 @@ export default function PinterestExportClient() {
         <div className={styles.summaryCard}>
           <div className={styles.summaryLabel}>Forside</div>
           <div className={styles.summaryValue}>{preview?.counts.homepage ?? 0}</div>
+        </div>
+        <div className={styles.summaryCard}>
+          <div className={styles.summaryLabel}>Pinterest-mappe</div>
+          <div className={styles.summaryValue}>{preview?.counts.blob ?? 0}</div>
         </div>
         <div className={styles.summaryCard}>
           <div className={styles.summaryLabel}>Pins totalt</div>
@@ -325,7 +408,12 @@ export default function PinterestExportClient() {
 
       {!noSources && phase === 'ready' && items.length > 0 && (
         <>
-        <p className={styles.hint}>Sortering: Nyeste først</p>
+        <BulkSelectionToolbar
+          canSelectAll={canSelectAll}
+          canClearAll={canClearAll}
+          onSelectAll={() => setAllSelected(true)}
+          onClearAll={() => setAllSelected(false)}
+        />
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -377,11 +465,11 @@ export default function PinterestExportClient() {
                       <td>
                         <a
                           className={styles.link}
-                          href={item.destinationUrl}
+                          href={edit.destinationUrl}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {item.destinationUrl}
+                          {edit.destinationUrl}
                         </a>
                       </td>
                       <td>
@@ -410,18 +498,52 @@ export default function PinterestExportClient() {
                                 {Array.from(edit.description).length} / {DESCRIPTION_MAX}
                               </span>
                             </label>
-                            <label className={styles.field}>
-                              <span>Nøkkelord (kommaseparert)</span>
-                              <input
-                                className={styles.inputSmall}
-                                type="text"
-                                value={edit.keywords}
-                                onChange={(e) => patchEdit(key, { keywords: e.target.value })}
-                              />
+                            <div className={styles.field}>
+                              <label className={styles.field} style={{ margin: 0 }}>
+                                <span>Nøkkelord (kommaseparert)</span>
+                                <input
+                                  className={styles.inputSmall}
+                                  type="text"
+                                  value={edit.keywords}
+                                  onChange={(e) => patchEdit(key, { keywords: e.target.value })}
+                                />
+                              </label>
+
+                              {/* Destination is editable for Pinterest-mappe rows only, and
+                                  only to a value the server itself produced. Catalogue rows
+                                  keep the link their product owns. */}
+                              {item.sourceType === 'blob' && (
+                                <label className={styles.field} style={{ margin: 0 }}>
+                                  <span>Mål-URL</span>
+                                  <select
+                                    className={styles.inputSmall}
+                                    value={edit.destinationUrl}
+                                    onChange={(e) =>
+                                      patchEdit(key, { destinationUrl: e.target.value })
+                                    }
+                                  >
+                                    {(preview?.destinationOptions ?? []).map((option) => (
+                                      <option key={option.url} value={option.url}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              )}
+
                               <span className={styles.counter}>
+                                {item.sourceType === 'blob' && (
+                                  <>
+                                    Blob-sti:{' '}
+                                    <span className={styles.link}>
+                                      {item.sourceId.replace(/^blob:/, '')}
+                                    </span>
+                                    <br />
+                                  </>
+                                )}
                                 Bilde: <span className={styles.link}>{item.mediaUrl}</span>
                               </span>
-                            </label>
+                            </div>
                           </div>
                         </td>
                       </tr>

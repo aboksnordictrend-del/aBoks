@@ -6,6 +6,8 @@
 
 import type { Payload, PayloadRequest } from 'payload'
 import type { Product, ProductVariant } from '@/payload-types'
+import { listPinterestBlobObjects, type PinterestBlobListing } from './blobItems'
+import { PINTEREST_BLOB_PREFIX } from './blobNaming'
 import { buildExportItems, type BuildExportOptions } from './items'
 import type { PinterestExportPreview } from './types'
 
@@ -24,8 +26,10 @@ export async function collectExportPreview(
   payload: Payload,
   user: PayloadRequest['user'],
   options: BuildExportOptions,
+  /** Injectable for tests, which must never touch the real Blob account. */
+  listBlob: (prefix: string) => Promise<PinterestBlobListing> = listPinterestBlobObjects,
 ): Promise<PinterestExportPreview> {
-  const [productResult, variantResult] = await Promise.all([
+  const [productResult, variantResult, blob] = await Promise.all([
     payload.find({
       collection: 'products',
       depth: 2,
@@ -42,12 +46,18 @@ export async function collectExportPreview(
       overrideAccess: false,
       user,
     }),
+    // Only when the source is selected — an unticked filter must not cost a Blob round trip.
+    // The listing never throws; a failure comes back as an error string and becomes a warning.
+    options.sources.blob
+      ? listBlob(PINTEREST_BLOB_PREFIX)
+      : Promise.resolve<PinterestBlobListing>({ objects: [], error: null }),
   ])
 
   return buildExportItems(
     {
       products: productResult.docs as Product[],
       variants: variantResult.docs as ProductVariant[],
+      blob,
     },
     options,
   )

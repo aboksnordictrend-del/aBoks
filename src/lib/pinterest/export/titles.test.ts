@@ -8,12 +8,8 @@ import { TITLE_MAX } from './text'
 import type { PinterestSourceSelection } from './types'
 
 const BASE = 'https://aboks.no'
-const ALL: PinterestSourceSelection = { products: true, variants: true, homepage: true }
-const ONLY_PRODUCTS: PinterestSourceSelection = {
-  products: true,
-  variants: false,
-  homepage: false,
-}
+const ALL: PinterestSourceSelection = { products: true, variants: true, homepage: true, blob: false }
+const ONLY_PRODUCTS: PinterestSourceSelection = { products: true, variants: false, homepage: false, blob: false }
 
 let seq = 0
 const media = (url: string) =>
@@ -174,7 +170,7 @@ describe('unique titles across an export', () => {
           homepage('h3', 'https://blob.example.com/h3.webp'),
         ],
       },
-      { products: false, variants: false, homepage: true },
+      { products: false, variants: false, homepage: true, blob: false },
     )
     assert.equal(items.length, 3)
     assert.equal(new Set(folded(items)).size, 3)

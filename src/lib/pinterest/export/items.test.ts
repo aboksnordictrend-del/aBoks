@@ -14,11 +14,12 @@ import {
 import type { PinterestSourceSelection } from './types'
 
 const BASE = 'https://aboks.no'
-const ALL: PinterestSourceSelection = { products: true, variants: true, homepage: true }
+const ALL: PinterestSourceSelection = { products: true, variants: true, homepage: true, blob: false }
 const ONLY = (k: keyof PinterestSourceSelection): PinterestSourceSelection => ({
   products: false,
   variants: false,
   homepage: false,
+  blob: false,
   [k]: true,
 })
 
@@ -603,7 +604,7 @@ describe('source selection', () => {
     assert.equal(build(input, ONLY('variants')).counts.total, 1)
     assert.equal(build(input, ONLY('homepage')).counts.total, 1)
     assert.equal(
-      build(input, { products: false, variants: false, homepage: false }).counts.total,
+      build(input, { products: false, variants: false, homepage: false, blob: false }).counts.total,
       0,
     )
   })

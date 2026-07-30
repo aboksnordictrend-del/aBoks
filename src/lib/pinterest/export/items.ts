@@ -6,6 +6,17 @@
 
 import type { Media, Product, ProductVariant } from '@/payload-types'
 import { PINTEREST_HOMEPAGE_ITEMS, type PinterestHomepageItem } from '../homepageItems'
+import type { PinterestBlobListing, PinterestBlobObject } from './blobItems'
+import {
+  PINTEREST_BLOB_PREFIX,
+  descriptionFromTerms,
+  isHiddenOrSystemFile,
+  isSupportedBlobImage,
+  keywordsFromTerms,
+  recognizeTerms,
+  titleFromPathname,
+  type BlobProductTerm,
+} from './blobNaming'
 import { DESCRIPTION_MAX, TITLE_MAX, normalizeText } from './text'
 import {
   canonicalUrl,
@@ -14,8 +25,13 @@ import {
   normalizeUrlForComparison,
   resolveMediaUrl,
 } from './urls'
+import {
+  PRODUCT_LABELS,
+  basename as basenameOf,
+} from './blobNaming'
 import { DEFAULT_PRODUCT_NAME, pickUniqueTitle, type TitleContext } from './titles'
 import type {
+  PinterestDestinationOption,
   PinterestExportItem,
   PinterestExportPreview,
   PinterestExportSkip,
@@ -53,6 +69,11 @@ export interface BuildExportInput {
   variants: ProductVariant[]
   /** Defaults to the curated list; injectable for tests. */
   homepage?: PinterestHomepageItem[]
+  /**
+   * Result of listing the `Pinterest/` Blob folder. Omitted when the source is not selected;
+   * a listing that failed arrives here with its error, which becomes a visible warning.
+   */
+  blob?: PinterestBlobListing
 }
 
 export interface BuildExportOptions {
@@ -100,6 +121,64 @@ export function parseTimestamp(value: unknown): number | undefined {
 export function mediaTimestamp(media: number | Media | null | undefined): number | undefined {
   if (!media || typeof media !== 'object') return undefined
   return parseTimestamp(media.createdAt) ?? parseTimestamp(media.updatedAt)
+}
+
+/**
+ * Every destination a Pin is allowed to point at: the catalogue index plus one entry per
+ * published product. Nothing else is ever offered or accepted, which is what keeps a crafted
+ * request from redirecting a Pin off the canonical domain. No route is invented — `/produkter`
+ * and `/produkter/[slug]` are the real storefront routes.
+ */
+export function buildDestinationOptions(
+  products: readonly Product[],
+  baseUrl: string,
+): PinterestDestinationOption[] {
+  const options: PinterestDestinationOption[] = [
+    { url: canonicalUrl(PRODUCT_ROUTE, baseUrl), label: 'Alle produkter' },
+  ]
+  for (const product of products) {
+    if (!product.published || !product.slug) continue
+    options.push({
+      url: canonicalUrl(`${PRODUCT_ROUTE}/${product.slug}`, baseUrl),
+      label: product.title || product.slug,
+    })
+  }
+  return options
+}
+
+/**
+ * Where a `Pinterest/` image should link.
+ *
+ * The product line recognized in the filename is matched against the products that actually
+ * exist and are published — so `aboks-vegg-i-gangen.webp` links to the real aBoks Vegg page
+ * only if that product is live, and otherwise falls back to the catalogue index. Slugs are
+ * never guessed.
+ */
+export function resolveBlobDestination(
+  productTerm: BlobProductTerm | null,
+  products: readonly Product[],
+  baseUrl: string,
+): string {
+  const fallback = canonicalUrl(PRODUCT_ROUTE, baseUrl)
+  if (!productTerm) return fallback
+
+  // 'aboks-vegg' → 'vegg'; the bare 'aboks' term has no qualifier and matches by name only.
+  const qualifier = productTerm.startsWith('aboks-') ? productTerm.slice('aboks-'.length) : null
+
+  const candidates = products.filter((p) => p.published && p.slug)
+  const normalized = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
+  if (qualifier) {
+    const match = candidates.find(
+      (p) =>
+        normalized(p.slug).includes(qualifier) || normalized(p.title ?? '').includes(qualifier),
+    )
+    return match ? canonicalUrl(`${PRODUCT_ROUTE}/${match.slug}`, baseUrl) : fallback
+  }
+
+  // Bare 'aboks': prefer the product whose name is exactly the brand, never a sub-line.
+  const base = candidates.find((p) => normalized(p.title ?? '') === 'aboks')
+  return base ? canonicalUrl(`${PRODUCT_ROUTE}/${base.slug}`, baseUrl) : fallback
 }
 
 /**
@@ -173,11 +252,12 @@ function imageKey(item: PinterestExportItem): string {
   return normalizeUrlForComparison(item.mediaUrl)
 }
 
-/** Lower rank wins. Variant → Product → Homepage. */
+/** Lower rank wins. Variant → Product → Homepage → Pinterest folder. */
 const SOURCE_RANK: Record<PinterestSourceType, number> = {
   variant: 0,
   product: 1,
   homepage: 2,
+  blob: 3,
 }
 
 /** Norwegian noun for the winning source, used in the "Hoppet over" reason. */
@@ -185,6 +265,7 @@ const SOURCE_NOUN: Record<PinterestSourceType, string> = {
   variant: 'variant-pin',
   product: 'produkt-pin',
   homepage: 'forside-pin',
+  blob: 'Pinterest-mappe-pin',
 }
 
 /**
@@ -193,7 +274,9 @@ const SOURCE_NOUN: Record<PinterestSourceType, string> = {
  *   • variant first — it carries the colour name, the colour keyword and a link that
  *     preselects that colour, so it is strictly the most specific row for that photograph;
  *   • product next — the catalogue is the canonical source and stays in sync with Payload;
- *   • homepage last — a curated entry only survives when the image appears nowhere else;
+ *   • homepage next — explicitly curated marketing copy, but not the catalogue;
+ *   • the Pinterest Blob folder last — a generic supplementary source, so one of its images
+ *     only survives when that photograph appears nowhere else;
  *   • equal rank: the first occurrence wins, which preserves gallery order.
  */
 export function preferItem(
@@ -226,6 +309,7 @@ export function buildExportItems(
   const productRows: DraftRow[] = []
   const variantRows: DraftRow[] = []
   const homepageRows: DraftRow[] = []
+  const blobRows: DraftRow[] = []
   const skipped: PinterestExportSkip[] = []
   /** variant row sourceId → the id of the product it belongs to. */
   const variantOwnerByRowId = new Map<string, string>()
@@ -474,12 +558,104 @@ export function buildExportItems(
     }
   }
 
+  // ── Pinterest Blob folder ───────────────────────────────────────────────────────────────
+  // A supplementary source: images the admin drops into `Pinterest/` that belong to no
+  // product. Copy is derived from the filename only — there is no vision model here, and an
+  // invented visual claim would end up on a public Pin.
+  const warnings: string[] = []
+  if (sources.blob) {
+    const listing = input.blob
+    if (!listing) {
+      warnings.push('Pinterest-mappen ble ikke lest.')
+    } else if (listing.error) {
+      warnings.push(listing.error)
+      skipped.push({
+        sourceType: 'blob',
+        sourceId: PINTEREST_BLOB_PREFIX,
+        label: PINTEREST_BLOB_PREFIX,
+        reason: 'Kunne ikke lese Pinterest-mappen i Blob.',
+      })
+    } else {
+      for (const object of listing.objects) {
+        const sourceId = `blob:${object.pathname}`
+        const label = basenameOf(object.pathname)
+
+        // Re-assert the approved prefix at the point of use, not only at the point of listing.
+        if (!object.pathname.startsWith(PINTEREST_BLOB_PREFIX)) {
+          skipped.push({
+            sourceType: 'blob',
+            sourceId,
+            label,
+            reason: 'Filen ligger utenfor Pinterest-mappen.',
+          })
+          continue
+        }
+        if (isHiddenOrSystemFile(object.pathname)) {
+          skipped.push({ sourceType: 'blob', sourceId, label, reason: 'Skjult eller systemfil.' })
+          continue
+        }
+        if (!isSupportedBlobImage(object.pathname)) {
+          skipped.push({
+            sourceType: 'blob',
+            sourceId,
+            label,
+            reason: 'Filtypen støttes ikke for Pinterest-eksport.',
+          })
+          continue
+        }
+        // Blob creates a zero-byte placeholder for a "folder"; it is not an image.
+        if (object.size === 0) {
+          skipped.push({
+            sourceType: 'blob',
+            sourceId,
+            label,
+            reason: 'Tom fil eller mappemarkør.',
+          })
+          continue
+        }
+        if (!isPublicHttpsUrl(object.url)) {
+          skipped.push({
+            sourceType: 'blob',
+            sourceId,
+            label,
+            reason: 'Bildet mangler en offentlig https-URL.',
+          })
+          continue
+        }
+
+        const derived = normalizeText(titleFromPathname(object.pathname), TITLE_MAX)
+        // Too short to be a Pin title on its own — the shared generator supplies a natural
+        // Norwegian phrasing instead, exactly as it does for a repeated gallery title.
+        const usable = derived.length >= 3 ? derived : ''
+        const terms = recognizeTerms(object.pathname)
+
+        blobRows.push({
+          item: {
+            sourceType: 'blob',
+            sourceId,
+            title: usable,
+            description: normalizeText(descriptionFromTerms(terms), DESCRIPTION_MAX),
+            mediaUrl: object.url,
+            destinationUrl: resolveBlobDestination(terms.product, input.products, baseUrl),
+            keywords: normalizeText(keywordsFromTerms(terms), KEYWORDS_MAX),
+          },
+          ctx: {
+            base: usable,
+            productName: terms.product ? PRODUCT_LABELS[terms.product] : DEFAULT_PRODUCT_NAME,
+            colour: terms.colour,
+          },
+          sortTimestamp: parseTimestamp(object.uploadedAt),
+        })
+      }
+    }
+  }
+
   // ── Centralized deduplication on the image alone ────────────────────────────────────────
   // One pass over products → variants → homepage, keyed only on the normalized image URL. On
   // a collision `preferItem` picks the winner by source rank and the loser is reported as a
   // skip, so nothing disappears silently. The winner keeps the loser's slot, which preserves
   // gallery order in the preview.
-  const collected = [...productRows, ...variantRows, ...homepageRows]
+  const collected = [...productRows, ...variantRows, ...homepageRows, ...blobRows]
   const slotByKey = new Map<string, number>()
   const unique: DraftRow[] = []
 
@@ -526,11 +702,14 @@ export function buildExportItems(
       products: items.filter((i) => i.sourceType === 'product').length,
       variants: items.filter((i) => i.sourceType === 'variant').length,
       homepage: items.filter((i) => i.sourceType === 'homepage').length,
+      blob: items.filter((i) => i.sourceType === 'blob').length,
       total: items.length,
     },
     skipped,
     omitted,
     baseUrl,
     baseUrlFallback: options.baseUrlFallback ?? false,
+    warnings,
+    destinationOptions: buildDestinationOptions(input.products, baseUrl),
   }
 }

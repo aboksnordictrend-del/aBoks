@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test'
+import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import type { Endpoint, PayloadRequest } from 'payload'
 import {
@@ -9,6 +9,22 @@ import {
 } from './pinterestExport'
 import { PINTEREST_CSV_HEADERS } from '@/lib/pinterest/export/csv'
 import type { PinterestExportItem } from '@/lib/pinterest/export/types'
+
+/**
+ * These tests exercise the real endpoints, which call the real Blob lister. Removing the token
+ * makes that lister return early with an error and never open a socket, so the suite can never
+ * reach a live Blob account. The positive Blob path is covered in collect.test.ts, where the
+ * lister is injected.
+ */
+let savedBlobToken: string | undefined
+before(() => {
+  savedBlobToken = process.env.BLOB_READ_WRITE_TOKEN
+  delete process.env.BLOB_READ_WRITE_TOKEN
+})
+after(() => {
+  if (savedBlobToken === undefined) delete process.env.BLOB_READ_WRITE_TOKEN
+  else process.env.BLOB_READ_WRITE_TOKEN = savedBlobToken
+})
 
 const PRODUCT_IMAGE = 'https://blob.example.com/aboks-main.webp'
 const VARIANT_IMAGE = 'https://blob.example.com/aboks-olive.webp'
@@ -186,6 +202,44 @@ describe('pinterest export — preview', () => {
     assert.equal(body.counts.homepage, 0)
   })
 
+  it('keeps the other sources working when the Blob listing fails', async () => {
+    // No BLOB_READ_WRITE_TOKEN in this suite, so the Pinterest folder cannot be read.
+    const res = await call(pinterestExportPreviewEndpoint, { user: { role: 'admin' } })
+    const body = (await res.json()) as {
+      counts: { products: number; variants: number; homepage: number; blob: number }
+      warnings: string[]
+      skipped: { sourceType: string; reason: string }[]
+    }
+    assert.equal(res.status, 200, 'the preview still renders')
+    assert.ok(body.counts.products > 0)
+    assert.ok(body.counts.variants > 0)
+    assert.ok(body.counts.homepage > 0)
+    assert.equal(body.counts.blob, 0)
+    assert.ok(body.warnings.length > 0, 'the failure is visible')
+    assert.ok(body.skipped.some((s) => s.sourceType === 'blob'))
+  })
+
+  it('exposes a destination allowlist limited to canonical product URLs', async () => {
+    const res = await call(pinterestExportPreviewEndpoint, { user: { role: 'admin' } })
+    const { destinationOptions } = (await res.json()) as {
+      destinationOptions: { url: string; label: string }[]
+    }
+    assert.ok(destinationOptions.length >= 2)
+    for (const option of destinationOptions) {
+      assert.ok(option.url.startsWith('https://aboks.no/produkter'), option.url)
+    }
+  })
+
+  it('does not list Blob at all when the source is unticked', async () => {
+    const res = await call(pinterestExportPreviewEndpoint, {
+      user: { role: 'admin' },
+      query: { sources: 'products' },
+    })
+    const body = (await res.json()) as { warnings: string[]; counts: { blob: number } }
+    assert.equal(body.counts.blob, 0)
+    assert.deepEqual(body.warnings, [], 'an unticked source produces no warning')
+  })
+
   it('reports an unpublished product as skipped rather than dropping it silently', async () => {
     const res = await call(pinterestExportPreviewEndpoint, {
       user: { role: 'admin' },
@@ -202,9 +256,10 @@ describe('pinterest export — preview', () => {
 })
 
 describe('parseSources', () => {
-  it('defaults to all three when absent or empty', () => {
-    assert.deepEqual(parseSources(undefined), { products: true, variants: true, homepage: true })
-    assert.deepEqual(parseSources(''), { products: true, variants: true, homepage: true })
+  it('defaults to all four when absent or empty', () => {
+    const all = { products: true, variants: true, homepage: true, blob: true }
+    assert.deepEqual(parseSources(undefined), all)
+    assert.deepEqual(parseSources(''), all)
   })
 
   it('parses a comma-separated subset and ignores unknown names', () => {
@@ -212,11 +267,19 @@ describe('parseSources', () => {
       products: true,
       variants: false,
       homepage: true,
+      blob: false,
+    })
+    assert.deepEqual(parseSources('blob'), {
+      products: false,
+      variants: false,
+      homepage: false,
+      blob: true,
     })
     assert.deepEqual(parseSources('orders,customers'), {
       products: false,
       variants: false,
       homepage: false,
+      blob: false,
     })
   })
 })
@@ -322,6 +385,41 @@ describe('applySubmittedRows', () => {
       },
     ])
     assert.equal(out[0].mediaUrl, PRODUCT_IMAGE)
+    assert.equal(out[0].destinationUrl, 'https://aboks.no/produkter/aboks')
+  })
+
+  it('accepts a destination that is on the server allowlist', () => {
+    const allowed = ['https://aboks.no/produkter', 'https://aboks.no/produkter/aboks-vegg']
+    const out = applySubmittedRows(
+      server,
+      [{ sourceType: 'product', sourceId: PRODUCT_ROW_ID, destinationUrl: allowed[1] }],
+      allowed,
+    )
+    assert.equal(out[0].destinationUrl, allowed[1])
+  })
+
+  it('ignores a destination that is not on the allowlist', () => {
+    const allowed = ['https://aboks.no/produkter']
+    for (const forged of [
+      'https://evil.example.com/phish',
+      'https://aboks.no.evil.example.com/produkter',
+      'https://aboks.no/../admin',
+      'javascript:alert(1)',
+      '',
+    ]) {
+      const out = applySubmittedRows(
+        server,
+        [{ sourceType: 'product', sourceId: PRODUCT_ROW_ID, destinationUrl: forged }],
+        allowed,
+      )
+      assert.equal(out[0].destinationUrl, 'https://aboks.no/produkter/aboks', forged)
+    }
+  })
+
+  it('ignores a destination when no allowlist was supplied', () => {
+    const out = applySubmittedRows(server, [
+      { sourceType: 'product', sourceId: PRODUCT_ROW_ID, destinationUrl: 'https://aboks.no/produkter' },
+    ])
     assert.equal(out[0].destinationUrl, 'https://aboks.no/produkter/aboks')
   })
 

@@ -115,6 +115,26 @@
   background: var(--theme-error-50, var(--theme-elevation-50));
 }
 
+/* Sort note on the left, bulk actions on the right; wraps cleanly on a narrow screen. */
+.tableToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.tableToolbar .hint {
+  margin: 0;
+}
+
+.tableToolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .tableWrap {
   overflow-x: auto;
   border: 1px solid var(--theme-elevation-150);

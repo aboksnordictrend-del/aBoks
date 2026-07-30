@@ -7,8 +7,8 @@ import { pinterestCsv } from './csv'
 import type { PinterestSourceSelection } from './types'
 
 const BASE = 'https://aboks.no'
-const ALL: PinterestSourceSelection = { products: true, variants: true, homepage: true }
-const ONLY_PRODUCTS: PinterestSourceSelection = { products: true, variants: false, homepage: false }
+const ALL: PinterestSourceSelection = { products: true, variants: true, homepage: true, blob: false }
+const ONLY_PRODUCTS: PinterestSourceSelection = { products: true, variants: false, homepage: false, blob: false }
 
 let seq = 0
 
@@ -237,7 +237,7 @@ describe('export order — newest image first', () => {
           homepage({ id: 'tre', imageUrl: 'https://blob.example.com/tre.webp' }),
         ],
       },
-      { products: false, variants: false, homepage: true },
+      { products: false, variants: false, homepage: true, blob: false },
     )
     assert.deepEqual(order(items), ['en.webp', 'to.webp', 'tre.webp'])
   })
