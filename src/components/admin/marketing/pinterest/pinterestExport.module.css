@@ -1,0 +1,235 @@
+/* Pinterest-eksport view. Uses Payload's own theme variables so it follows light/dark mode. */
+
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 6px;
+  background: var(--theme-elevation-0);
+  margin-bottom: 1rem;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.boardRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--theme-elevation-600);
+}
+
+.input {
+  min-width: 20rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  background: var(--theme-input-bg, var(--theme-elevation-0));
+  color: var(--theme-elevation-800);
+  font-size: 0.9rem;
+}
+
+.inputSmall {
+  composes: input;
+  min-width: 0;
+  width: 100%;
+}
+
+.textarea {
+  composes: input;
+  min-width: 0;
+  width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.45;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--theme-elevation-500);
+  margin: 0 0 1rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.summaryCard {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 6px;
+  background: var(--theme-elevation-0);
+}
+
+.summaryLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--theme-elevation-500);
+}
+
+.summaryValue {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--theme-elevation-800);
+  margin-top: 0.15rem;
+}
+
+.notice {
+  padding: 0.7rem 0.95rem;
+  border-radius: 5px;
+  border: 1px solid var(--theme-elevation-200);
+  background: var(--theme-elevation-50);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.noticeWarn {
+  border-color: var(--theme-warning-250, var(--theme-elevation-200));
+  background: var(--theme-warning-50, var(--theme-elevation-50));
+}
+
+.noticeError {
+  border-color: var(--theme-error-250, var(--theme-elevation-200));
+  background: var(--theme-error-50, var(--theme-elevation-50));
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 6px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.table th,
+.table td {
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-elevation-100);
+  vertical-align: middle;
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--theme-elevation-600);
+  background: var(--theme-elevation-50);
+  white-space: nowrap;
+}
+
+.rowOff td {
+  opacity: 0.45;
+}
+
+.thumb {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--theme-elevation-100);
+  display: block;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  border: 1px solid var(--theme-elevation-200);
+  color: var(--theme-elevation-600);
+  white-space: nowrap;
+}
+
+.link {
+  color: var(--theme-elevation-600);
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.counter {
+  font-size: 0.72rem;
+  color: var(--theme-elevation-500);
+  margin-top: 0.2rem;
+}
+
+.counterOver {
+  color: var(--theme-error-500, #b00);
+}
+
+.editRow td {
+  background: var(--theme-elevation-25, var(--theme-elevation-50));
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .editGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.state {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--theme-elevation-500);
+  border: 1px dashed var(--theme-elevation-200);
+  border-radius: 6px;
+}
+
+.skipList {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  color: var(--theme-elevation-600);
+}
+
+.skipList li {
+  margin-bottom: 0.2rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--theme-elevation-600);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.8rem;
+}

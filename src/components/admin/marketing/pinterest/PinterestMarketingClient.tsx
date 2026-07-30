@@ -224,6 +224,13 @@ export default function PinterestMarketingClient() {
           <p className={styles.subtitle}>Synkroniser annonseringskostnader fra Pinterest Ads.</p>
         </div>
         <div className={styles.headerActions}>
+          {/* Content export — no Pinterest API call, the admin uploads the CSV manually. */}
+          <Link
+            className="btn btn--style-secondary btn--size-small"
+            href={MARKETING_ROUTES.pinterestExport}
+          >
+            Pinterest-eksport
+          </Link>
           {/* Sync never touches the display filter below — it only refreshes the data. */}
           <AdsSyncButton
             endpoint={MARKETING_API.pinterestSync}

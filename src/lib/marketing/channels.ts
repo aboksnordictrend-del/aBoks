@@ -16,6 +16,7 @@ export const MARKETING_ROUTES = {
   meta: `${ADMIN_BASE}/meta`,
   google: `${ADMIN_BASE}/google`,
   pinterest: `${ADMIN_BASE}/pinterest`,
+  pinterestExport: `${ADMIN_BASE}/pinterest-eksport`,
   all: `${ADMIN_BASE}/all`,
 } as const
 
@@ -33,6 +34,10 @@ export const MARKETING_API = {
   pinterestExpenses: '/api/admin/integrations/pinterest/expenses',
   pinterestSync: '/api/admin/integrations/pinterest/sync',
   pinterestStatus: '/api/admin/integrations/pinterest/status',
+  // Bulk-upload CSV export. Preview is a GET; the download is a POST carrying the board name
+  // and the (optionally edited) row selection.
+  pinterestExportPreview: '/api/admin/integrations/pinterest/export/preview',
+  pinterestExport: '/api/admin/integrations/pinterest/export',
 } as const
 
 /** Status labels (Norwegian Bokmål) shown on a channel card. */

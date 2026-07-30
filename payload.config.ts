@@ -31,6 +31,10 @@ import { googleStatusEndpoint } from './src/endpoints/googleStatus'
 import { pinterestSyncEndpoint } from './src/endpoints/pinterestSync'
 import { pinterestExpensesEndpoint } from './src/endpoints/pinterestExpenses'
 import { pinterestStatusEndpoint } from './src/endpoints/pinterestStatus'
+import {
+  pinterestExportEndpoint,
+  pinterestExportPreviewEndpoint,
+} from './src/endpoints/pinterestExport'
 import { buildCsrfOrigins } from './src/lib/csrfOrigins'
 import { resolveApplicationOrigin } from './src/lib/appOrigin'
 
@@ -114,6 +118,9 @@ export default buildConfig({
     pinterestSyncEndpoint,
     pinterestExpensesEndpoint,
     pinterestStatusEndpoint,
+    // Pinterest bulk-upload CSV export (no Pinterest API call — the admin uploads the file).
+    pinterestExportPreviewEndpoint,
+    pinterestExportEndpoint,
   ],
   // Plugin must always be registered so withPayload includes VercelBlobClientUploadHandler
   // in the importMap at build time. BLOB_READ_WRITE_TOKEN is a runtime-only Vercel env var

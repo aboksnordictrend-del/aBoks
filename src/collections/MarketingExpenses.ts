@@ -50,6 +50,12 @@ export const MarketingExpenses: CollectionConfig = {
           Component: '@/components/admin/marketing/pinterest/PinterestMarketingView#default',
           path: '/pinterest',
         },
+        // Pinterest bulk-upload CSV export. Lives on this collection so it inherits the
+        // admin-only access control above — an editor can never reach the route.
+        pinterestEksport: {
+          Component: '@/components/admin/marketing/pinterest/PinterestExportView#default',
+          path: '/pinterest-eksport',
+        },
         all: {
           Component: '@/components/admin/marketing/AllExpensesView#default',
           path: '/all',
