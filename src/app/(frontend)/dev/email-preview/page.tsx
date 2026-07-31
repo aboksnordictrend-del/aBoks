@@ -4,12 +4,14 @@ import {
   createAdminOrderEmail,
   createOrderShippedEmail,
   createOrderDeliveredEmail,
+  createReviewInvitationEmail,
 } from '@/emails'
 import type {
   OrderConfirmationData,
   AdminOrderData,
   OrderShippedData,
   OrderDeliveredData,
+  ReviewInvitationData,
 } from '@/emails'
 
 export const dynamic = 'force-dynamic'
@@ -58,6 +60,13 @@ const MOCK_DELIVERED: OrderDeliveredData = {
   orderNumber: MOCK_ORDER.orderNumber,
 }
 
+// The review invitation is sent after delivery, so it reuses the same customer with a
+// stand-in token — the real URL is personal and one-time.
+const MOCK_REVIEW_INVITATION: ReviewInvitationData = {
+  firstName: MOCK_ORDER.customerName,
+  reviewUrl: 'https://example.com/review/demo-token',
+}
+
 export default function EmailPreviewPage() {
   if (process.env.NODE_ENV === 'production') return notFound()
 
@@ -75,6 +84,11 @@ export default function EmailPreviewPage() {
       label: 'Ordre levert / Kvittering',
       email: createOrderDeliveredEmail(MOCK_DELIVERED),
       pdfHref: '/dev/receipt-preview',
+    },
+    {
+      id: 'review-invitation',
+      label: 'Review Invitation',
+      email: createReviewInvitationEmail(MOCK_REVIEW_INVITATION),
     },
   ]
 
