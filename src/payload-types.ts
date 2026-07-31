@@ -112,10 +112,12 @@ export interface Config {
   globals: {
     'economy-settings': EconomySetting;
     'tiktok-connection': TiktokConnection;
+    'pinterest-connection': PinterestConnection;
   };
   globalsSelect: {
     'economy-settings': EconomySettingsSelect<false> | EconomySettingsSelect<true>;
     'tiktok-connection': TiktokConnectionSelect<false> | TiktokConnectionSelect<true>;
+    'pinterest-connection': PinterestConnectionSelect<false> | PinterestConnectionSelect<true>;
   };
   locale: null;
   widgets: {
@@ -1472,6 +1474,57 @@ export interface TiktokConnection {
   createdAt?: string | null;
 }
 /**
+ * Teknisk lagring for Pinterest Ads-autorisasjonen. Opprettes automatisk av «Koble til».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pinterest-connection".
+ */
+export interface PinterestConnection {
+  id: number;
+  /**
+   * AES-256-GCM-kryptert. Vises aldri, verken i admin eller i API-svar.
+   */
+  accessTokenEncrypted?: string | null;
+  /**
+   * AES-256-GCM-kryptert. Roteres av Pinterest ved hver fornyelse og erstattes atomisk.
+   */
+  refreshTokenEncrypted?: string | null;
+  accessTokenExpiresAt?: string | null;
+  refreshTokenExpiresAt?: string | null;
+  /**
+   * Tilgangsnivået Pinterest faktisk innvilget.
+   */
+  scope?: string | null;
+  tokenType?: string | null;
+  connectedAt?: string | null;
+  lastRefreshedAt?: string | null;
+  connectionStatus?: ('disconnected' | 'connected' | 'reauthorization_required') | null;
+  /**
+   * Kun en kort, intern feilkode (f.eks. invalid_grant). Aldri Pinterests rå svar og aldri et token.
+   */
+  lastOAuthError?: string | null;
+  /**
+   * Økes ved hver rotasjon. Brukes som compare-and-swap slik at to samtidige synkroniseringer ikke kan fornye med det samme gamle fornyelsestokenet.
+   */
+  tokenVersion?: number | null;
+  /**
+   * Settes mens en fornyelse pågår, og utløper av seg selv slik at en avbrutt prosess ikke låser integrasjonen permanent.
+   */
+  refreshLockExpiresAt?: string | null;
+  /**
+   * Formatet autorisasjonen ble lagret med. En eldre versjon ignoreres, slik at administratoren må koble til på nytt.
+   */
+  connectionVersion?: number | null;
+  /**
+   * SHA-256 av state-verdien. Selve verdien lagres aldri.
+   */
+  pendingStateHash?: string | null;
+  pendingStateExpiresAt?: string | null;
+  pendingStateUserId?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "economy-settings_select".
  */
@@ -1504,6 +1557,31 @@ export interface TiktokConnectionSelect<T extends boolean = true> {
   connectionVersion?: T;
   metadataAvailable?: T;
   reportingOk?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pinterest-connection_select".
+ */
+export interface PinterestConnectionSelect<T extends boolean = true> {
+  accessTokenEncrypted?: T;
+  refreshTokenEncrypted?: T;
+  accessTokenExpiresAt?: T;
+  refreshTokenExpiresAt?: T;
+  scope?: T;
+  tokenType?: T;
+  connectedAt?: T;
+  lastRefreshedAt?: T;
+  connectionStatus?: T;
+  lastOAuthError?: T;
+  tokenVersion?: T;
+  refreshLockExpiresAt?: T;
+  connectionVersion?: T;
+  pendingStateHash?: T;
+  pendingStateExpiresAt?: T;
+  pendingStateUserId?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -267,7 +267,9 @@ describe('getPinterestDailySpend — failures', () => {
       () => getPinterestDailySpend({ since: '2026-07-20', until: '2026-07-20' }, 'NOK', opts(fetchImpl)),
       (err: unknown) => {
         assert.ok(err instanceof PinterestAdsError)
-        assert.match(err.message, /PINTEREST_ACCESS_TOKEN/)
+        // Post-OAuth the fix is to re-authorize, not to paste a new env token.
+        assert.match(err.message, /Koble til på nytt/)
+        assert.ok(!/PINTEREST_ACCESS_TOKEN/.test(err.message))
         assert.ok(!err.message.includes(SECRETS.accessToken))
         assert.ok(!err.logLine().includes(SECRETS.accessToken))
         return true

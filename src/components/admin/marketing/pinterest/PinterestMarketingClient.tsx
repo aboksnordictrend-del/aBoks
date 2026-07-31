@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { formatNOK } from '@/lib/analytics/money'
 import { MARKETING_API, MARKETING_ROUTES, STATUS } from '@/lib/marketing/channels'
 import type { ExpenseRow, ExpensesSummary } from '@/lib/marketing/expenseSummary'
@@ -24,10 +25,33 @@ interface ExpensesResponse {
   error?: string
 }
 
+/** Non-secret OAuth connection state. No token value is ever part of this payload. */
+interface ConnectionState {
+  status: 'disconnected' | 'connected' | 'reauthorization_required' | string
+  connectedAt: string | null
+  lastRefreshedAt: string | null
+  accessTokenExpiresAt: string | null
+  refreshTokenExpiresAt: string | null
+  scope: string | null
+  /** Short internal code such as `invalid_grant` — never Pinterest's raw response. */
+  lastOAuthError: string | null
+}
+
 interface StatusResponse {
   configured: boolean
   configError: string | null
   missingEnv: string[]
+  /** True when a usable authorization exists (OAuth grant, or the legacy env token). */
+  authorized: boolean
+  /** True when the app credentials and the encryption key are in place, so «Koble til» works. */
+  canConnect: boolean
+  /** Safe message naming a misconfigured encryption key, or null. Never contains key material. */
+  encryptionKeyError: string | null
+  /** True while the deprecated PINTEREST_ACCESS_TOKEN is still set. */
+  usingLegacyToken: boolean
+  connection: ConnectionState
+  requestedScope: string
+  redirectUri: string
   /** Masked, e.g. •••5175. The full id never leaves the server. */
   accountId: string
   apiVersion: string | null
@@ -36,6 +60,32 @@ interface StatusResponse {
   hasData: boolean
   sync: SyncStateSnapshot
   error?: string
+}
+
+/**
+ * Norwegian copy for every outcome the OAuth callback can redirect with. The callback only ever
+ * sends a short reason code, so no Pinterest text — and no token — can reach the browser, and
+ * the wording can change here without touching the server.
+ */
+export const PINTEREST_CALLBACK_MESSAGES: Record<string, string> = {
+  config:
+    'Pinterest-appens legitimasjon mangler eller er ugyldig. Kontroller PINTEREST_APP_ID og PINTEREST_APP_SECRET.',
+  denied: 'Autoriseringen ble avbrutt i Pinterest. Ingen tilgang ble gitt.',
+  state:
+    'Sikkerhetskontrollen for autoriseringen feilet, eller den tok for lang tid. Start «Koble til» på nytt.',
+  // Not "you are not logged in": the callback authenticates on the lagrede state, not on the
+  // session cookie (which Payload will not honour on a cross-site redirect). This means the
+  // account that started the flow is no longer an administrator.
+  unauthorized:
+    'Autoriseringen kunne ikke knyttes til en administrator. Logg inn i admin og start «Koble til» på nytt.',
+  code: 'Pinterest returnerte ingen autorisasjonskode. Start «Koble til» på nytt.',
+  exchange:
+    'Pinterest avviste autorisasjonskoden. Koden kan bare brukes én gang og varer kort — start «Koble til» på nytt. Se serverloggen (op=code-exchange).',
+  scope:
+    'Autoriseringen ga ikke lesetilgang til annonsedata (ads:read). Kontroller tillatelsene på Pinterest-appen og prøv igjen.',
+  storage:
+    'Tilgangen ble gitt, men kunne ikke lagres sikkert. Kontroller PINTEREST_TOKEN_ENCRYPTION_KEY eller PAYLOAD_SECRET.',
+  failed: 'Tilkoblingen til Pinterest feilet. Prøv igjen senere.',
 }
 
 const EMPTY_SUMMARY: ExpensesSummary = {
@@ -59,10 +109,49 @@ function formatDateTime(iso?: string | null): string {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('nb-NO')
 }
 
+/**
+ * Connection panel with the four states the OAuth flow can produce: not configured, not
+ * connected, must reconnect, and connected. The connect action is a plain link, never a fetch —
+ * the endpoint answers with a 302 to Pinterest's consent screen, which only a top-level
+ * navigation can follow.
+ */
 function ConnectionPanel({ status }: { status: StatusResponse | null }) {
-  const connected = Boolean(status?.configured)
-  const label = connected ? STATUS.connected : STATUS.notConfigured
-  const color = connected ? 'var(--theme-success-500)' : 'var(--theme-warning-500)'
+  const [connecting, setConnecting] = useState(false)
+
+  const configured = Boolean(status?.configured)
+  const connState = status?.connection.status ?? 'disconnected'
+  const needsReauth = connState === 'reauthorization_required'
+  const authorized = Boolean(status?.authorized) && !needsReauth
+
+  const label = !configured
+    ? STATUS.notConfigured
+    : needsReauth
+      ? STATUS.reauthRequired
+      : authorized
+        ? STATUS.connected
+        : STATUS.notConnected
+
+  const color = !configured
+    ? 'var(--theme-warning-500)'
+    : needsReauth
+      ? 'var(--theme-error-500)'
+      : authorized
+        ? 'var(--theme-success-500)'
+        : 'var(--theme-warning-500)'
+
+  const tagline = !configured
+    ? 'Mangler oppsett'
+    : needsReauth
+      ? 'Autorisering utløpt'
+      : authorized
+        ? 'Synkronisering aktiv'
+        : 'Autorisering mangler'
+
+  // Offered whenever the app credentials are in place — including while connected, so an admin
+  // can deliberately re-consent (for example after widening the scopes) without waiting for a
+  // failure.
+  const canConnect = Boolean(status?.canConnect)
+  const connectLabel = needsReauth || authorized ? 'Koble til på nytt' : 'Koble til'
   const lastError = status?.sync.lastError ?? null
 
   return (
@@ -74,8 +163,20 @@ function ConnectionPanel({ status }: { status: StatusResponse | null }) {
           {label}
         </span>
         <span className={styles.connLabel} style={{ margin: 0 }}>
-          {connected ? 'Synkronisering aktiv' : 'Mangler oppsett'}
+          {tagline}
         </span>
+        {canConnect && (
+          <a
+            className="btn btn--style-primary btn--size-small"
+            style={{ marginLeft: 'auto' }}
+            href={MARKETING_API.pinterestOAuthStart}
+            onClick={() => setConnecting(true)}
+            aria-busy={connecting}
+            aria-label={connecting ? 'Åpner Pinterest-autorisering' : connectLabel}
+          >
+            {connecting ? 'Åpner Pinterest …' : connectLabel}
+          </a>
+        )}
       </div>
 
       <div className={styles.connGrid}>
@@ -86,6 +187,28 @@ function ConnectionPanel({ status }: { status: StatusResponse | null }) {
         <div>
           <div className={styles.connLabel}>Valuta</div>
           <div className={styles.connValue}>{status?.currency ?? '—'}</div>
+        </div>
+        <div>
+          <div className={styles.connLabel}>Tilgangsnivå</div>
+          <div className={styles.connValue}>
+            {status?.connection.scope || status?.requestedScope || '—'}
+          </div>
+        </div>
+        <div>
+          <div className={styles.connLabel}>Koblet til</div>
+          <div className={styles.connValue}>{formatDateTime(status?.connection.connectedAt)}</div>
+        </div>
+        <div>
+          <div className={styles.connLabel}>Token fornyes etter</div>
+          <div className={styles.connValue}>
+            {formatDateTime(status?.connection.accessTokenExpiresAt)}
+          </div>
+        </div>
+        <div>
+          <div className={styles.connLabel}>Sist fornyet</div>
+          <div className={styles.connValue}>
+            {formatDateTime(status?.connection.lastRefreshedAt)}
+          </div>
         </div>
         <div>
           <div className={styles.connLabel}>API-versjon</div>
@@ -99,7 +222,7 @@ function ConnectionPanel({ status }: { status: StatusResponse | null }) {
         </div>
       </div>
 
-      {!connected && (
+      {!configured && (
         <p className={`${styles.connNotice} ${styles.connNoticeError}`} role="alert">
           {status?.configError ?? 'Pinterest Ads-konfigurasjonen mangler eller er ugyldig.'}
           {status && status.missingEnv.length > 0 && (
@@ -108,7 +231,34 @@ function ConnectionPanel({ status }: { status: StatusResponse | null }) {
         </p>
       )}
 
-      {connected && lastError && (
+      {status?.encryptionKeyError && (
+        <p className={`${styles.connNotice} ${styles.connNoticeError}`} role="alert">
+          {status.encryptionKeyError}
+        </p>
+      )}
+
+      {configured && needsReauth && (
+        <p className={`${styles.connNotice} ${styles.connNoticeError}`} role="alert">
+          Pinterest har trukket tilbake tilgangen, eller den er utløpt. Importerte kostnader er
+          uendret — velg «Koble til på nytt» for å gjenoppta synkroniseringen.
+        </p>
+      )}
+
+      {configured && !authorized && !needsReauth && (
+        <p className={styles.connNotice}>
+          Pinterest Ads er ikke autorisert ennå. Velg «Koble til» og godkjenn tilgangen
+          {status?.requestedScope ? ` (${status.requestedScope})` : ''} i Pinterest.
+        </p>
+      )}
+
+      {status?.usingLegacyToken && (
+        <p className={styles.connNotice}>
+          PINTEREST_ACCESS_TOKEN er fortsatt satt. Den brukes bare inntil «Koble til» er
+          gjennomført, og kan fjernes fra miljøvariablene etterpå.
+        </p>
+      )}
+
+      {authorized && lastError && (
         <p className={`${styles.connNotice} ${styles.connNoticeError}`} role="alert">
           Siste forsøk feilet: {lastError}
         </p>
@@ -123,6 +273,7 @@ function ConnectionPanel({ status }: { status: StatusResponse | null }) {
  * is a computed sum of the displayed rows — never a stored record.
  */
 export default function PinterestMarketingClient() {
+  const searchParams = useSearchParams()
   const [sinceInput, setSinceInput] = useState('')
   const [untilInput, setUntilInput] = useState('')
   const [applied, setApplied] = useState<{ since: string; until: string }>({ since: '', until: '' })
@@ -202,6 +353,26 @@ export default function PinterestMarketingClient() {
     setApplied({ since: '', until: '' })
   }
 
+  /**
+   * Outcome of an OAuth round-trip, rebuilt from the short code in the URL. The callback never
+   * puts a message, a token or a Pinterest response in the address bar — only `connected`, or
+   * `error` plus a reason code that maps to the copy above.
+   */
+  const callbackNotice = useMemo(() => {
+    const outcome = searchParams?.get('pinterest')
+    if (outcome === 'connected') {
+      return { ok: true, text: 'Pinterest Ads er koblet til. Synkronisering er aktiv.' }
+    }
+    if (outcome === 'error') {
+      const reason = searchParams?.get('reason') ?? 'failed'
+      return {
+        ok: false,
+        text: PINTEREST_CALLBACK_MESSAGES[reason] ?? PINTEREST_CALLBACK_MESSAGES.failed,
+      }
+    }
+    return null
+  }, [searchParams])
+
   const onSynced = useCallback(
     (outcome: AdsSyncOutcome) => {
       setLastSync(outcome)
@@ -244,6 +415,15 @@ export default function PinterestMarketingClient() {
           />
         </div>
       </div>
+
+      {callbackNotice && (
+        <div
+          className={`${styles.state} ${callbackNotice.ok ? '' : styles.stateError}`}
+          role={callbackNotice.ok ? 'status' : 'alert'}
+        >
+          {callbackNotice.text}
+        </div>
+      )}
 
       <ConnectionPanel status={status} />
 

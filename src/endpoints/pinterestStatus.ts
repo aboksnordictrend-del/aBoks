@@ -16,6 +16,13 @@ import {
   PinterestAdsConfigError,
 } from '@/lib/pinterest/config'
 import { PINTEREST_ADS_CHANNEL, PINTEREST_ADS_SOURCE } from '@/lib/pinterest/sync'
+import {
+  checkTokenEncryptionKey,
+  PINTEREST_OAUTH_REQUIRED_ENV,
+  PINTEREST_SCOPE_STRING,
+  resolveRedirectUri,
+} from '@/lib/pinterest/oauth/config'
+import { getConnectionInfo } from '@/lib/pinterest/oauth/store'
 import { expensesSummary, type ExpenseRow } from '@/lib/marketing/expenseSummary'
 import { getSyncState } from '@/lib/marketing/syncState'
 
@@ -69,9 +76,59 @@ export const pinterestStatusEndpoint: Endpoint = {
       if (raw) accountId = maskAdAccountId(raw)
     }
 
-    const missingEnv = PINTEREST_ADS_REQUIRED_ENV.filter(
-      (k) => !(typeof process.env[k] === 'string' && process.env[k]!.trim() !== ''),
+    const isSet = (k: string): boolean =>
+      typeof process.env[k] === 'string' && process.env[k]!.trim() !== ''
+
+    // The app credentials belong to the *authorization*, not to reading spend, so they are
+    // reported separately: a missing app secret must not make an already-connected integration
+    // look unconfigured, it must only make "Koble til" unavailable.
+    const missingEnv = [...PINTEREST_ADS_REQUIRED_ENV, ...PINTEREST_OAUTH_REQUIRED_ENV].filter(
+      (k) => !isSet(k),
     )
+    // Mandatory in production; PAYLOAD_SECRET covers local development. Reported as a message so
+    // the admin sees it on the card instead of discovering it when a connection attempt fails.
+    // The message names the variable only — no key material is read here, let alone returned.
+    const encryptionKeyError = checkTokenEncryptionKey()
+    const canConnect = PINTEREST_OAUTH_REQUIRED_ENV.every(isSet) && !encryptionKeyError
+    const usingLegacyToken = isSet('PINTEREST_ACCESS_TOKEN')
+
+    // Non-secret connection state. No token is decrypted here, and none could be returned:
+    // the token fields are `read: false` and this handler never asks for them.
+    let connection = {
+      status: 'disconnected' as string,
+      connectedAt: null as string | null,
+      lastRefreshedAt: null as string | null,
+      accessTokenExpiresAt: null as string | null,
+      refreshTokenExpiresAt: null as string | null,
+      scope: null as string | null,
+      lastOAuthError: null as string | null,
+    }
+    try {
+      const info = await getConnectionInfo(req.payload)
+      connection = {
+        status: info.status,
+        connectedAt: info.connectedAt,
+        lastRefreshedAt: info.lastRefreshedAt,
+        accessTokenExpiresAt: info.accessTokenExpiresAt,
+        refreshTokenExpiresAt: info.refreshTokenExpiresAt,
+        scope: info.scope,
+        lastOAuthError: info.lastOAuthError,
+      }
+    } catch (err) {
+      // A failed connection read must not blank the whole panel; the card degrades to
+      // "not connected" and the reason is in the server log only.
+      req.payload.logger.error(
+        `[pinterest-oauth] status could not read the connection: ${
+          err instanceof Error ? err.name : 'unknown error'
+        }`,
+      )
+    }
+
+    // Green when a real OAuth grant exists, or — during migration only — when the legacy env
+    // token is still present. Never true when the grant has been revoked.
+    const authorized =
+      connection.status === 'connected' ||
+      (connection.status === 'disconnected' && usingLegacyToken)
 
     try {
       const result = await req.payload.find({
@@ -109,6 +166,15 @@ export const pinterestStatusEndpoint: Endpoint = {
           configured,
           configError,
           missingEnv,
+          // --- OAuth connection state (no secret value is present in any of these) ---
+          authorized,
+          canConnect,
+          encryptionKeyError,
+          usingLegacyToken,
+          connection,
+          requestedScope: PINTEREST_SCOPE_STRING,
+          /** Shown so the admin can register the exact value on the Pinterest app. */
+          redirectUri: resolveRedirectUri(),
           accountId,
           apiVersion: context.apiVersion ?? apiVersion,
           currency: context.currency,

@@ -35,6 +35,11 @@ export const MARKETING_API = {
   pinterestExpenses: '/api/admin/integrations/pinterest/expenses',
   pinterestSync: '/api/admin/integrations/pinterest/sync',
   pinterestStatus: '/api/admin/integrations/pinterest/status',
+  // Pinterest OAuth 2.0. Deliberately NOT under /admin/integrations/: this path is registered
+  // as a redirect URI on the Pinterest app, so it is public API surface whose shape must stay
+  // stable — moving it later would mean re-registering it with Pinterest.
+  pinterestOAuthStart: '/api/pinterest/oauth/start',
+  pinterestOAuthCallback: '/api/pinterest/oauth/callback',
   // Bulk-upload CSV export. Preview is a GET; the download is a POST carrying the board name
   // and the (optionally edited) row selection.
   pinterestExportPreview: '/api/admin/integrations/pinterest/export/preview',
@@ -54,8 +59,25 @@ export const STATUS = {
   connected: 'Tilkoblet',
   /** Env is in place, but the channel's OAuth authorization has not been granted yet. */
   notConnected: 'Ikke tilkoblet',
+  /** The authorization existed but was revoked or expired — only a new consent can fix it. */
+  reauthRequired: 'Må kobles til på nytt',
   notConfigured: 'Ikke konfigurert',
   comingSoon: 'Kommer snart',
+} as const
+
+/**
+ * Authorization state of a channel that has an OAuth step.
+ *
+ * A tri-state, not a boolean, because "never connected" and "the grant was revoked" need
+ * different copy and a different call to action: the first is a first-time setup, the second is
+ * a repair. Channels that authenticate from env alone always pass 'authorized'.
+ */
+export type ChannelAuthorization = 'authorized' | 'not-authorized' | 'reauthorization-required'
+
+/** Button label for a channel that needs the admin to visit the provider's consent screen. */
+export const CONNECT_LABEL = {
+  'not-authorized': 'Koble til',
+  'reauthorization-required': 'Koble til på nytt',
 } as const
 
 /** Static definition of a marketing channel integration. */
@@ -107,6 +129,8 @@ export interface MarketingChannelCard {
    * card then offers "Koble til" instead of a sync it could not complete.
    */
   connectEndpoint: string | null
+  /** Label for `connectEndpoint`, distinguishing a first connection from a repair. */
+  connectLabel: string | null
   enabled: boolean
   status: string
   summary: MarketingChannelSummary
@@ -180,12 +204,13 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     sourceValue: 'pinterest-ads',
     href: MARKETING_ROUTES.pinterest,
     syncEndpoint: MARKETING_API.pinterestSync,
-    connectEndpoint: null,
-    // PINTEREST_APP_ID / PINTEREST_APP_SECRET are deliberately not required: a v5 call
-    // authenticates with the bearer token alone, so requiring the app credentials would mark
-    // a valid token-based setup as "Ikke konfigurert". Same reasoning as
-    // GOOGLE_ADS_LOGIN_CUSTOMER_ID above. See src/lib/pinterest/config.ts.
-    envKeys: ['PINTEREST_ACCESS_TOKEN', 'PINTEREST_AD_ACCOUNT_ID'],
+    connectEndpoint: MARKETING_API.pinterestOAuthStart,
+    // The app credentials ARE required now: they are what the OAuth flow authenticates with.
+    // PINTEREST_ACCESS_TOKEN is deliberately absent — the token is obtained by "Koble til" and
+    // stored encrypted in the database, so requiring an env token would mark a properly
+    // connected integration as "Ikke konfigurert". The env var survives only as a temporary
+    // migration fallback; see src/lib/pinterest/oauth/accessToken.ts.
+    envKeys: ['PINTEREST_APP_ID', 'PINTEREST_APP_SECRET', 'PINTEREST_AD_ACCOUNT_ID'],
     available: true,
   },
   {
@@ -221,35 +246,36 @@ export function isChannelConfigured(
 /**
  * Status label for a channel.
  *
- * `authorized` only ever matters for a channel with an OAuth step (TikTok): the others pass
- * the default `true`, so their labels are unchanged.
+ * `authorization` only ever matters for a channel with an OAuth step (TikTok, Pinterest Ads):
+ * the others pass the default 'authorized', so their labels are unchanged.
  */
 export function channelStatusLabel(
   def: MarketingChannelDef,
   configured: boolean,
-  authorized = true,
+  authorization: ChannelAuthorization = 'authorized',
 ): string {
   if (!def.available) return STATUS.comingSoon
   if (!configured) return STATUS.notConfigured
-  return authorized ? STATUS.connected : STATUS.notConnected
+  if (authorization === 'reauthorization-required') return STATUS.reauthRequired
+  return authorization === 'authorized' ? STATUS.connected : STATUS.notConnected
 }
 
 /**
  * Assemble the client card for a channel. Pure — env presence, authorization state and the
  * summary are all passed in.
  *
- * `authorized` defaults to true so a channel that authenticates from env alone behaves
- * exactly as before; only TikTok passes a computed value.
+ * `authorization` defaults to 'authorized' so a channel that authenticates from env alone
+ * behaves exactly as before; only TikTok and Pinterest Ads pass a computed value.
  */
 export function buildChannelCard(
   def: MarketingChannelDef,
   configured: boolean,
   summary: MarketingChannelSummary = EMPTY_SUMMARY,
-  authorized = true,
+  authorization: ChannelAuthorization = 'authorized',
 ): MarketingChannelCard {
-  const enabled = def.available && configured && authorized
-  // Offer "Koble til" exactly when the setup is complete but the authorization is not.
-  const needsConnect = def.available && configured && !authorized
+  const enabled = def.available && configured && authorization === 'authorized'
+  // Offer a connect action exactly when the setup is complete but the authorization is not.
+  const needsConnect = def.available && configured && authorization !== 'authorized'
   return {
     id: def.id,
     title: def.title,
@@ -258,8 +284,9 @@ export function buildChannelCard(
     // Offer the quick sync only when a sync could actually succeed (connected channel).
     syncEndpoint: enabled ? def.syncEndpoint : null,
     connectEndpoint: needsConnect ? def.connectEndpoint : null,
+    connectLabel: needsConnect ? CONNECT_LABEL[authorization] : null,
     enabled,
-    status: channelStatusLabel(def, configured, authorized),
+    status: channelStatusLabel(def, configured, authorization),
     summary,
   }
 }

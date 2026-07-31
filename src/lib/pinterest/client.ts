@@ -14,6 +14,7 @@
 
 import type { PinterestAdsConfig } from './config'
 import { PinterestAdsError, networkError, parsePinterestAdsError } from './errors'
+import type { PinterestTokenProvider } from './oauth/accessToken'
 
 /** Injectable fetch, matching the subset of the global `fetch` contract we rely on. */
 export type FetchImpl = (
@@ -33,6 +34,11 @@ export type FetchImpl = (
 
 export interface PinterestRequestOptions {
   fetchImpl?: FetchImpl
+  /**
+   * Supplies (and, on a 401, renews) the bearer token. When omitted the token is taken from
+   * `config.accessToken` — the legacy env-var path, which cannot be renewed.
+   */
+  tokenProvider?: PinterestTokenProvider
   /** Per-request timeout in milliseconds. */
   timeoutMs?: number
   /** Safety cap on the number of pages followed via `bookmark`. */
@@ -60,6 +66,7 @@ interface PinterestListEnvelope<T> {
 /** GET one page; normalize every failure mode to PinterestAdsError. */
 async function getPage(
   config: PinterestAdsConfig,
+  accessToken: string,
   path: string,
   params: Record<string, string>,
   fetchImpl: FetchImpl,
@@ -77,7 +84,7 @@ async function getPage(
       method: 'GET',
       headers: {
         // The only place the token ever appears.
-        Authorization: `Bearer ${config.accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         Accept: 'application/json',
       },
       signal: controller.signal,
@@ -112,8 +119,17 @@ async function getPage(
 /**
  * GET a path with a bounded retry for transient failures. Read-only, so a 429/5xx/network
  * error is retried with linear backoff up to `maxRetries` extra attempts — never in an
- * unbounded loop. Non-transient errors (bad token, no permission, unknown account) are
- * thrown immediately with their mapped message.
+ * unbounded loop. Non-transient errors (no permission, unknown account) are thrown immediately
+ * with their mapped message.
+ *
+ * A **401 is handled separately and exactly once**: Pinterest access tokens expire, and a token
+ * that was fresh when the sync started can lapse mid-run (or be invalidated server-side). The
+ * first 401 triggers one forced refresh and one replay of the same request; a second 401 is
+ * thrown. `refreshedOnce` is what bounds this — without it, a permanently rejected token would
+ * refresh-and-retry forever.
+ *
+ * Without a token provider (the legacy env-var path) there is nothing to refresh, so a 401 is
+ * thrown on the spot.
  */
 async function getWithRetry(
   config: PinterestAdsConfig,
@@ -125,11 +141,29 @@ async function getWithRetry(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const maxRetries = Math.max(0, options.maxRetries ?? DEFAULT_MAX_RETRIES)
   const sleep = options.sleep ?? defaultSleep
+  const provider = options.tokenProvider
+
+  let accessToken = provider ? await provider.getAccessToken() : config.accessToken
+  let refreshedOnce = false
 
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return await getPage(config, path, params, fetchImpl, timeoutMs)
+      return await getPage(config, accessToken, path, params, fetchImpl, timeoutMs)
     } catch (err) {
+      if (
+        provider &&
+        !refreshedOnce &&
+        err instanceof PinterestAdsError &&
+        err.httpStatus === 401
+      ) {
+        refreshedOnce = true
+        // May throw PinterestReauthorizationRequiredError, which is deliberately not caught
+        // here: it is terminal, and retrying could not help.
+        const renewed = await provider.forceRefresh()
+        if (!renewed) throw err
+        accessToken = renewed
+        continue
+      }
       const retryable = err instanceof PinterestAdsError && err.retryable
       if (!retryable || attempt >= maxRetries) throw err
       await sleep(RETRY_BASE_DELAY_MS * (attempt + 1))

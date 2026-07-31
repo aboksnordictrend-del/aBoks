@@ -153,8 +153,12 @@ describe('Google Ads card (#15)', () => {
 describe('Pinterest Ads card', () => {
   const pinterest = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'pinterest')!
 
+  // Post-OAuth: the app credentials are what "Koble til" authenticates with, and the ad
+  // account id is what the import reads. PINTEREST_ACCESS_TOKEN is deliberately absent — the
+  // token now comes from the stored OAuth grant, not from the environment.
   const CONFIGURED_ENV = {
-    PINTEREST_ACCESS_TOKEN: 'token',
+    PINTEREST_APP_ID: '1593431',
+    PINTEREST_APP_SECRET: 'app-secret',
     PINTEREST_AD_ACCOUNT_ID: '549755885175',
   }
 
@@ -202,15 +206,42 @@ describe('Pinterest Ads card', () => {
     assert.equal(card.summary.firstDate, '2026-07-24')
   })
 
-  it('does not require the optional app credentials', () => {
-    assert.ok(!pinterest.envKeys.includes('PINTEREST_APP_ID'))
-    assert.ok(!pinterest.envKeys.includes('PINTEREST_APP_SECRET'))
+  it('requires the app credentials, because OAuth is what authenticates now', () => {
+    assert.ok(pinterest.envKeys.includes('PINTEREST_APP_ID'))
+    assert.ok(pinterest.envKeys.includes('PINTEREST_APP_SECRET'))
     assert.equal(isChannelConfigured(pinterest, CONFIGURED_ENV), true)
+  })
+
+  it('does not require the legacy PINTEREST_ACCESS_TOKEN', () => {
+    // The whole point of the OAuth flow: a connected integration must not be reported as
+    // "Ikke konfigurert" just because the manual env token has been removed.
+    assert.ok(!pinterest.envKeys.includes('PINTEREST_ACCESS_TOKEN'))
+    assert.equal(isChannelConfigured(pinterest, CONFIGURED_ENV), true)
+  })
+
+  it('offers "Koble til" when configured but not yet authorized', () => {
+    const card = buildChannelCard(pinterest, true, undefined, 'not-authorized')
+    assert.equal(card.status, STATUS.notConnected)
+    assert.equal(card.enabled, false)
+    assert.equal(card.connectEndpoint, MARKETING_API.pinterestOAuthStart)
+    assert.equal(card.connectEndpoint, '/api/pinterest/oauth/start')
+    assert.equal(card.connectLabel, 'Koble til')
+    // Never both at once: a sync could not succeed without the authorization.
+    assert.equal(card.syncEndpoint, null)
+  })
+
+  it('offers "Koble til på nytt" when the grant was revoked or expired', () => {
+    const card = buildChannelCard(pinterest, true, undefined, 'reauthorization-required')
+    assert.equal(card.status, STATUS.reauthRequired)
+    assert.equal(card.enabled, false)
+    assert.equal(card.connectLabel, 'Koble til på nytt')
+    assert.equal(card.connectEndpoint, MARKETING_API.pinterestOAuthStart)
+    assert.equal(card.syncEndpoint, null)
   })
 
   it('treats a blank env var as not configured', () => {
     assert.equal(
-      isChannelConfigured(pinterest, { ...CONFIGURED_ENV, PINTEREST_ACCESS_TOKEN: '  ' }),
+      isChannelConfigured(pinterest, { ...CONFIGURED_ENV, PINTEREST_APP_SECRET: '  ' }),
       false,
     )
   })
@@ -291,7 +322,7 @@ describe('TikTok Ads card', () => {
   })
 
   it('reports "Ikke tilkoblet" and offers "Koble til" when configured but not authorized', () => {
-    const card = buildChannelCard(tiktok, true, undefined, false)
+    const card = buildChannelCard(tiktok, true, undefined, 'not-authorized')
     assert.equal(card.status, STATUS.notConnected)
     assert.equal(card.enabled, false)
     assert.equal(card.connectEndpoint, MARKETING_API.tiktokConnect)
@@ -310,7 +341,7 @@ describe('TikTok Ads card', () => {
         firstDate: '2026-07-22',
         lastDate: '2026-07-31',
       },
-      true,
+      'authorized',
     )
     assert.equal(card.status, STATUS.connected)
     assert.equal(card.enabled, true)
@@ -322,8 +353,8 @@ describe('TikTok Ads card', () => {
 })
 
 describe('channels without an OAuth step are unaffected by the authorization flag', () => {
-  it('defaults to authorized, so Meta/Google/Pinterest behave exactly as before', () => {
-    for (const id of ['meta', 'google', 'pinterest']) {
+  it('defaults to authorized, so Meta and Google behave exactly as before', () => {
+    for (const id of ['meta', 'google']) {
       const def = MARKETING_CHANNEL_DEFS.find((d) => d.id === id)!
       assert.equal(def.connectEndpoint, null, id)
       const card = buildChannelCard(def, true)

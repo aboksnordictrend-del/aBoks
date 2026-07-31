@@ -57,7 +57,7 @@ const GENERIC = 'Pinterest Ads svarte med en feil. Prøv igjen senere.'
  * technical cause always reaches the server log via `logLine()`.
  */
 const CODE_MESSAGES: Record<number, string> = {
-  2: 'Pinterest avviste påloggingen. Generer et nytt PINTEREST_ACCESS_TOKEN og oppdater miljøvariablene.',
+  2: 'Pinterest avviste påloggingen. Åpne Pinterest Ads og velg «Koble til på nytt».',
   3: 'Tilgangstokenet mangler nødvendige rettigheter. Tokenet må ha lesetilgang til annonsedata (ads:read).',
   7: 'Fant ikke Pinterest-annonsekontoen. Kontroller PINTEREST_AD_ACCOUNT_ID.',
   29: 'Pinterest-kvoten er brukt opp eller forespørslene kom for tett. Prøv igjen om litt.',
@@ -67,7 +67,7 @@ const CODE_MESSAGES: Record<number, string> = {
 /** Fallbacks per HTTP status when Pinterest sends no recognised code. */
 const STATUS_MESSAGES: Record<number, string> = {
   400: 'Pinterest Ads avviste forespørselen. Kontroller kontooppsettet.',
-  401: 'Tilgangstokenet er ugyldig eller utløpt. Generer et nytt PINTEREST_ACCESS_TOKEN og oppdater miljøvariablene.',
+  401: 'Tilgangstokenet er ugyldig eller utløpt. Åpne Pinterest Ads og velg «Koble til på nytt».',
   403: 'Ingen tilgang til Pinterest-annonsekontoen. Kontroller at tokenet har ads:read og tilgang til kontoen.',
   404: 'Fant ikke Pinterest-endepunktet eller annonsekontoen. Kontroller PINTEREST_AD_ACCOUNT_ID og PINTEREST_API_VERSION.',
   429: 'Pinterest-kvoten er brukt opp eller forespørslene kom for tett. Prøv igjen om litt.',

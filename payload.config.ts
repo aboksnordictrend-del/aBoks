@@ -22,6 +22,7 @@ import { ReviewInvitations } from './src/collections/ReviewInvitations'
 import { ReviewPhotos } from './src/collections/ReviewPhotos'
 import { EconomySettings } from './src/globals/EconomySettings'
 import { TikTokConnection } from './src/globals/TikTokConnection'
+import { PinterestConnection } from './src/globals/PinterestConnection'
 import { analyticsEndpoint } from './src/endpoints/analytics'
 import { metaSyncEndpoint } from './src/endpoints/metaSync'
 import { marketingChannelsEndpoint } from './src/endpoints/marketingChannels'
@@ -32,6 +33,8 @@ import { googleStatusEndpoint } from './src/endpoints/googleStatus'
 import { pinterestSyncEndpoint } from './src/endpoints/pinterestSync'
 import { pinterestExpensesEndpoint } from './src/endpoints/pinterestExpenses'
 import { pinterestStatusEndpoint } from './src/endpoints/pinterestStatus'
+import { pinterestOAuthStartEndpoint } from './src/endpoints/pinterestOAuthStart'
+import { pinterestOAuthCallbackEndpoint } from './src/endpoints/pinterestOAuthCallback'
 import {
   pinterestExportEndpoint,
   pinterestExportPreviewEndpoint,
@@ -42,6 +45,10 @@ import { tiktokAdvertisersEndpoint } from './src/endpoints/tiktokAdvertisers'
 import { tiktokStatusEndpoint } from './src/endpoints/tiktokStatus'
 import { tiktokExpensesEndpoint } from './src/endpoints/tiktokExpenses'
 import { tiktokSyncEndpoint } from './src/endpoints/tiktokSync'
+import {
+  checkTokenEncryptionKey,
+  isProductionRuntime,
+} from './src/lib/pinterest/oauth/config'
 import { buildCsrfOrigins } from './src/lib/csrfOrigins'
 import { resolveApplicationOrigin } from './src/lib/appOrigin'
 
@@ -110,9 +117,10 @@ export default buildConfig({
     ReviewInvitations,
     ReviewPhotos,
   ],
-  // TikTokConnection is an admin-only, nav-hidden global that stores the encrypted TikTok
-  // OAuth token; it has no editing surface. See src/lib/tiktok/tokenStore.ts.
-  globals: [EconomySettings, TikTokConnection],
+  // TikTokConnection and PinterestConnection are admin-only, nav-hidden globals that store the
+  // encrypted OAuth credentials for their channel; neither has an editing surface. See
+  // src/lib/tiktok/tokenStore.ts and src/lib/pinterest/oauth/store.ts.
+  globals: [EconomySettings, TikTokConnection, PinterestConnection],
   // Server-side, auth-guarded endpoints. analytics → /api/analytics; admin-only marketing:
   // channel catalog, plus per-provider detail data and sync under
   // /api/admin/integrations/{meta,google,pinterest,tiktok}/….
@@ -127,6 +135,10 @@ export default buildConfig({
     pinterestSyncEndpoint,
     pinterestExpensesEndpoint,
     pinterestStatusEndpoint,
+    // Pinterest OAuth 2.0. Served at /api/pinterest/oauth/{start,callback}; `start` is
+    // admin-only, and `callback` authenticates on the single-use state it created.
+    pinterestOAuthStartEndpoint,
+    pinterestOAuthCallbackEndpoint,
     // Pinterest bulk-upload CSV export (no Pinterest API call — the admin uploads the file).
     pinterestExportPreviewEndpoint,
     pinterestExportEndpoint,
@@ -162,6 +174,21 @@ export default buildConfig({
     }),
   ],
   editor: lexicalEditor({}),
+  // Startup validation of the Pinterest token-encryption key — mandatory in production, with a
+  // PAYLOAD_SECRET fallback locally.
+  //
+  // A log line, not a throw. The key is required for the Pinterest OAuth paths, and those refuse
+  // to run without it (getPinterestOAuthConfig and the token store both re-check), but taking the
+  // entire application down — checkout, orders, the storefront — because one marketing
+  // integration is misconfigured would be wildly disproportionate. Production logs at error level
+  // so it cannot be mistaken for noise. The message names variables only; no key or secret value
+  // is ever logged.
+  onInit: async (payload) => {
+    const problem = checkTokenEncryptionKey()
+    if (!problem) return
+    if (isProductionRuntime()) payload.logger.error(`[pinterest-oauth] ${problem}`)
+    else payload.logger.warn(`[pinterest-oauth] ${problem}`)
+  },
   secret: process.env.PAYLOAD_SECRET || 'aboks-secret-key-change-in-production-now',
   typescript: {
     outputFile: path.resolve(dirname, 'src/payload-types.ts'),

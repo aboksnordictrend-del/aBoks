@@ -9,11 +9,18 @@
 import { DATE_RE } from '@/lib/marketing/dateMath'
 
 export interface PinterestAdsConfig {
-  /** Pinterest app (client) id. Read for completeness; not needed for a token-based call. */
+  /** Pinterest app (client) id. The OAuth flow reads it from src/lib/pinterest/oauth/config.ts. */
   appId: string
-  /** Pinterest app secret. Reserved for a future OAuth refresh flow — never sent today. */
+  /** Pinterest app secret. Only ever used by the OAuth token endpoint, never by a v5 read. */
   appSecret: string
-  /** Bearer token used on every request. */
+  /**
+   * Legacy env-var bearer token, or '' once the integration is connected through OAuth.
+   *
+   * **Migration fallback only.** Every Pinterest call now goes through the token provider
+   * (src/lib/pinterest/oauth/accessToken.ts), which prefers the stored, refreshable OAuth grant
+   * and only falls back to this value when no grant exists. Delete PINTEREST_ACCESS_TOKEN from
+   * the environment once "Koble til" has been completed.
+   */
   accessToken: string
   /** Ad account whose spend is imported. Digits only. */
   adAccountId: string
@@ -53,16 +60,18 @@ export class PinterestAdsConfigError extends Error {
 /**
  * Env vars without which no Pinterest Ads call can be made.
  *
- * PINTEREST_APP_ID / PINTEREST_APP_SECRET are deliberately *not* required: a v5 call
- * authenticates with the bearer token alone, and the app credentials only become necessary
- * once a real "Koble til Pinterest" OAuth refresh flow exists. Requiring them would mark a
- * working token-based setup as "Ikke konfigurert" — the same reasoning that keeps
+ * Only the ad account id. **PINTEREST_ACCESS_TOKEN is no longer required** — that is the point
+ * of the OAuth flow: the token is obtained by "Koble til" and stored (encrypted) in the
+ * database, so requiring an env token would mark a properly connected integration as "Ikke
+ * konfigurert" and would keep the manual-token dependency alive forever.
+ *
+ * PINTEREST_APP_ID / PINTEREST_APP_SECRET are validated separately, by
+ * src/lib/pinterest/oauth/config.ts, because they are only needed while *connecting* or
+ * *refreshing*. Keeping them out of this list means a missing app secret cannot make an
+ * already-connected integration look unconfigured — the same reasoning that keeps
  * GOOGLE_ADS_LOGIN_CUSTOMER_ID out of the Google Ads required list.
  */
-export const PINTEREST_ADS_REQUIRED_ENV = [
-  'PINTEREST_ACCESS_TOKEN',
-  'PINTEREST_AD_ACCOUNT_ID',
-] as const
+export const PINTEREST_ADS_REQUIRED_ENV = ['PINTEREST_AD_ACCOUNT_ID'] as const
 
 /**
  * Pinterest ad account ids are numeric strings (e.g. 549755885175). Accept stray whitespace
@@ -99,7 +108,6 @@ export function getPinterestAdsConfig(
   const historyStartRaw = (env.PINTEREST_HISTORY_START ?? '').trim()
 
   const present: Record<string, string> = {
-    PINTEREST_ACCESS_TOKEN: accessToken,
     PINTEREST_AD_ACCOUNT_ID: rawAdAccountId,
   }
   const missing = PINTEREST_ADS_REQUIRED_ENV.filter((k) => !present[k])

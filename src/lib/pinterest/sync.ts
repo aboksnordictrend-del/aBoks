@@ -22,6 +22,7 @@ import {
   type PinterestSpendRange,
 } from './ads'
 import { getPinterestAdsConfig, maskAdAccountId, type PinterestAdsConfig } from './config'
+import { createTokenProvider, type PinterestTokenProvider } from './oauth/accessToken'
 import { computeIncrementalWindow, fullSyncChunks, todayForAccount, FULL_SYNC_CHUNK_DAYS } from './syncWindow'
 import type { PinterestAdAccountInfo, PinterestDailySpend } from './types'
 
@@ -106,6 +107,11 @@ export interface PinterestSyncInput {
 export interface PinterestSyncDeps {
   /** Injected Pinterest Ads config (defaults to env-derived config). */
   config?: PinterestAdsConfig
+  /**
+   * Supplies the bearer token and renews it. Defaults to the stored OAuth grant (with the
+   * legacy env token as a migration fallback). Injected in tests.
+   */
+  tokenProvider?: PinterestTokenProvider
   /** Injected account metadata fetcher (defaults to the real client). */
   fetchAccountInfo?: () => Promise<PinterestAdAccountInfo>
   /** Injected daily-spend fetcher; called once per chunk. */
@@ -325,11 +331,15 @@ export async function runPinterestAdsSync(
   const now = nowFn()
   const nowIso = now.toISOString()
 
-  const fetchAccountInfo = deps.fetchAccountInfo ?? (() => getPinterestAdAccountInfo({ config }))
+  // One provider for the whole run, so a refresh triggered by the first call is reused by every
+  // later one instead of each request re-deciding whether the token is still fresh.
+  const tokenProvider = deps.tokenProvider ?? createTokenProvider(payload)
+  const fetchAccountInfo =
+    deps.fetchAccountInfo ?? (() => getPinterestAdAccountInfo({ config, tokenProvider }))
   const fetchDailySpend =
     deps.fetchDailySpend ??
     ((range: PinterestSpendRange, currency: string) =>
-      getPinterestDailySpend(range, currency, { config }))
+      getPinterestDailySpend(range, currency, { config, tokenProvider }))
 
   const warnings: string[] = []
 

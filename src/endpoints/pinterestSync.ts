@@ -11,6 +11,13 @@ import type { Endpoint, PayloadRequest } from 'payload'
 import { PinterestAdsError } from '@/lib/pinterest/errors'
 import { PinterestAdsConfigError } from '@/lib/pinterest/config'
 import {
+  PinterestReauthorizationRequiredError,
+  PinterestRefreshBusyError,
+} from '@/lib/pinterest/oauth/accessToken'
+import { PinterestOAuthConfigError } from '@/lib/pinterest/oauth/config'
+import { PinterestOAuthError } from '@/lib/pinterest/oauth/exchange'
+import { PinterestStoreError } from '@/lib/pinterest/oauth/store'
+import {
   PINTEREST_ADS_SOURCE,
   PinterestSyncInProgressError,
   PinterestSyncValidationError,
@@ -96,9 +103,33 @@ export const pinterestSyncEndpoint: Endpoint = {
         recordSyncFailure(PINTEREST_ADS_SOURCE, failedAt, err.message)
         return Response.json({ success: false, error: err.message }, { status: 400 })
       }
-      if (err instanceof PinterestSyncInProgressError) {
+      if (err instanceof PinterestSyncInProgressError || err instanceof PinterestRefreshBusyError) {
         recordSyncFailure(PINTEREST_ADS_SOURCE, failedAt, err.message)
         return Response.json({ success: false, error: err.message }, { status: 409 })
+      }
+      if (err instanceof PinterestReauthorizationRequiredError) {
+        // The connection has already been marked `reauthorization_required`; every previously
+        // imported marketing-expense record is untouched. Only the short internal code reaches
+        // the log — never Pinterest's response and never a token.
+        req.payload.logger.error(`[pinterest-oauth] sync blocked: code=${err.code}`)
+        recordSyncFailure(PINTEREST_ADS_SOURCE, failedAt, err.message)
+        return Response.json(
+          { success: false, error: err.message, needsReauthorization: true },
+          { status: 409 },
+        )
+      }
+      if (err instanceof PinterestOAuthError) {
+        // A refresh that failed for a non-credential reason (network, 5xx, timeout).
+        req.payload.logger.error(err.logLine('sync-refresh'))
+        recordSyncFailure(PINTEREST_ADS_SOURCE, failedAt, err.message)
+        return Response.json({ success: false, error: err.message }, { status: 502 })
+      }
+      if (err instanceof PinterestOAuthConfigError || err instanceof PinterestStoreError) {
+        // Both messages name environment variables only — never a key or a token — so they are
+        // safe to show the administrator, and far more actionable than a generic 500.
+        req.payload.logger.error(`[pinterest-oauth] config error: ${err.message}`)
+        recordSyncFailure(PINTEREST_ADS_SOURCE, failedAt, err.message)
+        return Response.json({ success: false, error: err.message }, { status: 500 })
       }
       if (err instanceof PinterestAdsError) {
         // Secret-free structured detail to the server log; safe message to the client.

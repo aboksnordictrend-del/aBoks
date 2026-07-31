@@ -10,10 +10,12 @@ import {
   MARKETING_CHANNEL_DEFS,
   buildChannelCard,
   isChannelConfigured,
+  type ChannelAuthorization,
   type MarketingChannelCard,
   type MarketingChannelSummary,
 } from '@/lib/marketing/channels'
 import { expensesSummary, type ExpenseRow } from '@/lib/marketing/expenseSummary'
+import { getConnectionInfo } from '@/lib/pinterest/oauth/store'
 import { hasStoredToken } from '@/lib/tiktok/tokenStore'
 
 /** Spend summary for a channel from its own imported day records (never manual rows). */
@@ -52,22 +54,41 @@ async function channelSummary(
 }
 
 /**
- * Whether a channel with an OAuth step already holds a usable authorization. Returns only a
- * boolean — the token is never read into this handler, let alone into the response.
+ * Authorization state of a channel with an OAuth step. Returns only a state label — no token is
+ * ever read into this handler, let alone into the response.
  *
- * TikTok is the only such channel today. An env-supplied TIKTOK_ACCESS_TOKEN counts, matching
- * the env-first model Meta and Pinterest use; otherwise the stored OAuth grant decides. A
- * failed lookup degrades to "not authorized", so the card offers "Koble til" rather than a
- * sync that could not run.
+ * A failed lookup degrades to 'not-authorized', so the card offers a connect action rather than
+ * a sync that could not run.
  */
-async function isChannelAuthorized(req: PayloadRequest, channelId: string): Promise<boolean> {
-  if (channelId !== 'tiktok') return true
-  if ((process.env.TIKTOK_ACCESS_TOKEN ?? '').trim() !== '') return true
-  try {
-    return await hasStoredToken(req.payload)
-  } catch {
-    return false
+async function channelAuthorization(
+  req: PayloadRequest,
+  channelId: string,
+): Promise<ChannelAuthorization> {
+  if (channelId === 'tiktok') {
+    // Unchanged: an env-supplied TIKTOK_ACCESS_TOKEN counts, otherwise the stored grant decides.
+    if ((process.env.TIKTOK_ACCESS_TOKEN ?? '').trim() !== '') return 'authorized'
+    try {
+      return (await hasStoredToken(req.payload)) ? 'authorized' : 'not-authorized'
+    } catch {
+      return 'not-authorized'
+    }
   }
+
+  if (channelId === 'pinterest') {
+    try {
+      const info = await getConnectionInfo(req.payload)
+      if (info.status === 'connected') return 'authorized'
+      if (info.status === 'reauthorization_required') return 'reauthorization-required'
+      // Not connected through OAuth yet. The legacy env token still authenticates a sync, so a
+      // deployment mid-migration keeps working and the card stays green — but only until the
+      // token is removed, which is the point of the migration.
+      return (process.env.PINTEREST_ACCESS_TOKEN ?? '').trim() ? 'authorized' : 'not-authorized'
+    } catch {
+      return 'not-authorized'
+    }
+  }
+
+  return 'authorized'
 }
 
 export const marketingChannelsEndpoint: Endpoint = {
@@ -89,12 +110,12 @@ export const marketingChannelsEndpoint: Endpoint = {
           ? await channelSummary(req, def.channelValue, def.sourceValue)
           : undefined
         // Only a channel with an OAuth step can be "configured but not authorized"; the
-        // others pass `true` and behave exactly as before. Boolean only — the token itself
-        // is never read here.
-        const authorized = def.connectEndpoint
-          ? await isChannelAuthorized(req, def.id)
-          : true
-        cards.push(buildChannelCard(def, configured, summary, authorized))
+        // others pass 'authorized' and behave exactly as before. A state label only — the
+        // token itself is never read here.
+        const authorization: ChannelAuthorization = def.connectEndpoint
+          ? await channelAuthorization(req, def.id)
+          : 'authorized'
+        cards.push(buildChannelCard(def, configured, summary, authorization))
       }
       return Response.json({ channels: cards }, { status: 200 })
     } catch (err) {

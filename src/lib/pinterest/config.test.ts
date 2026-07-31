@@ -54,18 +54,18 @@ describe('getPinterestAdsConfig', () => {
     assert.equal(config.historyStart, '2019-01-01')
   })
 
-  it('requires only the token and the ad account id', () => {
-    assert.deepEqual(
-      [...PINTEREST_ADS_REQUIRED_ENV],
-      ['PINTEREST_ACCESS_TOKEN', 'PINTEREST_AD_ACCOUNT_ID'],
-    )
-    // The app credentials are for a future OAuth flow — a token-based setup is valid without.
-    const config = getPinterestAdsConfig({
-      PINTEREST_ACCESS_TOKEN: 'tok',
-      PINTEREST_AD_ACCOUNT_ID: '549755885175',
-    })
+  it('requires only the ad account id', () => {
+    // PINTEREST_ACCESS_TOKEN is no longer required: the token comes from the stored OAuth
+    // grant. Requiring it would keep the manual-token dependency alive forever and would mark
+    // a properly connected integration as "Ikke konfigurert".
+    assert.deepEqual([...PINTEREST_ADS_REQUIRED_ENV], ['PINTEREST_AD_ACCOUNT_ID'])
+    // The app credentials belong to the OAuth config, validated separately, so reading the ads
+    // config without them must still succeed.
+    const config = getPinterestAdsConfig({ PINTEREST_AD_ACCOUNT_ID: '549755885175' })
     assert.equal(config.appId, '')
     assert.equal(config.appSecret, '')
+    assert.equal(config.accessToken, '')
+    assert.equal(config.adAccountId, '549755885175')
   })
 
   it('names the missing variables without leaking any value', () => {
@@ -74,14 +74,13 @@ describe('getPinterestAdsConfig', () => {
       assert.fail('expected a config error')
     } catch (err) {
       assert.ok(err instanceof PinterestAdsConfigError)
-      assert.match(err.message, /PINTEREST_ACCESS_TOKEN/)
       assert.match(err.message, /PINTEREST_AD_ACCOUNT_ID/)
     }
   })
 
   it('treats a blank value as missing', () => {
     assert.throws(
-      () => getPinterestAdsConfig({ ...VALID, PINTEREST_ACCESS_TOKEN: '   ' }),
+      () => getPinterestAdsConfig({ ...VALID, PINTEREST_AD_ACCOUNT_ID: '   ' }),
       PinterestAdsConfigError,
     )
   })

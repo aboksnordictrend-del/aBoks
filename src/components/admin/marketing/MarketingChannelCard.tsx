@@ -22,6 +22,9 @@ const ACCENTS: Record<string, string> = {
 /** Badge colour per status. Text always carries the meaning; colour only reinforces it. */
 function badgeColor(status: string): string {
   if (status === STATUS.connected) return 'var(--theme-success-500)'
+  // A revoked authorization is a fault, not merely an unfinished setup — it earns the error
+  // colour so it is distinguishable at a glance from "never connected".
+  if (status === STATUS.reauthRequired) return 'var(--theme-error-500)'
   if (status === STATUS.notConfigured || status === STATUS.notConnected) {
     return 'var(--theme-warning-500)'
   }
@@ -31,6 +34,7 @@ function badgeColor(status: string): string {
 /** Short line under the channel name, derived from its status. */
 function tagline(status: string): string {
   if (status === STATUS.connected) return 'Synkronisering aktiv'
+  if (status === STATUS.reauthRequired) return 'Autorisering utløpt'
   if (status === STATUS.notConnected) return 'Autorisering mangler'
   if (status === STATUS.notConfigured) return 'Mangler oppsett'
   return 'Ikke tilgjengelig ennå'
@@ -148,12 +152,19 @@ export default function MarketingChannelCard({
   const openable = Boolean(card.href)
   const canQuickSync = Boolean(card.syncEndpoint)
   // Set only for a channel whose setup is complete but whose OAuth authorization is not
-  // (TikTok). Mutually exclusive with `canQuickSync` by construction in buildChannelCard.
+  // (TikTok, Pinterest Ads). Mutually exclusive with `canQuickSync` by construction in
+  // buildChannelCard. The label distinguishes a first connection from a repair.
   const connectHref = card.connectEndpoint
+  const connectLabel = card.connectLabel ?? 'Koble til'
   const { summary } = card
 
   const [phase, setPhase] = useState<QuickPhase>('idle')
   const [message, setMessage] = useState('')
+  // The connect action is a full-page navigation to a server endpoint that 302s to the
+  // provider. There is no response to await, so the pending state is set on click and simply
+  // lives until the browser leaves — which is exactly the feedback the admin needs during the
+  // second or two before the consent screen appears.
+  const [connecting, setConnecting] = useState(false)
   const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Clear a pending "back to idle" timer if the card unmounts mid-success.
@@ -251,9 +262,17 @@ export default function MarketingChannelCard({
           // Configured but not yet authorized: offer the OAuth start instead of a sync that
           // could not succeed. A plain link, not fetch — the endpoint answers with a 302 to
           // the provider's consent screen, which the browser must follow as a navigation.
-          <a className={styles.chQuick} href={connectHref} aria-label={`Koble til ${card.title}`}>
-            <LinkIcon />
-            <span>Koble til</span>
+          <a
+            className={styles.chQuick}
+            href={connectHref}
+            onClick={() => setConnecting(true)}
+            aria-busy={connecting}
+            aria-label={
+              connecting ? `Åpner autorisering for ${card.title}` : `${connectLabel} ${card.title}`
+            }
+          >
+            {connecting ? <SpinnerIcon /> : <LinkIcon />}
+            <span>{connecting ? 'Åpner …' : connectLabel}</span>
           </a>
         ) : canQuickSync ? (
           // Raised above the stretched Åpne link (z-index) so this stays independently
