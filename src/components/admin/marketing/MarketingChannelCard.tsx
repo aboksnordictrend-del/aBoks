@@ -22,13 +22,16 @@ const ACCENTS: Record<string, string> = {
 /** Badge colour per status. Text always carries the meaning; colour only reinforces it. */
 function badgeColor(status: string): string {
   if (status === STATUS.connected) return 'var(--theme-success-500)'
-  if (status === STATUS.notConfigured) return 'var(--theme-warning-500)'
+  if (status === STATUS.notConfigured || status === STATUS.notConnected) {
+    return 'var(--theme-warning-500)'
+  }
   return 'var(--theme-elevation-400)'
 }
 
 /** Short line under the channel name, derived from its status. */
 function tagline(status: string): string {
   if (status === STATUS.connected) return 'Synkronisering aktiv'
+  if (status === STATUS.notConnected) return 'Autorisering mangler'
   if (status === STATUS.notConfigured) return 'Mangler oppsett'
   return 'Ikke tilgjengelig ennå'
 }
@@ -116,6 +119,19 @@ function RefreshIcon() {
   )
 }
 
+/** Link icon for the "Koble til" action, which leaves the admin for the provider's consent screen. */
+function LinkIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+      <path
+        d="M6.5 9.5a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 1 0-4-4l-.7.7M9.5 6.5a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 1 0 4 4l.7-.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /** Quick "Oppdater" phase for a single card. Kept local so only this card re-renders. */
 type QuickPhase = 'idle' | 'syncing' | 'success' | 'error'
 
@@ -131,6 +147,9 @@ export default function MarketingChannelCard({
 }) {
   const openable = Boolean(card.href)
   const canQuickSync = Boolean(card.syncEndpoint)
+  // Set only for a channel whose setup is complete but whose OAuth authorization is not
+  // (TikTok). Mutually exclusive with `canQuickSync` by construction in buildChannelCard.
+  const connectHref = card.connectEndpoint
   const { summary } = card
 
   const [phase, setPhase] = useState<QuickPhase>('idle')
@@ -228,7 +247,15 @@ export default function MarketingChannelCard({
           </p>
         )}
 
-        {canQuickSync ? (
+        {connectHref ? (
+          // Configured but not yet authorized: offer the OAuth start instead of a sync that
+          // could not succeed. A plain link, not fetch — the endpoint answers with a 302 to
+          // the provider's consent screen, which the browser must follow as a navigation.
+          <a className={styles.chQuick} href={connectHref} aria-label={`Koble til ${card.title}`}>
+            <LinkIcon />
+            <span>Koble til</span>
+          </a>
+        ) : canQuickSync ? (
           // Raised above the stretched Åpne link (z-index) so this stays independently
           // clickable. Width is driven by flex, not by the label, so the text can change
           // (Oppdater → Oppdaterer … → Oppdatert) without the button — or the row — resizing.

@@ -468,6 +468,9 @@
   cursor: pointer;
   background: var(--accent);
   color: #fff;
+  /* The quick action is a <button> for a sync and an <a> for "Koble til" (which must be a
+     real navigation to the provider's consent screen). Both render identically. */
+  text-decoration: none;
   border: 1px solid color-mix(in srgb, var(--accent) 78%, #000 8%);
   transition: filter 150ms ease, opacity 150ms ease, background 150ms ease;
 }

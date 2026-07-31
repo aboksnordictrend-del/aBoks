@@ -111,9 +111,11 @@ export interface Config {
   fallbackLocale: null;
   globals: {
     'economy-settings': EconomySetting;
+    'tiktok-connection': TiktokConnection;
   };
   globalsSelect: {
     'economy-settings': EconomySettingsSelect<false> | EconomySettingsSelect<true>;
+    'tiktok-connection': TiktokConnectionSelect<false> | TiktokConnectionSelect<true>;
   };
   locale: null;
   widgets: {
@@ -712,11 +714,11 @@ export interface MarketingExpense {
   periodFrom?: string | null;
   periodTo?: string | null;
   /**
-   * Manuell med mindre den er importert automatisk fra Meta, Google Ads eller Pinterest Ads.
+   * Manuell med mindre den er importert automatisk fra Meta, Google Ads, Pinterest Ads eller TikTok Ads.
    */
-  source?: ('manual' | 'meta-api' | 'google-ads' | 'pinterest-ads') | null;
+  source?: ('manual' | 'meta-api' | 'google-ads' | 'pinterest-ads' | 'tiktok-ads') | null;
   /**
-   * Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11, google:1234567890:2026-07-11 eller pinterest:549755885175:2026-07-11.
+   * Deterministisk nøkkel for idempotent import, f.eks. meta:act_123:2026-07-11, google:1234567890:2026-07-11, pinterest:549755885175:2026-07-11 eller tiktok:7012345678901234567:2026-07-11.
    */
   externalKey?: string | null;
   externalAccountId?: string | null;
@@ -1438,6 +1440,38 @@ export interface EconomySetting {
   createdAt?: string | null;
 }
 /**
+ * Teknisk lagring for TikTok Ads-autorisasjonen. Opprettes automatisk av «Koble til TikTok».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tiktok-connection".
+ */
+export interface TiktokConnection {
+  id: number;
+  /**
+   * AES-256-GCM-kryptert. Vises aldri, verken i admin eller i API-svar.
+   */
+  accessTokenEncrypted?: string | null;
+  advertiserId?: string | null;
+  advertiserName?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
+  connectedAt?: string | null;
+  /**
+   * Formatet autorisasjonen ble lagret med. En eldre versjon ignoreres, slik at administratoren må koble til på nytt.
+   */
+  connectionVersion?: number | null;
+  /**
+   * Av når /advertiser/info/ ble avvist — appen har Reporting, men ikke Ad Account Management. Valuta og tidssone må da oppgis via TIKTOK_ADVERTISER_CURRENCY.
+   */
+  metadataAvailable?: boolean | null;
+  /**
+   * Resultatet av én dags testrapport da tilkoblingen ble opprettet.
+   */
+  reportingOk?: boolean | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "economy-settings_select".
  */
@@ -1452,6 +1486,24 @@ export interface EconomySettingsSelect<T extends boolean = true> {
   applyDefaultShippingCost?: T;
   defaultShippingCost?: T;
   freeShippingStillHasCost?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tiktok-connection_select".
+ */
+export interface TiktokConnectionSelect<T extends boolean = true> {
+  accessTokenEncrypted?: T;
+  advertiserId?: T;
+  advertiserName?: T;
+  currency?: T;
+  timezone?: T;
+  connectedAt?: T;
+  connectionVersion?: T;
+  metadataAvailable?: T;
+  reportingOk?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

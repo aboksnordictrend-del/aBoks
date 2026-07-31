@@ -21,6 +21,7 @@ import { Reviews } from './src/collections/Reviews'
 import { ReviewInvitations } from './src/collections/ReviewInvitations'
 import { ReviewPhotos } from './src/collections/ReviewPhotos'
 import { EconomySettings } from './src/globals/EconomySettings'
+import { TikTokConnection } from './src/globals/TikTokConnection'
 import { analyticsEndpoint } from './src/endpoints/analytics'
 import { metaSyncEndpoint } from './src/endpoints/metaSync'
 import { marketingChannelsEndpoint } from './src/endpoints/marketingChannels'
@@ -35,6 +36,12 @@ import {
   pinterestExportEndpoint,
   pinterestExportPreviewEndpoint,
 } from './src/endpoints/pinterestExport'
+import { tiktokConnectEndpoint } from './src/endpoints/tiktokConnect'
+import { tiktokCallbackEndpoint } from './src/endpoints/tiktokCallback'
+import { tiktokAdvertisersEndpoint } from './src/endpoints/tiktokAdvertisers'
+import { tiktokStatusEndpoint } from './src/endpoints/tiktokStatus'
+import { tiktokExpensesEndpoint } from './src/endpoints/tiktokExpenses'
+import { tiktokSyncEndpoint } from './src/endpoints/tiktokSync'
 import { buildCsrfOrigins } from './src/lib/csrfOrigins'
 import { resolveApplicationOrigin } from './src/lib/appOrigin'
 
@@ -103,10 +110,12 @@ export default buildConfig({
     ReviewInvitations,
     ReviewPhotos,
   ],
-  globals: [EconomySettings],
+  // TikTokConnection is an admin-only, nav-hidden global that stores the encrypted TikTok
+  // OAuth token; it has no editing surface. See src/lib/tiktok/tokenStore.ts.
+  globals: [EconomySettings, TikTokConnection],
   // Server-side, auth-guarded endpoints. analytics → /api/analytics; admin-only marketing:
   // channel catalog, plus per-provider detail data and sync under
-  // /api/admin/integrations/{meta,google,pinterest}/….
+  // /api/admin/integrations/{meta,google,pinterest,tiktok}/….
   endpoints: [
     analyticsEndpoint,
     metaSyncEndpoint,
@@ -121,6 +130,14 @@ export default buildConfig({
     // Pinterest bulk-upload CSV export (no Pinterest API call — the admin uploads the file).
     pinterestExportPreviewEndpoint,
     pinterestExportEndpoint,
+    // TikTok Ads. `connect`/`callback` are the OAuth pair — both admin-only; the callback
+    // additionally requires the signed state minted by `connect`.
+    tiktokConnectEndpoint,
+    tiktokCallbackEndpoint,
+    tiktokAdvertisersEndpoint,
+    tiktokStatusEndpoint,
+    tiktokExpensesEndpoint,
+    tiktokSyncEndpoint,
   ],
   // Plugin must always be registered so withPayload includes VercelBlobClientUploadHandler
   // in the importMap at build time. BLOB_READ_WRITE_TOKEN is a runtime-only Vercel env var

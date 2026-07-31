@@ -49,11 +49,17 @@ describe('marketing channel catalog', () => {
   })
 
   it('marks not-yet-available channels as "Kommer snart" with no href', () => {
-    const tiktok = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'tiktok')!
-    const card = buildChannelCard(tiktok, false)
+    // Every declared channel is live today, so the roadmap behaviour is asserted against a
+    // synthetic def — that keeps the rule covered no matter which channels happen to ship.
+    const comingSoon = { ...meta, id: 'snapchat', href: null, syncEndpoint: null, available: false }
+    const card = buildChannelCard(comingSoon, false)
     assert.equal(card.status, STATUS.comingSoon)
     assert.equal(card.href, null)
     assert.equal(card.enabled, false)
+    assert.equal(card.syncEndpoint, null)
+    assert.equal(card.connectEndpoint, null)
+    // An unavailable channel stays "Kommer snart" even if its env happens to be present.
+    assert.equal(buildChannelCard(comingSoon, true).status, STATUS.comingSoon)
   })
 
   it('sync button targets the existing sync endpoint (#8)', () => {
@@ -222,17 +228,108 @@ describe('quick "Oppdater" availability across channels', () => {
       // The field is always present (the card UI reads it to enable/disable the action).
       assert.ok('syncEndpoint' in card)
       if (!def.available) {
-        // TikTok: listed but not buildable → no quick sync even if "configured".
+        // Listed but not buildable → no quick sync even if "configured".
         assert.equal(card.syncEndpoint, null)
       }
     }
   })
 
-  it('live channels carry a sync endpoint, coming-soon ones do not (def level)', () => {
+  it('every live channel carries a sync endpoint (def level)', () => {
     const byId = Object.fromEntries(MARKETING_CHANNEL_DEFS.map((d) => [d.id, d]))
     assert.equal(byId.meta.syncEndpoint, MARKETING_API.metaSync)
     assert.equal(byId.google.syncEndpoint, MARKETING_API.googleSync)
     assert.equal(byId.pinterest.syncEndpoint, MARKETING_API.pinterestSync)
-    assert.equal(byId.tiktok.syncEndpoint, null)
+    assert.equal(byId.tiktok.syncEndpoint, MARKETING_API.tiktokSync)
+  })
+})
+
+describe('TikTok Ads card', () => {
+  const tiktok = MARKETING_CHANNEL_DEFS.find((d) => d.id === 'tiktok')!
+
+  const CONFIGURED_ENV = {
+    TIKTOK_APP_ID: '7668564716072534017',
+    TIKTOK_APP_SECRET: 'app-secret',
+    TIKTOK_REDIRECT_URI: 'https://aboks.no/api/admin/integrations/tiktok/callback',
+  }
+
+  it('is a live channel, not a "Kommer snart" placeholder', () => {
+    assert.equal(tiktok.title, 'TikTok Ads')
+    assert.equal(tiktok.available, true)
+    assert.equal(tiktok.description, 'Synkroniser annonseringskostnader fra TikTok Ads.')
+    assert.ok(!/Kommer snart/i.test(tiktok.description))
+  })
+
+  it('points at its own detail route and writes the shared channel/source values', () => {
+    assert.equal(tiktok.href, MARKETING_ROUTES.tiktok)
+    assert.equal(tiktok.href, '/admin/collections/marketing-expenses/tiktok')
+    assert.equal(tiktok.channelValue, 'tiktok')
+    assert.equal(tiktok.sourceValue, 'tiktok-ads')
+  })
+
+  it('does not require the advertiser id or an access token (OAuth supplies both)', () => {
+    assert.ok(!tiktok.envKeys.includes('TIKTOK_ADVERTISER_ID'))
+    assert.ok(!tiktok.envKeys.includes('TIKTOK_ACCESS_TOKEN'))
+    assert.equal(isChannelConfigured(tiktok, CONFIGURED_ENV), true)
+  })
+
+  it('treats a blank env var as not configured', () => {
+    assert.equal(
+      isChannelConfigured(tiktok, { ...CONFIGURED_ENV, TIKTOK_APP_SECRET: '  ' }),
+      false,
+    )
+  })
+
+  it('reports "Ikke konfigurert" — still openable — without env', () => {
+    const card = buildChannelCard(tiktok, false)
+    assert.equal(card.status, STATUS.notConfigured)
+    assert.equal(card.enabled, false)
+    assert.equal(card.syncEndpoint, null)
+    // No connect action either: connecting could not work without the app credentials.
+    assert.equal(card.connectEndpoint, null)
+    // Still linked: the panel is where the missing configuration is explained.
+    assert.equal(card.href, MARKETING_ROUTES.tiktok)
+  })
+
+  it('reports "Ikke tilkoblet" and offers "Koble til" when configured but not authorized', () => {
+    const card = buildChannelCard(tiktok, true, undefined, false)
+    assert.equal(card.status, STATUS.notConnected)
+    assert.equal(card.enabled, false)
+    assert.equal(card.connectEndpoint, MARKETING_API.tiktokConnect)
+    // Never both at once: a sync could not succeed without the authorization.
+    assert.equal(card.syncEndpoint, null)
+  })
+
+  it('reports "Tilkoblet" with a summary once configured and authorized', () => {
+    const card = buildChannelCard(
+      tiktok,
+      true,
+      {
+        totalSpend: 1234.5,
+        days: 9,
+        lastSyncedAt: '2026-07-31T08:00:00.000Z',
+        firstDate: '2026-07-22',
+        lastDate: '2026-07-31',
+      },
+      true,
+    )
+    assert.equal(card.status, STATUS.connected)
+    assert.equal(card.enabled, true)
+    assert.equal(card.syncEndpoint, MARKETING_API.tiktokSync)
+    assert.equal(card.connectEndpoint, null)
+    assert.equal(card.summary.totalSpend, 1234.5)
+    assert.equal(card.summary.days, 9)
+  })
+})
+
+describe('channels without an OAuth step are unaffected by the authorization flag', () => {
+  it('defaults to authorized, so Meta/Google/Pinterest behave exactly as before', () => {
+    for (const id of ['meta', 'google', 'pinterest']) {
+      const def = MARKETING_CHANNEL_DEFS.find((d) => d.id === id)!
+      assert.equal(def.connectEndpoint, null, id)
+      const card = buildChannelCard(def, true)
+      assert.equal(card.status, STATUS.connected, id)
+      assert.equal(card.enabled, true, id)
+      assert.equal(card.connectEndpoint, null, id)
+    }
   })
 })

@@ -82,6 +82,7 @@ describe('marketing/channels — admin happy path', () => {
       id: string
       status: string
       syncEndpoint: string | null
+      connectEndpoint: string | null
       summary: { totalSpend: number; days: number }
     }>
     const meta = channels.find((c) => c.id === 'meta')!
@@ -90,8 +91,11 @@ describe('marketing/channels — admin happy path', () => {
     assert.equal(meta.summary.days, 2)
     // The quick "Oppdater" action reads this off the card payload.
     assert.equal(meta.syncEndpoint, '/api/admin/integrations/meta/sync')
-    // A coming-soon channel never carries one.
-    assert.equal(channels.find((c) => c.id === 'tiktok')!.syncEndpoint, null)
+    // An unconfigured channel never carries one — TikTok's env is absent in this test, so
+    // its card offers neither a quick sync nor (without the app credentials) a connect.
+    const tiktok = channels.find((c) => c.id === 'tiktok')!
+    assert.equal(tiktok.syncEndpoint, null)
+    assert.equal(tiktok.connectEndpoint, null)
   })
 })
 

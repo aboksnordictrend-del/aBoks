@@ -14,6 +14,7 @@ import {
   type MarketingChannelSummary,
 } from '@/lib/marketing/channels'
 import { expensesSummary, type ExpenseRow } from '@/lib/marketing/expenseSummary'
+import { hasStoredToken } from '@/lib/tiktok/tokenStore'
 
 /** Spend summary for a channel from its own imported day records (never manual rows). */
 async function channelSummary(
@@ -50,6 +51,25 @@ async function channelSummary(
   }
 }
 
+/**
+ * Whether a channel with an OAuth step already holds a usable authorization. Returns only a
+ * boolean — the token is never read into this handler, let alone into the response.
+ *
+ * TikTok is the only such channel today. An env-supplied TIKTOK_ACCESS_TOKEN counts, matching
+ * the env-first model Meta and Pinterest use; otherwise the stored OAuth grant decides. A
+ * failed lookup degrades to "not authorized", so the card offers "Koble til" rather than a
+ * sync that could not run.
+ */
+async function isChannelAuthorized(req: PayloadRequest, channelId: string): Promise<boolean> {
+  if (channelId !== 'tiktok') return true
+  if ((process.env.TIKTOK_ACCESS_TOKEN ?? '').trim() !== '') return true
+  try {
+    return await hasStoredToken(req.payload)
+  } catch {
+    return false
+  }
+}
+
 export const marketingChannelsEndpoint: Endpoint = {
   path: '/admin/marketing/channels',
   method: 'get',
@@ -68,7 +88,13 @@ export const marketingChannelsEndpoint: Endpoint = {
         const summary = def.available
           ? await channelSummary(req, def.channelValue, def.sourceValue)
           : undefined
-        cards.push(buildChannelCard(def, configured, summary))
+        // Only a channel with an OAuth step can be "configured but not authorized"; the
+        // others pass `true` and behave exactly as before. Boolean only — the token itself
+        // is never read here.
+        const authorized = def.connectEndpoint
+          ? await isChannelAuthorized(req, def.id)
+          : true
+        cards.push(buildChannelCard(def, configured, summary, authorized))
       }
       return Response.json({ channels: cards }, { status: 200 })
     } catch (err) {

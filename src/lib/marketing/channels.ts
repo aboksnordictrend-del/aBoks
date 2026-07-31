@@ -17,6 +17,7 @@ export const MARKETING_ROUTES = {
   google: `${ADMIN_BASE}/google`,
   pinterest: `${ADMIN_BASE}/pinterest`,
   pinterestExport: `${ADMIN_BASE}/pinterest-eksport`,
+  tiktok: `${ADMIN_BASE}/tiktok`,
   all: `${ADMIN_BASE}/all`,
 } as const
 
@@ -38,11 +39,21 @@ export const MARKETING_API = {
   // and the (optionally edited) row selection.
   pinterestExportPreview: '/api/admin/integrations/pinterest/export/preview',
   pinterestExport: '/api/admin/integrations/pinterest/export',
+  tiktokExpenses: '/api/admin/integrations/tiktok/expenses',
+  tiktokSync: '/api/admin/integrations/tiktok/sync',
+  tiktokStatus: '/api/admin/integrations/tiktok/status',
+  // TikTok is the one provider with a real OAuth step: this starts it (admin-only) and
+  // redirects the browser to TikTok's authorization screen.
+  tiktokConnect: '/api/admin/integrations/tiktok/connect',
+  // Only needed when the authorization covers several advertisers and none is configured.
+  tiktokAdvertisers: '/api/admin/integrations/tiktok/advertisers',
 } as const
 
 /** Status labels (Norwegian Bokmål) shown on a channel card. */
 export const STATUS = {
   connected: 'Tilkoblet',
+  /** Env is in place, but the channel's OAuth authorization has not been granted yet. */
+  notConnected: 'Ikke tilkoblet',
   notConfigured: 'Ikke konfigurert',
   comingSoon: 'Kommer snart',
 } as const
@@ -67,6 +78,12 @@ export interface MarketingChannelDef {
    * The card's quick "Oppdater" action posts here; the detail page uses the same path.
    */
   syncEndpoint: string | null
+  /**
+   * Endpoint that starts this channel's OAuth flow, or null when it authenticates from env
+   * alone (Meta, Google Ads and Pinterest Ads all do). Only TikTok sets one, so the extra
+   * "Koble til" state never affects the other cards.
+   */
+  connectEndpoint: string | null
   /** Server env vars that must be present for the integration to be "connected". */
   envKeys: string[]
   /** False for channels that are listed but not yet buildable (no sync/detail page). */
@@ -85,6 +102,11 @@ export interface MarketingChannelCard {
    * so the quick action is offered exactly when a sync can succeed.
    */
   syncEndpoint: string | null
+  /**
+   * Set only when the channel is configured but still needs an OAuth authorization — the
+   * card then offers "Koble til" instead of a sync it could not complete.
+   */
+  connectEndpoint: string | null
   enabled: boolean
   status: string
   summary: MarketingChannelSummary
@@ -113,9 +135,9 @@ const EMPTY_SUMMARY: MarketingChannelSummary = {
   lastDate: null,
 }
 
-// Meta Ads, Google Ads and Pinterest Ads are live. The rest are declared so the catalog
-// already shows the roadmap; they render as "Kommer snart" and are disabled until a sync +
-// detail page lands.
+// Meta Ads, Google Ads, Pinterest Ads and TikTok Ads are live. Any future channel is
+// declared here so the catalog already shows the roadmap; it renders as "Kommer snart" and
+// is disabled until a sync + detail page lands.
 export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
   {
     id: 'meta',
@@ -125,6 +147,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     sourceValue: 'meta-api',
     href: MARKETING_ROUTES.meta,
     syncEndpoint: MARKETING_API.metaSync,
+    connectEndpoint: null,
     envKeys: ['META_ACCESS_TOKEN', 'META_AD_ACCOUNT_ID'],
     available: true,
   },
@@ -136,6 +159,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     sourceValue: 'google-ads',
     href: MARKETING_ROUTES.google,
     syncEndpoint: MARKETING_API.googleSync,
+    connectEndpoint: null,
     // GOOGLE_ADS_LOGIN_CUSTOMER_ID is deliberately not required: it is only needed when the
     // ad account sits under a manager (MCC) account, so requiring it would mark a valid
     // standalone setup as "Ikke konfigurert".
@@ -156,6 +180,7 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
     sourceValue: 'pinterest-ads',
     href: MARKETING_ROUTES.pinterest,
     syncEndpoint: MARKETING_API.pinterestSync,
+    connectEndpoint: null,
     // PINTEREST_APP_ID / PINTEREST_APP_SECRET are deliberately not required: a v5 call
     // authenticates with the bearer token alone, so requiring the app credentials would mark
     // a valid token-based setup as "Ikke konfigurert". Same reasoning as
@@ -166,13 +191,21 @@ export const MARKETING_CHANNEL_DEFS: MarketingChannelDef[] = [
   {
     id: 'tiktok',
     title: 'TikTok Ads',
-    description: 'Kommer snart: synkroniser annonseringskostnader fra TikTok Ads.',
+    description: 'Synkroniser annonseringskostnader fra TikTok Ads.',
     channelValue: 'tiktok',
     sourceValue: 'tiktok-ads',
-    href: null,
-    syncEndpoint: null,
-    envKeys: [],
-    available: false,
+    href: MARKETING_ROUTES.tiktok,
+    syncEndpoint: MARKETING_API.tiktokSync,
+    connectEndpoint: MARKETING_API.tiktokConnect,
+    // TIKTOK_ADVERTISER_ID is deliberately not required: the OAuth flow discovers the
+    // authorized advertisers and selects automatically when there is exactly one, so
+    // requiring it would mark a valid single-account setup as "Ikke konfigurert". Same
+    // reasoning as GOOGLE_ADS_LOGIN_CUSTOMER_ID and PINTEREST_APP_ID above.
+    // TIKTOK_ACCESS_TOKEN is likewise optional — the normal path obtains one via "Koble til",
+    // and the env var is only the escape hatch for a token issued elsewhere.
+    // See src/lib/tiktok/config.ts.
+    envKeys: ['TIKTOK_APP_ID', 'TIKTOK_APP_SECRET', 'TIKTOK_REDIRECT_URI'],
+    available: true,
   },
 ]
 
@@ -185,19 +218,38 @@ export function isChannelConfigured(
   return def.envKeys.every((k) => typeof env[k] === 'string' && env[k]!.trim() !== '')
 }
 
-/** Status label for a channel given whether it is available and configured. */
-export function channelStatusLabel(def: MarketingChannelDef, configured: boolean): string {
+/**
+ * Status label for a channel.
+ *
+ * `authorized` only ever matters for a channel with an OAuth step (TikTok): the others pass
+ * the default `true`, so their labels are unchanged.
+ */
+export function channelStatusLabel(
+  def: MarketingChannelDef,
+  configured: boolean,
+  authorized = true,
+): string {
   if (!def.available) return STATUS.comingSoon
-  return configured ? STATUS.connected : STATUS.notConfigured
+  if (!configured) return STATUS.notConfigured
+  return authorized ? STATUS.connected : STATUS.notConnected
 }
 
-/** Assemble the client card for a channel. Pure — env presence + summary are passed in. */
+/**
+ * Assemble the client card for a channel. Pure — env presence, authorization state and the
+ * summary are all passed in.
+ *
+ * `authorized` defaults to true so a channel that authenticates from env alone behaves
+ * exactly as before; only TikTok passes a computed value.
+ */
 export function buildChannelCard(
   def: MarketingChannelDef,
   configured: boolean,
   summary: MarketingChannelSummary = EMPTY_SUMMARY,
+  authorized = true,
 ): MarketingChannelCard {
-  const enabled = def.available && configured
+  const enabled = def.available && configured && authorized
+  // Offer "Koble til" exactly when the setup is complete but the authorization is not.
+  const needsConnect = def.available && configured && !authorized
   return {
     id: def.id,
     title: def.title,
@@ -205,8 +257,9 @@ export function buildChannelCard(
     href: def.available ? def.href : null,
     // Offer the quick sync only when a sync could actually succeed (connected channel).
     syncEndpoint: enabled ? def.syncEndpoint : null,
+    connectEndpoint: needsConnect ? def.connectEndpoint : null,
     enabled,
-    status: channelStatusLabel(def, configured),
+    status: channelStatusLabel(def, configured, authorized),
     summary,
   }
 }
