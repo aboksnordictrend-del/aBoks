@@ -1,5 +1,6 @@
 import type { CollectionConfig, CollectionBeforeChangeHook } from 'payload'
 import { safeRevalidate } from '@/lib/safeRevalidate'
+import { notifyAdminNewReview } from './hooks/notifyAdminNewReview'
 
 /**
  * Customer reviews. Content is created ONLY by the server-side review handler (after a
@@ -238,6 +239,7 @@ export const Reviews: CollectionConfig = {
       async () => {
         await revalidateReviews()
       },
+      notifyAdminNewReview,
     ],
     afterDelete: [
       async () => {

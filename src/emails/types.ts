@@ -96,6 +96,23 @@ export interface PartnerPayoutData {
   reference?: string | null
 }
 
+/**
+ * A newly submitted customer review, as the internal notification prints it. Every value is
+ * read off the saved review document — the template never resolves or recomputes anything.
+ */
+export interface AdminReviewData {
+  customerName: string
+  /** 1–5, as stored on the review. */
+  rating: number
+  text: string
+  /** Product title from the review's own snapshot. */
+  productName: string
+  /** How many photos were stored with the review; 0 means none. */
+  photoCount: number
+  /** Absolute URL of the review's edit view in the Payload admin panel. */
+  adminUrl: string
+}
+
 export interface EmailTemplate {
   subject: string
   html: string

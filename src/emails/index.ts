@@ -3,6 +3,7 @@ export { createAdminOrderEmail } from './admin-order'
 export { createOrderShippedEmail } from './order-shipped'
 export { createOrderDeliveredEmail } from './order-delivered'
 export { createReviewInvitationEmail } from './review-invitation'
+export { createAdminReviewEmail } from './admin-review'
 export { createPartnerPayoutEmail } from './partner-payout'
 export type {
   OrderItem,
@@ -12,6 +13,7 @@ export type {
   OrderShippedData,
   OrderDeliveredData,
   ReviewInvitationData,
+  AdminReviewData,
   PartnerPayoutData,
   EmailTemplate,
 } from './types'
