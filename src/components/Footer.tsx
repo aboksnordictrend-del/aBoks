@@ -59,6 +59,7 @@ export default function Footer() {
                 { label: 'Alle produkter', href: '/produkter' },
                 { label: 'Bestill aBoks', href: '/produkter/aboks' },
                 { label: 'Farger', href: '/produkter/aboks#farger' },
+                { label: 'Kampanjer', href: '/kampanje' },
                 { label: 'Handlekurv', href: '/handlekurv' },
               ].map((item) => (
                 <Link
