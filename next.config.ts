@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
         destination: '/kjopsvilkar',
         permanent: true,
       },
+      {
+        source: '/angrerett',
+        destination: '/frakt-og-retur',
+        permanent: true,
+      },
     ]
   },
   images: {

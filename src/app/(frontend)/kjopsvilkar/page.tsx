@@ -207,7 +207,7 @@ export default function KjopsvilkarPage() {
             </p>
             <p style={bodyStyle}>
               Les mer om hvordan du benytter angreretten og sender retur på vår{' '}
-              <Link href="/angrerett" style={linkStyle}>side om angrerett</Link>.
+              <Link href="/frakt-og-retur" style={linkStyle}>side om angrerett</Link>.
             </p>
           </Section>
 

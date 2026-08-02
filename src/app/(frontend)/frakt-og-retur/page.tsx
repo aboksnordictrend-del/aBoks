@@ -202,7 +202,7 @@ export default function FraktOgReturPage() {
             </ul>
             <p style={bodyStyle}>
               Les mer om angreretten på vår{' '}
-              <Link href="/angrerett" style={linkStyle}>side om angrerett</Link>.
+              <Link href="/frakt-og-retur" style={linkStyle}>side om angrerett</Link>.
             </p>
           </Section>
 
