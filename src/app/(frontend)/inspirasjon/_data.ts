@@ -210,6 +210,45 @@ const articles: InspirasjonArticle[] = [
     imageHeight: 941,
     imageAlt: 'Oppladbare eller engangsbatterier – break-even, kostnad og miljø – aBoks guide',
   },
+  {
+    category: 'Hjem & sikkerhet',
+    title: 'De beste løsningene for batterioppbevaring hjemme',
+    description:
+      'God batterioppbevaring hjemme handler om mer enn å rydde en roteskuff – det reduserer brannfare, tar vare på ressurser og gjør hverdagen enklere. Her er de smarteste og tryggeste løsningene for nye og brukte batterier.',
+    date: 'August 2026',
+    publishedAt: '2026-08-02',
+    slug: '/inspirasjon/beste-losninger-batterioppbevaring-hjemme',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Batterioppbevaring-hjemme.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
+    imageAlt: 'De beste løsningene for batterioppbevaring hjemme – aBoks guide',
+  },
+  {
+    category: 'Sikkerhet & bærekraft',
+    title: 'Hvordan oppbevare batterier trygt hjemme?',
+    description:
+      'Å oppbevare batterier trygt hjemme er et av de enkleste og mest oversette grepene for et tryggere hjem. Med noen få rutiner – teiping av poler, adskilte rom for nye og brukte, og riktig lagring – holder du brannfaren nede og batteriene lenger friske.',
+    date: 'August 2026',
+    publishedAt: '2026-08-03',
+    slug: '/inspirasjon/oppbevare-batterier-trygt-hjemme',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Hvordan-oppbevare-batterier-trygt-hjemme.webp',
+    imageWidth: 1408,
+    imageHeight: 1117,
+    imageAlt: 'Hvordan oppbevare batterier trygt hjemme – aBoks guide',
+  },
+  {
+    category: 'Bærekraft & smart hverdag',
+    title: 'Langtidsoppbevaring av oppladbare batterier: slik tar du vare på dem riktig',
+    description:
+      'Riktig langtidsoppbevaring avgjør om de oppladbare batteriene dine fortsatt leverer full kraft neste sesong – eller er ubrukelige når du trenger dem. Her er ekspertrådene om ladenivå, temperatur og trygg oppbevaring som faktisk fungerer i et norsk hjem.',
+    date: 'August 2026',
+    publishedAt: '2026-08-04',
+    slug: '/inspirasjon/langtidsoppbevaring-oppladbare-batterier',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/Langtidsoppbevaring-av-oppladbare-batterier.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
+    imageAlt: 'Langtidsoppbevaring av oppladbare batterier – oppladbare AA- og AAA-batterier ryddig samlet i en boks på en tørr hylle',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {
