@@ -31,7 +31,17 @@ const CAMPAIGNS = [
 
 export default function KampanjeIndexPage() {
   return (
-    <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
+    <main
+      style={{
+        background: '#faf6ee',
+        minHeight: '100vh',
+        paddingTop: 'clamp(96px,12vh,132px)',
+        // breathing room before the footer: 32px on mobile → 56px from ~1120px up.
+        // padding, not a margin on the card grid: a bottom margin collapses out of <main>
+        // and is then swallowed by minHeight, leaving ~4px of gap on short viewports.
+        paddingBottom: 'clamp(32px,5vw,56px)',
+      }}
+    >
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
         <Breadcrumbs items={[{ label: 'Hjem', href: '/' }, { label: 'Kampanjer' }]} />
@@ -53,12 +63,13 @@ export default function KampanjeIndexPage() {
         <div
           style={{
             display: 'grid',
-            // auto-fill (not auto-fit) so a single card keeps a sensible width instead of
-            // stretching across the whole container; further campaigns fill the row.
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            // auto-fill (not auto-fit) so a single card keeps its intended width instead of
+            // stretching across the whole container; two 420px cards fit per row.
+            // min(100%, 400px) keeps the track from forcing overflow on narrow screens.
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))',
             gap: 'clamp(16px,2.2vw,28px)',
-            maxWidth: '1000px',
-            marginBottom: 'clamp(80px,10vw,128px)',
+            // 2 × 420 + 28 gap — makes the track hug the card instead of leaving it adrift
+            maxWidth: '868px',
           }}
         >
           {CAMPAIGNS.map((c) => (
@@ -70,21 +81,23 @@ export default function KampanjeIndexPage() {
                 // clips the flush-to-edge image so its top corners follow the card radius
                 overflow: 'hidden',
                 boxShadow: '0 2px 6px rgba(42,36,24,.05)',
+                width: '100%',
+                maxWidth: '420px',
               }}
             >
-              {/* 16:10 — close to 16:9, but tall enough that the crop of the square source
-                  keeps the whole box in frame; objectPosition biases it towards the product */}
-              <div style={{ position: 'relative', width: '100%', aspectRatio: '16/10', background: '#efe6d3' }}>
-                <Image
-                  src={c.image}
-                  alt={c.imageAlt}
-                  fill
-                  sizes="(max-width: 767px) calc(100vw - 40px), 360px"
-                  style={{ objectFit: 'cover', objectPosition: 'center 75%' }}
-                />
-              </div>
+              {/* intrinsic width/height + height:auto keeps the source's own 1:1 ratio, so the
+                  whole photo is visible and nothing is cropped or stretched. The reserved
+                  aspect ratio also means no layout shift. */}
+              <Image
+                src={c.image}
+                alt={c.imageAlt}
+                width={1254}
+                height={1254}
+                sizes="(max-width: 767px) calc(100vw - 40px), 420px"
+                style={{ display: 'block', width: '100%', height: 'auto' }}
+              />
               {/* the card's original padding moved here so the image can sit flush to the edges */}
-              <div style={{ padding: 'clamp(26px,3vw,36px) clamp(22px,2.6vw,30px)' }}>
+              <div style={{ padding: 'clamp(22px,3vw,32px) clamp(20px,2.6vw,28px)' }}>
                 <h2
                   style={{
                     fontFamily: 'var(--font-manrope)',
