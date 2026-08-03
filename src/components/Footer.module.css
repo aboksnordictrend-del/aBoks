@@ -1,0 +1,80 @@
+/* Footer layout.
+   Desktop values here are identical to the inline styles they replaced — the
+   declarations had to move out of `style={}` because inline styles win over
+   class rules, so the mobile media query below could never override them. */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 40px;
+  margin-bottom: 56px;
+}
+
+.brand {
+  grid-column: auto;
+}
+
+.heading {
+  font-family: var(--font-manrope);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a9c08f;
+  margin: 0 0 18px;
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.link {
+  font-family: var(--font-manrope);
+  font-size: 15px;
+  color: #d7dccd;
+  text-decoration: none;
+}
+
+/* ── Mobile: the three nav groups sit side by side in equal columns ──
+   Cuts roughly 40% off the footer height by turning three stacked blocks
+   into one row. Brand block keeps its place above them, full width. */
+@media (max-width: 767px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 20px;
+    align-items: start;
+  }
+
+  .brand {
+    grid-column: 1 / -1;
+  }
+
+  /* "KUNDESERVICE" is 110px at 0.14em but the column is ~98px on a 375px
+     screen, and it has no break opportunity — tighten the tracking so it
+     stays on one line instead of overflowing the page. */
+  .heading {
+    letter-spacing: 0.04em;
+  }
+
+  .links {
+    gap: 9px;
+  }
+
+  .link {
+    font-size: 14px;
+    line-height: 1.4;
+    /* "Personvernerklæring" is one 136px word — hyphenate it, and fall back
+       to a hard break on very narrow screens, so nothing overflows. */
+    hyphens: auto;
+    overflow-wrap: break-word;
+  }
+}
+
+/* Below ~375px even the tightened heading exceeds its column. */
+@media (max-width: 374px) {
+  .heading {
+    letter-spacing: 0.01em;
+  }
+}
