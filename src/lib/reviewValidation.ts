@@ -19,6 +19,63 @@ export const REVIEW_LIMITS = {
   maxUrls: 2,
 } as const
 
+/**
+ * Transport budget for the photo upload, shared by the browser and the Server Action.
+ *
+ * Vercel rejects any request body over ~4.5 MB with 413 FUNCTION_PAYLOAD_TOO_LARGE at the
+ * proxy, *before* the function boots — so no amount of server-side processing can rescue a
+ * raw camera roll. These numbers are what the browser compresses down to, and what both
+ * layers then verify. `totalBytes` leaves ~1 MB of headroom under the platform limit for
+ * multipart boundaries, the Server Action id, the review text and the Turnstile token.
+ *
+ * Lives here (not in @/lib/reviewPhotos) because that module imports sharp and can never be
+ * pulled into a client bundle. This file is pure and isomorphic.
+ */
+export const UPLOAD_LIMITS = {
+  /** Longest side, in px, of the first compression attempt. Never upscales. */
+  maxDimension: 1600,
+  /** Canvas encoder quality, 0–1, of the first attempt. */
+  quality: 0.8,
+  /** Second (and last) attempt, used only when attempt one is still over perPhotoBytes. */
+  retryMaxDimension: 1280,
+  retryQuality: 0.7,
+  /** Per-photo ceiling after optimisation. */
+  perPhotoBytes: 1.5 * 1024 * 1024,
+  /** Combined ceiling for all photos in one submission. */
+  totalBytes: 3.5 * 1024 * 1024,
+} as const
+
+/**
+ * Norwegian messages for a rejected photo set. Exported so the form, the Server Action and
+ * the tests all assert against one spelling.
+ */
+export const PHOTO_UPLOAD_MESSAGES = {
+  tooMany: `Du kan laste opp maksimalt ${REVIEW_LIMITS.photosMax} bilder.`,
+  perPhotoTooLarge: 'Ett av bildene er for stort selv etter komprimering. Velg et annet bilde.',
+  totalTooLarge: 'Bildene er for store selv etter komprimering. Fjern ett eller flere bilder.',
+} as const
+
+export type PhotoUploadCheck = { ok: true; totalBytes: number } | { ok: false; message: string }
+
+/**
+ * Validates an *already optimised* photo set by byte size only. Pure, so the browser runs it
+ * before building the FormData and the Server Action runs it again on what actually arrived.
+ * Checked in the order the user can act on: drop a photo, swap a photo, drop a photo.
+ */
+export function validatePhotoUpload(sizes: number[]): PhotoUploadCheck {
+  if (sizes.length > REVIEW_LIMITS.photosMax) {
+    return { ok: false, message: PHOTO_UPLOAD_MESSAGES.tooMany }
+  }
+  if (sizes.some((bytes) => bytes > UPLOAD_LIMITS.perPhotoBytes)) {
+    return { ok: false, message: PHOTO_UPLOAD_MESSAGES.perPhotoTooLarge }
+  }
+  const totalBytes = sizes.reduce((sum, bytes) => sum + bytes, 0)
+  if (totalBytes > UPLOAD_LIMITS.totalBytes) {
+    return { ok: false, message: PHOTO_UPLOAD_MESSAGES.totalTooLarge }
+  }
+  return { ok: true, totalBytes }
+}
+
 export interface RawReviewInput {
   productId?: unknown
   rating?: unknown

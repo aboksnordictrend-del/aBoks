@@ -3,13 +3,19 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   experimental: {
-    // The review form (/anmeldelse/[token]) submits up to 5 photos through a Server Action.
-    // The default Server Actions body limit is 1 MB, which rejects the multipart POST with
-    // a 413 before the action ever runs. 45 MB = 5 files × 8 MB (the per-file cap enforced
-    // in the action and client) plus multipart overhead. The per-file 8 MB limit and the
-    // 5-photo cap are still enforced separately — this only raises the transport ceiling.
+    // The review form (/anmeldelse/[token]) submits up to 5 photos through a Server Action
+    // as multipart/form-data. The Next.js default of 1 MB is too small, but the ceiling that
+    // actually matters is Vercel's: it rejects any request body over ~4.5 MB with
+    // 413 FUNCTION_PAYLOAD_TOO_LARGE at the proxy, before this function is ever invoked, and
+    // that limit is not configurable. Anything above it here is a lie that only turns a
+    // clear error into a mystery — this used to say 45 MB, which is how mobile uploads
+    // silently 413'd. 4 MB keeps the app limit under the platform limit.
+    //
+    // The real budget is enforced in UPLOAD_LIMITS (@/lib/reviewValidation): the browser
+    // resizes every photo to ≤1.5 MB, ≤3.5 MB total, and both the form and the Server
+    // Action verify it. This value is only the transport backstop.
     serverActions: {
-      bodySizeLimit: '45mb',
+      bodySizeLimit: '4mb',
     },
   },
   async redirects() {

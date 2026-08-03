@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react'
 import Script from 'next/script'
 import type { ReviewFormDTO, ReviewableProduct } from '@/lib/reviews'
 import { submitReviewAction } from './actions'
+import { SubmitButton } from './SubmitButton'
 import { feedbackFromResult } from '@/lib/reviewSubmitResult'
-import { REVIEW_LIMITS } from '@/lib/reviewValidation'
+import { REVIEW_LIMITS, PHOTO_UPLOAD_MESSAGES, validatePhotoUpload } from '@/lib/reviewValidation'
+import { optimizeImage } from '@/lib/imageOptimize'
 
-// Per-file cap mirrors the server-side limit in @/lib/reviewPhotos (PHOTO_LIMITS.maxBytes).
-const MAX_PHOTO_BYTES = 8 * 1024 * 1024
-const MSG_TOO_MANY = 'Du kan laste opp maksimalt 5 bilder.'
-const MSG_TOO_LARGE = 'Hvert bilde kan være maksimalt 8 MB.'
+const MSG_TOO_MANY = PHOTO_UPLOAD_MESSAGES.tooMany
+const MSG_OPTIMIZE_FAILED = 'Kunne ikke behandle bildet. Velg et annet bilde.'
 const MSG_NO_RATING = 'Gi en vurdering mellom 1 og 5 stjerner.'
 const MSG_UNEXPECTED = 'Noe gikk galt. Prøv igjen senere.'
 // Form-level summary shown under the Send button whenever submission is blocked by one or
@@ -58,6 +58,14 @@ const errorStyle: React.CSSProperties = {
 const fieldWrap: React.CSSProperties = { marginBottom: '22px' }
 const errorInputStyle: React.CSSProperties = { borderColor: '#c0392b', background: '#fdf3f2' }
 
+/**
+ * Structured, PII-free client log for the upload budget. Sizes, dimensions and counts only —
+ * never filenames, never image contents, never anything the customer typed.
+ */
+function logPhotos(fields: Record<string, unknown>): void {
+  console.log(JSON.stringify({ scope: 'reviews-photos-client', ...fields }))
+}
+
 function productKey(p: ReviewableProduct): string {
   return `${p.productId}::${p.variantName ?? ''}`
 }
@@ -81,6 +89,9 @@ export default function ReviewForm({
   // when success is shown: only when the Server Action resolves with { success: true }.
   const [submitted, setSubmitted] = useState(false)
   const [pending, setPending] = useState(false)
+  // True while picked photos are being resized/re-encoded in the browser. Blocks submission,
+  // because the raw originals must never reach the Server Action.
+  const [processing, setProcessing] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   // Shown under the Send button after a blocked/failed attempt. Empty until the first
   // submit, and cleared at the start of every new attempt and on success.
@@ -99,7 +110,9 @@ export default function ReviewForm({
   const [customerCity, setCustomerCity] = useState('')
   const [consentName, setConsentName] = useState(true)
   const [consentPhotos, setConsentPhotos] = useState(false)
-  const [photos, setPhotos] = useState<{ file: File; url: string }[]>([])
+  // `file` is always the browser-optimised version — the original is released as soon as it
+  // has been re-encoded, so nothing full-resolution survives to submission time.
+  const [photos, setPhotos] = useState<{ file: File; url: string; originalBytes: number }[]>([])
   const [photoError, setPhotoError] = useState('')
 
   // Revoke object URLs on unmount to avoid leaks.
@@ -133,32 +146,77 @@ export default function ReviewForm({
 
   const err = fieldErrors
 
-  const onPickPhotos = (input: HTMLInputElement) => {
+  /**
+   * Resizes and re-encodes every picked file before it is ever held as submission state.
+   * This is the fix for the mobile 413: Vercel rejects bodies over ~4.5 MB at the proxy, so
+   * the shrinking has to happen here, not in the Server Action.
+   */
+  const onPickPhotos = async (input: HTMLInputElement) => {
     setPhotoError('')
-    const list = input.files
-    if (list) {
-      const accepted: { file: File; url: string }[] = [...photos]
-      for (const file of Array.from(list)) {
+    const picked = input.files ? Array.from(input.files) : []
+    // Clear the native picker immediately: state is the single source of truth for both
+    // previews and submission, so the input never needs to hold files (and can't be cleared
+    // out from under us by the post-action form reset).
+    input.value = ''
+    if (picked.length === 0) return
+
+    setProcessing(true)
+    try {
+      const accepted = [...photos]
+      let optimizeFailed = false
+      let tooMany = false
+
+      for (const file of picked) {
         if (accepted.length >= REVIEW_LIMITS.photosMax) {
-          setPhotoError(MSG_TOO_MANY)
+          tooMany = true
           break
         }
         if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
           setPhotoError('Kun JPEG, PNG eller WebP er tillatt.')
           continue
         }
-        if (file.size > MAX_PHOTO_BYTES) {
-          setPhotoError(MSG_TOO_LARGE)
-          continue
+        try {
+          const result = await optimizeImage(file)
+          logPhotos({
+            event: 'optimized',
+            originalBytes: result.originalBytes,
+            optimizedBytes: result.optimizedBytes,
+            width: result.width,
+            height: result.height,
+            attempts: result.attempts,
+            outputType: result.file.type,
+          })
+          accepted.push({
+            file: result.file,
+            url: URL.createObjectURL(result.file),
+            originalBytes: result.originalBytes,
+          })
+        } catch {
+          // A file the browser cannot decode (corrupt, or an exotic codec behind a
+          // JPEG mime type). Skip it and keep the rest of the selection.
+          optimizeFailed = true
+          logPhotos({ event: 'optimize-failed', originalBytes: file.size })
         }
-        accepted.push({ file, url: URL.createObjectURL(file) })
       }
+
       setPhotos(accepted)
+      // Report the blocking condition, most actionable first.
+      if (tooMany) setPhotoError(MSG_TOO_MANY)
+      else if (optimizeFailed) setPhotoError(MSG_OPTIMIZE_FAILED)
+      else {
+        const check = validatePhotoUpload(accepted.map((p) => p.file.size))
+        setPhotoError(check.ok ? '' : check.message)
+      }
+
+      logPhotos({
+        event: 'selection',
+        fileCount: accepted.length,
+        totalBytes: accepted.reduce((sum, p) => sum + p.file.size, 0),
+        totalOriginalBytes: accepted.reduce((sum, p) => sum + p.originalBytes, 0),
+      })
+    } finally {
+      setProcessing(false)
     }
-    // Clear the native picker: state is the single source of truth for both previews and
-    // submission, so the input never needs to hold files (and can't be cleared out from
-    // under us by the post-action form reset).
-    input.value = ''
   }
 
   const removePhoto = (idx: number) => {
@@ -167,23 +225,25 @@ export default function ReviewForm({
     setPhotoError('')
   }
 
-  // Client guard before dispatching the Server Action: block invalid photo sets so the
-  // large multipart POST is never sent, and surface the error inline (no silent 413).
+  // Client guard before dispatching the Server Action: block over-budget photo sets so the
+  // multipart POST is never sent, and surface the error inline (no silent 413). Runs on the
+  // optimised bytes — the same numbers the action re-checks on arrival.
   const guardPhotos = (): boolean => {
-    if (photos.length > REVIEW_LIMITS.photosMax) {
-      setPhotoError(MSG_TOO_MANY)
+    const check = validatePhotoUpload(photos.map((p) => p.file.size))
+    if (!check.ok) {
+      setPhotoError(check.message)
       return false
     }
-    if (photos.some((p) => p.file.size > MAX_PHOTO_BYTES)) {
-      setPhotoError(MSG_TOO_LARGE)
-      return false
-    }
+    setPhotoError('')
     return true
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (pending) return // guard against double-submit
+    // Never submit mid-optimisation: `photos` would still be missing entries, and a form
+    // submitted before the resize finishes is exactly the raw-payload case that 413s.
+    if (processing) return
     // Clear the summary before running checks so a fixed error doesn't leave a stale banner.
     setSubmitSummary('')
     setFieldErrors({})
@@ -208,6 +268,12 @@ export default function ReviewForm({
     formData.set('product', selectedProduct)
     formData.delete('photos')
     for (const p of photos) formData.append('photos', p.file, p.file.name)
+
+    logPhotos({
+      event: 'submit',
+      fileCount: photos.length,
+      totalBytes: photos.reduce((sum, p) => sum + p.file.size, 0),
+    })
 
     setPending(true)
     try {
@@ -439,9 +505,17 @@ export default function ReviewForm({
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
-          onChange={(e) => onPickPhotos(e.target)}
+          disabled={processing || pending}
+          onChange={(e) => {
+            void onPickPhotos(e.target)
+          }}
           style={{ fontFamily: FONT, fontSize: '14px', color: MUTED }}
         />
+        {processing && (
+          <p aria-live="polite" style={{ fontFamily: FONT, fontSize: '13px', color: MUTED, margin: '8px 0 0' }}>
+            Behandler bilder …
+          </p>
+        )}
         {photos.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>
             {photos.map((p, i) => (
@@ -521,25 +595,7 @@ export default function ReviewForm({
         </>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        style={{
-          width: '100%',
-          fontFamily: FONT,
-          fontWeight: 700,
-          fontSize: '15px',
-          color: '#faf6ee',
-          background: pending ? '#7a8266' : '#39402c',
-          border: 'none',
-          borderRadius: '10px',
-          padding: '15px 20px',
-          cursor: pending ? 'not-allowed' : 'pointer',
-          transition: 'background 0.18s ease',
-        }}
-      >
-        {pending ? 'Sender…' : 'Send anmeldelse'}
-      </button>
+      <SubmitButton processing={processing} pending={pending} />
 
       {/* Form-level status directly under the button. The user is usually standing here
           after pressing Send, so this tells them the review was NOT sent and points them to

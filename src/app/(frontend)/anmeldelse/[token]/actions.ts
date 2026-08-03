@@ -5,7 +5,7 @@ import { buildCsrfOrigins } from '@/lib/csrfOrigins'
 import { SITE_URL } from '@/lib/site'
 import { rateLimit, clientIpFromHeaders } from '@/lib/rateLimit'
 import { verifyTurnstile } from '@/lib/turnstile'
-import { validateReviewInput } from '@/lib/reviewValidation'
+import { validateReviewInput, validatePhotoUpload } from '@/lib/reviewValidation'
 import { PHOTO_LIMITS } from '@/lib/reviewPhotos'
 import { submitReview } from '@/lib/reviewServer'
 import type { ReviewActionResult } from '@/lib/reviewSubmitResult'
@@ -106,17 +106,39 @@ export async function submitReviewAction(formData: FormData): Promise<ReviewActi
     return { success: false, errors: validation.errors }
   }
 
-  // 7) Read the (already count-limited) photo buffers.
+  // 7) Second layer for the upload budget. The browser already resized these (see
+  // @/lib/imageOptimize) and checked the same limits, but a hand-rolled POST never ran that
+  // code — so per-photo and total size are verified again here, on what actually arrived.
+  const sizes = photoFiles.map((f) => f.size)
+  const totalBytes = sizes.reduce((sum, bytes) => sum + bytes, 0)
+  const budget = validatePhotoUpload(sizes)
+  if (!budget.ok) {
+    logResult({
+      event: 'validation-failed',
+      fields: ['photos'],
+      fileCount: photoFiles.length,
+      totalBytes,
+      maxPhotoBytes: sizes.length > 0 ? Math.max(...sizes) : 0,
+      success: false,
+    })
+    return { success: false, errors: { photos: budget.message } }
+  }
+
+  // 8) Read the (already count- and size-limited) photo buffers. sharp re-validates the type
+  // by magic bytes and re-encodes each one — see @/lib/reviewPhotos, unchanged.
   const buffers: Buffer[] = []
   for (const file of photoFiles.slice(0, PHOTO_LIMITS.maxPhotos)) {
-    if (file.size > PHOTO_LIMITS.maxBytes) {
-      logResult({ event: 'validation-failed', fields: ['photos'], success: false })
-      return { success: false, errors: { photos: 'Hvert bilde kan være maksimalt 8 MB.' } }
-    }
     buffers.push(Buffer.from(await file.arrayBuffer()))
   }
 
-  // 8) Token-gated submission.
+  logResult({
+    event: 'photos-accepted',
+    fileCount: buffers.length,
+    totalBytes: budget.totalBytes,
+    maxPhotoBytes: sizes.length > 0 ? Math.max(...sizes) : 0,
+  })
+
+  // 9) Token-gated submission.
   const outcome = await submitReview(token, validation.value, buffers, chosenVariantName)
   if (!outcome.ok) {
     logResult({ event: 'submit', reason: outcome.reason, reviewCreated: false, success: false })
