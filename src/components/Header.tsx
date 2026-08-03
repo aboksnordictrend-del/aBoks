@@ -9,9 +9,18 @@ import { useCartStore } from '@/store/cart'
 
 type ProductLink = { title: string; slug: string }
 
+/**
+ * Routes whose first section is a full-bleed hero image that the header sits on top of.
+ * On these the header starts transparent (with the trust bar showing) and fades into its
+ * blurred cream state on the first scroll. Every other page gets the solid state from the
+ * start. Add a route here when it gains an edge-to-edge hero — nothing else needs to change.
+ */
+const HERO_TOP_ROUTES = ['/', '/bedrifter']
+
 export default function Header({ products = [] }: { products?: ProductLink[] }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
+  const hasHeroTop = HERO_TOP_ROUTES.includes(pathname)
 
   const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
@@ -92,11 +101,11 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
     setScrolled(false)
   }, [pathname])
 
-  // Gated on `mounted` (not just isHome/scrolled): usePathname() can resolve
+  // Gated on `mounted` (not just hasHeroTop/scrolled): usePathname() can resolve
   // differently between the server-rendered static HTML and the client's first
   // render for this shared-layout component, which was flipping the trust bar
   // and header background on/off and causing a hydration mismatch (React #418).
-  const atHeroTop = mounted && isHome && !scrolled
+  const atHeroTop = mounted && hasHeroTop && !scrolled
   const bg = atHeroTop ? 'transparent' : 'rgba(250,246,238,0.85)'
   const blur = atHeroTop ? '' : 'saturate-[140%] backdrop-blur-[14px]'
   const shadow = atHeroTop ? '' : 'shadow-header'
