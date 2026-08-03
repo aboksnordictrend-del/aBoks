@@ -306,7 +306,7 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
   // block, `mt-auto` resolves to 0 and the two groups flow as one continuous column.
   const heroCopy = (
     <>
-      <div className="[text-shadow:0_1px_3px_rgba(250,246,238,0.9)] md:[text-shadow:none]">
+      <div>
         <p style={{ ...eyebrowStyle, margin: '0 0 16px' }}>Løsninger for bedrifter</p>
         <h1
           style={{
@@ -321,8 +321,9 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
         >
           Trygg batterihåndtering – <em style={{ fontStyle: 'italic', color: OLIVE }}>der batteriene brukes.</em>
         </h1>
+        {/* Desktop only — the mobile hero reads as eyebrow, heading, buttons, points. */}
         <p
-          className="mx-auto md:mx-0"
+          className="hidden md:block"
           style={{
             fontFamily: SANS,
             fontSize: 'clamp(15.5px,1.25vw,18px)',
@@ -332,8 +333,7 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
             maxWidth: '46ch',
           }}
         >
-          Praktiske løsninger for innsamling, oppbevaring og organisering av batterier – utviklet
-          for moderne arbeidsplasser.
+          Praktiske løsninger for trygg batterihåndtering på moderne arbeidsplasser.
         </p>
       </div>
 
