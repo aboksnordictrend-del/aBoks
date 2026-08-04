@@ -113,6 +113,34 @@ export interface AdminReviewData {
   adminUrl: string
 }
 
+/**
+ * One submitted B2B inquiry from /bedrifter, exactly as `validateInquiryInput` normalised it.
+ * Every value is customer-typed, so every value is escaped by the templates. An optional
+ * field that was left blank is absent, never `''` — the templates branch on presence.
+ */
+export interface BusinessInquiryData {
+  company: string
+  orgNumber?: string
+  contactPerson: string
+  email: string
+  phone?: string
+  interest: string
+  quantity?: string
+  message: string
+}
+
+/**
+ * The same inquiry as the internal notification prints it, plus the two pieces of context
+ * only the server knows. Deliberately carries no IP address, user agent, honeypot or
+ * rate-limit state — none of that belongs in a mailbox.
+ */
+export interface AdminBusinessInquiryData extends BusinessInquiryData {
+  /** ISO timestamp of when the submission was accepted. */
+  submittedAt: string
+  /** Page the inquiry came from, e.g. "/bedrifter". */
+  source: string
+}
+
 export interface EmailTemplate {
   subject: string
   html: string

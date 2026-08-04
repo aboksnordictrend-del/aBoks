@@ -1,22 +1,47 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import Script from 'next/script'
+import {
+  INTEREST_OPTIONS,
+  firstInvalidField,
+  validateInquiryInput,
+  type InquiryFieldKey,
+} from '@/lib/bedrifter/inquiry'
+import {
+  FIELD_SUMMARY,
+  clearsForm,
+  submitInquiry,
+  type InquiryFieldErrors,
+} from '@/lib/bedrifter/submitInquiry'
+import { InquirySubmitButton } from './InquirySubmitButton'
+import { InquiryFeedbackPanel } from './InquiryFeedback'
 
 /**
  * B2B inquiry form for /bedrifter.
  *
- * NOTE ON SUBMISSION: the project has no contact-form backend (no server action, no
- * mail endpoint for anything other than transactional order mail), and building one was
- * outside the scope of this page. The form therefore validates fully but never claims to
- * have sent anything — on a valid submit it says so plainly and offers the same data as a
- * prefilled e-mail to post@aboks.no. Wiring a real endpoint means replacing `handleSubmit`
- * below; no other part of the page changes.
+ * Submits to `POST /api/bedrifter/foresporsel`, which sends the internal notification and the
+ * customer's confirmation and reports success only when both have been accepted. No mail
+ * client is ever opened, and the customer is never asked to send anything themselves.
+ *
+ * The fields validate against the very same `validateInquiryInput` the endpoint runs, so the
+ * browser and the server can never disagree about what is valid or about how a message is
+ * worded. The client check is a courtesy; the server's is the one that counts.
  */
+
+export { INTEREST_OPTIONS }
+export type { InterestOption } from '@/lib/bedrifter/inquiry'
+
+declare global {
+  interface Window {
+    /** Injected by the Turnstile script; absent when the widget is not configured. */
+    turnstile?: { reset: (widget?: string | HTMLElement) => void }
+  }
+}
 
 const FONT = 'var(--font-manrope)'
 const INK = '#1a1d17'
 const MUTED = '#6b6f63'
-const SOFT = '#3a3f33'
 const BORDER = '#d9d2c4'
 const OLIVE = '#39402c'
 const ERROR = '#c0392b'
@@ -24,19 +49,8 @@ const ERROR = '#c0392b'
 /** Address used across the site for customer and partnership enquiries. */
 const CONTACT_EMAIL = 'post@aboks.no'
 
-export const INTEREST_OPTIONS = [
-  'Produkter til egen bedrift',
-  'aBoks Special',
-  'aBoks Office',
-  'Større bestilling',
-  'Forhandlersamarbeid',
-  'Dropshipping',
-  'Annet',
-] as const
-
-export type InterestOption = (typeof INTEREST_OPTIONS)[number]
-
-const FIELD_SUMMARY = 'Forespørselen ble ikke sendt. Sjekk feltene som er markert med rødt.'
+/** Rendered only when a site key is configured, exactly like the review form. */
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
@@ -77,18 +91,8 @@ const errorTextStyle: React.CSSProperties = {
 
 const fieldWrap: React.CSSProperties = { marginBottom: '22px' }
 
-type FieldKey =
-  | 'company'
-  | 'orgNumber'
-  | 'contactPerson'
-  | 'email'
-  | 'phone'
-  | 'interest'
-  | 'quantity'
-  | 'message'
-
-/** Field order used both for focus-on-error and for the e-mail fallback body. */
-const FIELD_IDS: Record<FieldKey, string> = {
+/** Field ids, in the order `firstInvalidField` walks them. */
+const FIELD_IDS: Record<InquiryFieldKey, string> = {
   company: 'inq-company',
   orgNumber: 'inq-orgnr',
   contactPerson: 'inq-contact',
@@ -99,7 +103,7 @@ const FIELD_IDS: Record<FieldKey, string> = {
   message: 'inq-message',
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+type Status = 'idle' | 'submitting' | 'success' | 'error'
 
 export default function InquiryForm({
   interest,
@@ -109,6 +113,8 @@ export default function InquiryForm({
   interest: string
   onInterestChange: (value: string) => void
 }) {
+  const formRef = useRef<HTMLFormElement>(null)
+
   const [company, setCompany] = useState('')
   const [orgNumber, setOrgNumber] = useState('')
   const [contactPerson, setContactPerson] = useState('')
@@ -117,76 +123,104 @@ export default function InquiryForm({
   const [quantity, setQuantity] = useState('')
   const [message, setMessage] = useState('')
 
-  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({})
+  const [errors, setErrors] = useState<InquiryFieldErrors>({})
   const [summary, setSummary] = useState('')
-  /** Set once a valid submit has been attempted — never claims the enquiry was sent. */
-  const [reviewed, setReviewed] = useState(false)
+  const [status, setStatus] = useState<Status>('idle')
+  /** Server-supplied copy for the error panel, when it sent any. */
+  const [serverMessage, setServerMessage] = useState('')
 
-  function validate(): Partial<Record<FieldKey, string>> {
-    const next: Partial<Record<FieldKey, string>> = {}
+  const pending = status === 'submitting'
 
-    if (!company.trim()) next.company = 'Fyll inn bedriftsnavn.'
-    if (!contactPerson.trim()) next.contactPerson = 'Fyll inn navnet på kontaktpersonen.'
-    if (!email.trim()) next.email = 'Fyll inn e-postadressen.'
-    else if (!EMAIL_RE.test(email.trim())) next.email = 'Skriv en gyldig e-postadresse.'
-    if (!interest) next.interest = 'Velg hva dere er interessert i.'
-    if (!message.trim()) next.message = 'Skriv en kort melding om behovet.'
-
-    // Optional fields are only checked when they contain something.
-    const digits = orgNumber.replace(/\s/g, '')
-    if (digits && !/^\d{9}$/.test(digits)) next.orgNumber = 'Organisasjonsnummer består av 9 siffer.'
-    if (phone.trim() && phone.replace(/\D/g, '').length < 8) next.phone = 'Skriv et gyldig telefonnummer.'
-    if (quantity.trim() && !/^\d+$/.test(quantity.trim())) next.quantity = 'Oppgi antall som et tall.'
-
-    return next
+  function currentValues() {
+    return { company, orgNumber, contactPerson, email, phone, interest, quantity, message }
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setReviewed(false)
-    const next = validate()
-    setErrors(next)
+  function clearForm() {
+    setCompany('')
+    setOrgNumber('')
+    setContactPerson('')
+    setEmail('')
+    setPhone('')
+    setQuantity('')
+    setMessage('')
+    onInterestChange('')
+  }
 
-    const firstInvalid = (Object.keys(FIELD_IDS) as FieldKey[]).find((key) => next[key])
-    if (firstInvalid) {
-      setSummary(FIELD_SUMMARY)
-      document.getElementById(FIELD_IDS[firstInvalid])?.focus()
+  /** Shows the field errors, focuses the first one and keeps everything the user typed. */
+  function showFieldErrors(next: InquiryFieldErrors, summaryText: string) {
+    setErrors(next)
+    setSummary(summaryText)
+    const first = firstInvalidField(next)
+    if (first) document.getElementById(FIELD_IDS[first])?.focus()
+  }
+
+  /** Value of a hidden input the browser owns: the Turnstile token, or the honeypot. */
+  function hiddenValue(name: string): string | undefined {
+    const form = formRef.current
+    if (!form) return undefined
+    const value = new FormData(form).get(name)
+    return typeof value === 'string' && value ? value : undefined
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    // Belt and braces alongside the disabled button: a second submit while one is in flight
+    // never leaves this function.
+    if (pending) return
+
+    setStatus('idle')
+    setServerMessage('')
+    setSummary('')
+
+    // Checked here as well as inside `submitInquiry`, so an incomplete form never flickers
+    // the button into its sending state. Both calls run the one shared validator.
+    const validation = validateInquiryInput(currentValues())
+    if (!validation.ok) {
+      showFieldErrors(validation.errors, FIELD_SUMMARY)
+      return
+    }
+    setErrors({})
+    setStatus('submitting')
+
+    // The Turnstile widget writes its token into a hidden input inside this form, and the
+    // honeypot lives there too — both are read off the DOM rather than mirrored into state.
+    const outcome = await submitInquiry(currentValues(), {
+      turnstileToken: hiddenValue('cf-turnstile-response'),
+      honeypot: hiddenValue('referansekode'),
+    })
+
+    if (clearsForm(outcome)) {
+      // Only now — the server has confirmed that both e-mails went out.
+      clearForm()
+      setErrors({})
+      setSummary('')
+      setStatus('success')
+      // The token is single-use; without a reset a second inquiry would fail verification.
+      window.turnstile?.reset()
       return
     }
 
-    setSummary('')
-    setReviewed(true)
+    if (outcome.kind === 'field-errors') {
+      setStatus('idle')
+      showFieldErrors(outcome.errors, outcome.summary)
+      return
+    }
+
+    setServerMessage(outcome.kind === 'error' ? outcome.message : '')
+    setStatus('error')
   }
 
-  /** Everything the visitor typed, as a plain-text e-mail they send themselves. */
-  function mailtoHref(): string {
-    const lines = [
-      `Bedriftsnavn: ${company.trim()}`,
-      orgNumber.trim() ? `Organisasjonsnummer: ${orgNumber.trim()}` : null,
-      `Kontaktperson: ${contactPerson.trim()}`,
-      `E-post: ${email.trim()}`,
-      phone.trim() ? `Telefon: ${phone.trim()}` : null,
-      `Interessert i: ${interest}`,
-      quantity.trim() ? `Omtrent antall produkter: ${quantity.trim()}` : null,
-      '',
-      'Melding:',
-      message.trim(),
-    ].filter((line) => line !== null)
-
-    const subject = `Forespørsel fra ${company.trim()}`
-    return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`
-  }
-
-  function describedBy(key: FieldKey): string | undefined {
+  function describedBy(key: InquiryFieldKey): string | undefined {
     return errors[key] ? `${FIELD_IDS[key]}-error` : undefined
   }
 
-  function fieldStyle(key: FieldKey, extra?: React.CSSProperties): React.CSSProperties {
+  function fieldStyle(key: InquiryFieldKey, extra?: React.CSSProperties): React.CSSProperties {
     return { ...inputStyle, ...(errors[key] ? errorInputStyle : null), ...extra }
   }
 
   return (
     <form
+      ref={formRef}
       onSubmit={handleSubmit}
       noValidate
       style={{
@@ -196,6 +230,29 @@ export default function InquiryForm({
         padding: 'clamp(26px,4vw,48px)',
       }}
     >
+      {/* Honeypot: visually hidden, off the tab order, and deliberately NOT named like an
+          autofill target, so a real user's browser never fills it. Same field name as the
+          review form. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
+        }}
+      >
+        <input
+          type="text"
+          name="referansekode"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          aria-label="La stå tom"
+        />
+      </div>
+
       {/* Company + org.nr */}
       <div className="grid grid-cols-1 sm:grid-cols-2" style={{ columnGap: '20px' }}>
         <div style={fieldWrap}>
@@ -398,29 +455,21 @@ export default function InquiryForm({
         )}
       </div>
 
-      <button
-        type="submit"
-        data-btn
-        className="w-full sm:w-auto"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '17px 40px',
-          borderRadius: '999px',
-          border: 'none',
-          background: OLIVE,
-          color: '#faf6ee',
-          fontFamily: FONT,
-          fontWeight: 600,
-          fontSize: '15px',
-          letterSpacing: '0.01em',
-          cursor: 'pointer',
-          minHeight: '54px',
-        }}
-      >
-        Send forespørsel
-      </button>
+      {TURNSTILE_SITE_KEY && (
+        <>
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            strategy="lazyOnload"
+          />
+          <div
+            className="cf-turnstile"
+            data-sitekey={TURNSTILE_SITE_KEY}
+            style={{ marginBottom: '22px' }}
+          />
+        </>
+      )}
+
+      <InquirySubmitButton pending={pending} />
 
       <p
         style={{
@@ -440,82 +489,44 @@ export default function InquiryForm({
         </p>
       )}
 
-      {reviewed && (
-        <div
-          role="status"
-          style={{
-            marginTop: '24px',
-            border: '1px solid #ddd2bb',
-            borderRadius: '16px',
-            background: '#faf6ee',
-            padding: 'clamp(20px,2.6vw,28px)',
-          }}
-        >
+      {/* Single live region for the whole submission lifecycle, so a screen reader hears the
+          progress and the outcome without the focus moving. */}
+      <div role="status" aria-live="polite">
+        {pending && (
           <p
             style={{
               fontFamily: FONT,
-              fontWeight: 700,
-              fontSize: '15px',
-              color: INK,
-              margin: '0 0 8px',
-            }}
-          >
-            Forespørselen er ikke sendt ennå
-          </p>
-          <p
-            style={{
-              fontFamily: FONT,
-              fontSize: '14.5px',
-              lineHeight: 1.65,
-              color: SOFT,
-              margin: '0 0 18px',
-            }}
-          >
-            Skjemaet er ferdig utfylt, men automatisk innsending er ikke koblet på ennå. Send
-            opplysningene direkte til oss i mellomtiden – knappen under åpner e-postprogrammet
-            ditt med alt du har skrevet.
-          </p>
-          <a
-            href={mailtoHref()}
-            data-btn
-            className="w-full sm:w-auto"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '14px 30px',
-              borderRadius: '999px',
-              border: `1.5px solid ${OLIVE}`,
-              color: OLIVE,
-              fontFamily: FONT,
-              fontWeight: 600,
-              fontSize: '14.5px',
-              textDecoration: 'none',
-              minHeight: '48px',
-            }}
-          >
-            Send som e-post
-          </a>
-          <p
-            style={{
-              fontFamily: FONT,
-              fontSize: '13.5px',
+              fontSize: '14px',
               lineHeight: 1.65,
               color: MUTED,
               margin: '14px 0 0',
             }}
           >
-            Eller skriv til{' '}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              style={{ color: OLIVE, textDecoration: 'underline', textUnderlineOffset: '3px' }}
-            >
-              {CONTACT_EMAIL}
-            </a>
-            .
+            Sender forespørselen …
           </p>
-        </div>
-      )}
+        )}
+        {status === 'success' && <InquiryFeedbackPanel kind="success" />}
+        {status === 'error' && <InquiryFeedbackPanel kind="error" message={serverMessage} />}
+      </div>
+
+      <p
+        style={{
+          fontFamily: FONT,
+          fontSize: '13.5px',
+          lineHeight: 1.65,
+          color: MUTED,
+          margin: '18px 0 0',
+        }}
+      >
+        Du kan også skrive direkte til{' '}
+        <a
+          href={`mailto:${CONTACT_EMAIL}`}
+          style={{ color: OLIVE, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+        >
+          {CONTACT_EMAIL}
+        </a>
+        .
+      </p>
     </form>
   )
 }
