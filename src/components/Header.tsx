@@ -196,6 +196,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                 Produkter
               </Link>
               {[
+                { label: 'For bedrifter',     href: '/bedrifter' },
                 { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                 { label: 'Historien',         hash: 'historien' },
                 { label: 'Inspirasjon',       href: '/inspirasjon' },
@@ -320,6 +321,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                   label: 'Lær mer',
                   links: [
                     { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
+                    { label: 'For bedrifter',      href: '/bedrifter' },
                     { label: 'Historien',          href: '/#historien', hash: 'historien' },
                     { label: 'Inspirasjon',        href: '/inspirasjon' },
                     { label: 'Anmeldelser',        href: '/anmeldelser' },
