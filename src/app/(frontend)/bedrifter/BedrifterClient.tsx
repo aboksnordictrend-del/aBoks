@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import InquiryForm from './InquiryForm'
+import { anchorClick } from '@/lib/anchorScroll'
 import {
   bedrifterDocuments,
   isBedrifterProductKey,
@@ -42,7 +43,12 @@ const BORDER_WARM = '#ddd2bb'
 const CHECK_GREEN = '#5f8253'
 
 const SECTION_PAD = 'clamp(72px,9vw,120px) 0'
-/** Clears the fixed header when an in-page anchor is targeted. */
+/**
+ * Clears the fixed header when an in-page anchor is targeted *without* JavaScript running
+ * the scroll — a `/bedrifter#foresporsel` URL opened directly, or a no-JS visit. Clicks
+ * inside the page go through `anchorClick`, which measures the header instead of
+ * approximating it; see `lib/anchorScroll.ts`.
+ */
 const ANCHOR_OFFSET = 'clamp(84px,11vh,110px)'
 
 const eyebrowStyle: React.CSSProperties = {
@@ -616,7 +622,8 @@ function ProductSectionBlock({
   section: ProductSection
   imageFirst: boolean
   reveal: (delay?: number) => RevealProps
-  onInterest: () => void
+  /** Presets the form's dropdown and takes over the scroll to `#foresporsel`. */
+  onInterest: React.MouseEventHandler<HTMLAnchorElement>
 }) {
   const image = (
     <Image
@@ -785,8 +792,8 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
   const reveal = useRevealFactory()
   const [interest, setInterest] = useState('')
 
-  /** "Meld interesse" — presets the form's dropdown; the href does the scrolling. */
-  const pickInterest = (value: string) => () => setInterest(value)
+  /** "Meld interesse" — presets the form's dropdown, then scrolls to it. */
+  const pickInterest = (value: string) => anchorClick('foresporsel', () => setInterest(value))
 
   /**
    * Every product on the page, in reading order: the two upcoming models first, then the
@@ -858,6 +865,7 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
           <a
             href="#foresporsel"
             data-btn
+            onClick={anchorClick('foresporsel')}
             className="grow basis-[calc(50%-6px)] px-[22px] sm:px-9 md:grow-0 md:basis-auto"
             style={primaryButton}
           >
@@ -866,6 +874,7 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
           <a
             href="#losninger"
             data-btn
+            onClick={anchorClick('losninger')}
             className="grow basis-[calc(50%-6px)] px-[22px] sm:px-8 md:grow-0 md:basis-auto"
             style={secondaryButton}
           >
@@ -1460,6 +1469,7 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
               <a
                 href="#foresporsel"
                 data-btn
+                onClick={anchorClick('foresporsel')}
                 className="w-full justify-center sm:w-auto"
                 style={{
                   display: 'inline-flex',
