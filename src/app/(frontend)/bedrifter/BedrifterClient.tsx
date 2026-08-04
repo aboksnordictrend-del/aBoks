@@ -11,6 +11,7 @@ export interface BedrifterProduct {
   title: string
   slug: string
   tagline: string
+  description: string
   image: string
   imageAlt: string
 }
@@ -124,26 +125,82 @@ const PROBLEM_POINTS = [
  * The two upcoming products. Both images are the ones already used by the
  * "Snart fra aBoks" section on every product page — no new assets.
  */
-const SOLUTIONS = [
+/** One editorial product section. Both the upcoming models and the catalogue use this shape. */
+interface ProductSection {
+  name: string
+  /** "Kommer snart" for the upcoming models, "Tilgjengelig" for the catalogue. */
+  badge: string
+  subtitle: string
+  description: string
+  suitableFor: string[]
+  image: string
+  imageAlt: string
+  /** The catalogue photos are square; the two upcoming ones are shot 4:3. */
+  imageAspect: string
+  /** Product page the image links to — the upcoming models do not have one yet. */
+  href?: string
+  /** Value the "Meld interesse" button presets in the form's dropdown. */
+  interestOption: string
+}
+
+/** Placeholder rows shared by every section — the files and download URLs come later. */
+const DOCUMENTS = [
+  { name: 'Produktark', type: 'PDF' },
+  { name: 'Prisliste', type: 'PDF' },
+  { name: 'Tilbudsmal', type: 'DOCX' },
+]
+
+/** The two models that have not launched yet. Images already used by "Snart fra aBoks". */
+const UPCOMING: ProductSection[] = [
   {
     name: 'aBoks Special',
+    badge: 'Kommer snart',
     subtitle: 'For trygg innsamling av brukte batterier',
     description:
       'En veggmontert beholder med ekstra kapasitet for brukte batterier. Utviklet for bedrifter og arbeidsplasser der batterier skiftes ofte og det er behov for flere lett tilgjengelige innsamlingspunkter.',
     suitableFor: ['Produksjon', 'Verksted', 'Lager', 'Kontor', 'Skoler og institusjoner'],
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-special-4x3.webp',
     imageAlt: 'aBoks Special – veggmontert beholder for brukte batterier',
+    imageAspect: '4 / 3',
+    interestOption: 'aBoks Special',
   },
   {
     name: 'aBoks Office',
+    badge: 'Kommer snart',
     subtitle: 'Orden på skrivebordet – og kontroll på batteriene',
     description:
       'En kombinert skrivebordsorganisator med plass til nye AA-batterier, brukte batterier, telefon, penner, sakser, visittkort og små kontorartikler. AAA-batterier kan også oppbevares sammen med AA-batteriene ved behov.',
     suitableFor: ['Kontor', 'Resepsjon', 'Møterom', 'Arbeidsstasjon', 'Hjemmekontor'],
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-office-4x3.webp',
     imageAlt: 'aBoks Office – skrivebordsorganisator med plass til batterier og kontorartikler',
+    imageAspect: '4 / 3',
+    interestOption: 'aBoks Office',
   },
 ]
+
+/**
+ * Page-specific copy for the catalogue models, keyed by slug. Everything else — title,
+ * description, photo and URL — is read from Payload, so the product data lives in one place.
+ * A product without an entry here still renders, using its CMS tagline as the subtitle.
+ */
+const CATALOGUE_COPY: Record<string, { subtitle: string; suitableFor: string[] }> = {
+  aboks: {
+    subtitle: 'For komplett oppbevaring av AA- og AAA-batterier',
+    suitableFor: ['Kontor', 'Arbeidsplass', 'Fellesområder', 'Lager'],
+  },
+  'aboks-mini': {
+    subtitle: 'Kompakt oppbevaring for AA-batterier',
+    suitableFor: ['Kontor', 'Verksted', 'Resepsjon', 'Små arbeidsplasser'],
+  },
+  'aboks-nano': {
+    subtitle: 'Kompakt oppbevaring for AAA-batterier',
+    suitableFor: ['Kontor', 'Skoler og institusjoner', 'Små arbeidsplasser'],
+  },
+  'aboks-vegg': {
+    subtitle: 'For plassbesparende oppbevaring på veggen',
+    suitableFor: ['Verksted', 'Lager', 'Produksjon', 'Fellesområder'],
+  },
+}
 
 const PLACEMENTS = [
   'Ved arbeidsstasjonen',
@@ -262,6 +319,17 @@ function StatusPill({ label }: { label: string }) {
   )
 }
 
+/** Small uppercase label used inside the solution cards ("Passer for", "Dokumenter"). */
+const cardLabelStyle: React.CSSProperties = {
+  fontFamily: SANS,
+  fontWeight: 700,
+  fontSize: '11.5px',
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: SAGE,
+  margin: '0 0 14px',
+}
+
 function Tag({ children }: { children: React.ReactNode }) {
   return (
     <li
@@ -281,15 +349,158 @@ function Tag({ children }: { children: React.ReactNode }) {
   )
 }
 
-/* ────────────────────────────── page ────────────────────────────── */
+function FileIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5" />
+    </svg>
+  )
+}
 
-export default function BedrifterClient({ products }: { products: BedrifterProduct[] }) {
+function DownloadIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M12 4v11" />
+      <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+      <path d="M5 19h14" />
+    </svg>
+  )
+}
+
+/**
+ * Document rows inside a solution card. The files do not exist yet, so every row is a
+ * plain `<button>` with no handler: it is focusable and announces itself as unavailable
+ * through `aria-disabled`, but activating it does nothing and nothing navigates.
+ */
+function DocumentList({ documents }: { documents: { name: string; type: string }[] }) {
+  return (
+    <div style={{ width: '100%', margin: '0 0 30px' }}>
+      <p style={cardLabelStyle}>Dokumenter</p>
+      <ul
+        style={{
+          listStyle: 'none',
+          margin: 0,
+          padding: 0,
+          width: '100%',
+          borderTop: `1px solid ${BORDER_WARM}`,
+        }}
+      >
+        {documents.map((doc) => (
+          <li key={doc.name} style={{ borderBottom: `1px solid ${BORDER_WARM}` }}>
+            <button
+              type="button"
+              aria-disabled="true"
+              className="abx-doc-row"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '11px',
+                width: '100%',
+                padding: '12px 10px',
+                border: 0,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background .18s ease, color .18s ease',
+              }}
+            >
+              <FileIcon />
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontFamily: SANS,
+                  fontWeight: 600,
+                  fontSize: '14.5px',
+                  lineHeight: 1.3,
+                  color: 'inherit',
+                }}
+              >
+                {doc.name}
+                <span className="sr-only"> – kommer snart, ikke tilgjengelig ennå</span>
+              </span>
+              <span
+                style={{
+                  flexShrink: 0,
+                  fontFamily: SANS,
+                  fontWeight: 700,
+                  fontSize: '11px',
+                  letterSpacing: '0.12em',
+                  color: MUTED,
+                }}
+              >
+                {doc.type}
+              </span>
+              <DownloadIcon />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * Rules the product sections need that inline styles cannot express — hover, focus and the
+ * global press effect. Rendered once for the whole page rather than per section.
+ */
+const PRODUCT_SECTION_CSS = `
+  /* Base colours live here, not inline, so the hover rule below can win. */
+  html[data-site="frontend"] .abx-doc-row {
+    background: transparent;
+    color: ${SOFT};
+  }
+  html[data-site="frontend"] .abx-doc-row:active {
+    transform: none !important;
+    filter: none !important;
+  }
+  html[data-site="frontend"] .abx-doc-row:focus-visible,
+  html[data-site="frontend"] .abx-product-image:focus-visible {
+    outline: 2px solid ${SAGE};
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+  html[data-site="frontend"] .abx-product-image:focus-visible {
+    border-radius: 26px;
+  }
+  @media (hover: hover) {
+    html[data-site="frontend"] .abx-doc-row:hover {
+      background: rgba(94,106,72,.055);
+      color: ${OLIVE};
+    }
+  }
+`
+
+/** Motion props for the shared reveal, produced by the page component. */
+type RevealProps = ReturnType<ReturnType<typeof useRevealFactory>>
+
+function useRevealFactory() {
   const reduceMotion = useReducedMotion()
-  const [interest, setInterest] = useState('')
-
   // Motion props stay identical on the server and the client — only the timing changes
   // under reduced motion, so the SSR markup never gets stuck at opacity 0.
-  const reveal = (delay = 0) => ({
+  return (delay = 0) => ({
     initial: { opacity: 0, y: 22 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, margin: '-80px' },
@@ -297,9 +508,218 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
       ? { duration: 0 }
       : { duration: 0.65, delay, ease: [0.22, 0.61, 0.36, 1] as const },
   })
+}
+
+/**
+ * One full-width editorial product section: image in one column, copy in the other,
+ * sides alternating down the page. Every product on the page renders through this — the
+ * upcoming models and the catalogue differ only in their data.
+ *
+ * Below `md` the text wrapper is `display: contents`, so the intro group, the image and the
+ * body become siblings in the single-column grid and the intro can be ordered above the
+ * image. From `md` it is a normal flex column and the two-column layout is untouched.
+ */
+function ProductSectionBlock({
+  section,
+  imageFirst,
+  reveal,
+  onInterest,
+}: {
+  section: ProductSection
+  imageFirst: boolean
+  reveal: (delay?: number) => RevealProps
+  onInterest: () => void
+}) {
+  const image = (
+    <Image
+      src={section.image}
+      alt={section.imageAlt}
+      fill
+      sizes="(max-width: 768px) 100vw, 50vw"
+      className="object-cover transition-transform duration-500 ease-out"
+    />
+  )
+
+  return (
+    <div
+      className="grid grid-cols-1 md:grid-cols-2"
+      style={{
+        columnGap: 'clamp(32px,4.5vw,72px)',
+        rowGap: 'clamp(28px,4vw,40px)',
+        alignItems: 'center',
+      }}
+    >
+      <motion.div
+        {...reveal()}
+        className={imageFirst ? 'md:order-1' : 'md:order-2'}
+        style={{
+          position: 'relative',
+          aspectRatio: section.imageAspect,
+          borderRadius: '26px',
+          overflow: 'hidden',
+          background: '#efe6d3',
+          boxShadow: '0 24px 48px -22px rgba(42,36,24,.24)',
+        }}
+      >
+        {section.href ? (
+          // `data-btn` opts out of the global link-hover fade; the frame keeps its own
+          // subtle zoom instead. The whole image is the target.
+          <Link
+            href={section.href}
+            data-btn
+            aria-label={`Se ${section.name}`}
+            className="abx-product-image group absolute inset-0 block"
+          >
+            <span className="absolute inset-0 block transition-transform duration-500 ease-out group-hover:scale-[1.03]">
+              {image}
+            </span>
+          </Link>
+        ) : (
+          image
+        )}
+      </motion.div>
+
+      <div className={`contents md:flex md:flex-col ${imageFirst ? 'md:order-2' : 'md:order-1'}`}>
+        {/* Badge, title and subtitle stay together as one compact intro group.
+            `order: -1` lifts it above the image on mobile and keeps it first in
+            the desktop column, where it is the natural DOM order anyway. */}
+        <motion.div
+          {...reveal(0.1)}
+          className="md:mb-6"
+          style={{ order: -1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+        >
+          <StatusPill label={section.badge} />
+          <h3
+            style={{
+              fontFamily: SERIF,
+              fontWeight: 500,
+              fontSize: 'clamp(30px,3.4vw,46px)',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.05,
+              color: INK,
+              margin: '22px 0 12px',
+            }}
+          >
+            {section.name}
+          </h3>
+          {/* The 24px that used to sit under the subtitle now lives on the intro
+              group at `md` — on mobile the grid's row gap handles it instead. */}
+          <p
+            style={{
+              fontFamily: SERIF,
+              fontStyle: 'italic',
+              fontWeight: 500,
+              fontSize: 'clamp(20px,2vw,27px)',
+              lineHeight: 1.28,
+              letterSpacing: '-0.01em',
+              color: OLIVE,
+              margin: 0,
+            }}
+          >
+            {section.subtitle}
+          </p>
+        </motion.div>
+
+        {/* Body — divider, description, tags, documents and CTA. */}
+        <motion.div
+          {...reveal(0.1)}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+        >
+          <div style={{ height: '1px', background: BORDER_WARM, width: '100%', margin: '0 0 24px' }} />
+          <p
+            style={{
+              fontFamily: SANS,
+              fontSize: 'clamp(15.5px,1.3vw,17px)',
+              lineHeight: 1.7,
+              color: SOFT,
+              margin: '0 0 26px',
+              maxWidth: '54ch',
+            }}
+          >
+            {section.description}
+          </p>
+
+          {section.suitableFor.length > 0 && (
+            <>
+              <p style={cardLabelStyle}>Passer for</p>
+              <ul
+                style={{
+                  listStyle: 'none',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '9px',
+                  margin: '0 0 30px',
+                  padding: 0,
+                }}
+              >
+                {section.suitableFor.map((item) => (
+                  <Tag key={item}>{item}</Tag>
+                ))}
+              </ul>
+            </>
+          )}
+
+          <DocumentList documents={DOCUMENTS} />
+
+          <a
+            href="#foresporsel"
+            data-btn
+            onClick={onInterest}
+            className="w-full justify-center sm:w-auto"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '15px 32px',
+              borderRadius: '999px',
+              border: `1.5px solid ${OLIVE}`,
+              color: OLIVE,
+              fontFamily: SANS,
+              fontWeight: 600,
+              fontSize: '15px',
+              textDecoration: 'none',
+              minHeight: '52px',
+            }}
+          >
+            Meld interesse
+          </a>
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+/* ────────────────────────────── page ────────────────────────────── */
+
+export default function BedrifterClient({ products }: { products: BedrifterProduct[] }) {
+  const reveal = useRevealFactory()
+  const [interest, setInterest] = useState('')
 
   /** "Meld interesse" — presets the form's dropdown; the href does the scrolling. */
   const pickInterest = (value: string) => () => setInterest(value)
+
+  /**
+   * Every product on the page, in reading order: the two upcoming models first, then the
+   * catalogue in the order `page.tsx` resolved from the CMS. The catalogue entries carry
+   * their own product page, so their photo links there.
+   */
+  const productSections: ProductSection[] = [
+    ...UPCOMING,
+    ...products.map((product) => ({
+      name: product.title,
+      badge: 'Tilgjengelig',
+      subtitle: CATALOGUE_COPY[product.slug]?.subtitle ?? product.tagline,
+      description: product.description || product.tagline,
+      suitableFor: CATALOGUE_COPY[product.slug]?.suitableFor ?? [],
+      image: product.image,
+      imageAlt: product.imageAlt,
+      // The catalogue photography is square — a 4:3 crop would cut into the products.
+      imageAspect: '1 / 1',
+      href: `/produkter/${product.slug}`,
+      // The form's dropdown has no per-model option for the catalogue.
+      interestOption: 'Produkter til egen bedrift',
+    })),
+  ]
 
   // Split into two groups so the mobile hero can use the homepage's layering: copy at the
   // top of the image, actions pinned to the bottom. From `md` up the wrapper is a plain
@@ -553,257 +973,20 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
             </p>
           </motion.div>
 
+          <style>{PRODUCT_SECTION_CSS}</style>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(64px,8vw,112px)' }}>
-            {SOLUTIONS.map((solution, index) => {
-              const imageFirst = index % 2 === 0
-              return (
-                <div
-                  key={solution.name}
-                  className="grid grid-cols-1 md:grid-cols-2"
-                  style={{
-                    columnGap: 'clamp(32px,4.5vw,72px)',
-                    rowGap: 'clamp(28px,4vw,40px)',
-                    alignItems: 'center',
-                  }}
-                >
-                  <motion.div
-                    {...reveal()}
-                    className={imageFirst ? 'md:order-1' : 'md:order-2'}
-                    style={{
-                      position: 'relative',
-                      aspectRatio: '4 / 3',
-                      borderRadius: '26px',
-                      overflow: 'hidden',
-                      background: '#efe6d3',
-                      boxShadow: '0 24px 48px -22px rgba(42,36,24,.24)',
-                    }}
-                  >
-                    <Image
-                      src={solution.image}
-                      alt={solution.imageAlt}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      style={{ objectFit: 'cover' }}
-                    />
-                  </motion.div>
-
-                  <motion.div
-                    {...reveal(0.1)}
-                    className={imageFirst ? 'md:order-2' : 'md:order-1'}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
-                  >
-                    <StatusPill label="Kommer snart" />
-                    <h3
-                      style={{
-                        fontFamily: SERIF,
-                        fontWeight: 500,
-                        fontSize: 'clamp(30px,3.4vw,46px)',
-                        letterSpacing: '-0.02em',
-                        lineHeight: 1.05,
-                        color: INK,
-                        margin: '22px 0 12px',
-                      }}
-                    >
-                      {solution.name}
-                    </h3>
-                    <p
-                      style={{
-                        fontFamily: SERIF,
-                        fontStyle: 'italic',
-                        fontWeight: 500,
-                        fontSize: 'clamp(20px,2vw,27px)',
-                        lineHeight: 1.28,
-                        letterSpacing: '-0.01em',
-                        color: OLIVE,
-                        margin: '0 0 24px',
-                      }}
-                    >
-                      {solution.subtitle}
-                    </p>
-                    <div style={{ height: '1px', background: BORDER_WARM, width: '100%', margin: '0 0 24px' }} />
-                    <p
-                      style={{
-                        fontFamily: SANS,
-                        fontSize: 'clamp(15.5px,1.3vw,17px)',
-                        lineHeight: 1.7,
-                        color: SOFT,
-                        margin: '0 0 26px',
-                        maxWidth: '54ch',
-                      }}
-                    >
-                      {solution.description}
-                    </p>
-
-                    <p
-                      style={{
-                        fontFamily: SANS,
-                        fontWeight: 700,
-                        fontSize: '11.5px',
-                        letterSpacing: '0.18em',
-                        textTransform: 'uppercase',
-                        color: SAGE,
-                        margin: '0 0 14px',
-                      }}
-                    >
-                      Passer for
-                    </p>
-                    <ul
-                      style={{
-                        listStyle: 'none',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '9px',
-                        margin: '0 0 30px',
-                        padding: 0,
-                      }}
-                    >
-                      {solution.suitableFor.map((item) => (
-                        <Tag key={item}>{item}</Tag>
-                      ))}
-                    </ul>
-
-                    <a
-                      href="#foresporsel"
-                      data-btn
-                      onClick={pickInterest(solution.name)}
-                      className="w-full justify-center sm:w-auto"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '15px 32px',
-                        borderRadius: '999px',
-                        border: `1.5px solid ${OLIVE}`,
-                        color: OLIVE,
-                        fontFamily: SANS,
-                        fontWeight: 600,
-                        fontSize: '15px',
-                        textDecoration: 'none',
-                        minHeight: '52px',
-                      }}
-                    >
-                      Meld interesse
-                    </a>
-                  </motion.div>
-                </div>
-              )
-            })}
+            {productSections.map((section, index) => (
+              <ProductSectionBlock
+                key={section.name}
+                section={section}
+                imageFirst={index % 2 === 0}
+                reveal={reveal}
+                onInterest={pickInterest(section.interestOption)}
+              />
+            ))}
           </div>
         </div>
       </section>
-
-      {/* ==================== EXISTING PRODUCTS ==================== */}
-      {products.length > 0 && (
-        <section aria-labelledby="modeller-heading" style={{ background: BEIGE, padding: SECTION_PAD }}>
-          <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
-            <motion.div {...reveal()} style={{ maxWidth: '660px', marginBottom: 'clamp(32px,4vw,48px)' }}>
-              <p style={eyebrowStyle}>Også tilgjengelig</p>
-              <h2
-                id="modeller-heading"
-                style={{ ...h2Style, fontSize: 'clamp(27px,3.1vw,40px)' }}
-              >
-                Eksisterende aBoks-modeller for bedrifter.
-              </h2>
-              <p style={{ ...introStyle, fontSize: 'clamp(15px,1.25vw,16.5px)' }}>
-                De eksisterende modellene kan også bestilles til kontorer, arbeidsplasser,
-                fellesområder og andre steder der batterier brukes og oppbevares.
-              </p>
-            </motion.div>
-
-            <div
-              className="grid grid-cols-2 lg:grid-cols-4"
-              style={{ gap: 'clamp(14px,1.8vw,24px)' }}
-            >
-              {products.map((product, i) => (
-                <motion.div key={product.slug} {...reveal(i * 0.05)}>
-                  <Link
-                    href={`/produkter/${product.slug}`}
-                    data-btn
-                    className="group"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      height: '100%',
-                      background: CREAM,
-                      border: '1px solid rgba(57,64,44,0.10)',
-                      borderRadius: '18px',
-                      padding: '12px 12px 18px',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: 'relative',
-                        aspectRatio: '1 / 1',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        background: '#ede8db',
-                        marginBottom: '14px',
-                      }}
-                    >
-                      {product.image ? (
-                        <Image
-                          src={product.image}
-                          alt={product.imageAlt}
-                          fill
-                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 280px"
-                          className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                        />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', background: '#e4dfd2' }} />
-                      )}
-                    </div>
-                    <h3
-                      style={{
-                        fontFamily: SANS,
-                        fontWeight: 700,
-                        fontSize: '16px',
-                        color: INK,
-                        margin: '0 0 6px',
-                        padding: '0 4px',
-                      }}
-                    >
-                      {product.title}
-                    </h3>
-                    {product.tagline && (
-                      <p
-                        style={{
-                          fontFamily: SANS,
-                          fontSize: '13.5px',
-                          lineHeight: 1.55,
-                          color: MUTED,
-                          margin: '0 0 14px',
-                          padding: '0 4px',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {product.tagline}
-                      </p>
-                    )}
-                    <span
-                      style={{
-                        marginTop: 'auto',
-                        padding: '0 4px',
-                        fontFamily: SANS,
-                        fontWeight: 600,
-                        fontSize: '13.5px',
-                        color: OLIVE,
-                        textDecoration: 'underline',
-                        textUnderlineOffset: '3px',
-                      }}
-                    >
-                      Se produkt
-                    </span>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* ==================== MULTIPLE COLLECTION POINTS ==================== */}
       <section aria-labelledby="plassering-heading" style={{ background: OLIVE, padding: SECTION_PAD }}>

@@ -26,8 +26,8 @@ export const metadata: Metadata = {
 }
 
 /**
- * Order of the existing catalogue in the "Også tilgjengelig" section. Products not listed
- * (a future launch) still render, after these — the section follows the CMS, not this list.
+ * Order of the existing catalogue among the product sections. Products not listed
+ * (a future launch) still render, after these — the page follows the CMS, not this list.
  */
 const PRODUCT_SLUG_ORDER = ['aboks', 'aboks-mini', 'aboks-nano', 'aboks-vegg']
 
@@ -53,6 +53,7 @@ async function getExistingProducts(): Promise<BedrifterProduct[]> {
           title: doc.title as string,
           slug: doc.slug as string,
           tagline: doc.tagline ?? '',
+          description: (doc.description as string) ?? '',
           image: firstImage ? mediaUrl(firstImage.image) : '',
           imageAlt: firstImage?.alt ?? (doc.title as string),
         }
