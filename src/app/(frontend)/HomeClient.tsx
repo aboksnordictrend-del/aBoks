@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -9,9 +9,15 @@ import type { CarouselHandle } from '@/components/Carousel'
 import Accordion from '@/components/Accordion'
 import SaleCountdown from '@/components/SaleCountdown'
 import HowItWorksSteps from '@/components/HowItWorksSteps'
+import ClickToPlayVideo from '@/components/ClickToPlayVideo'
 import AboksVeggSection, { type AboksVeggSectionData } from '@/components/AboksVeggSection'
 import { isSaleActive, type SaleInfo } from '@/lib/pricing'
 import { FAQS, COMPARTMENTS, CAPACITY } from '@/lib/content'
+
+const SOLUTION_VIDEO_SRC    = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video.mp4'
+const SOLUTION_VIDEO_POSTER = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video-poster.webp'
+const MAIN_VIDEO_SRC        = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video.mp4'
+const MAIN_VIDEO_POSTER     = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video-poster.webp'
 
 const COLORS = [
   { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
@@ -108,34 +114,6 @@ export default function HomeClient({
   const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
   const prodCarouselRef   = useRef<CarouselHandle>(null)
   const lifeCarouselRef   = useRef<CarouselHandle>(null)
-  const solutionVideoRef  = useRef<HTMLVideoElement>(null)
-  const mainVideoRef      = useRef<HTMLVideoElement>(null)
-
-  useEffect(() => {
-    const SOLUTION_SRC = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video.mp4'
-    const MAIN_SRC     = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video.mp4'
-    const setup = (v: HTMLVideoElement | null, src: string) => {
-      if (!v) return () => {}
-      const obs = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            if (!v.src || v.src === window.location.href) v.src = src
-            v.play().catch(() => {})
-          } else {
-            v.pause()
-            v.removeAttribute('src')
-            v.load()
-          }
-        },
-        { threshold: 0.25 }
-      )
-      obs.observe(v)
-      return () => obs.disconnect()
-    }
-    const c1 = setup(solutionVideoRef.current, SOLUTION_SRC)
-    const c2 = setup(mainVideoRef.current, MAIN_SRC)
-    return () => { c1(); c2() }
-  }, [])
 
   return (
     <main>
@@ -380,12 +358,15 @@ export default function HomeClient({
             }}
           >
             <motion.div {...fadeUp()} className="order-2 md:order-1" style={{ position: 'relative', aspectRatio: '1/1', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 48px -18px rgba(42,36,24,.22)' }}>
-              <video
-                ref={solutionVideoRef}
+              <ClickToPlayVideo
+                src={SOLUTION_VIDEO_SRC}
+                poster={SOLUTION_VIDEO_POSTER}
+                label="Spill av video: aBoks med tre rom"
                 muted
-                loop
-                playsInline
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                controlsWhenPlaying
+                buttonSize={64}
+                wrapperStyle={{ width: '100%', height: '100%' }}
+                videoStyle={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
             </motion.div>
             <motion.div {...fadeUp(0.1)} className="order-1 md:order-2 md:pl-[40px]">
@@ -635,12 +616,15 @@ export default function HomeClient({
             </h2>
           </motion.div>
           <motion.div {...fadeUp(0.1)} style={{ borderRadius: '24px', overflow: 'hidden', boxShadow: '0 24px 56px -20px rgba(42,36,24,.3)' }}>
-            <video
-              ref={mainVideoRef}
+            <ClickToPlayVideo
+              src={MAIN_VIDEO_SRC}
+              poster={MAIN_VIDEO_POSTER}
+              label="Spill av film: se aBoks i bruk"
               muted
-              loop
-              playsInline
-              style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }}
+              controlsWhenPlaying
+              buttonSize={72}
+              wrapperStyle={{ display: 'block' }}
+              videoStyle={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block' }}
             />
           </motion.div>
         </div>

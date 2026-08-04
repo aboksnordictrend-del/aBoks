@@ -1,113 +1,45 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
+import ClickToPlayVideo from '@/components/ClickToPlayVideo'
 import { STEPS } from '@/lib/content'
 
 type Step = (typeof STEPS)[number]
 
+const CARD_STYLE = {
+  aspectRatio: '4/5',
+  borderRadius: '18px',
+  overflow: 'hidden',
+  background: '#e3dcd1',
+  position: 'relative' as const,
+  boxShadow: '0 4px 20px -6px rgba(42,36,24,.14)',
+  width: '100%',
+}
+
+/**
+ * The step clip only downloads once the visitor presses play — no hover start
+ * and no autoplay, so a scroll past this section costs zero blob traffic.
+ */
 function StepVideoCard({ step }: { step: Step }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-
-  function ensureSrc() {
-    const v = videoRef.current
-    if (!v || !step.videoUrl) return false
-    if (!v.src || v.src === window.location.href) {
-      v.src = step.videoUrl
-      v.loop = true
-      v.load()
-    }
-    return true
+  if (!step.videoUrl) {
+    return (
+      <div style={{ ...CARD_STYLE, cursor: 'default' }}>
+        {step.posterUrl && (
+          <Image src={step.posterUrl} alt={step.title} fill style={{ objectFit: 'cover' }} />
+        )}
+      </div>
+    )
   }
-
-  function isHoverDevice() {
-    return window.matchMedia('(hover: hover) and (pointer: fine)').matches
-  }
-
-  function handleMouseEnter() {
-    if (!isHoverDevice()) return
-    if (!ensureSrc()) return
-    videoRef.current!.play().catch(() => {})
-  }
-
-  function handleMouseLeave() {
-    if (!isHoverDevice()) return
-    videoRef.current?.pause()
-  }
-
-  function handleClick() {
-    const v = videoRef.current
-    if (!v || !step.videoUrl) return
-
-    if (!v.src || v.src === window.location.href) {
-      v.src = step.videoUrl
-      v.loop = true
-      v.load()
-    }
-
-    if (v.paused) v.play().catch(() => {})
-    else v.pause()
-  }
-
-  useEffect(() => {
-    const v = videoRef.current
-    if (!v) return
-    const onEnded = () => {
-      v.currentTime = 0
-      v.play().catch(() => {})
-    }
-    v.addEventListener('ended', onEnded)
-    return () => v.removeEventListener('ended', onEnded)
-  }, [])
 
   return (
-    <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-      style={{
-        aspectRatio: '4/5',
-        borderRadius: '18px',
-        overflow: 'hidden',
-        background: '#e3dcd1',
-        position: 'relative',
-        boxShadow: '0 4px 20px -6px rgba(42,36,24,.14)',
-        cursor: step.videoUrl ? 'pointer' : 'default',
-        width: '100%',
-      }}
-    >
-      {step.posterUrl && !step.videoUrl && (
-        <Image src={step.posterUrl} alt={step.title} fill style={{ objectFit: 'cover' }} />
-      )}
-      {step.videoUrl && (
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          poster={step.posterUrl || undefined}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-      )}
-      <div
-        className="step-play-btn"
-        style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none',
-          opacity: isPlaying ? 0 : 1,
-          transition: 'opacity 0.2s',
-        }}
-      >
-        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(250,246,238,0.72)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="14" height="16" viewBox="0 0 14 16" fill="none" aria-hidden="true">
-            <path d="M1.5 1.5L12.5 8L1.5 14.5V1.5Z" fill="#3a3f33" />
-          </svg>
-        </div>
-      </div>
-    </div>
+    <ClickToPlayVideo
+      src={step.videoUrl}
+      poster={step.posterUrl || undefined}
+      label={`Spill av video: ${step.title}`}
+      muted
+      wrapperStyle={CARD_STYLE}
+      videoStyle={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+    />
   )
 }
 
@@ -136,9 +68,6 @@ export default function HowItWorksSteps({
           .slik-desktop { display: none; }
           .slik-mobile  { display: flex; flex-direction: column; }
           .slik-spacer  { height: calc((100vw - clamp(40px, 10vw, 96px) - 136px) * 0.625 - 22px); }
-        }
-        @media (hover: hover) and (pointer: fine) {
-          .step-play-btn { display: none !important; }
         }
       `}</style>
 
