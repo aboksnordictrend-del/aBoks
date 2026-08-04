@@ -5,6 +5,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import InquiryForm from './InquiryForm'
+import {
+  bedrifterDocuments,
+  isBedrifterProductKey,
+  type DocumentFile,
+  type ProductDocument,
+} from '@/lib/bedrifterDocuments'
 
 /** Existing catalogue entry, assembled from Payload in `page.tsx`. */
 export interface BedrifterProduct {
@@ -141,14 +147,9 @@ interface ProductSection {
   href?: string
   /** Value the "Meld interesse" button presets in the form's dropdown. */
   interestOption: string
+  /** Produktark, Prisliste and Tilbudsmal, resolved to the product's files in Blob. */
+  documents: ProductDocument[]
 }
-
-/** Placeholder rows shared by every section — the files and download URLs come later. */
-const DOCUMENTS = [
-  { name: 'Produktark', type: 'PDF' },
-  { name: 'Prisliste', type: 'PDF' },
-  { name: 'Tilbudsmal', type: 'DOCX' },
-]
 
 /** The two models that have not launched yet. Images already used by "Snart fra aBoks". */
 const UPCOMING: ProductSection[] = [
@@ -163,6 +164,7 @@ const UPCOMING: ProductSection[] = [
     imageAlt: 'aBoks Special – veggmontert beholder for brukte batterier',
     imageAspect: '4 / 3',
     interestOption: 'aBoks Special',
+    documents: bedrifterDocuments('aboks-special'),
   },
   {
     name: 'aBoks Office',
@@ -175,6 +177,7 @@ const UPCOMING: ProductSection[] = [
     imageAlt: 'aBoks Office – skrivebordsorganisator med plass til batterier og kontorartikler',
     imageAspect: '4 / 3',
     interestOption: 'aBoks Office',
+    documents: bedrifterDocuments('aboks-office'),
   },
 ]
 
@@ -390,12 +393,50 @@ function DownloadIcon() {
   )
 }
 
+function ExternalLinkIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M14 5h5v5" />
+      <path d="m19 5-8 8" />
+      <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+    </svg>
+  )
+}
+
+/** The small uppercase format label on the right of a document row ("PDF", "HTML"). */
+const fileTypeStyle: React.CSSProperties = {
+  flexShrink: 0,
+  fontFamily: SANS,
+  fontWeight: 700,
+  fontSize: '11px',
+  letterSpacing: '0.12em',
+  color: MUTED,
+}
+
 /**
- * Document rows inside a solution card. The files do not exist yet, so every row is a
- * plain `<button>` with no handler: it is focusable and announces itself as unavailable
- * through `aria-disabled`, but activating it does nothing and nothing navigates.
+ * Document rows inside a solution card, one row per document. A row's first format claims
+ * the whole row — icon, label and all — so clicking anywhere on it downloads the PDF. Any
+ * further format (today only the Tilbudsmal's browser version) sits to its right as a
+ * separate link, giving the `PDF ↓  HTML ↗` pairing.
  */
-function DocumentList({ documents }: { documents: { name: string; type: string }[] }) {
+function DocumentList({
+  documents,
+  productName,
+}: {
+  documents: ProductDocument[]
+  productName: string
+}) {
   return (
     <div style={{ width: '100%', margin: '0 0 30px' }}>
       <p style={cardLabelStyle}>Dokumenter</p>
@@ -408,57 +449,98 @@ function DocumentList({ documents }: { documents: { name: string; type: string }
           borderTop: `1px solid ${BORDER_WARM}`,
         }}
       >
-        {documents.map((doc) => (
-          <li key={doc.name} style={{ borderBottom: `1px solid ${BORDER_WARM}` }}>
-            <button
-              type="button"
-              aria-disabled="true"
-              className="abx-doc-row"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '11px',
-                width: '100%',
-                padding: '12px 10px',
-                border: 0,
-                cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'background .18s ease, color .18s ease',
-              }}
+        {documents.map((doc) => {
+          const [primary, ...secondary] = doc.files
+          return (
+            <li
+              key={doc.label}
+              style={{ borderBottom: `1px solid ${BORDER_WARM}`, display: 'flex', alignItems: 'stretch' }}
             >
-              <FileIcon />
-              <span
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  fontFamily: SANS,
-                  fontWeight: 600,
-                  fontSize: '14.5px',
-                  lineHeight: 1.3,
-                  color: 'inherit',
-                }}
-              >
-                {doc.name}
-                <span className="sr-only"> – kommer snart, ikke tilgjengelig ennå</span>
-              </span>
-              <span
-                style={{
-                  flexShrink: 0,
-                  fontFamily: SANS,
-                  fontWeight: 700,
-                  fontSize: '11px',
-                  letterSpacing: '0.12em',
-                  color: MUTED,
-                }}
-              >
-                {doc.type}
-              </span>
-              <DownloadIcon />
-            </button>
-          </li>
-        ))}
+              <DocumentLink file={primary} documentLabel={doc.label} productName={productName} primary>
+                <FileIcon />
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontFamily: SANS,
+                    fontWeight: 600,
+                    fontSize: '14.5px',
+                    lineHeight: 1.3,
+                    color: 'inherit',
+                  }}
+                >
+                  {doc.label}
+                </span>
+              </DocumentLink>
+
+              {secondary.map((file) => (
+                <span key={file.type} style={{ display: 'flex', alignItems: 'stretch' }}>
+                  <span
+                    aria-hidden="true"
+                    style={{ width: '1px', background: BORDER_WARM, margin: '9px 0', flexShrink: 0 }}
+                  />
+                  <DocumentLink file={file} documentLabel={doc.label} productName={productName} />
+                </span>
+              ))}
+            </li>
+          )
+        })}
       </ul>
     </div>
+  )
+}
+
+/**
+ * One format of one document. `primary` makes it fill the remaining row width so the row
+ * itself is the click target; otherwise it is a compact `HTML ↗` link at the end.
+ *
+ * PDFs download (the URL carries Blob's own `?download=1`), HTML opens in a new tab so the
+ * customer can fill the template in and use its print button.
+ */
+function DocumentLink({
+  file,
+  documentLabel,
+  productName,
+  primary = false,
+  children,
+}: {
+  file: DocumentFile
+  documentLabel: string
+  productName: string
+  primary?: boolean
+  children?: React.ReactNode
+}) {
+  const opens = file.action === 'open'
+  return (
+    <a
+      href={file.url}
+      data-btn
+      className="abx-doc-row"
+      {...(opens
+        ? { target: '_blank', rel: 'noopener noreferrer' }
+        : { download: true })}
+      aria-label={
+        opens
+          ? `Åpne ${productName} ${documentLabel.toLowerCase()} i nettleseren`
+          : `Last ned ${productName} ${documentLabel.toLowerCase()} som ${file.type}`
+      }
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: primary ? '11px' : '7px',
+        flex: primary ? 1 : '0 0 auto',
+        minWidth: 0,
+        padding: primary ? '12px 10px' : '12px 10px 12px 12px',
+        textDecoration: 'none',
+        transition: 'background .18s ease, color .18s ease',
+      }}
+    >
+      {children}
+      <span className="abx-doc-type" style={fileTypeStyle}>
+        {file.type}
+      </span>
+      {opens ? <ExternalLinkIcon /> : <DownloadIcon />}
+    </a>
   )
 }
 
@@ -471,6 +553,12 @@ const PRODUCT_SECTION_CSS = `
   html[data-site="frontend"] .abx-doc-row {
     background: transparent;
     color: ${SOFT};
+  }
+  /* The format label stays muted until its own link is hovered. */
+  @media (hover: hover) {
+    html[data-site="frontend"] .abx-doc-row:hover .abx-doc-type {
+      color: inherit;
+    }
   }
   html[data-site="frontend"] .abx-doc-row:active {
     transform: none !important;
@@ -659,7 +747,9 @@ function ProductSectionBlock({
             </>
           )}
 
-          <DocumentList documents={DOCUMENTS} />
+          {section.documents.length > 0 && (
+            <DocumentList documents={section.documents} productName={section.name} />
+          )}
 
           <a
             href="#foresporsel"
@@ -718,6 +808,9 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
       href: `/produkter/${product.slug}`,
       // The form's dropdown has no per-model option for the catalogue.
       interestOption: 'Produkter til egen bedrift',
+      // A future CMS product with no files in the Blob folder simply renders without the
+      // "Dokumenter" block rather than with links that 404.
+      documents: isBedrifterProductKey(product.slug) ? bedrifterDocuments(product.slug) : [],
     })),
   ]
 
