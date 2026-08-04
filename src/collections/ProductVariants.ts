@@ -105,7 +105,10 @@ export const ProductVariants: CollectionConfig = {
       type: 'text',
       label: 'Video URL (mp4)',
       admin: {
-        description: 'Full URL til .mp4-produktvideo for denne fargen. La stå tom hvis ingen video.',
+        description:
+          'Full URL til .mp4-produktvideo for denne fargen. La stå tom hvis ingen video. ' +
+          'Videoen lastes først når kunden trykker play – last derfor opp et stillbilde ved siden av ' +
+          'filen med samme navn og endelsen -poster.webp (f.eks. aBoks-sort-video.mp4 → aBoks-sort-video-poster.webp).',
       },
     },
   ],

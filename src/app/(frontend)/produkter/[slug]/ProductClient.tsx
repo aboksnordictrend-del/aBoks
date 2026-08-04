@@ -8,12 +8,14 @@ import { useCartStore } from '@/store/cart'
 import CartToast from '@/components/CartToast'
 import Accordion from '@/components/Accordion'
 import VideoPlaceholder from '@/components/VideoPlaceholder'
+import ClickToPlayVideo from '@/components/ClickToPlayVideo'
 import ProductImageCarousel, {
   type ProductImageCarouselHandle,
 } from '@/components/ProductImageCarousel'
 import ImageLightbox from '@/components/ImageLightbox'
 import Breadcrumbs, { type Crumb } from '@/components/Breadcrumbs'
 import { formatPrice } from '@/lib/format'
+import { posterForVideo } from '@/lib/videoPoster'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
 import SaleCountdown from '@/components/SaleCountdown'
@@ -520,16 +522,20 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   background: '#e7d9bd',
                 }}
               >
-                <video
+                {/* Keyed on the URL so switching colour unmounts the old
+                    player: any playback stops and the new colour starts back
+                    at its poster, waiting for a fresh press. */}
+                <ClickToPlayVideo
                   key={selectedVariant.videoUrl}
-                  autoPlay
+                  src={selectedVariant.videoUrl}
+                  poster={posterForVideo(selectedVariant.videoUrl)}
+                  label={`Spill av produktvideo: aBoks ${selectedVariant.name}`}
                   muted
-                  loop
-                  playsInline
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                >
-                  <source src={selectedVariant.videoUrl} type="video/mp4" />
-                </video>
+                  buttonSize={72}
+                  placeholderBackground="#e7d9bd"
+                  wrapperStyle={{ position: 'absolute', inset: 0 }}
+                  videoStyle={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
                 <span
                   style={{
                     position: 'absolute',
