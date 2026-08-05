@@ -11,6 +11,7 @@ import {
   type RecommendationVariant,
 } from '@/lib/cart/recommendations'
 import { formatPrice } from '@/lib/format'
+import { cartLineTitle } from '@/lib/cart/lineTitle'
 import type { CartItem } from '@/store/cart'
 
 /**
@@ -220,12 +221,36 @@ describe('adding a recommendation to the real cart store', () => {
     assert.deepEqual(item, {
       variantId: 'v-sort',
       productSlug: 'aboks-special',
+      productTitle: 'aBoks Special',
       colorName: 'Sort',
       colorHex: '#1a1d17',
       colorImage: 'https://blob.example/sort.webp',
       price: 649,
       qty: 1,
     } satisfies CartItem)
+  })
+
+  it('carries the recommendation’s real product title onto the cart line', () => {
+    // Distinct variant ids, or the store would merge them into a single line.
+    const vegg = product({
+      slug: 'aboks-vegg',
+      title: 'aBoks Vegg',
+      variants: [variant({ id: 'v-vegg' })],
+    })
+    const accessory = product({
+      slug: 'kabelholder',
+      title: 'Kabelholder',
+      section: 'accessories',
+      variants: [variant({ id: 'v-kabel' })],
+    })
+
+    useCartStore.getState().addItem(recommendationCartItem(vegg, vegg.variants[0]), 1)
+    useCartStore.getState().addItem(recommendationCartItem(accessory, accessory.variants[0]), 1)
+
+    const titles = useCartStore.getState().items.map((i) => cartLineTitle(i))
+    assert.deepEqual(titles, ['aBoks Vegg', 'Kabelholder'])
+    // Not one of them is the generic brand name, and none has the colour folded in.
+    for (const title of titles) assert.ok(!title.includes('Sort'))
   })
 
   it('adds the chosen variant, not the first one', () => {

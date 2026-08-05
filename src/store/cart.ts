@@ -6,6 +6,19 @@ import { persist } from 'zustand/middleware'
 export interface CartItem {
   variantId: string
   productSlug: string
+  /**
+   * The product's own name — "aBoks Mini", "aBoks Vegg", an accessory's title.
+   *
+   * Optional because carts persisted before this field existed genuinely do not have it;
+   * the type would be lying otherwise. Those lines are resolved at render time from the live
+   * catalogue by slug (see @/lib/cart/lineTitle), and `addItem` fills the gap in as soon as
+   * the same variant is added again.
+   *
+   * Kept separate from `colorName` on purpose: the two are never concatenated into one
+   * stored string. Anything that needs the combined "Produkt – Farge" label composes it at
+   * the point of display.
+   */
+  productTitle?: string
   colorName: string
   colorHex: string
   colorImage: string
@@ -50,7 +63,16 @@ export const useCartStore = create<CartState>()(
           if (idx >= 0) {
             return {
               items: state.items.map((i, j) =>
-                j === idx ? { ...i, qty: i.qty + qty } : i,
+                j === idx
+                  ? {
+                      ...i,
+                      qty: i.qty + qty,
+                      // Heal a line persisted before `productTitle` existed. Only ever fills a
+                      // gap — an existing title is left alone, and quantity, price and the
+                      // chosen variant are untouched either way.
+                      ...(i.productTitle ? {} : { productTitle: item.productTitle }),
+                    }
+                  : i,
               ),
             }
           }

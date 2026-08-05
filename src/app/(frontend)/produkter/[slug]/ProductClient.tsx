@@ -211,6 +211,9 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
       {
         variantId: selectedVariant.id,
         productSlug: product.slug,
+        // The product's real name, straight from the CMS document this page was built from —
+        // so the cart line says "aBoks Vegg" or an accessory's own title, not a guess.
+        productTitle: product.title,
         colorName: selectedVariant.name,
         colorHex: selectedVariant.colorHex,
         colorImage: selectedVariant.image,

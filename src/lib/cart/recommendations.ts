@@ -273,6 +273,7 @@ export function recommendationCartItem(
 ): {
   variantId: string
   productSlug: string
+  productTitle: string
   colorName: string
   colorHex: string
   colorImage: string
@@ -281,6 +282,9 @@ export function recommendationCartItem(
   return {
     variantId: variant.id,
     productSlug: product.slug,
+    // Carried through from the catalogue, so a product added from the cart block is named
+    // exactly as it is on its own page.
+    productTitle: product.title,
     colorName: variant.name,
     colorHex: variant.colorHex,
     colorImage: variant.image,

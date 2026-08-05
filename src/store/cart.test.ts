@@ -150,3 +150,93 @@ describe('cart store — promo code', () => {
     assert.deepEqual(useCartStore.getState().items, [])
   })
 })
+
+describe('cart store — product title on the line', () => {
+  it('stores the product title given at add time', () => {
+    useCartStore.setState({ items: [], promoCode: null })
+    useCartStore.getState().addItem({ ...sampleItem, productTitle: 'aBoks Mini' }, 1)
+
+    const [item] = useCartStore.getState().items
+    assert.equal(item.productTitle, 'aBoks Mini')
+    // Kept apart from the colour — the two are never merged into one stored string.
+    assert.equal(item.colorName, 'Creme')
+    assert.ok(!item.productTitle!.includes('Creme'))
+  })
+
+  it('persists the title, so a reload still knows what the line is', () => {
+    useCartStore.setState({ items: [], promoCode: null })
+    useCartStore.getState().addItem({ ...sampleItem, productTitle: 'aBoks Mini' }, 1)
+
+    const stored = (persisted().items ?? []) as { productTitle?: string }[]
+    assert.equal(stored[0].productTitle, 'aBoks Mini')
+  })
+
+  it('fills in a missing title when the same variant is added again, changing nothing else', () => {
+    // A line hydrated from a cart persisted before the field existed.
+    useCartStore.setState({
+      items: [{ ...sampleItem, qty: 3 }],
+      promoCode: null,
+    })
+    assert.equal(useCartStore.getState().items[0].productTitle, undefined)
+
+    useCartStore.getState().addItem({ ...sampleItem, productTitle: 'aBoks Mini' }, 1)
+
+    const [item] = useCartStore.getState().items
+    assert.equal(item.productTitle, 'aBoks Mini')
+    assert.equal(item.qty, 4) // 3 + 1 — quantity merged as before, not reset
+    assert.equal(item.variantId, '20') // the chosen variant is untouched
+    assert.equal(item.price, 299)
+  })
+
+  it('never overwrites a title a line already has', () => {
+    useCartStore.setState({ items: [], promoCode: null })
+    useCartStore.getState().addItem({ ...sampleItem, productTitle: 'aBoks Mini' }, 1)
+    useCartStore.getState().addItem({ ...sampleItem, productTitle: 'Noe annet' }, 1)
+
+    assert.equal(useCartStore.getState().items[0].productTitle, 'aBoks Mini')
+    assert.equal(useCartStore.getState().items[0].qty, 2)
+  })
+
+  it('keeps two products as two separate lines with their own titles', () => {
+    useCartStore.setState({ items: [], promoCode: null })
+    useCartStore.getState().addItem({ ...sampleItem, productTitle: 'aBoks Mini' }, 1)
+    useCartStore.getState().addItem(
+      {
+        variantId: '31',
+        productSlug: 'aboks-vegg',
+        productTitle: 'aBoks Vegg',
+        colorName: 'Sort',
+        colorHex: '#1a1d17',
+        colorImage: '/sort.jpg',
+        price: 549,
+      },
+      1,
+    )
+
+    assert.deepEqual(
+      useCartStore.getState().items.map((i) => [i.productTitle, i.colorName]),
+      [
+        ['aBoks Mini', 'Creme'],
+        ['aBoks Vegg', 'Sort'],
+      ],
+    )
+  })
+
+  it('keeps totals, quantities and shipping exactly as before', () => {
+    useCartStore.setState({ items: [], promoCode: null })
+    useCartStore.getState().addItem({ ...sampleItem, productTitle: 'aBoks Mini' }, 2)
+
+    assert.equal(useCartStore.getState().subtotal(), 598)
+    assert.equal(useCartStore.getState().shipping(), 69) // under kr 650
+    assert.equal(useCartStore.getState().orderTotal(), 667)
+    assert.equal(useCartStore.getState().totalCount(), 2)
+
+    useCartStore.getState().incrementItem('20')
+    assert.equal(useCartStore.getState().items[0].qty, 3)
+    assert.equal(useCartStore.getState().subtotal(), 897)
+    assert.equal(useCartStore.getState().shipping(), 0) // over the threshold
+
+    useCartStore.getState().decrementItem('20')
+    assert.equal(useCartStore.getState().items[0].qty, 2)
+  })
+})

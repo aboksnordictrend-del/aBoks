@@ -16,6 +16,7 @@ import {
   type CheckoutViewState,
 } from '@/lib/promo/checkoutView'
 import { trackAddShippingInfo, trackAddPaymentInfo } from '@/lib/analytics'
+import { cartLineLabel, type ProductTitlesBySlug } from '@/lib/cart/lineTitle'
 
 function renderSnippet(htmlSnippet: string, container: HTMLElement) {
   container.innerHTML = htmlSnippet
@@ -33,7 +34,11 @@ function renderSnippet(htmlSnippet: string, container: HTMLElement) {
   }
 }
 
-export default function CheckoutClient() {
+/**
+ * `productTitles` names the lines in the order summary during the moment before the server's
+ * trusted line names arrive. Display only — nothing sent to Kustom is derived from it.
+ */
+export default function CheckoutClient({ productTitles }: { productTitles?: ProductTitlesBySlug } = {}) {
   const { items, promoCode, subtotal, shipping, orderTotal } = useCartStore()
   const searchParams = useSearchParams()
   const existingOrderId = searchParams.get('order_id')
@@ -371,7 +376,10 @@ export default function CheckoutClient() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', color: '#1a1d17' }}>
-                          {trustedLine ? trustedLine.displayName : `aBoks · ${item.colorName}`}
+                          {/* The server's own line name once it has answered; until then the
+                              line's real product and colour, composed with the same formatter
+                              — never a guessed product name. */}
+                          {trustedLine ? trustedLine.displayName : cartLineLabel(item, productTitles)}
                         </div>
                         <div style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#6b6f63' }}>
                           Antall: {trustedLine ? trustedLine.quantity : item.qty}

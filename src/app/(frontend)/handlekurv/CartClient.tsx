@@ -1,17 +1,23 @@
 'use client'
 
 import { useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
 import { trackViewCart, trackBeginCheckout } from '@/lib/analytics'
 import PromoCodeField from '@/components/PromoCodeField'
 import CartRecommendations from './CartRecommendations'
+import CartLine from './CartLine'
+import { type ProductTitlesBySlug } from '@/lib/cart/lineTitle'
 import { usePromoCode } from '@/lib/promo/usePromoCode'
 import { buildSummaryRows } from '@/lib/promo/cartPromo'
 
-export default function CartClient() {
+/**
+ * `productTitles` is the catalogue's slug → title map, supplied by the server component.
+ * Optional so the component still renders on its own (tests, and any caller that has no
+ * catalogue to hand); each line then falls back to the title stored on it.
+ */
+export default function CartClient({ productTitles }: { productTitles?: ProductTitlesBySlug }) {
   const { items, removeItem, incrementItem, decrementItem, subtotal, shipping, orderTotal } = useCartStore()
   const sub = subtotal()
   const shippingCost = shipping()
@@ -66,55 +72,14 @@ export default function CartClient() {
               {/* Cart items */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {items.map((item) => (
-                  <div
+                  <CartLine
                     key={item.variantId}
-                    style={{
-                      display: 'flex',
-                      gap: '20px',
-                      padding: '24px 0',
-                      borderBottom: '1px solid #e7e2d4',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div style={{ flexShrink: 0, width: '96px', height: '96px', borderRadius: '16px', overflow: 'hidden', background: '#e7d9bd', position: 'relative' }}>
-                      <Image src={item.colorImage} alt={item.colorName} fill style={{ objectFit: 'cover' }} sizes="96px" />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 600, fontSize: '22px', color: '#1a1d17', margin: '0 0 4px' }}>aBoks</h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                        <span style={{ width: '14px', height: '14px', borderRadius: '999px', background: item.colorHex, boxShadow: '0 0 0 1px rgba(0,0,0,.15)', flexShrink: 0 }} />
-                        <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6f63' }}>{item.colorName}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', border: '1.5px solid #d6cfbd', borderRadius: '999px', overflow: 'hidden', background: '#fff' }}>
-                          <button
-                            onClick={() => decrementItem(item.variantId)}
-                            aria-label="Færre"
-                            style={{ width: '38px', height: '40px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#1a1d17' }}
-                          >
-                            −
-                          </button>
-                          <span style={{ minWidth: '34px', textAlign: 'center', fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '15px' }}>{item.qty}</span>
-                          <button
-                            onClick={() => incrementItem(item.variantId)}
-                            aria-label="Flere"
-                            style={{ width: '38px', height: '40px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#1a1d17' }}
-                          >
-                            +
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => removeItem(item.variantId)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#b06a4a', textDecoration: 'underline', textUnderlineOffset: '3px' }}
-                        >
-                          Fjern
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17', whiteSpace: 'nowrap' }}>
-                      {formatPrice(item.qty * item.price)}
-                    </div>
-                  </div>
+                    item={item}
+                    productTitles={productTitles}
+                    onDecrement={() => decrementItem(item.variantId)}
+                    onIncrement={() => incrementItem(item.variantId)}
+                    onRemove={() => removeItem(item.variantId)}
+                  />
                 ))}
 
                 <Link
