@@ -484,6 +484,39 @@ export const Orders: CollectionConfig = {
       type: 'textarea',
       admin: { hidden: true },
     },
+    // --- Meta Conversions API ---
+    //
+    // Grouped rather than six loose top-level fields: they are one concern, they are written
+    // by two different steps of the same flow, and the group name gives them the `meta_*`
+    // column prefix without repeating it in every field name.
+    //
+    // The four attribution fields are captured in the checkout server action — the only
+    // request that is genuinely the customer's browser — and read back by the Kustom push
+    // webhook, whose own headers and cookies belong to api.kustom.co. See
+    // @/lib/meta/capi/attribution.
+    //
+    // Hidden from the admin UI and never returned to a customer: the collection's `read`
+    // access already requires an authenticated user, and the confirmation server action
+    // returns a hand-built object rather than the document. They are ordinary nullable
+    // columns in Postgres, exactly like the e-mail sentinels above.
+    {
+      name: 'meta',
+      type: 'group',
+      admin: { hidden: true },
+      access: { read: ({ req }) => !!req.user },
+      fields: [
+        { name: 'fbp', type: 'text' },
+        { name: 'fbc', type: 'text' },
+        { name: 'clientIpAddress', type: 'text' },
+        { name: 'clientUserAgent', type: 'text' },
+        // The claim (see @/lib/meta/capi/claim): stamped before the call so a re-delivered
+        // webhook cannot send a second time, cleared again if the call fails.
+        { name: 'purchaseSentAt', type: 'date' },
+        // The receipt: written only after Meta accepted the event. This — not the timestamp
+        // — is the answer to "did this order's Purchase reach Meta".
+        { name: 'purchaseEventId', type: 'text' },
+      ],
+    },
   ],
   hooks: {
     beforeValidate: [assignOrderNumber],

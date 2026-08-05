@@ -472,6 +472,14 @@ export interface Order {
   receiptEmailSentAt?: string | null;
   receiptEmailMessageId?: string | null;
   receiptEmailError?: string | null;
+  meta?: {
+    fbp?: string | null;
+    fbc?: string | null;
+    clientIpAddress?: string | null;
+    clientUserAgent?: string | null;
+    purchaseSentAt?: string | null;
+    purchaseEventId?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1176,6 +1184,16 @@ export interface OrdersSelect<T extends boolean = true> {
   receiptEmailSentAt?: T;
   receiptEmailMessageId?: T;
   receiptEmailError?: T;
+  meta?:
+    | T
+    | {
+        fbp?: T;
+        fbc?: T;
+        clientIpAddress?: T;
+        clientUserAgent?: T;
+        purchaseSentAt?: T;
+        purchaseEventId?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

@@ -59,17 +59,14 @@ export default function BekreftlseClient() {
     const fetchConfirmation = () => {
       getOrderConfirmation(orderId)
         .then((data) => {
-          if (!data.orderNumber && attempts < MAX_ATTEMPTS - 1) {
-            attempts++
-            setTimeout(fetchConfirmation, 2000)
-            return
-          }
-
-          setConfirmation(data)
-          setLoading(false)
-
-          // purchase: fires once after confirmed order; localStorage guards against re-fire on refresh
+          // purchase fires on the FIRST successful answer, before any retry decision. The
+          // retries exist only to fill in an order number for the page; waiting for one would
+          // mean a customer who closes the tab in those six seconds is never counted, and
+          // `orderNumber` is read from Kustom's own merchant_reference anyway, so it is
+          // normally present immediately. Deduplication is keyed on the Kustom order id, so a
+          // refresh cannot fire a second event whichever way this resolved.
           trackPurchase({
+            kustomOrderId: orderId,
             transactionId: data.orderNumber || orderId,
             value: data.totalKr,
             shipping: data.shippingKr,
@@ -83,6 +80,15 @@ export default function BekreftlseClient() {
               item_category: 'Battery Organizer',
             })),
           })
+
+          if (!data.orderNumber && attempts < MAX_ATTEMPTS - 1) {
+            attempts++
+            setTimeout(fetchConfirmation, 2000)
+            return
+          }
+
+          setConfirmation(data)
+          setLoading(false)
         })
         .catch(() => {
           setError('Kunne ikke hente ordredetaljer.')

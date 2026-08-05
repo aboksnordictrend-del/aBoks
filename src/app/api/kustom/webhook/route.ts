@@ -6,6 +6,11 @@ import { syncCustomerForOrderSafe } from '@/lib/customers'
 import { colorNameFromLineName } from '@/lib/orderLineName'
 import { registerPromoUsageOnce, type RegisterUsageResult } from '@/lib/promo/usageRegistration'
 import { resolvePromoSnapshot } from '@/lib/promo/webhookPromo'
+import { sendOrderPurchaseEvent } from '@/lib/meta/capi/purchase'
+import { resolveApplicationOrigin } from '@/lib/appOrigin'
+import type { Payload } from 'payload'
+import type { Order } from '@/payload-types'
+import type { KustomOrder } from '@/lib/kustom'
 
 /**
  * A transient failure to record promo usage must be retried, and the only retry mechanism
@@ -21,6 +26,44 @@ function usageNeedsRetry(
   result: RegisterUsageResult,
 ): result is Extract<RegisterUsageResult, { status: 'retryable_error' }> {
   return result.status === 'retryable_error'
+}
+
+/**
+ * Reports the paid order to Meta's Conversions API.
+ *
+ * Runs only once the order is committed, and can never affect the outcome of this webhook:
+ * `sendOrderPurchaseEvent` already answers with a status instead of throwing, and this second
+ * try/catch covers the case where it throws anyway (a bad config object, a broken import).
+ * A conversion that does not reach Meta is a marketing problem; a paid order that Kustom is
+ * told to re-deliver because of one is a business problem.
+ *
+ * Safe to call on every delivery: the single-send claim inside decides whether anything is
+ * actually sent, and a previously failed send is retried here.
+ */
+async function reportPurchaseToMeta(
+  payload: Payload,
+  order: Order,
+  kustomOrder: KustomOrder,
+): Promise<void> {
+  try {
+    await sendOrderPurchaseEvent(payload, {
+      order,
+      kustomOrder,
+      // The page the browser pixel fires its matching Purchase from. Resolved per deployment
+      // so a Preview never claims to be aboks.no.
+      eventSourceUrl: `${resolveApplicationOrigin({ fallback: 'https://aboks.no' })}/kasse/bekreftelse`,
+    })
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        scope: 'meta-capi',
+        event: 'unexpected-error',
+        kustomOrderId: kustomOrder.order_id,
+        orderId: String(order.id),
+        error: err instanceof Error ? err.message : 'unknown',
+      }),
+    )
+  }
 }
 
 const RETRY_RESPONSE = (kustomOrderId: string, reason: string) =>
@@ -64,6 +107,11 @@ export async function POST(req: NextRequest) {
       // the link if an earlier delivery of this webhook failed halfway.
       if (order.status === 'confirmed') {
         await syncCustomerForOrderSafe(payload, order)
+        // Meta is retried on this path for the same reason the promo usage below is: if the
+        // first delivery confirmed the order but the Graph call failed, this re-delivery is
+        // the only thing that will ever send the conversion. A successful earlier send is
+        // recognised by the receipt on the order and skipped.
+        await reportPurchaseToMeta(payload, order, kustomOrder)
         // Promo usage is retried here too, deliberately. If the first delivery confirmed the
         // order but the usage insert failed transiently, this is the only path a retry takes
         // — returning early without it would lose the record permanently.
@@ -272,6 +320,12 @@ export async function POST(req: NextRequest) {
         )
       }
     }
+
+    // The order is committed, the customer is linked and the stock is deducted. Only now —
+    // with nothing left that a slow Meta could delay or an unexpected Meta failure could skip
+    // — is the conversion reported. Covers both branches above: the confirmed update and the
+    // order reconstructed from Kustom data.
+    await reportPurchaseToMeta(payload, confirmedOrder, kustomOrder)
 
     // Inventory has been deducted and the order is committed. If only the promo audit row is
     // outstanding, ask Kustom to deliver again: every step above is idempotent, so a repeat

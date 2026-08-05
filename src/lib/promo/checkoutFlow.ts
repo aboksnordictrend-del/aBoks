@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 import { oereToKr, priceCart, type CartLineInput } from '@/lib/cartPricing'
 import type { KustomCreateOrderPayload, KustomOrder } from '@/lib/kustom'
+import type { MetaAttribution } from '@/lib/meta/capi/attribution'
 import { validatePromoCode } from './validate'
 import { buildKustomMerchantData } from './kustomMerchantData'
 import { MAX_CART_LINES } from './validateEndpoint'
@@ -123,6 +124,14 @@ export interface CheckoutDeps {
   /** Fallback order number when the allocator is unreachable. */
   fallbackOrderNumber: () => string
   serverUrl: string
+  /**
+   * Meta attribution read off *this* request — the customer's own browser. Stored on the
+   * pending order so the Kustom push webhook, whose cookies and headers belong to
+   * api.kustom.co, can still report a matchable Purchase. Derived entirely server-side; it
+   * is a dependency and not part of `CheckoutInput` precisely because nothing the browser
+   * sends may cross that boundary.
+   */
+  metaAttribution?: MetaAttribution
   /** PII-free structured log. Never the promo code, never credentials, never a stack. */
   log?: (fields: Record<string, unknown>) => void
 }
@@ -367,10 +376,18 @@ export async function createTrustedCheckout(
   }
 
   // ── 6. Pending local order (best effort) ──────────────────────────────────
+  // The attribution is merged in here rather than inside `buildPendingOrderData`, which stays
+  // a pure function of the money. An empty object writes nothing, so an order from a customer
+  // with no Meta cookies looks exactly as it did before.
+  const metaAttribution = deps.metaAttribution ?? {}
   try {
     await payload.create({
       collection: 'orders',
-      data: { ...orderData, kustomOrderId: kustomOrder.order_id },
+      data: {
+        ...orderData,
+        kustomOrderId: kustomOrder.order_id,
+        ...(Object.keys(metaAttribution).length > 0 ? { meta: metaAttribution } : {}),
+      },
     })
   } catch (err) {
     // Logged, not fatal — the customer can still pay and the webhook rebuilds the order.
@@ -385,6 +402,8 @@ export async function createTrustedCheckout(
     orderAmountOere: build.orderAmountOere,
     discountOere: build.totals.discountOere,
     hasPromo: Boolean(promo),
+    // How many Meta signals we managed to capture — a count, never the values.
+    metaSignals: Object.keys(metaAttribution).length,
     durationMs: Date.now() - startedAt,
   })
 

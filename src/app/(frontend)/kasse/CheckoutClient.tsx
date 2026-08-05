@@ -37,6 +37,9 @@ export default function CheckoutClient() {
   const { items, promoCode, subtotal, shipping, orderTotal } = useCartStore()
   const searchParams = useSearchParams()
   const existingOrderId = searchParams.get('order_id')
+  // Only used server-side to rebuild Meta's `_fbc` when the pixel never set the cookie (it
+  // was blocked, or marketing consent was declined). Never touches pricing.
+  const fbclid = searchParams.get('fbclid')
 
   const [state, setState] = useState<CheckoutViewState>({ phase: 'loading' })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -66,7 +69,10 @@ export default function CheckoutClient() {
           ? await fetchExistingCheckout(existingOrderId)
           // Identifiers and quantities only — no price, name, colour or total crosses to the
           // server, which prices everything from the catalogue itself.
-          : await initKustomCheckout(toCheckoutRequest(items, promoCode))
+          : await initKustomCheckout(
+              toCheckoutRequest(items, promoCode),
+              fbclid ? { fbclid } : undefined,
+            )
         setState(checkoutStateFromResult(result))
       } catch {
         // A thrown server action (network drop, sanitised production error) never carries a
@@ -79,7 +85,7 @@ export default function CheckoutClient() {
     }
 
     run()
-  }, [hasCart, items, promoCode, existingOrderId])
+  }, [hasCart, items, promoCode, existingOrderId, fbclid])
 
   useEffect(() => {
     // Gated on the same predicate the container's visibility uses, so a rejected promo or a

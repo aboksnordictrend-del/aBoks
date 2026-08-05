@@ -1,6 +1,8 @@
 'use server'
 
+import { cookies, headers } from 'next/headers'
 import { createKustomOrder, getKustomOrder } from '@/lib/kustom'
+import { resolveMetaAttribution } from '@/lib/meta/capi/attribution'
 import { getPayloadClient } from '@/lib/payload'
 import { generateOrderNumber } from '@/lib/format'
 import { allocateOrderNumber } from '@/lib/orderNumber'
@@ -26,7 +28,48 @@ import {
  * The browser sends only `{ items: [{ variantId, quantity }], promoCode? }`. No price, name,
  * colour, subtotal, shipping, tax, discount or total crosses this boundary.
  */
-export async function initKustomCheckout(input: CheckoutInput): Promise<CheckoutResult> {
+/**
+ * Non-pricing hints about the current page, read from the browser's own URL.
+ *
+ * Kept apart from `CheckoutInput` so the trust boundary above stays literally true: nothing
+ * here reaches pricing, the promo lookup, the Kustom lines or the order's money. `fbclid` is
+ * only ever used to reconstruct a `_fbc` value when Meta's own cookie is missing.
+ */
+export interface CheckoutClientHints {
+  fbclid?: string
+}
+
+/**
+ * Meta attribution for this checkout, read off the request that is actually the customer's
+ * browser.
+ *
+ * This is the last point in the flow where those signals exist. Once the customer is inside
+ * the Kustom widget, the only thing that comes back is a server-to-server push from
+ * api.kustom.co carrying Kustom's IP, Kustom's user agent and none of the customer's cookies
+ * — so anything not captured here is lost for good.
+ */
+async function captureMetaAttribution(hints?: CheckoutClientHints) {
+  try {
+    const [cookieStore, headerStore] = await Promise.all([cookies(), headers()])
+    return resolveMetaAttribution({
+      getCookie: (name) => cookieStore.get(name)?.value ?? null,
+      getHeader: (name) => headerStore.get(name),
+      fbclid: hints?.fbclid ?? null,
+    })
+  } catch (err) {
+    // Marketing attribution is never a reason to fail a checkout.
+    console.warn(
+      '[kasse] Meta attribution capture failed:',
+      err instanceof Error ? err.message : err,
+    )
+    return {}
+  }
+}
+
+export async function initKustomCheckout(
+  input: CheckoutInput,
+  hints?: CheckoutClientHints,
+): Promise<CheckoutResult> {
   // The origin Kustom will call back on. On a Preview deployment this is the preview's own
   // hostname, NOT the shared NEXT_PUBLIC_SERVER_URL — otherwise a Preview checkout would send
   // its confirmation and push webhook to Production and confirm a real order there.
@@ -40,6 +83,7 @@ export async function initKustomCheckout(input: CheckoutInput): Promise<Checkout
   }
 
   const payload = await getPayloadClient()
+  const metaAttribution = await captureMetaAttribution(hints)
 
   return createTrustedCheckout(
     {
@@ -48,6 +92,7 @@ export async function initKustomCheckout(input: CheckoutInput): Promise<Checkout
       allocateOrderNumber,
       fallbackOrderNumber: generateOrderNumber,
       serverUrl,
+      metaAttribution,
     },
     input,
   )
