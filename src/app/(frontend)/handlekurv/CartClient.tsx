@@ -7,6 +7,7 @@ import { useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
 import { trackViewCart, trackBeginCheckout } from '@/lib/analytics'
 import PromoCodeField from '@/components/PromoCodeField'
+import CartRecommendations from './CartRecommendations'
 import { usePromoCode } from '@/lib/promo/usePromoCode'
 import { buildSummaryRows } from '@/lib/promo/cartPromo'
 
@@ -136,6 +137,11 @@ export default function CartClient() {
                   </svg>
                   Fortsett å handle
                 </Link>
+
+                {/* «Passer godt sammen med» — under the cart lines, before the summary in both
+                    the DOM and the stacked mobile layout. Renders nothing when the products in
+                    the cart have no recommendations configured. */}
+                <CartRecommendations />
               </div>
 
               {/* Order summary */}

@@ -254,6 +254,10 @@ export interface Product {
       }[]
     | null;
   /**
+   * Velg produkter som skal vises som anbefalinger når dette produktet ligger i handlekurven.
+   */
+  cartRecommendations?: (number | Product)[] | null;
+  /**
    * Tilbudspris i kr. Sett lavere enn ordinær pris for å aktivere rabatt. La stå tom for ingen rabatt.
    */
   salePrice?: number | null;
@@ -1034,6 +1038,7 @@ export interface ProductsSelect<T extends boolean = true> {
         answer?: T;
         id?: T;
       };
+  cartRecommendations?: T;
   salePrice?: T;
   saleStartDate?: T;
   saleEndDate?: T;

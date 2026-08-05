@@ -9,7 +9,7 @@
     "build:vercel": "payload generate:types && payload generate:importmap && node scripts/check-importmap.mjs && node scripts/check-migrations.mjs && payload migrate && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "tsx --tsconfig tsconfig.test.json --import ./scripts/css-stub.mjs --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
+    "test": "tsx --tsconfig tsconfig.test.json --import ./scripts/css-stub.mjs --import ./scripts/next-image-stub.mjs --test \"src/**/*.test.ts\" \"src/**/*.test.tsx\"",
     "typecheck": "tsc --noEmit",
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",

@@ -245,6 +245,30 @@ export const Products: CollectionConfig = {
       ],
     },
     {
+      /**
+       * Cross-sell picks shown in the cart under «Passer godt sammen med».
+       *
+       * One field covers both catalogues: Tilbehør is not a separate collection — accessories
+       * are ordinary `products` rows with `section: 'accessories'` — so a single self-referencing
+       * relationship can point at either, and recommendations work in both directions.
+       *
+       * `hasMany` keeps the admin's ordering (Payload stores the row position in
+       * products_rels."order"), and that order is what the cart renders. `filterOptions` drops
+       * the product itself from the picker so the most obvious self-reference cannot be made at
+       * all; the cart filters the rest (unpublished, deleted, sold out, already in the cart).
+       */
+      name: 'cartRecommendations',
+      type: 'relationship',
+      relationTo: 'products',
+      hasMany: true,
+      label: 'Anbefalte produkter i handlekurven',
+      admin: {
+        description:
+          'Velg produkter som skal vises som anbefalinger når dette produktet ligger i handlekurven.',
+      },
+      filterOptions: ({ id }) => (id ? { id: { not_equals: id } } : true),
+    },
+    {
       name: 'salePrice',
       type: 'number',
       label: 'Tilbudspris (kr)',
