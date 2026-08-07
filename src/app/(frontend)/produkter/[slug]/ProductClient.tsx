@@ -527,11 +527,16 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
               >
                 {/* Keyed on the URL so switching colour unmounts the old
                     player: any playback stops and the new colour starts back
-                    at its poster, waiting for a fresh press. */}
+                    at its poster, waiting for a fresh press.
+
+                    Films uploaded without a still of their own fall back to the
+                    picture of the selected colour, which travels with the rest
+                    of the variant — never an empty frame. */}
                 <ClickToPlayVideo
                   key={selectedVariant.videoUrl}
                   src={selectedVariant.videoUrl}
                   poster={posterForVideo(selectedVariant.videoUrl)}
+                  posterFallback={selectedVariant.image || undefined}
                   label={`Spill av produktvideo: aBoks ${selectedVariant.name}`}
                   muted
                   buttonSize={72}

@@ -1,6 +1,15 @@
 'use client'
 
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+
+import { resolvePosterSource } from '@/lib/videoPoster'
+
+/**
+ * Which poster URLs have been found to load, kept for the page's lifetime so
+ * flipping back to a colour already seen doesn't re-probe — and doesn't flash
+ * its background again on the way to the fallback.
+ */
+const posterLoads = new Map<string, boolean>()
 
 /**
  * A video that costs nothing until the visitor presses play.
@@ -17,6 +26,7 @@ import { useRef, useState, type CSSProperties } from 'react'
 export default function ClickToPlayVideo({
   src,
   poster,
+  posterFallback,
   label,
   muted = false,
   playsInline = true,
@@ -28,6 +38,8 @@ export default function ClickToPlayVideo({
 }: {
   src: string
   poster?: string
+  /** Shown instead of `poster` when that image turns out not to exist. */
+  posterFallback?: string
   /** Accessible name for the play button, e.g. "Spill av film om aBoks". */
   label: string
   muted?: boolean
@@ -43,6 +55,35 @@ export default function ClickToPlayVideo({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [started, setStarted] = useState(false)
   const [playing, setPlaying] = useState(false)
+  const [posterMissing, setPosterMissing] = useState(
+    () => poster !== undefined && posterLoads.get(poster) === false,
+  )
+
+  // A <video> stays silent about a poster it couldn't fetch, so ask for the
+  // image separately. The browser serves the copy it just cached to the video
+  // element, so the successful case costs nothing extra.
+  useEffect(() => {
+    if (!poster || !posterFallback) return
+    const known = posterLoads.get(poster)
+    if (known !== undefined) {
+      setPosterMissing(!known)
+      return
+    }
+    let live = true
+    const probe = new window.Image()
+    const settle = (loaded: boolean) => {
+      posterLoads.set(poster, loaded)
+      if (live) setPosterMissing(!loaded)
+    }
+    probe.onload = () => settle(true)
+    probe.onerror = () => settle(false)
+    probe.src = poster
+    return () => {
+      live = false
+    }
+  }, [poster, posterFallback])
+
+  const posterSrc = resolvePosterSource(poster, posterFallback, posterMissing)
 
   /** First press attaches the URL and starts; later presses just toggle. */
   function togglePlay() {
@@ -85,7 +126,7 @@ export default function ClickToPlayVideo({
         preload="none"
         muted={muted}
         playsInline={playsInline}
-        poster={poster}
+        poster={posterSrc}
         controls={controlsWhenPlaying && started}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
