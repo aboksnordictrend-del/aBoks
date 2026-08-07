@@ -15,7 +15,6 @@ import ProductImageCarousel, {
 import ImageLightbox from '@/components/ImageLightbox'
 import Breadcrumbs, { type Crumb } from '@/components/Breadcrumbs'
 import { formatPrice } from '@/lib/format'
-import { posterForVideo } from '@/lib/videoPoster'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
 import SaleCountdown from '@/components/SaleCountdown'
@@ -30,6 +29,11 @@ interface Variant {
   inventory: number
   sortOrder: number
   videoUrl: string | null
+  /**
+   * Still shown before the film starts, resolved on the server: the uploaded
+   * `-poster.webp` where one exists, this variant's own image where it doesn't.
+   */
+  videoPoster: string | null
 }
 
 interface Feature {
@@ -525,18 +529,14 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   background: '#e7d9bd',
                 }}
               >
-                {/* Keyed on the URL so switching colour unmounts the old
-                    player: any playback stops and the new colour starts back
-                    at its poster, waiting for a fresh press.
-
-                    Films uploaded without a still of their own fall back to the
-                    picture of the selected colour, which travels with the rest
-                    of the variant — never an empty frame. */}
+                {/* Keyed on film *and* still so switching colour unmounts the
+                    old player: playback stops, and Safari — which lays a poster
+                    out once and ignores a later swap — has to build a fresh
+                    element for the new colour. */}
                 <ClickToPlayVideo
-                  key={selectedVariant.videoUrl}
+                  key={`${selectedVariant.videoUrl}|${selectedVariant.videoPoster ?? ''}`}
                   src={selectedVariant.videoUrl}
-                  poster={posterForVideo(selectedVariant.videoUrl)}
-                  posterFallback={selectedVariant.image || undefined}
+                  poster={selectedVariant.videoPoster ?? undefined}
                   label={`Spill av produktvideo: aBoks ${selectedVariant.name}`}
                   muted
                   buttonSize={72}

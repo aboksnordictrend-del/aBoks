@@ -4,6 +4,7 @@ import ProductClient from './ProductClient'
 import type { Crumb } from '@/components/Breadcrumbs'
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
 import { getProductReviewSummary } from '@/lib/reviewServer'
+import { withVideoPosters } from '@/lib/videoPosterServer'
 import { SITE_URL } from '@/lib/site'
 
 function mediaUrl(val: unknown): string {
@@ -65,16 +66,20 @@ export default async function ProductPage({
   const rawVariants = await getVariantsForProduct(String(product.id))
   const reviewSummary = await getProductReviewSummary(String(product.id))
 
-  const variants = rawVariants.map((v) => ({
-    id: String(v.id),
-    name: v.name ?? '',
-    colorHex: v.colorHex ?? '#000000',
-    image: mediaUrl((v as any).image),
-    sku: v.sku ?? '',
-    inventory: v.inventory ?? 0,
-    sortOrder: v.sortOrder ?? 0,
-    videoUrl: v.videoUrl ?? null,
-  }))
+  // The poster is settled here, against the real Blob folder, so the markup Safari
+  // receives already carries the right still — see withVideoPosters.
+  const variants = await withVideoPosters(
+    rawVariants.map((v) => ({
+      id: String(v.id),
+      name: v.name ?? '',
+      colorHex: v.colorHex ?? '#000000',
+      image: mediaUrl((v as any).image),
+      sku: v.sku ?? '',
+      inventory: v.inventory ?? 0,
+      sortOrder: v.sortOrder ?? 0,
+      videoUrl: v.videoUrl ?? null,
+    })),
+  )
 
   const productImages = ((product.images as any[]) ?? [])
     .map((entry) => ({
