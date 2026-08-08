@@ -249,6 +249,19 @@ const articles: InspirasjonArticle[] = [
     imageHeight: 941,
     imageAlt: 'Langtidsoppbevaring av oppladbare batterier – oppladbare AA- og AAA-batterier ryddig samlet i en boks på en tørr hylle',
   },
+  {
+    category: 'Materialer & bærekraft',
+    title: 'Fra planter til aBoks: reisen til biobasert plast',
+    description:
+      'Biobasert plast begynner et helt annet sted enn de fleste tror – ikke på en oljeplattform, men i en åker. Vi følger råstoffet hele veien fra plantecelle til ferdig boks, og ser på hva materialvalget faktisk betyr for klimaet, hverdagen og sorteringen din.',
+    date: 'August 2026',
+    publishedAt: '2026-08-08',
+    slug: '/inspirasjon/fra-planter-til-aboks',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Fra-planter-til-aboks/Biobasert-PLA-4x3-Desktop.webp',
+    imageWidth: 1536,
+    imageHeight: 1024,
+    imageAlt: 'Fra plantebaserte råvarer til biobasert PLA og ferdig aBoks',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {

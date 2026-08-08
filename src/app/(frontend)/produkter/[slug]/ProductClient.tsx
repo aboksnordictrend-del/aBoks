@@ -83,6 +83,12 @@ interface Props {
   breadcrumbs: Crumb[]
   /** Real approved-review summary for this product. Absent/zero → no rating is shown. */
   reviewSummary?: { count: number; average: number }
+  /**
+   * Rendered straight after the "Hvorfor aBoks" features. Passed in from the server page as
+   * an already-rendered node so it stays a server component and ships no client JavaScript;
+   * omitted for products whose material is not confirmed (see lib/materialStory).
+   */
+  materialStory?: React.ReactNode
 }
 
 
@@ -128,7 +134,7 @@ function isLightColor(hex: string): boolean {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65
 }
 
-export default function ProductClient({ product, variants, initialSku, breadcrumbs, reviewSummary }: Props) {
+export default function ProductClient({ product, variants, initialSku, breadcrumbs, reviewSummary, materialStory }: Props) {
   const initialVariant = initialSku
     ? (variants.find((v) => v.sku === initialSku) ?? variants[0])
     : variants[0]
@@ -650,6 +656,9 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
             </div>
           </section>
         )}
+
+        {/* MATERIAL STORY — server-rendered slot, straight after "Hvorfor aBoks" */}
+        {materialStory}
 
         {/* PRODUCT FAQ */}
         {product.faqs.length > 0 && (

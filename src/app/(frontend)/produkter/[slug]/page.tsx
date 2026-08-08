@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ProductClient from './ProductClient'
+import ProductMaterialStory from '@/components/ProductMaterialStory'
 import type { Crumb } from '@/components/Breadcrumbs'
+import { showsMaterialStory } from '@/lib/materialStory'
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
 import { getProductReviewSummary } from '@/lib/reviewServer'
 import { withVideoPosters } from '@/lib/videoPosterServer'
@@ -166,6 +168,9 @@ export default async function ProductPage({
       }}
       variants={variants}
       initialSku={variant}
+      // Rendered here rather than inside ProductClient so the section stays a server
+      // component. Only products confirmed to be PLA Matte printed in Norway get it.
+      materialStory={showsMaterialStory(product.slug ?? slug) ? <ProductMaterialStory /> : null}
       breadcrumbs={[{ label: 'Hjem', href: '/' }, parentCrumb, { label: product.title }]}
       />
     </>
