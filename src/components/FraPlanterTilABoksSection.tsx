@@ -39,8 +39,9 @@ export default function FraPlanterTilABoksSection() {
             Fra planter til aBoks
           </h2>
           <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '18px', lineHeight: 1.65, color: '#3a3f33', margin: 0 }}>
-            PLA er et biobasert materiale laget av fornybare, plantebaserte råvarer. Vi bruker det
-            til å produsere aBoks lokalt i Norge – med fokus på funksjon, design og lang levetid.
+            aBoks er laget av biobasert PLA Matte – et materiale basert på fornybare, plantebaserte
+            råvarer. Produktet designes og 3D-printes lokalt i Norge, med fokus på funksjon, design
+            og lang levetid.
           </p>
         </motion.div>
 
