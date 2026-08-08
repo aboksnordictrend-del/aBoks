@@ -90,6 +90,8 @@ const TRUST = [
   'Fast frakt 69 kr (fri frakt over kr 650)',
   '100 dagers åpent kjøp',
   'Sendes fra Norge innen 1–3 virkedager',
+  'Laget i Norge av biobasert PLA Matte',
+  'En perfekt gave til noen du er glad i',
 ]
 
 /** `href` is null for products that have no page yet — those images stay non-clickable. */
