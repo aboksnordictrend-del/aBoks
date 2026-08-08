@@ -14,6 +14,7 @@ import ProductImageCarousel, {
 } from '@/components/ProductImageCarousel'
 import ImageLightbox from '@/components/ImageLightbox'
 import Breadcrumbs, { type Crumb } from '@/components/Breadcrumbs'
+import ProductSupportTrust from '@/components/ProductSupportTrust'
 import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
@@ -437,6 +438,9 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   {selectedVariant?.inventory === 0 ? 'Utsolgt' : 'Legg i handlekurv'}
                 </button>
               </div>
+
+              {/* Development-support credit — sits directly under the cart button */}
+              <ProductSupportTrust />
 
               {/* Description — mobile only (hidden on desktop, shown in order-1 there) */}
               <p className="md:hidden" style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: '0 0 24px' }}>

@@ -12,6 +12,7 @@ import HowItWorksSteps from '@/components/HowItWorksSteps'
 import ClickToPlayVideo from '@/components/ClickToPlayVideo'
 import AboksVeggSection, { type AboksVeggSectionData } from '@/components/AboksVeggSection'
 import FraPlanterTilABoksSection from '@/components/FraPlanterTilABoksSection'
+import SupportedBySection from '@/components/SupportedBySection'
 import { isSaleActive, type SaleInfo } from '@/lib/pricing'
 import { FAQS, COMPARTMENTS, CAPACITY } from '@/lib/content'
 
@@ -670,6 +671,9 @@ export default function HomeClient({
           </div>
         </div>
       </section>
+
+      {/* ==================== SUPPORTED BY ==================== */}
+      <SupportedBySection />
 
       {/* ==================== TESTIMONIALS ==================== */}
       <section style={{ background: '#faf6ee', padding: 'clamp(72px,9vw,120px) 0' }}>
