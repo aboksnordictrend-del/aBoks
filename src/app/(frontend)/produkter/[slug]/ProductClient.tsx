@@ -87,9 +87,9 @@ interface Props {
 
 
 const TRUST = [
-  'Fri frakt over kr 650',
+  'Fast frakt 69 kr (fri frakt over kr 650)',
   '100 dagers åpent kjøp',
-  'Sendes innen 1–3 virkedager',
+  'Sendes fra Norge innen 1–3 virkedager',
 ]
 
 /** `href` is null for products that have no page yet — those images stay non-clickable. */
