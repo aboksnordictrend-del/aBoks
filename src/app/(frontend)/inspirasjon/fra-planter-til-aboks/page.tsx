@@ -287,18 +287,7 @@ export default function ArticlePage() {
             <h2 style={h2Style}>Hva biobasert plast egentlig er</h2>
 
             <p style={pStyle}>
-              Biobasert plast er, enkelt sagt, plast der karbonet kommer fra levende biomasse i
-              stedet for fossil olje og gass.{' '}
-              <a
-                href="https://www.miljodirektoratet.no/aktuelt/nyheter/2019/januar-2019/nyttig-a-vite-om-biobasert-og-bionedbrytbar-plast/"
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                style={extLink}
-              >
-                Miljødirektoratet
-              </a>{' '}
-              beskriver råstoffet som først og fremst landbruksvekster: sukkerrør, mais, poteter og
-              hvete.
+              PLA er en biobasert plast, fremstilt av fornybare, plantebaserte råvarer.
             </p>
 
             <p style={pStyle}>
