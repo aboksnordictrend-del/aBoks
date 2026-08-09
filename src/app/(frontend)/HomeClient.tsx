@@ -669,6 +669,29 @@ export default function HomeClient({
               </motion.div>
             ))}
           </div>
+          {/* The four steps are the short version — the full story lives on its own page. */}
+          <motion.div {...fadeUp(0.1)} style={{ marginTop: 'clamp(8px,1.5vw,20px)' }}>
+            <Link
+              href="/historien"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '15px clamp(22px,4vw,34px)',
+                maxWidth: '100%',
+                borderRadius: '999px',
+                background: 'transparent',
+                border: '1px solid rgba(42,36,24,.28)',
+                color: '#1a1d17',
+                fontFamily: 'var(--font-manrope)',
+                fontWeight: 700,
+                fontSize: '15px',
+                textDecoration: 'none',
+              }}
+            >
+              Les hele historien
+            </Link>
+          </motion.div>
         </div>
       </section>
 

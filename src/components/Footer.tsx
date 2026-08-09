@@ -59,7 +59,7 @@ export default function Footer() {
                 { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                 { label: 'Inspirasjon', href: '/inspirasjon' },
                 { label: 'Anmeldelser', href: '/anmeldelser' },
-                { label: 'Historien', href: '/#historien' },
+                { label: 'Historien', href: '/historien' },
                 { label: 'Vanlige spørsmål', href: '/vanlige-sporsmal' },
               ].map((item) => (
                 <Link key={item.label} href={item.href} className={styles.link}>

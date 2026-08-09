@@ -13,6 +13,7 @@ const STATIC_PAGES: MetadataRoute.Sitemap = [
   { url: `${BASE_URL}/produkter`, changeFrequency: 'daily', priority: 0.9 },
   { url: `${BASE_URL}/tilbehor`, changeFrequency: 'weekly', priority: 0.6 },
   { url: `${BASE_URL}/slik-fungerer-det`, changeFrequency: 'monthly', priority: 0.8 },
+  { url: `${BASE_URL}/historien`, changeFrequency: 'monthly', priority: 0.7 },
   { url: `${BASE_URL}/inspirasjon`, changeFrequency: 'weekly', priority: 0.8 },
   { url: `${BASE_URL}/vanlige-sporsmal`, changeFrequency: 'monthly', priority: 0.7 },
   { url: `${BASE_URL}/kontakt`, changeFrequency: 'monthly', priority: 0.5 },

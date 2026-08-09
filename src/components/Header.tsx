@@ -55,12 +55,9 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
     return h + 20 // 20px breathing room below the header
   }
 
-  const scrollToSection = (hash: string) => {
-    const el = document.getElementById(hash)
-    if (el) rafScrollTo(el.getBoundingClientRect().top + window.scrollY - headerOffset())
-  }
-
   // After navigating to home page with a hash, scroll to the target section.
+  // Still reached by older `/#historien` links and by the homepage's own `#faq` anchor,
+  // even though no nav item points at a hash any more.
   // Retries until the element is in the DOM (React may not have painted yet).
   useEffect(() => {
     if (!isHome) return
@@ -198,28 +195,13 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
               {[
                 { label: 'For bedrifter',     href: '/bedrifter' },
                 { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
-                { label: 'Historien',         hash: 'historien' },
+                { label: 'Historien',         href: '/historien' },
                 { label: 'Inspirasjon',       href: '/inspirasjon' },
                 { label: 'Vanlige spørsmål',  href: '/vanlige-sporsmal' },
               ].map((item) => (
-                'href' in item ? (
-                  <Link key={item.label} href={item.href!} style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
-                    {item.label}
-                  </Link>
-                ) : (
-                  <Link
-                    key={item.label}
-                    href={`/#${item.hash}`}
-                    onClick={(e) => {
-                      if (!isHome) return // let Link navigate to /#hash; useEffect handles scroll
-                      e.preventDefault()
-                      scrollToSection(item.hash!)
-                    }}
-                    style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}
-                  >
-                    {item.label}
-                  </Link>
-                )
+                <Link key={item.label} href={item.href} style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
+                  {item.label}
+                </Link>
               ))}
             </nav>
 
@@ -322,7 +304,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                   links: [
                     { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                     { label: 'For bedrifter',      href: '/bedrifter' },
-                    { label: 'Historien',          href: '/#historien', hash: 'historien' },
+                    { label: 'Historien',          href: '/historien' },
                     { label: 'Inspirasjon',        href: '/inspirasjon' },
                     { label: 'Anmeldelser',        href: '/anmeldelser' },
                     { label: 'Vanlige spørsmål',   href: '/vanlige-sporsmal' },
@@ -351,16 +333,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                           key={link.label}
                           href={link.href}
                           aria-current={isActive ? 'page' : undefined}
-                          onClick={(e) => {
-                            setMenuOpen(false)
-                            if ('hash' in link && link.hash) {
-                              if (isHome) {
-                                e.preventDefault()
-                                scrollToSection(link.hash as string)
-                              }
-                              // else: let Link navigate to /#hash; useEffect handles scroll
-                            }
-                          }}
+                          onClick={() => setMenuOpen(false)}
                           style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '26px', fontWeight: 600, color: isActive ? '#5e6a48' : '#1a1d17', textDecoration: 'none' }}
                         >
                           {link.label}
