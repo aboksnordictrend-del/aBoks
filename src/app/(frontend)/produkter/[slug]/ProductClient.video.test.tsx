@@ -44,6 +44,7 @@ const product = {
   tagline: 'Veggmontert',
   description: 'Veggmontert oppbevaring.',
   price: 899,
+  section: 'products' as const,
   // Never read: this product has variants, so its stock comes from each of them.
   stock: 0,
   images: [],

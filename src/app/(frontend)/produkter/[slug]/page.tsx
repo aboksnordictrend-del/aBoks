@@ -158,6 +158,10 @@ export default async function ProductPage({
         tagline: product.tagline ?? '',
         description: product.description ?? '',
         price: product.price ?? 0,
+        // The stored `section` value, not the label. A row written before the column existed
+        // reads as null and is treated as an ordinary product, exactly as the breadcrumb
+        // above and `getProducts` already do — so nothing can silently drop out of /produkter.
+        section: product.section === 'accessories' ? 'accessories' : 'products',
         // The product's own stock. Read by the page only when `variants` is empty — the one
         // stock rule, see @/lib/stock.
         stock: productStock(product),

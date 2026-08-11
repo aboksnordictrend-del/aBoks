@@ -72,6 +72,14 @@ interface Product {
   description: string
   price: number
   /**
+   * Which catalogue the product belongs to, straight from the CMS `section` select.
+   *
+   * 'accessories' is the stored value behind the «Tilbehør» label — see the Products
+   * collection. It is the real field rather than a slug or a hand-kept list, so every
+   * accessory published from now on is covered without another code change.
+   */
+  section: 'products' | 'accessories'
+  /**
    * The product's own stock. Meaningful only when `variants` is empty — a product WITH
    * variants is sold from each variant's `inventory` and this is never read for it. The rule
    * lives in @/lib/stock; this page asks it rather than restating it.
@@ -198,6 +206,17 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const soldOut = isSoldOut(stock)
   /** Upper bound on the stepper. Unchanged (99) for variant products; capped by stock for the rest. */
   const maxQty = hasVariants ? 99 : Math.min(99, stock)
+
+  /**
+   * The green capacity band answers "how many batteries fit in it", which is a question only
+   * an aBoks has. An accessory (a battery multipack, say) has no compartments, so the band
+   * rendered as an empty heading over nothing.
+   *
+   * Keyed on the CMS section rather than on the capacity numbers being zero: an aBoks whose
+   * capacity has not been filled in yet is a data gap to fix, not a product that should
+   * quietly lose its band.
+   */
+  const showsCapacityBand = product.section !== 'accessories'
 
   // Capacity-derived content — keeps AAA references correct per product
   const hasAAA = product.capacity.aaa > 0
@@ -542,7 +561,10 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
           </div>
         </section>
 
-        {/* CAPACITY BAND */}
+        {/* CAPACITY BAND — Tilbehør has no compartments to count, so the whole band is
+            omitted for it. The <section> carries its own background and padding, so nothing
+            is left behind and the video section below simply moves up. */}
+        {showsCapacityBand && (
         <section style={{ background: '#39402c', padding: 'clamp(64px,8vw,104px) 0' }}>
           <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
             <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 56px' }}>
@@ -564,6 +586,7 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
             </div>
           </div>
         </section>
+        )}
 
         {/* VIDEO */}
         <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0' }}>
