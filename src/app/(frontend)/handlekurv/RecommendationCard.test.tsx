@@ -84,7 +84,11 @@ function product(overrides: Partial<RecommendationProduct> = {}): Recommendation
     imageAlt: overrides.imageAlt ?? 'aBoks Special',
     price: overrides.price ?? 649,
     compareAtPrice: overrides.compareAtPrice ?? null,
+    // Defaults describe a product WITH colours, so every existing expectation here is
+    // unchanged. A variant-less product is built with `hasVariants: false, variants: []`.
+    hasVariants: overrides.hasVariants ?? true,
     variants: overrides.variants ?? [variant()],
+    stock: overrides.stock ?? 0,
     defaultVariantId: overrides.defaultVariantId ?? null,
   }
 }
@@ -220,6 +224,9 @@ describe('adding a recommendation to the real cart store', () => {
     const [item] = useCartStore.getState().items
     assert.deepEqual(item, {
       variantId: 'v-sort',
+      // Carried alongside the variant so a line always knows both halves of its identity.
+      // For a variant line the variant is still what identifies it — see cartLineRef.
+      productId: 'aboks-special',
       productSlug: 'aboks-special',
       productTitle: 'aBoks Special',
       colorName: 'Sort',

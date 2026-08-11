@@ -7,6 +7,7 @@ import { showsMaterialStory } from '@/lib/materialStory'
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
 import { getProductReviewSummary } from '@/lib/reviewServer'
 import { withVideoPosters } from '@/lib/videoPosterServer'
+import { productStock } from '@/lib/stock'
 import { SITE_URL } from '@/lib/site'
 
 function mediaUrl(val: unknown): string {
@@ -123,7 +124,13 @@ export default async function ProductPage({
       '@type': 'Offer',
       priceCurrency: 'NOK',
       price: (product.salePrice ?? product.price ?? 0).toString(),
-      availability: 'https://schema.org/InStock',
+      // A product with variants keeps the flat InStock it has always advertised — its
+      // availability is per colour and this Offer describes the product as a whole. A product
+      // with no variants has exactly one stock figure, so it can state the truth.
+      availability:
+        variants.length === 0 && productStock(product) <= 0
+          ? 'https://schema.org/OutOfStock'
+          : 'https://schema.org/InStock',
       url: `${SITE_URL}/produkter/${slug}`,
     },
     ...(reviewSummary.count > 0
@@ -151,6 +158,9 @@ export default async function ProductPage({
         tagline: product.tagline ?? '',
         description: product.description ?? '',
         price: product.price ?? 0,
+        // The product's own stock. Read by the page only when `variants` is empty — the one
+        // stock rule, see @/lib/stock.
+        stock: productStock(product),
         images: productImages,
         features,
         details,

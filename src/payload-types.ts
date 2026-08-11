@@ -197,6 +197,10 @@ export interface Product {
    */
   price: number;
   /**
+   * Antall enheter på lager. Brukes kun for produkter uten fargevarianter — har produktet varianter, styres lageret på hver variant.
+   */
+  stock?: number | null;
+  /**
    * Legg til kostnadsposter (uten MVA). Total kostpris regnes ut automatisk som summen.
    */
   costItems?:
@@ -994,6 +998,7 @@ export interface ProductsSelect<T extends boolean = true> {
   tagline?: T;
   description?: T;
   price?: T;
+  stock?: T;
   costItems?:
     | T
     | {

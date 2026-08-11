@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { useCartStore } from '@/store/cart'
+import { cartLineRef, useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
 import { trackViewCart, trackBeginCheckout } from '@/lib/analytics'
 import PromoCodeField from '@/components/PromoCodeField'
@@ -71,16 +71,21 @@ export default function CartClient({ productTitles }: { productTitles?: ProductT
             >
               {/* Cart items */}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {items.map((item) => (
-                  <CartLine
-                    key={item.variantId}
-                    item={item}
-                    productTitles={productTitles}
-                    onDecrement={() => decrementItem(item.variantId)}
-                    onIncrement={() => incrementItem(item.variantId)}
-                    onRemove={() => removeItem(item.variantId)}
-                  />
-                ))}
+                {items.map((item) => {
+                  // The line's own reference, not its variant id: a product with no variants
+                  // has none, and every one of them would otherwise share the same key.
+                  const ref = cartLineRef(item)
+                  return (
+                    <CartLine
+                      key={ref}
+                      item={item}
+                      productTitles={productTitles}
+                      onDecrement={() => decrementItem(ref)}
+                      onIncrement={() => incrementItem(ref)}
+                      onRemove={() => removeItem(ref)}
+                    />
+                  )
+                })}
 
                 <Link
                   href="/produkter/aboks"

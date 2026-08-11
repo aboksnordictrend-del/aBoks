@@ -22,6 +22,8 @@ type FakeProduct = {
   salePrice?: number
   saleStartDate?: string
   saleEndDate?: string
+  /** Only read for a product with no variants — see @/lib/stock. */
+  stock?: number
 }
 type FakeCode = {
   id: number
@@ -44,6 +46,14 @@ const VARIANTS: FakeVariant[] = [
 const PRODUCTS: FakeProduct[] = [
   { id: 1, title: 'aBoks Vegg', price: 449, published: true },
   { id: 2, title: 'aBoks Mini', price: 299, published: true },
+  // No variant row points at this one — it is sold from its own stock.
+  {
+    id: 7,
+    title: 'GP Ultra Plus Alkaline AA-batteri, 10-pakk',
+    price: 129,
+    published: true,
+    stock: 10,
+  },
 ]
 const WELCOME: FakeCode = {
   id: 7,
@@ -84,6 +94,15 @@ function harness(
     find: async ({ collection, where }: { collection: string; where?: Record<string, any> }) => {
       if (opts.throwOn === collection) throw new Error('PostgresError: relation does not exist')
       if (collection === 'product-variants') {
+        // `product in (…)` is the existence check priceCart runs for a variant-less line:
+        // does this product really have no variants?
+        if (where?.product?.in) {
+          const parents = (where.product.in as unknown[]).map(String)
+          const docs = (opts.variants ?? VARIANTS).filter((v) =>
+            parents.includes(String(v.product)),
+          )
+          return { docs, totalDocs: docs.length }
+        }
         const ids = (where?.id?.in ?? []).map(String)
         const docs = (opts.variants ?? VARIANTS).filter((v) => ids.includes(String(v.id)))
         return { docs, totalDocs: docs.length }
@@ -180,6 +199,27 @@ describe('toTrustedLines', () => {
 
   it('passes quantity through — priceCart stays the authority', () => {
     assert.equal(toTrustedLines([{ variantId: '10', quantity: 'two' }])![0].quantity as unknown, 'two')
+  })
+
+  it('accepts a productId line, keeping only that and the quantity', () => {
+    const lines = toTrustedLines([
+      { productId: '7', quantity: 2, price: 1, colorName: 'Gratis', productSlug: 'x' },
+    ])
+    assert.deepEqual(lines, [{ productId: '7', quantity: 2 }])
+    assert.deepEqual(Object.keys(lines![0]).sort(), ['productId', 'quantity'])
+  })
+
+  it('lets the variant win when a line carries both identifiers', () => {
+    // A client must not be able to buy a variant product against its parent's stock by
+    // sending the product id alongside the variant.
+    assert.deepEqual(toTrustedLines([{ variantId: '10', productId: '1', quantity: 1 }]), [
+      { variantId: '10', quantity: 1 },
+    ])
+  })
+
+  it('still rejects a line with no identifier at all', () => {
+    assert.equal(toTrustedLines([{ productId: '  ', quantity: 1 }]), null)
+    assert.equal(toTrustedLines([{ variantId: null, productId: null, quantity: 1 }]), null)
   })
 })
 
@@ -657,5 +697,139 @@ describe('checkoutResultFromKustomOrder', () => {
     assert.deepEqual(result.totals, { subtotal: 449, discount: 44.9, shipping: 69, total: 473.1 })
     assert.equal(result.lines[0].lineTotal, 449)
     assert.equal(result.lines[0].discountAmount, 44.9)
+  })
+})
+
+/* ------------------------ products with no variants ------------------------ */
+
+describe('createTrustedCheckout — a product with no variants', () => {
+  it('prices it, references it as a product line, and stores an order line with no variant', async () => {
+    const h = harness()
+    const result = expectOk(
+      await createTrustedCheckout(h.deps, { items: [{ productId: '7', quantity: 2 }] }),
+    )
+
+    assert.equal(result.totals.subtotal, 258)
+    assert.equal(result.lines[0].variantId, null, 'no variant is invented for it')
+    assert.equal(result.lines[0].productId, '7')
+    assert.equal(result.lines[0].displayName, 'GP Ultra Plus Alkaline AA-batteri, 10-pakk')
+
+    // The Kustom reference is the namespaced product form, so the push webhook can read it
+    // back and decrement the right row.
+    assert.equal(h.kustomCalls[0].order_lines[0].reference, 'product-7')
+
+    const items = h.writes[0].data.items as Record<string, unknown>[]
+    assert.equal(items[0].product, 7)
+    assert.equal('variant' in items[0], false, 'the order line stores no variant at all')
+    assert.equal(items[0].quantity, 2)
+    assert.equal(items[0].unitPrice, 129)
+    assert.equal(items[0].lineTotal, 258)
+    assert.equal(items[0].displayName, 'GP Ultra Plus Alkaline AA-batteri, 10-pakk')
+  })
+
+  it('refuses more than the product has in stock, before Kustom is ever called', async () => {
+    const h = harness()
+    const result = await createTrustedCheckout(h.deps, { items: [{ productId: '7', quantity: 11 }] })
+
+    assert.equal(expectFail(result, 'cart_invalid').reason, 'insufficient_stock')
+    assert.equal(h.kustomCalls.length, 0, 'nobody is sent to a payment screen')
+    assert.equal(h.writes.length, 0, 'and no order is written')
+  })
+
+  it('refuses a bare product line for a product that does have variants', async () => {
+    const h = harness()
+    const result = await createTrustedCheckout(h.deps, { items: [{ productId: '1', quantity: 1 }] })
+
+    assert.equal(expectFail(result, 'cart_invalid').reason, 'variant_required')
+    assert.equal(h.kustomCalls.length, 0)
+  })
+})
+
+describe('createTrustedCheckout — a mixed cart', () => {
+  it('carries a variant line and a variant-less line through to one order', async () => {
+    const h = harness()
+    const result = expectOk(
+      await createTrustedCheckout(h.deps, {
+        items: [
+          { variantId: '10', quantity: 1 },
+          { productId: '7', quantity: 2 },
+        ],
+      }),
+    )
+
+    // 449 + 2 × 129 = 707 kr → over the free-shipping threshold.
+    assert.equal(result.totals.subtotal, 707)
+    assert.equal(result.totals.shipping, 0)
+    assert.equal(result.totals.total, 707)
+
+    assert.deepEqual(
+      h.kustomCalls[0].order_lines.map((l) => l.reference),
+      ['10', 'product-7'],
+      'the variant line keeps its bare id, exactly as before',
+    )
+
+    const items = h.writes[0].data.items as Record<string, unknown>[]
+    assert.equal(items[0].variant, 10)
+    assert.equal(items[0].product, 1)
+    assert.equal(items[1].product, 7)
+    assert.equal('variant' in items[1], false)
+  })
+
+  it('splits a promo discount across both kinds of line', async () => {
+    const h = harness()
+    const result = expectOk(
+      await createTrustedCheckout(h.deps, {
+        items: [
+          { variantId: '10', quantity: 1 },
+          { productId: '7', quantity: 2 },
+        ],
+        promoCode: 'WELCOME10',
+      }),
+    )
+
+    // 10 % of 707 kr, and every line must get its share — a variant-less line losing its
+    // allocation would break the order's subtotal + shipping − total === discount identity.
+    assert.equal(result.totals.discount, 70.7)
+    const allocated = result.lines.reduce((sum, l) => sum + l.discountAmount, 0)
+    assert.equal(Math.round(allocated * 100), 7_070)
+    assert.ok(
+      result.lines.every((l) => l.discountAmount > 0),
+      'neither line is left out of the allocation',
+    )
+  })
+})
+
+describe('checkoutResultFromKustomOrder — reading a product reference back', () => {
+  it('splits the reference into its two halves', () => {
+    const order = {
+      order_id: 'k-1',
+      order_amount: 25_800,
+      order_lines: [
+        {
+          type: 'physical',
+          reference: 'product-7',
+          name: 'GP Ultra Plus Alkaline AA-batteri, 10-pakk',
+          quantity: 2,
+          unit_price: 12_900,
+          total_amount: 25_800,
+          total_discount_amount: 0,
+        },
+        {
+          type: 'physical',
+          reference: '10',
+          name: 'aBoks Vegg – Mørk blå',
+          quantity: 1,
+          unit_price: 44_900,
+          total_amount: 44_900,
+          total_discount_amount: 0,
+        },
+      ],
+    } as unknown as KustomOrder
+
+    const result = expectOk(checkoutResultFromKustomOrder(order))
+    assert.equal(result.lines[0].variantId, null)
+    assert.equal(result.lines[0].productId, '7')
+    assert.equal(result.lines[1].variantId, '10')
+    assert.equal(result.lines[1].productId, null)
   })
 })

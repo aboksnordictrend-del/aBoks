@@ -240,3 +240,95 @@ describe('cart store — product title on the line', () => {
     assert.equal(useCartStore.getState().items[0].qty, 2)
   })
 })
+
+/**
+ * Lines for a product with no variants.
+ *
+ * These carry a `productId` and no `variantId` — never a placeholder — so every store
+ * operation has to work off the line reference rather than the variant id.
+ */
+const plainItem: Omit<CartItem, 'qty'> = {
+  productId: '7',
+  productSlug: 'gp-ultra-plus-aa-10',
+  productTitle: 'GP Ultra Plus Alkaline AA-batteri, 10-pakk',
+  colorName: '',
+  colorHex: '',
+  colorImage: '/gp-aa.jpg',
+  price: 129,
+}
+
+describe('cart store — a product with no variants', () => {
+  it('adds it as an ordinary line, with no invented variant', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(plainItem, 1)
+
+    const [item] = useCartStore.getState().items
+    assert.equal(item.variantId, undefined)
+    assert.equal(item.productId, '7')
+    assert.equal(item.qty, 1)
+    assert.equal(useCartStore.getState().subtotal(), 129)
+  })
+
+  it('merges a second add into the same line', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(plainItem, 1)
+    useCartStore.getState().addItem(plainItem, 2)
+
+    assert.equal(useCartStore.getState().items.length, 1)
+    assert.equal(useCartStore.getState().items[0].qty, 3)
+  })
+
+  it('increments, decrements and removes by line reference', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(plainItem, 1)
+
+    useCartStore.getState().incrementItem('product-7')
+    assert.equal(useCartStore.getState().items[0].qty, 2)
+
+    useCartStore.getState().decrementItem('product-7')
+    assert.equal(useCartStore.getState().items[0].qty, 1)
+
+    useCartStore.getState().removeItem('product-7')
+    assert.equal(useCartStore.getState().items.length, 0)
+  })
+
+  it('keeps two different variant-less products apart', () => {
+    // The bug this guards against: keying on a missing variant id would collapse every
+    // variant-less product onto one line.
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(plainItem, 1)
+    useCartStore.getState().addItem({ ...plainItem, productId: '8', price: 99 }, 1)
+
+    assert.equal(useCartStore.getState().items.length, 2)
+    assert.equal(useCartStore.getState().subtotal(), 228)
+  })
+})
+
+describe('cart store — a mixed cart', () => {
+  it('holds a variant line and a variant-less line side by side, and settles them separately', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(sampleItem, 1) // variant '20', 299 kr
+    useCartStore.getState().addItem(plainItem, 2) // product 7, 2 × 129 kr
+
+    assert.equal(useCartStore.getState().items.length, 2)
+    assert.equal(useCartStore.getState().totalCount(), 3)
+    assert.equal(useCartStore.getState().subtotal(), 557)
+
+    // Removing one leaves the other exactly as it was.
+    useCartStore.getState().removeItem('product-7')
+    assert.equal(useCartStore.getState().items.length, 1)
+    assert.equal(useCartStore.getState().items[0].variantId, '20')
+    assert.equal(useCartStore.getState().subtotal(), 299)
+  })
+
+  it('still addresses a variant line by its bare variant id', () => {
+    // Backward compatibility: the reference of a variant line is unchanged, so any caller
+    // that already had a variant id keeps working.
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(sampleItem, 1)
+    useCartStore.getState().incrementItem('20')
+    assert.equal(useCartStore.getState().items[0].qty, 2)
+    useCartStore.getState().removeItem('20')
+    assert.equal(useCartStore.getState().items.length, 0)
+  })
+})

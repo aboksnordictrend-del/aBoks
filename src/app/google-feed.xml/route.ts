@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getPayloadClient } from '@/lib/payload'
 import { getEffectivePrice } from '@/lib/pricing'
+import { productStock, variantStock } from '@/lib/stock'
 import type { Media, Product, ProductVariant } from '@/payload-types'
 
 export const dynamic = 'force-dynamic'
@@ -204,7 +205,7 @@ export async function GET() {
               link: `${BASE_URL}/produkter/${product.slug}?variant=${encodeURIComponent(variant.sku)}`,
               imageLink,
               additionalImages: additional,
-              avail: availability(variant.inventory),
+              avail: availability(variantStock(variant)),
               sale,
               itemGroupId: product.slug,
               color: variant.name,
@@ -228,7 +229,10 @@ export async function GET() {
             link: `${BASE_URL}/produkter/${product.slug}`,
             imageLink,
             additionalImages: additional,
-            avail: 'in stock',
+            // A product with no variants is sold from its own stock, so the feed can state
+            // the truth instead of the flat "in stock" it used to assume. Variant products
+            // are unaffected — they take the branch above, one item per colour.
+            avail: availability(productStock(product)),
             sale,
           }),
         )

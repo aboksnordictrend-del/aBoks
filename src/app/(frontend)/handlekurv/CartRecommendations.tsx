@@ -7,6 +7,7 @@ import RecommendationCard from './RecommendationCard'
 import {
   buildCartRecommendations,
   cartRecommendationSlugs,
+  needsVariantChoice,
   recommendationCartItem,
   resolveRecommendationVariant,
   type CartRecommendationCatalogue,
@@ -125,18 +126,20 @@ export default function CartRecommendations() {
       if (inFlight.current.has(product.key)) return
 
       const variant = resolveRecommendationVariant(product, selectedVariants[product.key])
-      if (!variant) return
+      // A colour is still owed only when the product has colours. One that has none adds
+      // straight away, as itself — no placeholder variant is ever invented for it.
+      if (needsVariantChoice(product, selectedVariants[product.key])) return
 
       inFlight.current.add(product.key)
       setBusyKeys((keys) => [...keys, product.key])
 
-      // The one and only cart write — the store's ordinary add, quantity 1. Adding a variant
-      // that is already on a line increments it, exactly as the product page does.
+      // The one and only cart write — the store's ordinary add, quantity 1. Adding a line
+      // that is already in the cart increments it, exactly as the product page does.
       addItem(recommendationCartItem(product, variant), 1)
 
       trackAddToCart({
-        variantId: variant.id,
-        variantName: variant.name,
+        variantId: variant?.id ?? product.id,
+        variantName: variant?.name ?? '',
         productTitle: product.title,
         price: product.price,
         quantity: 1,

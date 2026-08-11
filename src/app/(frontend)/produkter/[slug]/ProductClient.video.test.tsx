@@ -44,6 +44,8 @@ const product = {
   tagline: 'Veggmontert',
   description: 'Veggmontert oppbevaring.',
   price: 899,
+  // Never read: this product has variants, so its stock comes from each of them.
+  stock: 0,
   images: [],
   features: [],
   capacity: { aa: 24, aaa: 0, usedCompartments: 8 },

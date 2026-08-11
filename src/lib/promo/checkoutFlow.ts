@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 import { oereToKr, priceCart, type CartLineInput } from '@/lib/cartPricing'
 import type { KustomCreateOrderPayload, KustomOrder } from '@/lib/kustom'
 import type { MetaAttribution } from '@/lib/meta/capi/attribution'
+import { parseLineRef } from '@/lib/cart/lineRef'
 import { validatePromoCode } from './validate'
 import { buildKustomMerchantData } from './kustomMerchantData'
 import { MAX_CART_LINES } from './validateEndpoint'
@@ -46,9 +47,16 @@ import type { PromoValidationSuccess } from './types'
  * Payload config, and without ever reaching api.kustom.co.
  */
 
-/** Only ever these two fields per line — see the trust boundary above. */
+/**
+ * Only ever an identifier and a quantity per line — see the trust boundary above.
+ *
+ * Which identifier says what kind of line it is: `variantId` for a product that has colour
+ * variants, `productId` for one that has none. Exactly the same contract as `CartLineInput`,
+ * which is what this is turned into.
+ */
 export interface CheckoutLineInput {
-  variantId: string | number
+  variantId?: string | number | null
+  productId?: string | number | null
   quantity: number
 }
 
@@ -74,7 +82,15 @@ export interface AppliedPromo {
 
 /** One line as the server priced it, so the summary never displays a cart-derived amount. */
 export interface CheckoutLine {
-  variantId: string
+  /** Variant id, or null for a product that has no variants. */
+  variantId: string | null
+  /**
+   * Parent product id. Optional only because a line rebuilt from an existing Kustom order may
+   * carry a reference we cannot resolve; every line the server priced has it. Together with
+   * `variantId` it is what the checkout summary matches a cart line on — see
+   * `resolvedLineRef` in @/lib/cart/lineRef.
+   */
+  productId?: string | null
   displayName: string
   quantity: number
   /** Pre-discount line value, in kroner. */
@@ -142,19 +158,33 @@ export interface CheckoutDeps {
  * Deliberately not a filtered copy of the browser's objects: a new object is constructed per
  * line, so a field we have not thought of cannot ride along. Quantity is passed through
  * unvalidated — `priceCart()` is the authority on what a valid quantity is.
+ *
+ * A line must carry exactly one usable identifier. `variantId` wins when both are present,
+ * which is the same precedence every other module applies, so a client that sends both
+ * cannot buy a variant product against its parent's `stock`.
  */
 export function toTrustedLines(items: unknown): CartLineInput[] | null {
   if (!Array.isArray(items) || items.length === 0 || items.length > MAX_CART_LINES) return null
 
+  const readId = (value: unknown): string | null => {
+    if (typeof value !== 'string' && typeof value !== 'number') return null
+    const id = String(value).trim()
+    return id ? id : null
+  }
+
   const lines: CartLineInput[] = []
   for (const raw of items) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
-    const source = raw as { variantId?: unknown; quantity?: unknown }
-    const id = source.variantId
-    if (typeof id !== 'string' && typeof id !== 'number') return null
-    const variantId = String(id).trim()
-    if (!variantId) return null
-    lines.push({ variantId, quantity: source.quantity as number })
+    const source = raw as { variantId?: unknown; productId?: unknown; quantity?: unknown }
+
+    const variantId = readId(source.variantId)
+    const productId = readId(source.productId)
+    if (!variantId && !productId) return null
+
+    lines.push({
+      ...(variantId ? { variantId } : { productId: productId as string }),
+      quantity: source.quantity as number,
+    })
   }
   return lines
 }
@@ -181,7 +211,13 @@ export function buildPendingOrderData(
   return {
     orderNumber,
     items: build.productLines.map((line) => ({
-      variant: Number(line.variantId),
+      // Both relationships are written. `product` was previously left for the orders snapshot
+      // hook to backfill from the variant; a line with no variant has nothing to backfill
+      // from, so the product it was priced against is recorded here directly. For a variant
+      // line this stores exactly the id the hook would have resolved anyway.
+      product: Number(line.productId),
+      // Only ever set when there really is a variant — never a placeholder.
+      ...(line.variantId ? { variant: Number(line.variantId) } : {}),
       displayName: line.displayName,
       variantName: line.variantName,
       quantity: line.quantity,
@@ -419,6 +455,7 @@ export async function createTrustedCheckout(
     },
     lines: build.productLines.map((line) => ({
       variantId: line.variantId,
+      productId: line.productId,
       displayName: line.displayName,
       quantity: line.quantity,
       lineTotal: oereToKr(line.grossOere),
@@ -459,13 +496,19 @@ export function checkoutResultFromKustomOrder(kustomOrder: KustomOrder): Checkou
       shipping: oereToKr(shippingOere),
       total: oereToKr(kustomOrder.order_amount),
     },
-    lines: physical.map((l) => ({
-      variantId: l.reference,
-      displayName: l.name,
-      quantity: l.quantity,
-      lineTotal: oereToKr(l.unit_price * l.quantity),
-      discountAmount: oereToKr(l.total_discount_amount ?? 0),
-    })),
+    lines: physical.map((l) => {
+      // Kustom stores our own line reference. Read it back into its two halves so the summary
+      // matches a variant-less line to its cart row exactly as it does a variant one.
+      const ref = parseLineRef(l.reference)
+      return {
+        variantId: ref?.kind === 'variant' ? ref.variantId : null,
+        productId: ref?.kind === 'product' ? ref.productId : null,
+        displayName: l.name,
+        quantity: l.quantity,
+        lineTotal: oereToKr(l.unit_price * l.quantity),
+        discountAmount: oereToKr(l.total_discount_amount ?? 0),
+      }
+    }),
     // The code itself is not recoverable from Kustom's lines under Option A — see Stage 8.
     promo: null,
   }

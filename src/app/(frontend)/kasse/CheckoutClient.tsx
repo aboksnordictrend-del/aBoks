@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useCartStore } from '@/store/cart'
+import { cartLineRef, useCartStore } from '@/store/cart'
+import { resolvedLineRef } from '@/lib/cart/lineRef'
 import { formatPrice } from '@/lib/format'
 import { initKustomCheckout, fetchExistingCheckout } from './actions'
 import type { CheckoutTotals } from '@/lib/promo/checkoutFlow'
@@ -357,10 +358,13 @@ export default function CheckoutClient({ productTitles }: { productTitles?: Prod
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '22px' }}>
                 {items.map((item) => {
                   // Once the server has answered, the amount shown is the one it priced.
-                  const trustedLine = trustedLines?.find((l) => l.variantId === item.variantId)
+                  // Matched on the line reference so a product with no variants finds its own
+                  // trusted line instead of every such line matching on an empty variant id.
+                  const ref = cartLineRef(item)
+                  const trustedLine = trustedLines?.find((l) => resolvedLineRef(l) === ref)
                   const lineTotal = trustedLine ? trustedLine.lineTotal : item.qty * item.price
                   return (
-                    <div key={item.variantId} style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                    <div key={ref} style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
                       <div
                         style={{
                           flexShrink: 0,
@@ -372,7 +376,15 @@ export default function CheckoutClient({ productTitles }: { productTitles?: Prod
                           position: 'relative',
                         }}
                       >
-                        <Image src={item.colorImage} alt={item.colorName} fill style={{ objectFit: 'cover' }} sizes="56px" />
+                        {item.colorImage ? (
+                          <Image
+                            src={item.colorImage}
+                            alt={item.colorName || cartLineLabel(item, productTitles)}
+                            fill
+                            style={{ objectFit: 'cover' }}
+                            sizes="56px"
+                          />
+                        ) : null}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '15px', color: '#1a1d17' }}>

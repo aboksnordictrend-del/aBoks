@@ -126,8 +126,19 @@ export interface RecommendationProduct {
   price: number
   /** Ordinary price, present only while it is struck through by an active sale. */
   compareAtPrice: number | null
-  /** In stock, in admin order. Empty means nothing is addable and the product is skipped. */
+  /**
+   * Whether the product has ANY variants at all, decided before sold-out ones were filtered
+   * out of `variants` below.
+   *
+   * This is what tells the two cases apart, and it has to be carried rather than inferred:
+   * an empty `variants` means "every colour is sold out" for a variant product and "there are
+   * no colours" for a variant-less one, and those want opposite treatment.
+   */
+  hasVariants: boolean
+  /** In stock, in admin order. Empty means every colour is gone — for a product that has any. */
   variants: RecommendationVariant[]
+  /** The product's own stock. Read only when `hasVariants` is false — see @/lib/stock. */
+  stock: number
   /** Set only when the choice is unambiguous — a single variant. Else the card asks. */
   defaultVariantId: string | null
 }
@@ -160,15 +171,20 @@ export interface CartRecommendationLine {
  * Can this product be put in the cart from a card, right now?
  *
  * A `false` here is why a recommendation silently disappears: no price, no image-independent
- * identity, or every variant sold out. The server applies this before sending, and the
- * client applies it again — cheap, and it keeps a stale cached response from rendering a
- * card whose button could not work.
+ * identity, or nothing left to sell. The server applies this before sending, and the client
+ * applies it again — cheap, and it keeps a stale cached response from rendering a card whose
+ * button could not work.
+ *
+ * "Nothing left to sell" is asked of the right source per the one stock rule: a product with
+ * colours is addable while at least one of them is in stock, and a product with no colours
+ * while its own `stock` is above zero.
  */
 export function isAddableRecommendation(product: RecommendationProduct | undefined | null): boolean {
   if (!product) return false
   if (!product.slug || !product.title) return false
   if (!Number.isFinite(product.price) || product.price <= 0) return false
-  return product.variants.length > 0
+  if (product.hasVariants) return product.variants.length > 0
+  return product.stock > 0
 }
 
 export interface BuildCartRecommendationsOptions {
@@ -243,11 +259,16 @@ export function buildCartRecommendations(
  * Never guesses. One variant means there is nothing to choose; more than one means the
  * colours are a real decision and picking silently would put the wrong thing in the cart.
  * `selectedId` is the customer's own pick from the card's swatches.
+ *
+ * Null is also the correct answer for a product with no variants — there is nothing to
+ * resolve. Callers must therefore ask `needsVariantChoice` rather than treating null as
+ * "cannot add yet", or a variant-less product would never be addable.
  */
 export function resolveRecommendationVariant(
   product: RecommendationProduct,
   selectedId?: string | null,
 ): RecommendationVariant | null {
+  if (!product.hasVariants) return null
   if (selectedId) {
     const picked = product.variants.find((variant) => variant.id === selectedId)
     if (picked) return picked
@@ -260,18 +281,37 @@ export function resolveRecommendationVariant(
 }
 
 /**
+ * Is the customer still owed a colour decision before this card can add anything?
+ *
+ * True only for a product that HAS colours and where none is resolvable yet. A product with
+ * no colours at all never needs a choice — its button reads «Legg til» straight away.
+ */
+export function needsVariantChoice(
+  product: RecommendationProduct,
+  selectedId?: string | null,
+): boolean {
+  if (!product.hasVariants) return false
+  return resolveRecommendationVariant(product, selectedId) === null
+}
+
+/**
  * The cart line to write for a recommendation, in the store's own `CartItem` shape.
  *
  * Deliberately the exact same fields the product page fills in — recommendations must not
  * become a second kind of cart line, or the summary, the promo revalidation and the Kustom
  * checkout would each need to learn about them. Typed structurally rather than importing
  * `CartItem`, which lives in a `'use client'` module.
+ *
+ * `variant` is null for a product with no variants. The line then carries `productId` as its
+ * identity and no colour at all — never a placeholder variant id, and never an invented
+ * colour name, so the cart renders it as the plain product it is.
  */
 export function recommendationCartItem(
   product: RecommendationProduct,
-  variant: RecommendationVariant,
+  variant: RecommendationVariant | null,
 ): {
-  variantId: string
+  variantId?: string
+  productId: string
   productSlug: string
   productTitle: string
   colorName: string
@@ -280,14 +320,16 @@ export function recommendationCartItem(
   price: number
 } {
   return {
-    variantId: variant.id,
+    ...(variant ? { variantId: variant.id } : {}),
+    productId: product.id,
     productSlug: product.slug,
     // Carried through from the catalogue, so a product added from the cart block is named
     // exactly as it is on its own page.
     productTitle: product.title,
-    colorName: variant.name,
-    colorHex: variant.colorHex,
-    colorImage: variant.image,
+    colorName: variant?.name ?? '',
+    colorHex: variant?.colorHex ?? '',
+    // The product's own picture stands in when there is no colour to picture.
+    colorImage: variant?.image || product.image,
     price: product.price,
   }
 }

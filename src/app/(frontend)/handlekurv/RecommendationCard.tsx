@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { formatPrice } from '@/lib/format'
 import {
+  needsVariantChoice,
   resolveRecommendationVariant,
   type RecommendationProduct,
 } from '@/lib/cart/recommendations'
@@ -44,8 +45,9 @@ export default function RecommendationCard({
   onAdd,
 }: RecommendationCardProps) {
   const variant = resolveRecommendationVariant(product, selectedVariantId)
-  // No resolvable variant means several colours and no pick yet — never a silent guess.
-  const needsChoice = !variant
+  // Several colours and no pick yet — never a silent guess. A product with no colours at all
+  // resolves to no variant too, but has nothing to choose, so it is addable immediately.
+  const needsChoice = needsVariantChoice(product, selectedVariantId)
   const disabled = busy || needsChoice
   const label = busy
     ? RECOMMENDATION_LABELS.added

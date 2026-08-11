@@ -1,6 +1,8 @@
 import type { Payload } from 'payload'
 import { getEffectivePrice } from './pricing'
 import { formatVariantDisplayName } from '@/collections/hooks/variantDisplayName'
+import { lineRefFor, parseLineRef } from './cart/lineRef'
+import { canFulfil, productStock } from './stock'
 
 /**
  * Trusted, server-side pricing of a cart.
@@ -42,27 +44,45 @@ export function oereToKr(oere: number): number {
 /** Maximum quantity for a single line — mirrors the cart's own +/- clamp. */
 export const MAX_LINE_QUANTITY = 99
 
-/** What the client is allowed to send: an identifier and a count. Nothing else. */
+/**
+ * What the client is allowed to send: an identifier and a count. Nothing else.
+ *
+ * Exactly one identifier per line, and which one says what kind of line it is:
+ *   `variantId` — a product that has colour variants; the variant is the thing being bought
+ *   `productId` — a product with no variants at all (a battery multipack, say)
+ *
+ * A line carrying both is read as a variant line: a variant always wins, and its parent
+ * product's own stock is irrelevant. See @/lib/cart/lineRef and @/lib/stock.
+ */
 export interface CartLineInput {
-  variantId: string | number
+  variantId?: string | number | null
+  productId?: string | number | null
   quantity: number
 }
 
 /** One fully-resolved line. All money is authoritative, none of it came from the client. */
 export interface PricedLine {
-  variantId: string
+  /**
+   * Variant id, or null when the product has no variants. Null is a real answer here, not a
+   * missing one — it is what distinguishes the two kinds of line everywhere downstream.
+   */
+  variantId: string | null
   /** Parent product id — the unit promo-code product restrictions match on. */
   productId: string
   /** Snapshot name, resolved with the same rule the order snapshot uses. */
   displayName: string
-  /** Colour / variant label ("Mørk blå"). */
+  /** Colour / variant label ("Mørk blå"). Empty for a product with no variants. */
   variantName: string
   quantity: number
   unitPriceOere: number
   lineTotalOere: number
   unitPriceKr: number
   lineTotalKr: number
-  /** Current stock, for a later availability decision. Not enforced here — see below. */
+  /**
+   * Current stock from this line's own authoritative source — the variant's `inventory` for a
+   * variant line, the product's `stock` for a variant-less one. Null means nothing is stored.
+   * See the availability note on `priceCart` for what is and is not enforced.
+   */
   inventory: number | null
 }
 
@@ -87,6 +107,14 @@ export type CartPricingFailureReason =
   | 'product_not_found'
   | 'product_unavailable'
   | 'invalid_price'
+  /**
+   * A line was sent as a bare product, but that product does have variants — so there is a
+   * colour to choose and no single stock figure to sell from. A cart saved before a product
+   * gained its first variant, or a tampered request trying to buy past `products.stock`.
+   */
+  | 'variant_required'
+  /** A variant-less line asked for more units than `products.stock` has. */
+  | 'insufficient_stock'
   | 'lookup_failed'
 
 export type CartPricingResult =
@@ -95,8 +123,8 @@ export type CartPricingResult =
       ok: false
       reason: CartPricingFailureReason
       message: string
-      /** The offending line, when one specific line caused the failure. */
-      variantId?: string
+      /** The offending line's reference, when one specific line caused the failure. */
+      ref?: string
     }
 
 const FAILURE_MESSAGE: Record<CartPricingFailureReason, string> = {
@@ -107,11 +135,13 @@ const FAILURE_MESSAGE: Record<CartPricingFailureReason, string> = {
   product_not_found: 'Et produkt i handlekurven finnes ikke lenger.',
   product_unavailable: 'Et produkt i handlekurven er ikke tilgjengelig lenger.',
   invalid_price: 'Vi klarte ikke å hente prisen på et produkt i handlekurven.',
+  variant_required: 'Et produkt i handlekurven må velges på nytt. Åpne produktsiden og legg det i kurven igjen.',
+  insufficient_stock: 'Vi har ikke nok på lager av et produkt i handlekurven. Reduser antallet og prøv igjen.',
   lookup_failed: 'Vi klarte ikke å hente handlekurven akkurat nå. Prøv igjen.',
 }
 
-function fail(reason: CartPricingFailureReason, variantId?: string): CartPricingResult {
-  return { ok: false, reason, message: FAILURE_MESSAGE[reason], ...(variantId ? { variantId } : {}) }
+function fail(reason: CartPricingFailureReason, ref?: string): CartPricingResult {
+  return { ok: false, reason, message: FAILURE_MESSAGE[reason], ...(ref ? { ref } : {}) }
 }
 
 /** Minimal shapes read from the catalogue — deliberately narrower than the generated types. */
@@ -131,6 +161,8 @@ type ProductDoc = {
   salePrice?: number | null
   saleStartDate?: string | null
   saleEndDate?: string | null
+  /** Only ever read for a product that has no variants — see @/lib/stock. */
+  stock?: number | null
 }
 
 function relId(rel: VariantDoc['product']): string | null {
@@ -180,16 +212,43 @@ export function shippingForSubtotalOere(subtotalOere: number): number {
   return subtotalOere >= FREE_SHIPPING_THRESHOLD_OERE ? 0 : SHIPPING_COST_OERE
 }
 
+/** One normalised, deduplicated request line, before the catalogue has been consulted. */
+interface WantedLine {
+  /** `"12"` for a variant line, `"product-34"` for a variant-less one. */
+  ref: string
+  variantId: string | null
+  /** Known up front only for a product line; a variant line learns it from its variant. */
+  productId: string | null
+  quantity: number
+}
+
+/**
+ * How many variant rows one bounded lookup will read when checking whether the products in a
+ * product-only line really have none. A product has a handful of colours; this is a ceiling
+ * on abuse, not a business limit.
+ */
+const VARIANT_EXISTENCE_LOOKUP_LIMIT = 200
+
 /**
  * Prices a cart from the catalogue.
  *
- * Two bounded queries (variants, then their parent products) — never one per line. Returns a
- * discriminated result instead of throwing, so every caller has to deal with a stale cart.
+ * Bounded queries — never one per line: the variants, then their parent products (together
+ * with any product asked for directly), then, only when the cart contains a variant-less
+ * line, one existence check for variants of those products. Returns a discriminated result
+ * instead of throwing, so every caller has to deal with a stale cart.
  *
- * Availability: an unpublished product is rejected, because it is no longer for sale. Stock
- * is *reported* (`inventory`) but not enforced — the current checkout does not block on it
- * either, and turning a low-stock cart into a hard failure is a sales decision, not a
- * pricing one.
+ * ── Availability ──
+ *
+ * An unpublished product is rejected, because it is no longer for sale.
+ *
+ * Stock is enforced for a **variant-less** line: those are sold from `products.stock`, and a
+ * cart is allowed to hold more than exists only for as long as nobody tries to pay. Asking to
+ * buy 3 of a product with 2 left fails here — before Kustom is called and before an order
+ * number is burned — which is what keeps `products.stock` from going negative.
+ *
+ * Stock is still only *reported* for a **variant** line (`inventory`), unchanged: blocking a
+ * low-stock variant cart at checkout is a sales decision the shop has already made the other
+ * way, and changing it here would change the behaviour of every existing aBoks product.
  */
 export async function priceCart(
   payload: Payload,
@@ -198,40 +257,63 @@ export async function priceCart(
   if (!Array.isArray(lines) || lines.length === 0) return fail('cart_empty')
 
   // Normalise and validate the input before touching the database.
-  const wanted: { variantId: string; quantity: number }[] = []
+  const wanted: WantedLine[] = []
   for (const line of lines) {
     if (!line || typeof line !== 'object') return fail('invalid_line')
 
-    const variantId = line.variantId != null ? String(line.variantId).trim() : ''
-    if (!variantId) return fail('invalid_line')
+    // One reference per line, whichever identifier the client sent. A variant always wins.
+    const ref = lineRefFor(line)
+    const parsed = ref ? parseLineRef(ref) : null
+    if (!ref || !parsed) return fail('invalid_line')
 
-    if (!isValidQuantity(line.quantity)) return fail('invalid_quantity', variantId)
+    if (!isValidQuantity(line.quantity)) return fail('invalid_quantity', ref)
 
-    // A repeated variant is merged rather than rejected — two entries for the same variant
-    // are a client bug, not an attack, and merging keeps the discount base honest.
-    const existing = wanted.find((w) => w.variantId === variantId)
+    // A repeated line is merged rather than rejected — two entries for the same thing are a
+    // client bug, not an attack, and merging keeps the discount base and the stock check
+    // honest (3 + 2 of the same product is a request for 5, not two requests for 3 and 2).
+    const existing = wanted.find((w) => w.ref === ref)
     if (existing) {
       const merged = existing.quantity + line.quantity
-      if (!isValidQuantity(merged)) return fail('invalid_quantity', variantId)
+      if (!isValidQuantity(merged)) return fail('invalid_quantity', ref)
       existing.quantity = merged
     } else {
-      wanted.push({ variantId, quantity: line.quantity })
+      wanted.push({
+        ref,
+        variantId: parsed.kind === 'variant' ? parsed.variantId : null,
+        productId: parsed.kind === 'product' ? parsed.productId : null,
+        quantity: line.quantity,
+      })
     }
   }
 
+  const wantedVariantIds = wanted.map((w) => w.variantId).filter((id): id is string => id !== null)
+  // Products asked for by id — i.e. the lines that claim to have no variant to buy.
+  const wantedProductIds = wanted.map((w) => w.productId).filter((id): id is string => id !== null)
+
   let variantDocs: VariantDoc[]
   let productDocs: ProductDoc[]
+  /** Of the directly-requested products, those that turn out to have variants after all. */
+  let productsWithVariants: Set<string>
   try {
-    const variantResult = await payload.find({
-      collection: 'product-variants',
-      where: { id: { in: wanted.map((w) => w.variantId) } },
-      limit: wanted.length,
-      depth: 0,
-      overrideAccess: true,
-    })
-    variantDocs = variantResult.docs as unknown as VariantDoc[]
+    if (wantedVariantIds.length > 0) {
+      const variantResult = await payload.find({
+        collection: 'product-variants',
+        where: { id: { in: wantedVariantIds } },
+        limit: wantedVariantIds.length,
+        depth: 0,
+        overrideAccess: true,
+      })
+      variantDocs = variantResult.docs as unknown as VariantDoc[]
+    } else {
+      variantDocs = []
+    }
 
-    const productIds = [...new Set(variantDocs.map((v) => relId(v.product)).filter(Boolean))]
+    const productIds = [
+      ...new Set([
+        ...variantDocs.map((v) => relId(v.product)).filter((id): id is string => Boolean(id)),
+        ...wantedProductIds,
+      ]),
+    ]
     if (productIds.length === 0) {
       // Nothing to look up — every variant was either missing or orphaned. Skip the second
       // query and let the per-line loop below report precisely which of the two it was;
@@ -240,12 +322,30 @@ export async function priceCart(
     } else {
       const productResult = await payload.find({
         collection: 'products',
-        where: { id: { in: productIds as string[] } },
+        where: { id: { in: productIds } },
         limit: productIds.length,
         depth: 0,
         overrideAccess: true,
       })
       productDocs = productResult.docs as unknown as ProductDoc[]
+    }
+
+    // Only a cart containing a variant-less line pays for this query, and a cart of ordinary
+    // aBoks products never reaches it. It is what makes the rule impossible to bypass: a
+    // request naming a product that *does* have variants cannot buy against `products.stock`.
+    productsWithVariants = new Set<string>()
+    if (wantedProductIds.length > 0) {
+      const existing = await payload.find({
+        collection: 'product-variants',
+        where: { product: { in: wantedProductIds } },
+        limit: VARIANT_EXISTENCE_LOOKUP_LIMIT,
+        depth: 0,
+        overrideAccess: true,
+      })
+      for (const doc of existing.docs as unknown as VariantDoc[]) {
+        const parentId = relId(doc.product)
+        if (parentId) productsWithVariants.add(parentId)
+      }
     }
   } catch (err) {
     payload.logger?.error?.(
@@ -260,22 +360,49 @@ export async function priceCart(
   const priced: PricedLine[] = []
   let subtotalOere = 0
 
-  for (const { variantId, quantity } of wanted) {
-    const variant = variantById.get(variantId)
-    if (!variant) return fail('variant_not_found', variantId)
+  for (const line of wanted) {
+    const { ref, quantity } = line
 
-    const productId = relId(variant.product)
-    if (!productId) return fail('product_not_found', variantId)
+    // ── Resolve the line to a variant (or none) and its parent product ──
+    let variant: VariantDoc | null = null
+    let productId: string
+
+    if (line.variantId !== null) {
+      variant = variantById.get(line.variantId) ?? null
+      if (!variant) return fail('variant_not_found', ref)
+
+      const parentId = relId(variant.product)
+      if (!parentId) return fail('product_not_found', ref)
+      productId = parentId
+    } else {
+      // A bare product line. It is only legitimate when the product genuinely has no
+      // variants; otherwise there is a colour to choose and a variant to sell from.
+      productId = line.productId as string
+      if (productsWithVariants.has(productId)) return fail('variant_required', ref)
+    }
 
     const product = productById.get(productId)
-    if (!product) return fail('product_not_found', variantId)
+    if (!product) return fail('product_not_found', ref)
 
     // `published` is a checkbox that reads as null on rows predating the column; only an
     // explicit `false` means "taken out of the shop".
-    if (product.published === false) return fail('product_unavailable', variantId)
+    if (product.published === false) return fail('product_unavailable', ref)
 
     if (typeof product.price !== 'number' || !Number.isFinite(product.price) || product.price < 0) {
-      return fail('invalid_price', variantId)
+      return fail('invalid_price', ref)
+    }
+
+    // Stock, from this line's own source. Enforced only for a variant-less line — see the
+    // availability note in this function's header.
+    const inventory = variant
+      ? typeof variant.inventory === 'number'
+        ? variant.inventory
+        : null
+      : typeof product.stock === 'number'
+        ? product.stock
+        : null
+    if (!variant && !canFulfil(productStock(product), quantity)) {
+      return fail('insufficient_stock', ref)
     }
 
     // Sale handling stays in the existing shared rule — sale window, sale-must-be-lower and
@@ -291,16 +418,18 @@ export async function priceCart(
     subtotalOere += lineTotalOere
 
     priced.push({
-      variantId,
+      variantId: line.variantId,
       productId,
-      displayName: resolveDisplayName(variant, product),
-      variantName: variant.name?.trim() ?? '',
+      // A variant-less line has no colour to fold in, so its name is the product's own title
+      // — the same string `resolveLineDisplayName` freezes onto the order for such a line.
+      displayName: variant ? resolveDisplayName(variant, product) : (product.title?.trim() ?? ''),
+      variantName: variant?.name?.trim() ?? '',
       quantity,
       unitPriceOere,
       lineTotalOere,
       unitPriceKr: oereToKr(unitPriceOere),
       lineTotalKr: oereToKr(lineTotalOere),
-      inventory: typeof variant.inventory === 'number' ? variant.inventory : null,
+      inventory,
     })
   }
 

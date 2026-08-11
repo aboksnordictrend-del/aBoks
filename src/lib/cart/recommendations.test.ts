@@ -5,7 +5,9 @@ import {
   cartRecommendationSlugs,
   CART_RECOMMENDATION_LIMIT,
   isAddableRecommendation,
+  needsVariantChoice,
   normalizeRecommendationRefs,
+  recommendationCartItem,
   recommendationKey,
   resolveRecommendationVariant,
   type CartRecommendationCatalogue,
@@ -47,7 +49,12 @@ function product(
     imageAlt: overrides.imageAlt ?? slug,
     price: overrides.price ?? 499,
     compareAtPrice: overrides.compareAtPrice ?? null,
+    // Defaults describe the ordinary case — a product with colours — so every existing
+    // expectation in this file keeps testing exactly what it did before. A variant-less
+    // product is built by passing `hasVariants: false, variants: [], stock: n`.
+    hasVariants: overrides.hasVariants ?? true,
     variants: overrides.variants ?? [variant()],
+    stock: overrides.stock ?? 0,
     defaultVariantId: overrides.defaultVariantId ?? null,
   }
 }
@@ -398,5 +405,83 @@ describe('isAddableRecommendation / cartRecommendationSlugs', () => {
       ['aboks', 'aboks-vegg'],
     )
     assert.deepEqual(cartRecommendationSlugs([]), [])
+  })
+})
+
+/**
+ * Recommendations for a product that has no Product Variants at all.
+ *
+ * The distinction that matters: an empty `variants` list means "every colour is sold out" for
+ * a product that has colours, and "there are no colours" for one that has none. The two want
+ * opposite treatment, which is why `hasVariants` is carried rather than inferred.
+ */
+function plainProduct(overrides: Partial<RecommendationProduct> = {}): RecommendationProduct {
+  return product('gp-ultra-plus-aa-10', {
+    title: 'GP Ultra Plus Alkaline AA-batteri, 10-pakk',
+    section: 'accessories',
+    price: 129,
+    hasVariants: false,
+    variants: [],
+    stock: 10,
+    ...overrides,
+  })
+}
+
+describe('a recommendation with no variants', () => {
+  it('is addable while it has stock', () => {
+    assert.equal(isAddableRecommendation(plainProduct()), true)
+  })
+
+  it('is not addable when it is sold out', () => {
+    assert.equal(isAddableRecommendation(plainProduct({ stock: 0 })), false)
+  })
+
+  it('needs no colour choice', () => {
+    const item = plainProduct()
+    assert.equal(needsVariantChoice(item), false)
+    assert.equal(resolveRecommendationVariant(item), null)
+  })
+
+  it('ignores its own stock once it has variants — the rule cannot be gamed', () => {
+    // A product WITH colours whose colours are all sold out stays unaddable however much
+    // stock happens to sit on the product row.
+    const soldOutColours = product('aboks-vegg', {
+      hasVariants: true,
+      variants: [],
+      stock: 99,
+    })
+    assert.equal(isAddableRecommendation(soldOutColours), false)
+  })
+
+  it('builds a cart line identified by product, with no invented variant or colour', () => {
+    const item = recommendationCartItem(plainProduct(), null)
+    assert.equal(item.variantId, undefined)
+    assert.equal(item.productId, 'gp-ultra-plus-aa-10')
+    assert.equal(item.colorName, '')
+    assert.equal(item.colorHex, '')
+    // The product's own picture stands in for the missing colour image.
+    assert.equal(item.colorImage, 'https://blob.example/p.webp')
+    assert.equal(item.price, 129)
+  })
+
+  it('still carries the variant and its colour for a product that has one', () => {
+    const withColour = product('aboks-vegg', { variants: [variant({ id: 'v-blue', name: 'Mørk blå' })] })
+    const item = recommendationCartItem(withColour, withColour.variants[0])
+    assert.equal(item.variantId, 'v-blue')
+    assert.equal(item.productId, 'aboks-vegg')
+    assert.equal(item.colorName, 'Mørk blå')
+  })
+
+  it('appears in the built list alongside ordinary recommendations', () => {
+    const plain = plainProduct()
+    const coloured = product('aboks-special')
+    const list = buildCartRecommendations(
+      [{ productSlug: 'aboks', variantId: '10' }],
+      catalogue({ aboks: [coloured, plain] }),
+    )
+    assert.deepEqual(
+      list.map((p) => p.slug),
+      ['aboks-special', 'gp-ultra-plus-aa-10'],
+    )
   })
 })

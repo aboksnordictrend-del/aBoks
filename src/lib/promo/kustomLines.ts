@@ -1,5 +1,6 @@
 import { VAT_RATE_BASIS_POINTS } from '@/lib/tax'
 import { oereToKr, shippingForSubtotalOere, type PricedCart } from '@/lib/cartPricing'
+import { resolvedLineRef } from '@/lib/cart/lineRef'
 import type { KustomOrderLine } from '@/lib/kustom'
 import type { PromoValidationSuccess } from './types'
 
@@ -48,10 +49,11 @@ export function kustomReferenceTaxOere(totalAmountOere: number): number {
 
 /** One product line, after the discount has been applied. */
 export interface BuiltProductLine {
-  variantId: string
+  /** Variant id, or null for a product that has no variants. */
+  variantId: string | null
   productId: string
   displayName: string
-  /** Colour label, carried through for the order snapshot. */
+  /** Colour label, carried through for the order snapshot. Empty when there is no variant. */
   variantName: string
   quantity: number
   unitPriceOere: number
@@ -104,13 +106,15 @@ export function buildKustomOrder(
   cart: PricedCart,
   promo: PromoValidationSuccess | null,
 ): KustomOrderBuild {
-  const discountByVariant = new Map<string, number>(
-    (promo?.lineDiscounts ?? []).map((l) => [l.variantId, l.discountOere]),
+  // Keyed by line reference — see the note on PromoLineDiscount. A variant-less line's
+  // allocation would be lost if this keyed on the variant id.
+  const discountByLine = new Map<string, number>(
+    (promo?.lineDiscounts ?? []).map((l) => [resolvedLineRef(l), l.discountOere]),
   )
 
   const productLines: BuiltProductLine[] = cart.lines.map((line) => {
     const grossOere = line.unitPriceOere * line.quantity
-    const discountOere = discountByVariant.get(line.variantId) ?? 0
+    const discountOere = discountByLine.get(resolvedLineRef(line)) ?? 0
     return {
       variantId: line.variantId,
       productId: line.productId,
@@ -126,7 +130,9 @@ export function buildKustomOrder(
 
   const orderLines: KustomOrderLine[] = productLines.map((line) => ({
     type: 'physical',
-    reference: line.variantId,
+    // The line reference: a bare variant id as it has always been, or `product-<id>` for a
+    // product with no variants. The Kustom push webhook parses it back with `parseLineRef`.
+    reference: resolvedLineRef(line),
     name: line.displayName,
     quantity: line.quantity,
     quantity_unit: 'pcs',
@@ -220,28 +226,34 @@ export function assertKustomOrderInvariants(
   // ── Per-product-line arithmetic ──
   const seen = new Set<string>()
   for (const line of productLines) {
-    if (seen.has(line.variantId)) {
-      throw new KustomInvariantError('duplicate-reference', `variant ${line.variantId} twice`)
+    // Identified by reference, so a variant line and a variant-less product line are compared
+    // on the same footing and neither can be silently deduplicated against the other.
+    const ref = resolvedLineRef(line)
+    if (!ref) {
+      throw new KustomInvariantError('missing-reference', `product ${line.productId} has no line reference`)
     }
-    seen.add(line.variantId)
+    if (seen.has(ref)) {
+      throw new KustomInvariantError('duplicate-reference', `line ${ref} twice`)
+    }
+    seen.add(ref)
 
     if (line.quantity < 1) {
-      throw new KustomInvariantError('bad-quantity', `variant ${line.variantId} qty=${line.quantity}`)
+      throw new KustomInvariantError('bad-quantity', `line ${ref} qty=${line.quantity}`)
     }
     if (line.grossOere !== line.unitPriceOere * line.quantity) {
-      throw new KustomInvariantError('bad-gross', `variant ${line.variantId}`)
+      throw new KustomInvariantError('bad-gross', `line ${ref}`)
     }
     if (line.discountOere < 0 || line.discountOere > line.grossOere) {
       throw new KustomInvariantError(
         'discount-out-of-range',
-        `variant ${line.variantId} discount=${line.discountOere} gross=${line.grossOere}`,
+        `line ${ref} discount=${line.discountOere} gross=${line.grossOere}`,
       )
     }
     if (line.totalOere !== line.grossOere - line.discountOere) {
-      throw new KustomInvariantError('bad-line-total', `variant ${line.variantId}`)
+      throw new KustomInvariantError('bad-line-total', `line ${ref}`)
     }
     if (line.totalOere < 0) {
-      throw new KustomInvariantError('negative-line-total', `variant ${line.variantId}`)
+      throw new KustomInvariantError('negative-line-total', `line ${ref}`)
     }
   }
 
@@ -319,7 +331,13 @@ export interface LocalOrderMoney {
   subtotal: number
   shipping: number
   total: number
-  items: { variant?: number | null; lineTotal: number; discountAmount?: number | null }[]
+  items: {
+    product?: number | null
+    /** Absent on a line for a product with no variants. */
+    variant?: number | null
+    lineTotal: number
+    discountAmount?: number | null
+  }[]
   discount?: { discountAmount?: number | null } | null
 }
 

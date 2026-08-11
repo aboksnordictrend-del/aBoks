@@ -2,9 +2,24 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { resolvedLineRef } from '@/lib/cart/lineRef'
 
 export interface CartItem {
-  variantId: string
+  /**
+   * The chosen variant, for a product that has colour variants. Absent — genuinely, not as a
+   * placeholder — for a product that has none.
+   *
+   * Optional rather than required so a variant-less product can be a first-class cart line
+   * without a fabricated variant id. Every cart already in a customer's localStorage has one
+   * set, so `cartLineRef` reads those exactly as before and nothing about them changes.
+   */
+  variantId?: string
+  /**
+   * The product itself. Required for a variant-less line, which has no other identity; carried
+   * on a variant line too when the page that added it knew it, and simply absent on lines
+   * persisted before this field existed (where the variant is the identity anyway).
+   */
+  productId?: string
   productSlug: string
   /**
    * The product's own name — "aBoks Mini", "aBoks Vegg", an accessory's title.
@@ -19,11 +34,25 @@ export interface CartItem {
    * the point of display.
    */
   productTitle?: string
+  /** The chosen colour. Empty string for a product with no variants — there is no colour. */
   colorName: string
+  /** Swatch colour. Empty string when there is no variant; the cart then shows no swatch. */
   colorHex: string
+  /** The line's thumbnail: the variant's image, or the product's own for a variant-less line. */
   colorImage: string
   price: number
   qty: number
+}
+
+/**
+ * The stable identity of a cart line: the variant id, or `product-<id>` when there is no
+ * variant. This is the key every store operation takes and the key React renders lists on.
+ *
+ * Re-exported from the store because that is where every caller already looks; the rule
+ * itself lives in @/lib/cart/lineRef, shared with the server.
+ */
+export function cartLineRef(item: Pick<CartItem, 'variantId' | 'productId'>): string {
+  return resolvedLineRef(item)
 }
 
 interface CartState {
@@ -39,9 +68,10 @@ interface CartState {
    */
   promoCode: string | null
   addItem: (item: Omit<CartItem, 'qty'>, qty: number) => void
-  removeItem: (variantId: string) => void
-  incrementItem: (variantId: string) => void
-  decrementItem: (variantId: string) => void
+  /** All three take a line reference — `cartLineRef(item)`, not a bare variant id. */
+  removeItem: (ref: string) => void
+  incrementItem: (ref: string) => void
+  decrementItem: (ref: string) => void
   clearCart: () => void
   setPromoCode: (code: string) => void
   clearPromoCode: () => void
@@ -59,7 +89,8 @@ export const useCartStore = create<CartState>()(
 
       addItem: (item, qty) => {
         set((state) => {
-          const idx = state.items.findIndex((i) => i.variantId === item.variantId)
+          const ref = cartLineRef(item)
+          const idx = state.items.findIndex((i) => cartLineRef(i) === ref)
           if (idx >= 0) {
             return {
               items: state.items.map((i, j) =>
@@ -80,20 +111,20 @@ export const useCartStore = create<CartState>()(
         })
       },
 
-      removeItem: (variantId) =>
-        set((state) => ({ items: state.items.filter((i) => i.variantId !== variantId) })),
+      removeItem: (ref) =>
+        set((state) => ({ items: state.items.filter((i) => cartLineRef(i) !== ref) })),
 
-      incrementItem: (variantId) =>
+      incrementItem: (ref) =>
         set((state) => ({
           items: state.items.map((i) =>
-            i.variantId === variantId ? { ...i, qty: Math.min(99, i.qty + 1) } : i,
+            cartLineRef(i) === ref ? { ...i, qty: Math.min(99, i.qty + 1) } : i,
           ),
         })),
 
-      decrementItem: (variantId) =>
+      decrementItem: (ref) =>
         set((state) => ({
           items: state.items.map((i) =>
-            i.variantId === variantId ? { ...i, qty: Math.max(1, i.qty - 1) } : i,
+            cartLineRef(i) === ref ? { ...i, qty: Math.max(1, i.qty - 1) } : i,
           ),
         })),
 

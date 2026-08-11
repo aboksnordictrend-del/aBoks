@@ -539,3 +539,23 @@ describe('shouldSubmitOnKey', () => {
     }
   })
 })
+
+describe('promo request — a product with no variants', () => {
+  it('sends its product id, and keeps prices and colours out as before', () => {
+    const body = buildValidationRequest('WELCOME10', [
+      { productId: '7', qty: 2, price: 129, colorName: 'x' } as never,
+    ])
+    assert.deepEqual(body.items, [{ productId: '7', quantity: 2 }])
+  })
+
+  it('fingerprints variant-less lines separately from each other', () => {
+    // Keying on a missing variant id would make these two carts look identical.
+    const a = cartSignature([{ productId: '7', qty: 1 } as never])
+    const b = cartSignature([{ productId: '8', qty: 1 } as never])
+    assert.notEqual(a, b)
+  })
+
+  it('keeps a variant line’s fingerprint exactly as it was', () => {
+    assert.equal(cartSignature([{ variantId: '10', qty: 2 } as never]), '10:2')
+  })
+})

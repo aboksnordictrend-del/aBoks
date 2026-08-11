@@ -10,7 +10,8 @@ import type { CheckoutInput, CheckoutLine, CheckoutResult, CheckoutTotals } from
 
 /** Minimal cart-line shape — the store's `CartItem` satisfies it. */
 export interface CheckoutCartItem {
-  variantId: string
+  variantId?: string
+  productId?: string
   qty: number
 }
 
@@ -20,6 +21,10 @@ export interface CheckoutCartItem {
  * Built from scratch rather than by copying and deleting fields, so the store's `price`,
  * `colorName`, `colorHex`, `colorImage` and `productSlug` have no way in. Only the code
  * string is sent for the promo — never the discount the cart displayed.
+ *
+ * One identifier per line: the variant when the line has one, otherwise the product. Lines
+ * with neither are dropped rather than sent — a line the server could not identify would fail
+ * the whole checkout, and such a line cannot be bought in any case.
  */
 export function toCheckoutRequest(
   items: CheckoutCartItem[],
@@ -27,7 +32,13 @@ export function toCheckoutRequest(
 ): CheckoutInput {
   const code = typeof promoCode === 'string' ? promoCode.trim() : ''
   return {
-    items: items.map((item) => ({ variantId: item.variantId, quantity: item.qty })),
+    items: items
+      .filter((item) => item.variantId || item.productId)
+      .map((item) =>
+        item.variantId
+          ? { variantId: item.variantId, quantity: item.qty }
+          : { productId: item.productId as string, quantity: item.qty },
+      ),
     ...(code ? { promoCode: code } : {}),
   }
 }

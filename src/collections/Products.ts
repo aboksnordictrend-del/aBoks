@@ -1,6 +1,19 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, NumberFieldSingleValidation } from 'payload'
 import { computeProductCostPrice } from './hooks/productCost'
 import { cascadeVariantDisplayNames } from './hooks/cascadeVariantDisplayNames'
+
+/**
+ * Whole units, never negative. `min: 0` already covers the lower bound; this adds the integer
+ * rule (there is no half a battery pack) and keeps both messages Norwegian. An empty value is
+ * accepted and read as 0 by @/lib/stock — a product row written before this column existed
+ * has nothing stored, and that must mean "nothing to sell", not "invalid".
+ */
+const validateStock: NumberFieldSingleValidation = (value) => {
+  if (value === null || value === undefined) return true
+  if (!Number.isInteger(value)) return 'Lagerbeholdning må være et helt tall.'
+  if (value < 0) return 'Lagerbeholdning kan ikke være negativ.'
+  return true
+}
 
 async function revalidateProduct(slug: string) {
   const { revalidatePath, revalidateTag } = await import('next/cache')
@@ -82,6 +95,39 @@ export const Products: CollectionConfig = {
       admin: {
         step: 10,
         description: 'Pris i norske kroner (eks. 499)',
+      },
+    },
+    {
+      /**
+       * Stock for a product that has NO Product Variants — an accessory such as a battery
+       * multipack, which is one sellable thing with one count.
+       *
+       * A product WITH variants keeps its stock exactly where it has always been, on each
+       * variant's own «Lagerbeholdning» (`product-variants.inventory`), and this column is
+       * never read for it. The rule is written down once, in @/lib/stock, and every reader
+       * goes through it — there is deliberately no product where both sources are in play.
+       *
+       * The field is hidden in the admin for products that do have variants. That decision
+       * cannot be made by `admin.condition`, which only ever sees the current form's own
+       * values and knows nothing about rows in another collection, so it is made by the field
+       * component below: it asks the API how many variants this product actually has and
+       * shows the input only when the answer is none. Asking the database is what makes it
+       * reliable — a stale flag on the product could drift the moment a variant is added or
+       * deleted, and it would then hide (or offer) the wrong field.
+       */
+      name: 'stock',
+      type: 'number',
+      label: 'Lagerbeholdning',
+      defaultValue: 0,
+      min: 0,
+      validate: validateStock,
+      admin: {
+        step: 1,
+        description:
+          'Antall enheter på lager. Brukes kun for produkter uten fargevarianter — har produktet varianter, styres lageret på hver variant.',
+        components: {
+          Field: '@/components/admin/ProductStockField#default',
+        },
       },
     },
     {

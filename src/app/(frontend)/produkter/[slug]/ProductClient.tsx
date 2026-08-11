@@ -18,6 +18,8 @@ import ProductSupportTrust from '@/components/ProductSupportTrust'
 import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
+import { availableStock, isSoldOut } from '@/lib/stock'
+import { cartLineRef } from '@/store/cart'
 import SaleCountdown from '@/components/SaleCountdown'
 import Stars from '@/components/reviews/Stars'
 
@@ -69,6 +71,12 @@ interface Product {
   tagline: string
   description: string
   price: number
+  /**
+   * The product's own stock. Meaningful only when `variants` is empty — a product WITH
+   * variants is sold from each variant's `inventory` and this is never read for it. The rule
+   * lives in @/lib/stock; this page asks it rather than restating it.
+   */
+  stock: number
   images: { src: string; alt: string }[]
   features: Feature[]
   capacity: Capacity
@@ -164,6 +172,8 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addItem = useCartStore((s) => s.addItem)
+  // Read only to cap what a variant-less product may add — see handleAddToCart.
+  const cartItems = useCartStore((s) => s.items)
 
   useEffect(() => {
     const check = () => setIsNarrow(window.innerWidth < 1100)
@@ -177,6 +187,17 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const selectedVariant = variants.find((v) => v.id === selectedVariantId) ?? variants[0]
   const effectivePrice = saleExpired ? product.price : getEffectivePrice(product.price, product.sale)
   const saleActive = !saleExpired && isSaleActive(product.price, product.sale)
+
+  // Does this product have colours to choose between at all? Everything below branches on
+  // this rather than on `selectedVariant` being falsy, so a variant-less product is a real
+  // buyable state and not an error state.
+  const hasVariants = variants.length > 0
+  // The one stock rule, applied once: the chosen variant's inventory, or — with no variants —
+  // the product's own stock. Nothing else on this page reads either field directly.
+  const stock = availableStock(product, variants, selectedVariant)
+  const soldOut = isSoldOut(stock)
+  /** Upper bound on the stepper. Unchanged (99) for variant products; capped by stock for the rest. */
+  const maxQty = hasVariants ? 99 : Math.min(99, stock)
 
   // Capacity-derived content — keeps AAA references correct per product
   const hasAAA = product.capacity.aaa > 0
@@ -202,10 +223,11 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
 
   // view_item: fires on initial mount and whenever the selected variant changes
   useEffect(() => {
-    if (!selectedVariant) return
+    if (hasVariants && !selectedVariant) return
     trackViewItem({
-      variantId: selectedVariant.id,
-      variantName: selectedVariant.name,
+      // The line reference, so a variant-less product reports itself rather than an empty id.
+      variantId: selectedVariant?.id ?? cartLineRef({ productId: product.id }),
+      variantName: selectedVariant?.name ?? '',
       productTitle: product.title,
       price: effectivePrice,
     })
@@ -219,28 +241,43 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const displayImage = thumbImages[activeImageIdx]?.src ?? thumbImages[0]?.src ?? ''
 
   const handleAddToCart = () => {
-    if (!selectedVariant) return
-    addItem(
-      {
-        variantId: selectedVariant.id,
-        productSlug: product.slug,
-        // The product's real name, straight from the CMS document this page was built from —
-        // so the cart line says "aBoks Vegg" or an accessory's own title, not a guess.
-        productTitle: product.title,
-        colorName: selectedVariant.name,
-        colorHex: selectedVariant.colorHex,
-        colorImage: selectedVariant.image,
-        price: effectivePrice,
-      },
-      qty,
-    )
+    // A product with colours needs one chosen; one without is buyable as itself.
+    if (hasVariants && !selectedVariant) return
+    if (soldOut) return
+
+    const line = {
+      // Only ever set when there really is a variant — never a placeholder id.
+      ...(selectedVariant ? { variantId: selectedVariant.id } : {}),
+      productId: product.id,
+      productSlug: product.slug,
+      // The product's real name, straight from the CMS document this page was built from —
+      // so the cart line says "aBoks Vegg" or an accessory's own title, not a guess.
+      productTitle: product.title,
+      colorName: selectedVariant?.name ?? '',
+      colorHex: selectedVariant?.colorHex ?? '',
+      // The product's own picture stands in when there is no colour to picture.
+      colorImage: selectedVariant?.image || product.images[0]?.src || '',
+      price: effectivePrice,
+    }
+
+    // For a variant-less product the cart must never end up holding more than exists, so what
+    // is already on the line counts towards the limit. Variant products keep their existing
+    // behaviour — the cart has never blocked on variant inventory and the checkout still
+    // reports it rather than refusing it.
+    const alreadyInCart = hasVariants
+      ? 0
+      : (cartItems.find((i) => cartLineRef(i) === cartLineRef(line))?.qty ?? 0)
+    const addable = hasVariants ? qty : Math.max(0, Math.min(qty, stock - alreadyInCart))
+    if (addable <= 0) return
+
+    addItem(line, addable)
     // add_to_cart: fires after item is added to cart
     trackAddToCart({
-      variantId: selectedVariant.id,
-      variantName: selectedVariant.name,
+      variantId: selectedVariant?.id ?? cartLineRef({ productId: product.id }),
+      variantName: selectedVariant?.name ?? '',
       productTitle: product.title,
       price: effectivePrice,
-      quantity: qty,
+      quantity: addable,
     })
     setToastVisible(true)
     setTimeout(() => setToastVisible(false), 1700)
@@ -349,7 +386,8 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                 </div>
               )}
 
-              {/* Color selector */}
+              {/* Color selector — omitted entirely for a product that has no variants */}
+              {hasVariants && (
               <div style={{ marginBottom: '26px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1d17' }}>Farge:</span>
@@ -376,19 +414,22 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   })}
                 </div>
               </div>
+              )}
 
-              {/* Lagerstatus — lest fra selectedVariant.inventory (state, ikke URL) */}
-              {selectedVariant && (
+              {/* Lagerstatus — same three states as before, now fed by the shared stock rule:
+                  the chosen variant's inventory, or the product's own stock when it has no
+                  variants. Identical markup and wording either way. */}
+              {(selectedVariant || !hasVariants) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-                  {selectedVariant.inventory > 10 ? (
+                  {stock > 10 ? (
                     <>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#5f8253', flexShrink: 0, display: 'inline-block' }} />
                       <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#3a3f33' }}>På lager</span>
                     </>
-                  ) : selectedVariant.inventory > 0 ? (
+                  ) : stock > 0 ? (
                     <>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#5f8253', flexShrink: 0, display: 'inline-block' }} />
-                      <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#3a3f33' }}>På lager: {selectedVariant.inventory} stk.</span>
+                      <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#3a3f33' }}>På lager: {stock} stk.</span>
                     </>
                   ) : (
                     <>
@@ -409,33 +450,31 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   <span style={{ minWidth: '42px', textAlign: 'center', fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '16px', color: '#1a1d17' }}>
                     {qty}
                   </span>
-                  <button onClick={() => setQty((q) => Math.min(99, q + 1))} aria-label="Flere"
+                  <button onClick={() => setQty((q) => Math.max(1, Math.min(maxQty, q + 1)))} aria-label="Flere"
                     style={{ width: '48px', height: '50px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#1a1d17', lineHeight: 1 }}>
                     +
                   </button>
                 </div>
                 <button
                   onClick={handleAddToCart}
-                  disabled={!selectedVariant || selectedVariant.inventory === 0}
+                  disabled={(hasVariants && !selectedVariant) || soldOut}
                   style={{
                     flex: 1, minWidth: '200px', display: 'inline-flex', alignItems: 'center',
                     justifyContent: 'center', gap: '10px', padding: '17px 32px', borderRadius: '999px',
-                    background: selectedVariant?.inventory === 0 ? '#c8c0b0' : '#39402c',
+                    background: soldOut ? '#c8c0b0' : '#39402c',
                     color: '#faf6ee', fontFamily: 'var(--font-manrope)',
                     fontWeight: 600, fontSize: '15px', border: 'none',
-                    cursor: selectedVariant?.inventory === 0 ? 'not-allowed' : 'pointer',
+                    cursor: soldOut ? 'not-allowed' : 'pointer',
                     transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
                   }}
                   onMouseEnter={(e) => {
-                    if (selectedVariant?.inventory !== 0)
-                      (e.currentTarget as HTMLButtonElement).style.background = '#2a3020'
+                    if (!soldOut) (e.currentTarget as HTMLButtonElement).style.background = '#2a3020'
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background =
-                      selectedVariant?.inventory === 0 ? '#c8c0b0' : '#39402c'
+                    (e.currentTarget as HTMLButtonElement).style.background = soldOut ? '#c8c0b0' : '#39402c'
                   }}
                 >
-                  {selectedVariant?.inventory === 0 ? 'Utsolgt' : 'Legg i handlekurv'}
+                  {soldOut ? 'Utsolgt' : 'Legg i handlekurv'}
                 </button>
               </div>
 
@@ -763,7 +802,8 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
         >
           <div style={{ lineHeight: 1.2 }}>
             <div style={{ fontFamily: 'var(--font-manrope)', fontSize: '11px', color: '#6b6f63' }}>
-              aBoks · {selectedVariant?.name}
+              {/* Unchanged for a product with colours; a product without one names itself. */}
+              {selectedVariant ? `aBoks · ${selectedVariant.name}` : product.title}
             </div>
             {saleActive ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -782,7 +822,7 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
           </div>
           <button
             onClick={handleAddToCart}
-            disabled={!selectedVariant || selectedVariant.inventory === 0}
+            disabled={(hasVariants && !selectedVariant) || soldOut}
             style={{
               flex: 1,
               display: 'inline-flex',
@@ -790,16 +830,16 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
               justifyContent: 'center',
               padding: '15px',
               borderRadius: '999px',
-              background: selectedVariant?.inventory === 0 ? '#c8c0b0' : '#39402c',
+              background: soldOut ? '#c8c0b0' : '#39402c',
               color: '#faf6ee',
               fontFamily: 'var(--font-manrope)',
               fontWeight: 600,
               fontSize: '15px',
               border: 'none',
-              cursor: selectedVariant?.inventory === 0 ? 'not-allowed' : 'pointer',
+              cursor: soldOut ? 'not-allowed' : 'pointer',
             }}
           >
-            {selectedVariant?.inventory === 0 ? 'Utsolgt' : 'Legg i handlekurv'}
+            {soldOut ? 'Utsolgt' : 'Legg i handlekurv'}
           </button>
         </div>
       )}

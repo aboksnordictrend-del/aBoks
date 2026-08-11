@@ -186,6 +186,33 @@ describe('parsePromoValidationRequest', () => {
     assert.equal(parsed.value.items[0].quantity as unknown, 'two')
   })
 
+  it('accepts a productId line — a product with no variants', () => {
+    const parsed = parsePromoValidationRequest({
+      code: 'X',
+      items: [{ productId: 7, quantity: 2, price: 129, colorName: 'Gratis' }],
+    })
+    assert.equal(parsed.ok, true)
+    if (!parsed.ok) throw new Error('unreachable')
+    assert.deepEqual(parsed.value.items, [{ productId: '7', quantity: 2 }])
+  })
+
+  it('lets the variant win when a line carries both identifiers', () => {
+    const parsed = parsePromoValidationRequest({
+      code: 'X',
+      items: [{ variantId: '10', productId: '1', quantity: 1 }],
+    })
+    assert.equal(parsed.ok, true)
+    if (!parsed.ok) throw new Error('unreachable')
+    assert.deepEqual(parsed.value.items, [{ variantId: '10', quantity: 1 }])
+  })
+
+  it('rejects a line with no usable identifier at all', () => {
+    for (const item of [{ quantity: 1 }, { productId: '  ', quantity: 1 }, { variantId: null, quantity: 1 }]) {
+      const parsed = parsePromoValidationRequest({ code: 'X', items: [item] })
+      assert.equal(parsed.ok, false, `should reject ${JSON.stringify(item)}`)
+    }
+  })
+
   it('rejects malformed shapes', () => {
     const bad: unknown[] = [
       null,

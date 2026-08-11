@@ -4,6 +4,8 @@ import { getPayloadClient } from '@/lib/payload'
 import { allocateOrderNumber } from '@/lib/orderNumber'
 import { syncCustomerForOrderSafe } from '@/lib/customers'
 import { colorNameFromLineName } from '@/lib/orderLineName'
+import { parseLineRef } from '@/lib/cart/lineRef'
+import { deductOrderStock } from '@/lib/orders/stockDeduction'
 import { registerPromoUsageOnce, type RegisterUsageResult } from '@/lib/promo/usageRegistration'
 import { resolvePromoSnapshot } from '@/lib/promo/webhookPromo'
 import { sendOrderPurchaseEvent } from '@/lib/meta/capi/purchase'
@@ -224,14 +226,24 @@ export async function POST(req: NextRequest) {
           orderNumber,
           kustomOrderId: orderId,
           items: physicalLines.map(l => {
-            const variantId = parseInt(l.reference, 10)
+            // The reference is the line reference we set at CREATE_ORDER: a bare variant id,
+            // or `product-<id>` for a product that has no variants. Reading it back is what
+            // lets a reconstructed order still point at the right row to decrement.
+            const ref = parseLineRef(l.reference)
+            const variantId = ref?.kind === 'variant' ? Number(ref.variantId) : NaN
+            const productId = ref?.kind === 'product' ? Number(ref.productId) : NaN
             return {
               ...(Number.isFinite(variantId) ? { variant: variantId } : {}),
-              // The Kustom line name is the variant's full display name; both fields are
+              ...(Number.isFinite(productId) ? { product: productId } : {}),
+              // The Kustom line name is the line's full display name; both fields are
               // re-resolved from the variant by the orders snapshot hook when the reference
               // is usable, so these are only the last-resort values.
               displayName: l.name.trim(),
-              variantName: colorNameFromLineName(l.name),
+              // Only a variant line has a colour. `colorNameFromLineName` falls back to the
+              // whole name when there is no separator, which for a variant-less product would
+              // put its title in «Fargenavn» — and then make the snapshot hook compose a
+              // display name of "Title – Title".
+              ...(Number.isFinite(variantId) ? { variantName: colorNameFromLineName(l.name) } : {}),
               quantity: l.quantity,
               unitPrice: l.unit_price / 100,
               // Pre-discount line value, with the promo share recorded alongside it — the
@@ -285,41 +297,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Deduct inventory — run regardless of create vs. update path
-    const itemsToProcess = confirmedOrder.items ?? []
-    for (const item of itemsToProcess) {
-      if (!item.variant || !item.quantity) continue
-
-      const variantId =
-        typeof item.variant === 'object'
-          ? String((item.variant as { id: number }).id)
-          : String(item.variant)
-
-      try {
-        const variant = await payload.findByID({
-          collection: 'product-variants',
-          id: Number(variantId),
-        })
-
-        const newInventory = Math.max(0, (variant.inventory ?? 0) - item.quantity)
-
-        await payload.update({
-          collection: 'product-variants',
-          id: Number(variantId),
-          data: { inventory: newInventory },
-        })
-
-        console.log(
-          `[kustom-webhook] inventory: variant=${variantId} (${variant.name ?? variant.sku}) ${variant.inventory} → ${newInventory}`,
-        )
-      } catch (invErr) {
-        console.error(
-          '[kustom-webhook] inventory update failed for variant',
-          variantId,
-          invErr instanceof Error ? invErr.message : invErr,
-        )
-      }
-    }
+    // Deduct stock — run regardless of create vs. update path, and only here: an
+    // already-confirmed re-delivery returned far above, which is what keeps this from running
+    // twice for one order. A line with a variant takes it from the variant's inventory
+    // exactly as before; a line for a product with no variants takes it from the product's
+    // own stock. See @/lib/orders/stockDeduction.
+    await deductOrderStock(payload, confirmedOrder.items ?? [], {
+      info: (message) => console.log(`[kustom-webhook] ${message}`),
+      error: (message) => console.error(`[kustom-webhook] ${message}`),
+    })
 
     // The order is committed, the customer is linked and the stock is deducted. Only now —
     // with nothing left that a slow Meta could delay or an unexpected Meta failure could skip

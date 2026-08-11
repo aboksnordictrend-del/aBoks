@@ -1,6 +1,7 @@
 import type { Payload, Where } from 'payload'
 import { formatPrice } from '@/lib/format'
 import { oereToKr, toOere, type PricedCart, type PricedLine } from '@/lib/cartPricing'
+import { resolvedLineRef } from '@/lib/cart/lineRef'
 import {
   DISCOUNT_TYPES,
   USAGE_MODES,
@@ -307,14 +308,16 @@ export async function validatePromoCode(
   const requestedOere = grossDiscountOere(discountType, discountValue, eligibleSubtotalOere)
   const discountAmountOere = Math.max(0, Math.min(requestedOere, eligibleSubtotalOere))
 
+  // Keyed by the line reference, not the variant id: a variant-less product line has no
+  // variant id, and keying on one would collapse every such line onto the same empty key.
   const allocation = allocateDiscount(
-    eligibleLines.map((l) => ({ key: l.variantId, amountOere: l.lineTotalOere })),
+    eligibleLines.map((l) => ({ key: resolvedLineRef(l), amountOere: l.lineTotalOere })),
     discountAmountOere,
   )
-  const discountByVariant = new Map(allocation.entries.map((e) => [e.key, e.discountOere]))
+  const discountByLine = new Map(allocation.entries.map((e) => [e.key, e.discountOere]))
 
   const lineDiscounts: PromoLineDiscount[] = eligibleLines.map((line) => {
-    const discountOere = discountByVariant.get(line.variantId) ?? 0
+    const discountOere = discountByLine.get(resolvedLineRef(line)) ?? 0
     return {
       variantId: line.variantId,
       productId: line.productId,

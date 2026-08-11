@@ -11,6 +11,8 @@
  * to the customer is a number the server sent back, copied through unchanged.
  */
 
+import { resolvedLineRef } from '@/lib/cart/lineRef'
+
 /** The trusted figures the endpoint returns. Display-only — never recomputed, never stored. */
 export interface PromoTotals {
   code: string
@@ -27,7 +29,10 @@ export interface PromoTotals {
 
 /** Minimal cart-line shape this module needs (the store's `CartItem` satisfies it). */
 export interface PromoCartItem {
-  variantId: string
+  /** Set for a variant line; absent for a product that has no variants. */
+  variantId?: string
+  /** Set for a variant-less line — its only identity. */
+  productId?: string
   qty: number
 }
 
@@ -53,16 +58,19 @@ const rateLimitedIn = (seconds: number) => `For mange forsøk. Prøv igjen om ${
 
 export interface PromoValidationRequestBody {
   code: string
-  items: { variantId: string; quantity: number }[]
+  items: { variantId?: string; productId?: string; quantity: number }[]
   email?: string
 }
 
 /**
- * The exact body sent to the endpoint: the code, and one `{ variantId, quantity }` per line.
+ * The exact body sent to the endpoint: the code, and one identifier plus a quantity per line.
  *
  * Built from scratch rather than by copying and deleting fields, so a price, name or total
  * on the cart item cannot leak into the request by accident — the store's `CartItem` carries
  * `price`, `colorName`, `colorImage` and `colorHex`, and none of them have a way in here.
+ *
+ * The identifier is the variant when the line has one, otherwise the product. A line with
+ * neither is dropped: the server could not price it, and it cannot be bought either.
  */
 export function buildValidationRequest(
   code: string,
@@ -71,7 +79,13 @@ export function buildValidationRequest(
 ): PromoValidationRequestBody {
   const body: PromoValidationRequestBody = {
     code: code.trim(),
-    items: items.map((item) => ({ variantId: item.variantId, quantity: item.qty })),
+    items: items
+      .filter((item) => item.variantId || item.productId)
+      .map((item) =>
+        item.variantId
+          ? { variantId: item.variantId, quantity: item.qty }
+          : { productId: item.productId as string, quantity: item.qty },
+      ),
   }
   // Only ever included when the surrounding flow genuinely has an email already; the cart
   // never asks for one, and none is stored for this purpose.
@@ -80,13 +94,16 @@ export function buildValidationRequest(
 }
 
 /**
- * Stable fingerprint of what the cart contains. Two carts with the same variants and
- * quantities produce the same string regardless of line order, so reordering does not
- * trigger a pointless revalidation — but any quantity or membership change does.
+ * Stable fingerprint of what the cart contains. Two carts with the same lines and quantities
+ * produce the same string regardless of line order, so reordering does not trigger a pointless
+ * revalidation — but any quantity or membership change does.
+ *
+ * Lines are identified by reference, so a variant-less product is fingerprinted as itself
+ * rather than collapsing onto `undefined:` together with every other such line.
  */
 export function cartSignature(items: PromoCartItem[]): string {
   return items
-    .map((item) => `${item.variantId}:${item.qty}`)
+    .map((item) => `${resolvedLineRef(item)}:${item.qty}`)
     .sort()
     .join('|')
 }

@@ -44,9 +44,16 @@ export type PromoFailureReason =
   /** The usage/code lookup itself failed — a transient error, worth retrying. */
   | 'lookup_failed'
 
-/** One cart line's share of the discount. Present for eligible lines only. */
+/**
+ * One cart line's share of the discount. Present for eligible lines only.
+ *
+ * `variantId` is null for a product that has no variants — the line is then identified by
+ * `productId` alone. Callers must key these by `resolvedLineRef({ variantId, productId })`
+ * (see @/lib/cart/lineRef) rather than by the variant id, or a variant-less line would
+ * silently lose its allocation.
+ */
 export interface PromoLineDiscount {
-  variantId: string
+  variantId: string | null
   productId: string
   discountOere: number
   /** The same amount in kroner, for the stored order snapshot. */

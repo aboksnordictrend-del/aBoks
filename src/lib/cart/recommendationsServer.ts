@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { getPayloadClient } from '@/lib/payload'
 import { getEffectivePrice, isSaleActive } from '@/lib/pricing'
+import { productStock, variantStock } from '@/lib/stock'
 import {
   EMPTY_CATALOGUE,
   isAddableRecommendation,
@@ -64,7 +65,11 @@ interface RawRecommendationProduct {
   salePrice: number | null
   saleStartDate: string | null
   saleEndDate: string | null
+  /** Decided before sold-out colours are dropped, so "no colours" stays distinguishable. */
+  hasVariants: boolean
   variants: RecommendationVariant[]
+  /** The product's own stock — read only when `hasVariants` is false. */
+  stock: number
 }
 
 interface RawCatalogue {
@@ -141,24 +146,30 @@ const loadRawCatalogue = unstable_cache(
     })
 
     const variantsByProduct = new Map<string, RecommendationVariant[]>()
+    // Every product that has at least one variant row, sold out or not. Recorded before the
+    // filter below, because "all colours sold out" and "no colours at all" are different
+    // states that must not collapse into the same empty list.
+    const productsWithVariants = new Set<string>()
     for (const variant of variantDocs.docs) {
-      // Sold-out variants are dropped, matching the product page, where inventory 0 disables
-      // the button and reads «Utsolgt». A card whose every colour is gone is then left with
-      // no variants and fails isAddableRecommendation — it is not shown at all.
-      if ((variant.inventory ?? 0) <= 0) continue
       const rawProduct = (variant as { product?: unknown }).product
       const productId =
         rawProduct && typeof rawProduct === 'object'
           ? String((rawProduct as { id?: unknown }).id ?? '')
           : String(rawProduct ?? '')
       if (!productId) continue
+      productsWithVariants.add(productId)
+
+      // Sold-out variants are dropped, matching the product page, where inventory 0 disables
+      // the button and reads «Utsolgt». A card whose every colour is gone is then left with
+      // no variants and fails isAddableRecommendation — it is not shown at all.
+      if (variantStock(variant) <= 0) continue
       const list = variantsByProduct.get(productId) ?? []
       list.push({
         id: String(variant.id),
         name: variant.name ?? '',
         colorHex: variant.colorHex ?? '#000000',
         image: mediaUrl((variant as { image?: unknown }).image),
-        inventory: variant.inventory ?? 0,
+        inventory: variantStock(variant),
       })
       variantsByProduct.set(productId, list)
     }
@@ -183,7 +194,9 @@ const loadRawCatalogue = unstable_cache(
         salePrice: doc.salePrice ?? null,
         saleStartDate: doc.saleStartDate ?? null,
         saleEndDate: doc.saleEndDate ?? null,
+        hasVariants: productsWithVariants.has(String(doc.id)),
         variants,
+        stock: productStock(doc),
       }
     })
 
@@ -244,9 +257,12 @@ export async function loadCartRecommendations(
       imageAlt: item.imageAlt,
       price,
       compareAtPrice: onSale ? item.price : null,
+      hasVariants: item.hasVariants,
       variants: item.variants,
+      stock: item.stock,
       // A single colour is the only case where the choice is unambiguous. With several, the
-      // card shows swatches and adds nothing until the customer picks one.
+      // card shows swatches and adds nothing until the customer picks one. A product with no
+      // colours has nothing to default to and needs no choice at all.
       defaultVariantId: item.variants.length === 1 ? item.variants[0].id : null,
     }
 

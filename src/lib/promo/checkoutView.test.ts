@@ -170,3 +170,37 @@ describe('displayTotalsFor', () => {
     assert.equal(totals.total, 518)
   })
 })
+
+describe('toCheckoutRequest — a product with no variants', () => {
+  it('sends its product id instead of a variant id', () => {
+    const request = toCheckoutRequest(
+      [{ productId: '7', qty: 2 } as never],
+      null,
+    )
+    assert.deepEqual(request.items, [{ productId: '7', quantity: 2 }])
+  })
+
+  it('sends one identifier per line in a mixed cart, variant first', () => {
+    const request = toCheckoutRequest(
+      [
+        { variantId: '10', qty: 1 } as never,
+        { productId: '7', qty: 2 } as never,
+      ],
+      null,
+    )
+    assert.deepEqual(request.items, [
+      { variantId: '10', quantity: 1 },
+      { productId: '7', quantity: 2 },
+    ])
+  })
+
+  it('never sends both identifiers for one line', () => {
+    const request = toCheckoutRequest([{ variantId: '10', productId: '1', qty: 1 } as never], null)
+    assert.deepEqual(request.items, [{ variantId: '10', quantity: 1 }])
+  })
+
+  it('drops a line that cannot be identified rather than failing the whole checkout', () => {
+    const request = toCheckoutRequest([{ qty: 1 } as never], null)
+    assert.deepEqual(request.items, [])
+  })
+})

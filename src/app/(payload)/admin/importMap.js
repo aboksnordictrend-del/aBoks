@@ -1,3 +1,4 @@
+import { default as default_32de1930f2599294908bbcb5fe2711ad } from '@/components/admin/ProductStockField'
 import { default as default_b00d41c867b522ef3c42210cfd96ba24 } from '@/components/admin/ResendShippingEmail'
 import { default as default_f66c89f6032ef643e074b39a9575a6eb } from '@/components/admin/SendReviewInvitation'
 import { default as default_8e500b3aa60f187de05fcfb9f2454b83 } from '@/components/admin/partner/PartnerStatistics'
@@ -16,6 +17,7 @@ import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 
 /** @type import('payload').ImportMap */
 export const importMap = {
+  "@/components/admin/ProductStockField#default": default_32de1930f2599294908bbcb5fe2711ad,
   "@/components/admin/ResendShippingEmail#default": default_b00d41c867b522ef3c42210cfd96ba24,
   "@/components/admin/SendReviewInvitation#default": default_f66c89f6032ef643e074b39a9575a6eb,
   "@/components/admin/partner/PartnerStatistics#default": default_8e500b3aa60f187de05fcfb9f2454b83,

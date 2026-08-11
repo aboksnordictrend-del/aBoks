@@ -35,8 +35,8 @@ export const MAX_CART_LINES = 50
 export const MAX_CODE_LENGTH = 64
 /** RFC 5321 maximum length of an email address. */
 export const MAX_EMAIL_LENGTH = 254
-/** Variant ids are short numeric strings; this only bounds abuse. */
-const MAX_VARIANT_ID_LENGTH = 64
+/** Variant and product ids are short numeric strings; this only bounds abuse. */
+const MAX_LINE_ID_LENGTH = 64
 /** Rejects a multi-megabyte body before JSON.parse ever sees it. */
 const MAX_BODY_BYTES = 16_384
 
@@ -106,8 +106,8 @@ export interface PromoEndpointResult {
 /**
  * Explicit parser — no schema library, because the project has none and this shape is small.
  *
- * It does not sanitise the client's object; it BUILDS A NEW ONE containing only `variantId`
- * and `quantity`. Anything else the client sends (`price`, `lineTotal`, `discountAmount`,
+ * It does not sanitise the client's object; it BUILDS A NEW ONE containing only one
+ * identifier (`variantId` or `productId`) and `quantity`. Anything else the client sends (`price`, `lineTotal`, `discountAmount`,
  * `total`, product names, eligibility flags…) is structurally incapable of reaching the
  * pricing or promo services — there is no code path that reads it. That is a stronger
  * guarantee than rejecting a blacklist of known-dangerous field names, so unknown keys are
@@ -142,22 +142,33 @@ export function parsePromoValidationRequest(body: unknown): ParseResult {
   if (rawItems.length === 0) return { ok: false, message: 'Handlekurven er tom.' }
   if (rawItems.length > MAX_CART_LINES) return { ok: false, message: 'Handlekurven har for mange varelinjer.' }
 
+  /** A usable id, or null. Rejects the wrong type, blanks and anything oversized. */
+  const readId = (value: unknown): string | null => {
+    if (typeof value !== 'string' && typeof value !== 'number') return null
+    const id = String(value).trim()
+    if (!id || id.length > MAX_LINE_ID_LENGTH) return null
+    return id
+  }
+
   const items: CartLineInput[] = []
   for (const raw of rawItems) {
     if (!isRecord(raw)) return { ok: false, message: 'Ugyldig handlekurv.' }
 
-    const id = raw.variantId
-    if (typeof id !== 'string' && typeof id !== 'number') {
-      return { ok: false, message: 'Ugyldig handlekurv.' }
-    }
-    const variantId = String(id).trim()
-    if (!variantId || variantId.length > MAX_VARIANT_ID_LENGTH) {
+    // Exactly one identifier per line: the variant when there is one, otherwise the product
+    // (which is how a product with no variants at all is named). A line carrying both is
+    // read as a variant line — the same precedence priceCart applies.
+    const variantId = raw.variantId === undefined ? null : readId(raw.variantId)
+    const productId = raw.productId === undefined ? null : readId(raw.productId)
+    if (!variantId && !productId) {
       return { ok: false, message: 'Ugyldig handlekurv.' }
     }
 
     // Deliberately unvalidated here — priceCart() decides. Cast because the shared input type
     // promises a number; anything else falls out there as `invalid_quantity`.
-    items.push({ variantId, quantity: raw.quantity as number })
+    items.push({
+      ...(variantId ? { variantId } : { productId: productId as string }),
+      quantity: raw.quantity as number,
+    })
   }
 
   const rawEmail = body.email
@@ -195,6 +206,10 @@ const CART_FAILURE_STATUS: Record<CartPricingFailureReason, number> = {
   product_not_found: 409,
   product_unavailable: 409,
   invalid_price: 409,
+  // Both mean "the cart no longer matches the catalogue" — the customer must change it, but
+  // the request itself was well formed, which is exactly what 409 is for here.
+  variant_required: 409,
+  insufficient_stock: 409,
   lookup_failed: 503,
 }
 

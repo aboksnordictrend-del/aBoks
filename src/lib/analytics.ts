@@ -1,4 +1,5 @@
 import { purchaseEventId } from '@/lib/meta/capi/eventId'
+import { resolvedLineRef } from '@/lib/cart/lineRef'
 
 declare global {
   interface Window {
@@ -24,7 +25,9 @@ export interface GA4Item {
 
 // Minimal shape needed from CartItem — avoids importing the 'use client' store
 interface CartLikeItem {
-  variantId: string
+  /** Absent for a product that has no variants; `productId` then identifies the line. */
+  variantId?: string
+  productId?: string
   colorName: string
   price: number
   qty: number
@@ -48,7 +51,10 @@ function push(
 
 export function cartItemToGA4(item: CartLikeItem): GA4Item {
   return {
-    item_id: item.variantId,
+    // The line's own reference — the variant id as it has always been, or `product-<id>` for
+    // a product with no variants. Reporting an empty id for those would merge every one of
+    // them into a single GA4 item row.
+    item_id: resolvedLineRef(item),
     item_name: 'aBoks',
     item_variant: item.colorName,
     price: item.price,
