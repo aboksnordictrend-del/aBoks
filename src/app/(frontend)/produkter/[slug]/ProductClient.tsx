@@ -109,13 +109,44 @@ interface Props {
 }
 
 
-const TRUST = [
+/** True of anything we sell: shipping, returns, dispatch. Shown on every product page. */
+const TRUST_UNIVERSAL = [
   'Fast frakt 69 kr (fri frakt over kr 650)',
   '100 dagers åpent kjøp',
   'Sendes fra Norge innen 1–3 virkedager',
+]
+
+/**
+ * True only of an aBoks we make ourselves. A third-party accessory — a pack of batteries —
+ * is neither printed in Norway from PLA Matte nor positioned as a gift, so claiming either
+ * on its page would simply be false.
+ */
+const TRUST_ABOKS_ONLY = [
   'Laget i Norge av biobasert PLA Matte',
   'En perfekt gave til noen du er glad i',
 ]
+
+/** The full list, in its original order — unchanged for every product in Produkter. */
+const TRUST = [...TRUST_UNIVERSAL, ...TRUST_ABOKS_ONLY]
+
+/**
+ * The heading above the feature cards. The cards themselves are CMS content and are never
+ * touched; only the section's own framing changes, because "Hvorfor aBoks" cannot introduce
+ * a product that is not an aBoks.
+ */
+const FEATURE_SECTION_COPY = {
+  products: {
+    // Rendered uppercase by CSS, so this reads "HVORFOR ABOKS" on screen.
+    eyebrow: 'Hvorfor aBoks',
+    heading: 'Derfor velger kunder aBoks',
+    subheading: 'Små detaljer som gjør hverdagen enklere.',
+  },
+  accessories: {
+    eyebrow: 'Produktfordeler',
+    heading: 'Produktfordeler',
+    subheading: 'Egenskaper og fordeler ved produktet.',
+  },
+} as const
 
 /** `href` is null for products that have no page yet — those images stay non-clickable. */
 const FUTURE: { name: string; desc: string; image: string; href: string | null }[] = [
@@ -208,15 +239,22 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const maxQty = hasVariants ? 99 : Math.min(99, stock)
 
   /**
-   * The green capacity band answers "how many batteries fit in it", which is a question only
-   * an aBoks has. An accessory (a battery multipack, say) has no compartments, so the band
-   * rendered as an empty heading over nothing.
+   * Is this a Tilbehør page?
    *
-   * Keyed on the CMS section rather than on the capacity numbers being zero: an aBoks whose
-   * capacity has not been filled in yet is a data gap to fix, not a product that should
-   * quietly lose its band.
+   * The single switch behind every aBoks-specific piece of this page: the capacity band, the
+   * product video, the two trust lines that are only true of something we make ourselves, and
+   * the framing above the feature cards. Each of those is about the *product's own* nature,
+   * not about whether some field happens to be filled in — so all four read this one flag
+   * rather than guessing from empty data. An aBoks whose capacity or video has not been
+   * entered yet is a data gap to fix, not a product that should quietly lose its sections.
+   *
+   * `accessories` is the value stored behind the «Tilbehør» label in the Products collection,
+   * so this covers every accessory published from now on with no further code change.
    */
-  const showsCapacityBand = product.section !== 'accessories'
+  const isAccessory = product.section === 'accessories'
+
+  const trustSignals = isAccessory ? TRUST_UNIVERSAL : TRUST
+  const featureCopy = isAccessory ? FEATURE_SECTION_COPY.accessories : FEATURE_SECTION_COPY.products
 
   // Capacity-derived content — keeps AAA references correct per product
   const hasAAA = product.capacity.aaa > 0
@@ -505,9 +543,10 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                 {product.description}
               </p>
 
-              {/* Trust signals */}
+              {/* Trust signals — the two aBoks-specific claims are dropped from the list
+                  itself for Tilbehør, so no empty row or gap is left in their place. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '22px 0', borderTop: '1px solid #e7e2d4', borderBottom: '1px solid #e7e2d4', marginBottom: '30px' }}>
-                {TRUST.map((t) => (
+                {trustSignals.map((t) => (
                   <div key={t} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5f8253" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M20 6L9 17l-5-5" />
@@ -563,8 +602,8 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
 
         {/* CAPACITY BAND — Tilbehør has no compartments to count, so the whole band is
             omitted for it. The <section> carries its own background and padding, so nothing
-            is left behind and the video section below simply moves up. */}
-        {showsCapacityBand && (
+            is left behind and the section below simply moves up. */}
+        {!isAccessory && (
         <section style={{ background: '#39402c', padding: 'clamp(64px,8vw,104px) 0' }}>
           <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
             <div style={{ textAlign: 'center', maxWidth: '620px', margin: '0 auto 56px' }}>
@@ -588,7 +627,12 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
         </section>
         )}
 
-        {/* VIDEO */}
+        {/* VIDEO — omitted entirely for Tilbehør, wrapper included. Without a film the block
+            falls back to `VideoPlaceholder`, which is a promise of a video to come; that is
+            right for an aBoks we are still filming and wrong for a third-party accessory that
+            will never have one. The <section> owns its own padding, so nothing is left behind
+            and the features below move straight up. */}
+        {!isAccessory && (
         <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0' }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '0 clamp(20px,5vw,48px)' }}>
             {selectedVariant?.videoUrl ? (
@@ -642,32 +686,35 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
             )}
           </div>
         </section>
+        )}
 
         {/* FEATURES */}
         {product.features.length > 0 && (
           <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0' }}>
             <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
-              {/* Section header */}
+              {/* Section header — the only part that differs by section. Same markup, same
+                  styles, same spacing; only the three strings change. See
+                  FEATURE_SECTION_COPY. */}
               <div style={{ textAlign: 'center', maxWidth: '560px', margin: '0 auto clamp(44px,6vw,68px)' }}>
                 <p style={{
                   fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px',
                   letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px',
                 }}>
-                  Hvorfor aBoks
+                  {featureCopy.eyebrow}
                 </p>
                 <h2 style={{
                   fontFamily: 'var(--font-cormorant)', fontWeight: 500,
                   fontSize: 'clamp(30px,3.8vw,48px)', letterSpacing: '-0.02em', lineHeight: 1.07,
                   color: '#1a1d17', margin: '0 0 18px',
                 }}>
-                  Derfor velger kunder aBoks
+                  {featureCopy.heading}
                 </h2>
                 <p style={{
                   fontFamily: 'var(--font-manrope)', fontSize: '16px', lineHeight: 1.65,
                   color: '#6b6f63', margin: 0,
                 }}>
-                  Små detaljer som gjør hverdagen enklere.
+                  {featureCopy.subheading}
                 </p>
               </div>
 
