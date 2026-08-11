@@ -154,18 +154,24 @@ describe('Tilbehør — the product video', () => {
 describe('Tilbehør — the feature section', () => {
   it('is framed as Produktfordeler rather than as an aBoks pitch', () => {
     const html = render(accessory, [])
-    assert.ok(html.includes('Produktfordeler'), 'eyebrow and heading both read Produktfordeler')
-    assert.ok(html.includes('Egenskaper og fordeler ved produktet.'))
+    assert.ok(html.includes('Egenskaper'), 'eyebrow')
+    assert.ok(html.includes('Produktfordeler'), 'heading')
+    assert.ok(html.includes('Egenskaper og fordeler ved produktet.'), 'subheading')
     assert.ok(!html.includes('Hvorfor aBoks'))
     assert.ok(!html.includes('Derfor velger kunder aBoks'))
     assert.ok(!html.includes('Små detaljer som gjør hverdagen enklere.'))
   })
 
   it('prints the eyebrow uppercase, as it always has', () => {
-    // The string is stored in sentence case and uppercased by CSS, so PRODUKTFORDELER on
-    // screen comes from the same rule that renders HVORFOR ABOKS.
+    // The string is stored in sentence case and uppercased by CSS, so EGENSKAPER on screen
+    // comes from the same rule that renders HVORFOR ABOKS.
     const html = render(accessory, [])
-    assert.match(html, /text-transform:uppercase[^"]*"[^>]*>Produktfordeler</)
+    assert.match(html, /text-transform:uppercase[^"]*"[^>]*>Egenskaper</)
+  })
+
+  it('does not repeat the heading in the eyebrow above it', () => {
+    const html = render(accessory, [])
+    assert.doesNotMatch(html, /text-transform:uppercase[^"]*"[^>]*>Produktfordeler</)
   })
 
   it('leaves the CMS feature cards completely alone', () => {
@@ -221,6 +227,7 @@ describe('Produkter — nothing about an aBoks page changed', () => {
     assert.ok(html.includes('Derfor velger kunder aBoks'))
     assert.ok(html.includes('Små detaljer som gjør hverdagen enklere.'))
     assert.ok(!html.includes('Produktfordeler'))
+    assert.ok(!html.includes('Egenskaper'))
   })
 
   it('treats a row whose section column predates the field as an ordinary product', () => {

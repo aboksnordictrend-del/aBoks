@@ -142,7 +142,9 @@ const FEATURE_SECTION_COPY = {
     subheading: 'Små detaljer som gjør hverdagen enklere.',
   },
   accessories: {
-    eyebrow: 'Produktfordeler',
+    // Reads "EGENSKAPER" on screen — the eyebrow labels the section rather than repeating
+    // the heading directly beneath it.
+    eyebrow: 'Egenskaper',
     heading: 'Produktfordeler',
     subheading: 'Egenskaper og fordeler ved produktet.',
   },
