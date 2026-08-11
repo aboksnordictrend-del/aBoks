@@ -151,6 +151,51 @@ describe('cart store — promo code', () => {
   })
 })
 
+describe('cart store — the drawer flag', () => {
+  it('starts shut and opens only when asked', () => {
+    useCartStore.setState({ items: [], promoCode: null, drawerOpen: false })
+    assert.equal(useCartStore.getState().drawerOpen, false)
+
+    useCartStore.getState().openCartDrawer()
+    assert.equal(useCartStore.getState().drawerOpen, true)
+
+    useCartStore.getState().closeCartDrawer()
+    assert.equal(useCartStore.getState().drawerOpen, false)
+  })
+
+  it('is never opened by a cart write — adding is what the caller decides to follow with', () => {
+    useCartStore.setState({ items: [], promoCode: null, drawerOpen: false })
+
+    useCartStore.getState().addItem(sampleItem, 1)
+    useCartStore.getState().incrementItem('20')
+    useCartStore.getState().decrementItem('20')
+    useCartStore.getState().removeItem('20')
+
+    assert.equal(useCartStore.getState().drawerOpen, false)
+  })
+
+  it('stays open across further cart writes, so a second add does not reopen it', () => {
+    useCartStore.setState({ items: [], promoCode: null, drawerOpen: false })
+    useCartStore.getState().openCartDrawer()
+
+    useCartStore.getState().addItem(sampleItem, 1)
+    useCartStore.getState().openCartDrawer() // the product page asks again — same value
+    useCartStore.getState().incrementItem('20')
+
+    assert.equal(useCartStore.getState().drawerOpen, true)
+    assert.equal(useCartStore.getState().items[0].qty, 2)
+  })
+
+  it('never reaches localStorage — a reload must not restore an open cart', () => {
+    useCartStore.setState({ items: [], promoCode: null, drawerOpen: false })
+    useCartStore.getState().addItem(sampleItem, 1)
+    useCartStore.getState().openCartDrawer()
+
+    assert.deepEqual(Object.keys(persisted()).sort(), ['items', 'promoCode'])
+    assert.ok(!(storage.getItem('aboks-cart') ?? '').includes('drawerOpen'))
+  })
+})
+
 describe('cart store — product title on the line', () => {
   it('stores the product title given at add time', () => {
     useCartStore.setState({ items: [], promoCode: null })

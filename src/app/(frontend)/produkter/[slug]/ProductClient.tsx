@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { AnimatePresence } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
-import CartToast from '@/components/CartToast'
 import Accordion from '@/components/Accordion'
 import VideoPlaceholder from '@/components/VideoPlaceholder'
 import ClickToPlayVideo from '@/components/ClickToPlayVideo'
@@ -201,7 +200,6 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const [selectedVariantId, setSelectedVariantId] = useState(initialVariant?.id ?? variants[0]?.id ?? '')
   const [qty, setQty] = useState(1)
   const [activeImageIdx, setActiveImageIdx] = useState(initialImageIdx)
-  const [toastVisible, setToastVisible] = useState(false)
   const [isNarrow, setIsNarrow] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const carouselRef = useRef<ProductImageCarouselHandle>(null)
@@ -215,6 +213,7 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const addItem = useCartStore((s) => s.addItem)
   // Read only to cap what a variant-less product may add — see handleAddToCart.
   const cartItems = useCartStore((s) => s.items)
+  const openCartDrawer = useCartStore((s) => s.openCartDrawer)
 
   useEffect(() => {
     const check = () => setIsNarrow(window.innerWidth < 1100)
@@ -338,8 +337,11 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
       price: effectivePrice,
       quantity: addable,
     })
-    setToastVisible(true)
-    setTimeout(() => setToastVisible(false), 1700)
+    // Only now, with the line actually in the cart: every early return above — no colour
+    // chosen, sold out, nothing addable within stock — leaves the drawer shut. It shows the
+    // real cart, so it is the confirmation the toast used to be, and it also offers the way
+    // on to the checkout. Adding again while it is open just updates the line inside it.
+    openCartDrawer()
   }
 
   const handleColorSelect = (variantId: string) => {
@@ -356,8 +358,6 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
 
   return (
     <>
-      <CartToast visible={toastVisible} />
-
       <main style={{ paddingTop: 'clamp(96px,12vh,132px)', background: '#faf6ee' }}>
         {/* Breadcrumb — trail comes from the server: Hjem → Produkter|Tilbehør → title */}
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">

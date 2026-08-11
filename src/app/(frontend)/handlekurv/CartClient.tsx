@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { cartLineRef, useCartStore } from '@/store/cart'
 import { formatPrice } from '@/lib/format'
@@ -36,11 +36,44 @@ export default function CartClient({ productTitles }: { productTitles?: ProductT
   // keeps using it so analytics stays consistent with what is actually charged today.
   const checkoutTotal = total
 
-  // view_cart: fires once when the cart page mounts and has items
+  /**
+   * view_cart — once per view of this page, and only for a cart that actually has something
+   * in it.
+   *
+   * Why this cannot read `items`/`total` from the render above: zustand subscribes through
+   * `useSyncExternalStore`, whose *third* argument (`getServerSnapshot`, the store's initial
+   * state) is what React uses for the client's hydration render too — not just on the server.
+   * So on the first render `items` is `[]` however full the persisted cart is, and a
+   * mount-only effect closing over it saw `hasCart === false` and sent nothing. The persisted
+   * cart was already in the store by then; only the snapshot React handed the component was
+   * empty. That is the bug: on an ordinary load of /handlekurv, view_cart never fired.
+   *
+   * So the cart is read from the store directly, after hydration. `persist.hydrate()` runs at
+   * store-creation time and localStorage is synchronous, so `hasHydrated()` is normally
+   * already true when this effect runs; `onFinishHydration` is the honest fallback for the
+   * case where it is not, and is unsubscribed on unmount.
+   *
+   * `sent` makes it exactly once per mount: quantity changes, removals, promo edits and
+   * StrictMode's second effect pass all find it already set. Remounting the page — a fresh
+   * load or a client-side navigation back to it — is a new view and starts over.
+   */
+  const sent = useRef(false)
   useEffect(() => {
-    if (!hasCart) return
-    trackViewCart(items, total)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    const send = () => {
+      if (sent.current) return
+      const state = useCartStore.getState()
+      if (state.items.length === 0) return
+      sent.current = true
+      // The same payload as before: the cart's own lines and its undiscounted order total.
+      trackViewCart(state.items, state.orderTotal())
+    }
+
+    if (useCartStore.persist.hasHydrated()) {
+      send()
+      return
+    }
+    return useCartStore.persist.onFinishHydration(send)
+  }, [])
 
   return (
     <main style={{ paddingTop: 'clamp(96px,12vh,132px)', background: '#faf6ee', minHeight: '100vh' }}>

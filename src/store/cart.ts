@@ -67,6 +67,19 @@ interface CartState {
    * both for display (via /api/promo-codes/validate) and again at checkout.
    */
   promoCode: string | null
+  /**
+   * Is the slide-out cart (CartDrawer) showing?
+   *
+   * UI state, deliberately kept here rather than in a store of its own: the drawer is a second
+   * *view* of this cart, and every place that opens it — the product page after a successful
+   * add, the header's cart button — already holds the store. A separate context would mean two
+   * providers to keep in step for one boolean.
+   *
+   * Never persisted (see `partialize`): a returning customer should land on the page, not on an
+   * open cart. That also keeps it out of the server render, so it cannot cause a hydration
+   * mismatch.
+   */
+  drawerOpen: boolean
   addItem: (item: Omit<CartItem, 'qty'>, qty: number) => void
   /** All three take a line reference — `cartLineRef(item)`, not a bare variant id. */
   removeItem: (ref: string) => void
@@ -75,6 +88,13 @@ interface CartState {
   clearCart: () => void
   setPromoCode: (code: string) => void
   clearPromoCode: () => void
+  /**
+   * Opening is a deliberate act — a successful `addItem`, or a click on the cart button.
+   * `addItem` itself never opens the drawer, so a caller that decided not to add anything
+   * (sold out, nothing addable) cannot open an empty confirmation.
+   */
+  openCartDrawer: () => void
+  closeCartDrawer: () => void
   totalCount: () => number
   subtotal: () => number
   shipping: () => number
@@ -86,6 +106,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       promoCode: null,
+      drawerOpen: false,
 
       addItem: (item, qty) => {
         set((state) => {
@@ -135,6 +156,13 @@ export const useCartStore = create<CartState>()(
 
       clearPromoCode: () => set({ promoCode: null }),
 
+      // Opening an already-open drawer changes the flag's value not at all, so every selector
+      // reading it keeps its previous result and nothing re-mounts: adding a second item while
+      // the drawer is open just makes the new line appear, with no close/open flicker.
+      openCartDrawer: () => set({ drawerOpen: true }),
+
+      closeCartDrawer: () => set({ drawerOpen: false }),
+
       totalCount: () => get().items.reduce((sum, i) => sum + i.qty, 0),
 
       subtotal: () => get().items.reduce((sum, i) => sum + i.qty * i.price, 0),
@@ -148,7 +176,8 @@ export const useCartStore = create<CartState>()(
       /**
        * Explicit allowlist of what reaches localStorage. The computed helpers were already
        * dropped by JSON serialisation, so this changes nothing today — it is here so that a
-       * future field has to be added deliberately rather than persisted by accident.
+       * future field has to be added deliberately rather than persisted by accident. It is
+       * also what keeps `drawerOpen` out of storage: a reload must never restore an open cart.
        *
        * No `version`/`migrate`: a cart persisted before `promoCode` existed simply has no
        * such key, and zustand's default merge keeps the initial `null` for it. Bumping the

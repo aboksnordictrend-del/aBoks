@@ -29,6 +29,30 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
   const lastY = useRef(0)
   const rawCount = useCartStore((s) => s.totalCount())
   const totalCount = mounted ? rawCount : 0
+  const openCartDrawer = useCartStore((s) => s.openCartDrawer)
+
+  /**
+   * On every page the cart icon opens the drawer. On /handlekurv itself it stays what it has
+   * always been — a link to the page it is already on. That page IS the cart, and covering it
+   * with a smaller copy of itself is the one place the drawer would make things worse. The
+   * page also remains the destination of «Se handlekurven» inside the drawer and of the menu's
+   * own Handlekurv link, so nothing in the checkout flow changes.
+   */
+  const cartOpensDrawer = pathname !== '/handlekurv'
+
+  /**
+   * Kept as a real link to /handlekurv rather than swapped for a <button>: the server-rendered
+   * markup then never depends on the route (this layout component has had hydration mismatches
+   * from `usePathname` before — see `atHeroTop`), the cart still works with no JavaScript, and
+   * a modified click — ctrl/cmd/shift, middle button — opens the page as the browser promises.
+   * Only an ordinary click is intercepted, and only then to open the drawer instead.
+   */
+  const onCartClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!cartOpensDrawer) return
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+    e.preventDefault()
+    openCartDrawer()
+  }
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -205,7 +229,16 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
               ))}
             </nav>
 
-            <Link href="/handlekurv" aria-label="Handlekurv" style={{ position: 'relative', color: '#1a1d17', display: 'flex', alignItems: 'center', padding: '6px' }}>
+            <Link
+              href="/handlekurv"
+              aria-label="Handlekurv"
+              // Gated on `mounted` for the same reason the hero styling is: this attribute
+              // must not depend on a route the server and the first client render can disagree
+              // about. Announcing the dialog one paint later costs nothing.
+              aria-haspopup={mounted && cartOpensDrawer ? 'dialog' : undefined}
+              onClick={onCartClick}
+              style={{ position: 'relative', color: '#1a1d17', display: 'flex', alignItems: 'center', padding: '6px' }}
+            >
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="9" cy="20" r="1.1" />
                 <circle cx="18" cy="20" r="1.1" />
