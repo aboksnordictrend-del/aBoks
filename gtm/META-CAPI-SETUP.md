@@ -1,7 +1,13 @@
 # Meta Conversions API + дедупликация с Pixel
 
 **GTM-контейнер:** GTM-NZ6VFSN9
-**Серверная часть:** реализована в коде — `src/lib/meta/capi/*`, вызов из `src/app/api/kustom/webhook/route.ts`
+**Серверная часть:** реализована в коде — `src/lib/meta/capi/*`
+
+| Событие | Кто отправляет серверную половину |
+|---|---|
+| `Purchase` | `src/app/api/kustom/webhook/route.ts` (push-вебхук Kustom) |
+| `AddToCart` | `src/app/api/meta/event/route.ts` (браузер → наш сервер → Meta) |
+| `InitiateCheckout` | `src/app/api/meta/event/route.ts` (то же) |
 
 > Меняются только теги Meta. GA4, Google Ads, TikTok и Pinterest читают тот же самый
 > `ecommerce`-объект из dataLayer и не затрагиваются.
@@ -104,6 +110,70 @@ dataLayer.push({
 
 ---
 
+## 2.1. AddToCart и InitiateCheckout
+
+Работают по той же схеме, что и Purchase, с одним отличием: **event ID генерирует браузер**.
+У покупки есть естественный ключ (Kustom order ID), из которого обе стороны вычисляют один и
+тот же `event_id`, ни разу его друг другу не передавая. У «добавил в корзину» такого ключа нет —
+это разовое действие в обработчике клика. Поэтому id создаётся один раз на клик и передаётся
+обоим получателям:
+
+```
+клик «Legg i handlekurv»
+      │
+      ├─ dataLayer.push({ event: 'add_to_cart', event_id: 'addtocart_9f2c…', ecommerce: {…} })
+      │        └─► GTM → Meta Pixel AddToCart, eventID = addtocart_9f2c…
+      │
+      └─ POST /api/meta/event  { eventName: 'AddToCart', eventId: 'addtocart_9f2c…', … }
+               └─► сервер добавляет _fbp/_fbc/IP/User-Agent → Meta CAPI, event_id = addtocart_9f2c…
+```
+
+`InitiateCheckout` — то же самое на клик по «Gå til kassen» (обе кнопки: страница `/handlekurv`
+и выдвижная корзина), с префиксом `initiatecheckout_`.
+
+**Что нужно сделать в GTM:** в тегах Meta Pixel `AddToCart` и `InitiateCheckout` подставить
+**Event ID** = `{{DLV - event_id}}` — ровно так же, как в шаге 2 для Purchase. Переменная
+`DLV - event_id` уже создана, новые переменные не нужны.
+
+Пока это не сделано, серверные события уже отправляются, но Meta считает их отдельными
+конверсиями от браузерных.
+
+### Про `value` и `contents`
+
+Оба поля берутся из **того же самого числа**, что уходит в dataLayer, — в `src/lib/analytics.ts`
+браузерная и серверная половины строятся из одних и тех же аргументов, второго расчёта доставки
+или скидки в этом пути просто нет. Поэтому расхождение вида «browser 898 / server 967»
+структурно невозможно.
+
+* `AddToCart` → `value = price × quantity`, одна позиция в `contents`;
+* `InitiateCheckout` → `value = orderTotal()` корзины (та же сумма, что видит GA4),
+  `contents` — все строки с реальным количеством, плюс `num_items`.
+
+`content_ids` сервер выводит из `contents`, а не принимает отдельно, — так они не могут
+разойтись. Идентификатор строки тот же, что у Pixel в `item_id`: голый id варианта или
+`product-<id>` для товара без вариантов.
+
+### Что клиент отправить НЕ может
+
+`/api/meta/event` — не прокси для произвольных событий Meta:
+
+| | |
+|---|---|
+| Имя события | только `AddToCart` и `InitiateCheckout`, сверка по списку. `Purchase` через этот маршрут отправить нельзя |
+| `event_id` | обязан начинаться с префикса своего события (`addtocart_` / `initiatecheckout_`) |
+| Access token / Pixel ID | только server-side, из env. Из тела запроса не читаются никогда |
+| `event_time` | часы сервера, не клиента |
+| `currency` | всегда `NOK` |
+| `event_source_url` | принимается, только если origin — наш; query-строка и фрагмент отбрасываются |
+| Email / телефон | не собираются вообще: на этом шаге покупатель их ещё не вводил |
+| Частота | 60 запросов на IP за 5 минут |
+
+Ошибка Meta (400/401/429/500/таймаут) не влияет ни на что: маршрут отвечает `202`, браузер
+ответ не читает, товар кладётся в корзину и переход в кассу происходит как обычно. В логах
+появляется строка `{"scope":"meta-capi-browser","event":"send_failed",…}` без PII и без токена.
+
+---
+
 ## 3. Переменные окружения (Vercel)
 
 Все — **server-only**, без префикса `NEXT_PUBLIC_`.
@@ -147,9 +217,23 @@ dataLayer.push({
    будет ниже, это ожидаемо для покупателей, отказавшихся от маркетинговых кук.
 7. Удалить `META_TEST_EVENT_CODE` из Preview.
 
+### AddToCart и InitiateCheckout в Test Events
+
+1. Открыть карточку товара, нажать **«Legg i handlekurv»** — **один** раз.
+2. В Test Events появляются `AddToCart` **Browser** и `AddToCart` **Server**, схлопнутые в одну
+   строку с пометкой **Deduplicated**. Две отдельные считающиеся строки = в GTM не подставлен
+   `{{DLV - event_id}}` (см. §2.1).
+3. Открыть серверное событие → **Parameters**: `Event ID` вида `addtocart_9f2c…`, `Currency` =
+   `NOK`, `Value` = цена × количество, `Contents` — одна позиция.
+   В `Customer Information` — `IP Address`, `User Agent` и `fbp`/`fbc`, если куки есть.
+   `Email` и `Phone` отсутствуют — это правильно, на этом шаге их ещё неоткуда взять.
+4. Нажать **«Gå til kassen»** — один раз. То же самое для `InitiateCheckout`, плюс `Num Items`
+   и `Value`, совпадающий с «Totalt» в корзине.
+5. Убедиться, что `event_id` у Browser и Server одинаковый (Meta показывает его в обоих).
+
 ### Что смотреть в логах Vercel
 
-Все строки — JSON со `scope: "meta-capi"`, без PII и без токена:
+Все строки — JSON, без PII и без токена. Purchase — `scope: "meta-capi"`:
 
 ```json
 {"scope":"meta-capi","event":"sent","orderId":"312","kustomOrderId":"7f3c…","orderNumber":"AB-000123","eventId":"purchase_7f3c…","eventsReceived":1}
@@ -159,6 +243,17 @@ dataLayer.push({
 
 `send-failed` никогда не роняет вебхук: заказ остаётся `confirmed`, Kustom получает 2xx, а
 попытка отправки повторится при следующей доставке push'а.
+
+Браузерные события — `scope: "meta-capi-browser"`:
+
+```json
+{"scope":"meta-capi-browser","event":"sent","status":202,"durationMs":180,"eventName":"AddToCart","eventId":"addtocart_9f2c…","eventsReceived":1}
+{"scope":"meta-capi-browser","event":"send_failed","status":202,"eventName":"InitiateCheckout","httpStatus":429,"metaCode":4,"metaMessage":"…"}
+{"scope":"meta-capi-browser","event":"rejected","status":400,"reason":"unknown_event"}
+```
+
+Здесь ретраев нет и быть не должно: потерянный `AddToCart` — потерянный сигнал, а не потерянный
+заказ, и повтор означал бы задвоенную конверсию.
 
 ---
 

@@ -48,14 +48,25 @@ export interface SendEventResult {
 }
 
 /**
+ * The one shape every Conversions API request body has: a `data` array of events, and the
+ * optional top-level test code. Deliberately structural rather than a union of the concrete
+ * payload types — this function only serializes what it is handed, so widening it costs
+ * nothing and keeps each event's own builder the authority on its own fields.
+ */
+export interface MetaCapiPayload {
+  data: unknown[]
+  test_event_code?: string
+}
+
+/**
  * POST the payload and normalize every failure mode to MetaError.
  *
  * The token goes in the query string rather than the body so it is impossible to include by
  * accident when something serializes the body for a log line.
  */
-export async function sendPurchaseEvent(
+export async function sendCapiEvent(
   config: MetaCapiConfig,
-  payload: MetaPurchasePayload,
+  payload: MetaCapiPayload,
   options: SendEventOptions = {},
 ): Promise<SendEventResult> {
   const fetchImpl = options.fetchImpl ?? (globalThis.fetch as unknown as CapiFetchImpl)
@@ -103,4 +114,18 @@ export async function sendPurchaseEvent(
     eventsReceived: typeof parsed.events_received === 'number' ? parsed.events_received : 0,
     ...(typeof parsed.fbtrace_id === 'string' ? { fbTraceId: parsed.fbtrace_id } : {}),
   }
+}
+
+/**
+ * The Purchase event's own entry point — unchanged behaviour, and the only thing it adds over
+ * `sendCapiEvent` is the narrower payload type. Kept as a named function so the webhook path
+ * reads as "send *the purchase*" and so nothing about Purchase depends on a signature shared
+ * with later events.
+ */
+export function sendPurchaseEvent(
+  config: MetaCapiConfig,
+  payload: MetaPurchasePayload,
+  options: SendEventOptions = {},
+): Promise<SendEventResult> {
+  return sendCapiEvent(config, payload, options)
 }

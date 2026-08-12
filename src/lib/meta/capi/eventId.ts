@@ -15,3 +15,46 @@
 export function purchaseEventId(kustomOrderId: string): string {
   return `purchase_${kustomOrderId}`
 }
+
+/* ------------------------------ browser-initiated events ------------------------------ */
+
+/**
+ * The events the browser is allowed to mirror to the Conversions API, and the prefix each
+ * one's id carries.
+ *
+ * Purchase is deliberately absent. Its id is *derived* from the Kustom order id — both sides
+ * compute the same string without ever exchanging it — and it is sent from the webhook, which
+ * no browser can reach. AddToCart and InitiateCheckout have no such natural key: they happen
+ * once, in a click handler, with nothing durable to derive an id from. So the browser mints
+ * one and hands the same string to both halves.
+ *
+ * The prefix is not decoration: the endpoint checks that the id it is given matches the event
+ * it is asked to send, which is what stops a caller putting an arbitrary id — a Purchase one,
+ * say — on an AddToCart.
+ */
+export const BROWSER_CAPI_EVENT_ID_PREFIX = {
+  AddToCart: 'addtocart',
+  InitiateCheckout: 'initiatecheckout',
+} as const
+
+export type BrowserCapiEventName = keyof typeof BROWSER_CAPI_EVENT_ID_PREFIX
+
+/** `addtocart_9f2c…` — the prefix, then 32 hex characters or a time-seeded fallback. */
+export function browserCapiEventId(
+  name: BrowserCapiEventName,
+  random: () => string = randomToken,
+): string {
+  return `${BROWSER_CAPI_EVENT_ID_PREFIX[name]}_${random()}`
+}
+
+/** Lowercase alphanumerics only, so the id survives the endpoint's own validation. */
+function randomToken(): string {
+  const webCrypto = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+  if (typeof webCrypto?.randomUUID === 'function') {
+    return webCrypto.randomUUID().replace(/-/g, '')
+  }
+  // Safari < 15.4 and any non-secure context have no randomUUID. Uniqueness within one
+  // customer's session is all that is needed here — this id is a deduplication key, not a
+  // secret, and it is never used to look anything up.
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
+}

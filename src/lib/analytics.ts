@@ -1,4 +1,9 @@
-import { purchaseEventId } from '@/lib/meta/capi/eventId'
+import { browserCapiEventId, purchaseEventId } from '@/lib/meta/capi/eventId'
+import {
+  currentFbclid,
+  currentPageUrl,
+  sendBrowserCapiEvent,
+} from '@/lib/meta/capi/browserEvent'
 import { resolvedLineRef } from '@/lib/cart/lineRef'
 
 declare global {
@@ -37,6 +42,14 @@ interface CartLikeItem {
  * `extra` lands at the top level of the dataLayer push, next to `event`, rather than inside
  * `ecommerce`. That is where a GTM Data Layer Variable expects to find a non-GA4 field like
  * Meta's `event_id`, and it keeps `ecommerce` a clean GA4 payload.
+ *
+ * `event_id` is cleared in the same reset push as `ecommerce`, for the same reason GA4 needs
+ * that reset: GTM's data model *merges* pushes, so a key that is not re-sent keeps its
+ * previous value. Without the clear, an event that has no id of its own (view_item, view_cart,
+ * add_shipping_info…) would be read by GTM as still carrying the id of whichever event pushed
+ * one last — and a Meta tag configured with `{{DLV - event_id}}` would then stamp two
+ * different actions with one id, which is precisely the collision deduplication exists to
+ * avoid. Events that do push an id are unaffected: their own push follows this one.
  */
 function push(
   event: string,
@@ -45,8 +58,28 @@ function push(
 ): void {
   if (typeof window === 'undefined') return
   window.dataLayer = window.dataLayer || []
-  window.dataLayer.push({ ecommerce: null }) // GA4 recommended clear before each ecommerce event
+  // GA4 recommended clear before each ecommerce event; see above for `event_id`.
+  window.dataLayer.push({ ecommerce: null, event_id: null })
   window.dataLayer.push({ event, ...extra, ecommerce })
+}
+
+/**
+ * Where the action happened, for the server event: the real page the customer is on — the
+ * product page for an add, the cart or whichever page the drawer was opened over for a
+ * checkout — never a hardcoded origin. The server keeps origin + path and drops the rest.
+ *
+ * `fbclid` rides along for the same reason the checkout sends it: when the Pixel was blocked
+ * on the landing page there is no `_fbc` cookie to read, and Meta's documented reconstruction
+ * from the click id is the only way the click is attributable at all. Nothing is invented —
+ * both are simply absent when the browser has nothing to offer.
+ */
+function withPageContext(): { eventSourceUrl?: string; fbclid?: string } {
+  const eventSourceUrl = currentPageUrl()
+  const fbclid = currentFbclid()
+  return {
+    ...(eventSourceUrl ? { eventSourceUrl } : {}),
+    ...(fbclid ? { fbclid } : {}),
+  }
 }
 
 export function cartItemToGA4(item: CartLikeItem): GA4Item {
@@ -85,6 +118,18 @@ export function trackViewItem(params: {
   })
 }
 
+/**
+ * add_to_cart, and the Meta AddToCart that mirrors it.
+ *
+ * Call this **from the click handler that actually added the line**, never from an effect: one
+ * deliberate add is one event, and an effect would re-fire it on every re-render, on
+ * StrictMode's second pass and again after hydration. Both call sites (the product page and
+ * the cart's «Passer godt sammen med» cards) do exactly that, and each returns early before
+ * reaching this line when nothing was added.
+ *
+ * One id is minted here and used twice — by the Pixel through GTM, and by the server event —
+ * so Meta merges them into a single AddToCart.
+ */
 export function trackAddToCart(params: {
   variantId: string
   variantName: string
@@ -92,19 +137,35 @@ export function trackAddToCart(params: {
   price: number
   quantity: number
 }): void {
-  push('add_to_cart', {
-    currency: 'NOK',
-    value: params.price * params.quantity,
-    items: [
-      {
-        item_id: params.variantId,
-        item_name: params.productTitle,
-        item_variant: params.variantName,
-        price: params.price,
-        quantity: params.quantity,
-        item_category: 'Battery Organizer',
-      } satisfies GA4Item,
-    ],
+  const eventId = browserCapiEventId('AddToCart')
+  const value = params.price * params.quantity
+
+  push(
+    'add_to_cart',
+    {
+      currency: 'NOK',
+      value,
+      items: [
+        {
+          item_id: params.variantId,
+          item_name: params.productTitle,
+          item_variant: params.variantName,
+          price: params.price,
+          quantity: params.quantity,
+          item_category: 'Battery Organizer',
+        } satisfies GA4Item,
+      ],
+    },
+    { event_id: eventId },
+  )
+
+  // The same line, the same identifier the Pixel reports as `item_id`, and the same value.
+  sendBrowserCapiEvent({
+    eventName: 'AddToCart',
+    eventId,
+    value,
+    contents: [{ id: params.variantId, quantity: params.quantity, itemPrice: params.price }],
+    ...withPageContext(),
   })
 }
 
@@ -116,11 +177,42 @@ export function trackViewCart(items: CartLikeItem[], total: number): void {
   })
 }
 
+/**
+ * begin_checkout, and the Meta InitiateCheckout that mirrors it.
+ *
+ * `value` is `total` for both halves — the one number this function is given. That is what
+ * keeps the browser and server events from disagreeing: there is no second calculation of
+ * shipping, discount or line sums anywhere in this path, so the two cannot drift apart. Both
+ * call sites pass the cart's own order total (`orderTotal()`), which is what GA4 reports too.
+ *
+ * Called from the two «Gå til kassen» links, which are alternatives to each other and are
+ * never clicked together.
+ */
 export function trackBeginCheckout(items: CartLikeItem[], total: number): void {
-  push('begin_checkout', {
-    currency: 'NOK',
+  const eventId = browserCapiEventId('InitiateCheckout')
+
+  push(
+    'begin_checkout',
+    {
+      currency: 'NOK',
+      value: total,
+      items: items.map(cartItemToGA4),
+    },
+    { event_id: eventId },
+  )
+
+  sendBrowserCapiEvent({
+    eventName: 'InitiateCheckout',
+    eventId,
     value: total,
-    items: items.map(cartItemToGA4),
+    // The same line references GA4 gets as `item_id`, with each line's real quantity.
+    contents: items.map((item) => ({
+      id: resolvedLineRef(item),
+      quantity: item.qty,
+      itemPrice: item.price,
+    })),
+    numItems: items.reduce((count, item) => count + item.qty, 0),
+    ...withPageContext(),
   })
 }
 
