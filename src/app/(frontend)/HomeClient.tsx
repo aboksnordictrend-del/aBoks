@@ -140,7 +140,7 @@ export default function HomeClient({
         {/* Desktop hero */}
         <div className="hidden md:block">
           <Image
-            src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-hero-decktop.webp"
+            src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-desktop-ny.webp"
             alt="aBoks i tre farger – olivengrønn, mørk blå og sort"
             width={2000}
             height={1200}
@@ -185,7 +185,7 @@ export default function HomeClient({
           style={{ height: '100svh', minHeight: '620px', overflow: 'hidden' }}
         >
           <Image
-            src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aboks-hero-mobile.webp"
+            src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-mobile-ny.webp"
             alt="aBoks i tre farger"
             fill
             priority

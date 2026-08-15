@@ -38,7 +38,7 @@ const BLOB = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com'
 export const PINTEREST_HOMEPAGE_ITEMS: PinterestHomepageItem[] = [
   {
     id: 'hero',
-    imageUrl: `${BLOB}/aBoks-hero-decktop.webp`,
+    imageUrl: `${BLOB}/Hero-desktop-ny.webp`,
     title: 'aBoks – fast plass til alle batteriene i hjemmet',
     description:
       'Slutt på rotet i skuffen. aBoks samler nye AA- og AAA-batterier i egne rom, og har en egen plass til de brukte til de leveres til gjenvinning.',
