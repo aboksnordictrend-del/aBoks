@@ -29,6 +29,8 @@ const config: Config = {
       },
       maxWidth: {
         container: '1240px',
+        // Slightly wider track for dense catalogue grids (e.g. /tilbehor, 5-up).
+        'container-wide': '1400px',
       },
       borderRadius: {
         pill: '999px',

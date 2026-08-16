@@ -60,11 +60,11 @@ export default async function TilbehorPage() {
             color: '#1a1d17',
             margin: '0 0 18px',
           }}>
-            Tilbehør til aBoks
+            Tilbehør
           </h1>
         </div>
 
-        {accessories.length === 0 ? (
+        {accessories.length === 0 && (
           /* Coming soon — shown until the first accessory is published */
           <div style={{
             background: '#f2e7d7',
@@ -116,14 +116,20 @@ export default async function TilbehorPage() {
               Se alle produkter
             </Link>
           </div>
-        ) : (
-          <ProductGrid>
-            {accessories.map((accessory) => (
-              <ProductCard key={accessory.id} product={accessory} />
-            ))}
-          </ProductGrid>
         )}
       </div>
+
+      {/* Catalogue grid sits on a slightly wider track than the rest of the page so
+          five compact cards per row keep breathing room. */}
+      {accessories.length > 0 && (
+        <div className="max-w-container-wide mx-auto px-[clamp(20px,5vw,48px)]">
+          <ProductGrid variant="compact">
+            {accessories.map((accessory) => (
+              <ProductCard key={accessory.id} product={accessory} variant="compact" />
+            ))}
+          </ProductGrid>
+        </div>
+      )}
     </main>
   )
 }
