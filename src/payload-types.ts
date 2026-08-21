@@ -472,6 +472,11 @@ export interface Order {
    */
   paidAt?: string | null;
   notes?: string | null;
+  shippingCarrier?: ('postnord' | 'posten' | 'helthjem') | null;
+  /**
+   * Sendingsnummeret fra transportøren. Vises i sporingsmailen til kunden.
+   */
+  trackingNumber?: string | null;
   confirmationEmailSentAt?: string | null;
   adminEmailSentAt?: string | null;
   shippedEmailSentAt?: string | null;
@@ -1186,6 +1191,8 @@ export interface OrdersSelect<T extends boolean = true> {
   status?: T;
   paidAt?: T;
   notes?: T;
+  shippingCarrier?: T;
+  trackingNumber?: T;
   confirmationEmailSentAt?: T;
   adminEmailSentAt?: T;
   shippedEmailSentAt?: T;

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useDocumentInfo, useFormFields } from '@payloadcms/ui'
+import { SHIPMENT_REQUIRED_MESSAGE, shipmentProblems } from '@/lib/orders/shipment'
 
 type Status = { tone: 'idle' | 'ok' | 'error'; message: string }
 
@@ -10,6 +11,13 @@ export default function ResendShippingEmail() {
   const orderStatus = useFormFields(([fields]) => fields?.status?.value as string | undefined)
   const sentAt = useFormFields(
     ([fields]) => fields?.shippedEmailSentAt?.value as string | undefined,
+  )
+  // Live form values, not the saved document: the button must reflect what the operator has
+  // typed into Forsendelse right now. The server re-checks the *stored* order either way —
+  // this only spares a round trip and explains why the button is unavailable.
+  const carrier = useFormFields(([fields]) => fields?.shippingCarrier?.value as string | undefined)
+  const trackingNumber = useFormFields(
+    ([fields]) => fields?.trackingNumber?.value as string | undefined,
   )
 
   const [busy, setBusy] = useState(false)
@@ -46,7 +54,8 @@ export default function ResendShippingEmail() {
   }
 
   const alreadySent = Boolean(sentAt)
-  const disabled = busy || orderStatus !== 'shipped'
+  const missingShipment = shipmentProblems({ shippingCarrier: carrier, trackingNumber }).length > 0
+  const disabled = busy || orderStatus !== 'shipped' || missingShipment
 
   return (
     <div className="field-type" style={{ marginBottom: '1rem' }}>
@@ -69,6 +78,9 @@ export default function ResendShippingEmail() {
       <div style={{ fontSize: '0.75rem', marginTop: '0.5rem', lineHeight: 1.5 }}>
         {orderStatus !== 'shipped' && (
           <div style={{ opacity: 0.6 }}>Tilgjengelig når status er «Sendt».</div>
+        )}
+        {orderStatus === 'shipped' && missingShipment && (
+          <div style={{ opacity: 0.6 }}>{SHIPMENT_REQUIRED_MESSAGE}</div>
         )}
         {alreadySent && (
           <div style={{ opacity: 0.6 }}>

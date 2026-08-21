@@ -38,6 +38,8 @@ const baseOrder = (overrides: Partial<Order> = {}): Order =>
     total: 499,
     confirmationEmailSentAt: '2026-07-01T10:00:00.000Z',
     adminEmailSentAt: '2026-07-01T10:00:00.000Z',
+    shippingCarrier: 'postnord',
+    trackingNumber: '707123456789',
     shippedEmailSentAt: null,
     shippedEmailMessageId: null,
     shippedEmailError: null,
@@ -424,5 +426,61 @@ describe('retry after a 504', () => {
 
     await h.save({ status: 'shipped' })
     assert.equal(h.sent.length, 1, 'the committed claim survives the retry')
+  })
+})
+
+/**
+ * The Forsendelse fields ride along on the same claim machinery as everything else: they
+ * change *what* the shipped e-mail says, never *whether* one is sent.
+ */
+describe('shipment data on the shipped email', () => {
+  it('sends exactly one email on confirmed → shipped', async () => {
+    const h = harness(okSend, { status: 'confirmed' })
+    await h.save({ status: 'shipped', shippingCarrier: 'posten', trackingNumber: '707123456789' })
+
+    assert.equal(h.sent.length, 1)
+    assert.equal(h.row.shippingCarrier, 'posten')
+    assert.equal(h.row.trackingNumber, '707123456789')
+  })
+
+  it('carries the carrier name, the tracking number and the tracking URL', async () => {
+    const h = harness(okSend, { status: 'confirmed', shippingCarrier: 'helthjem' })
+    await h.save({ status: 'shipped' })
+
+    const email = h.sent[0] as unknown as { subject: string; html: string; text: string }
+    assert.equal(email.subject, 'Bestillingen din er sendt – Ordre #AB-1001')
+    assert.ok(email.html.includes('Helthjem'))
+    assert.ok(email.html.includes('707123456789'))
+    assert.ok(email.html.includes('https://helthjem.no/sporing'))
+    assert.ok(email.html.includes('Spor pakken'))
+  })
+
+  it('does not send again when the tracking information is corrected afterwards', async () => {
+    const h = harness(okSend, { status: 'confirmed' })
+    await h.save({ status: 'shipped' })
+    assert.equal(h.sent.length, 1)
+
+    // The operator mistyped the number and fixes it. That is an ordinary save.
+    await h.save({ trackingNumber: '707999999999' })
+    await h.save({ shippingCarrier: 'posten' })
+    await h.save({ shippingCarrier: 'postnord', trackingNumber: '707123456789' })
+
+    assert.equal(h.sent.length, 1, 'correcting the shipment must never resend')
+    assert.equal(h.row.trackingNumber, '707123456789', 'but the correction is still stored')
+  })
+
+  it('sends a shipped email for an order that predates the Forsendelse fields', async () => {
+    // A row written before the migration: neither column exists on the document.
+    const h = harness(okSend, {
+      status: 'confirmed',
+      shippingCarrier: undefined,
+      trackingNumber: undefined,
+    })
+    await h.save({ status: 'shipped' })
+
+    assert.equal(h.sent.length, 1, 'a missing carrier must not break the send')
+    const email = h.sent[0] as unknown as { html: string }
+    assert.ok(email.html.includes('Sporingsinformasjon vil bli tilgjengelig'))
+    assert.ok(!email.html.includes('Spor pakken'))
   })
 })

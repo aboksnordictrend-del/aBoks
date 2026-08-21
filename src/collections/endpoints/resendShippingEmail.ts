@@ -1,6 +1,7 @@
 import type { Endpoint, PayloadRequest } from 'payload'
 import type { Order } from '@/payload-types'
 import { claimEmailsAtomically } from '@/lib/emailClaim'
+import { SHIPMENT_REQUIRED_MESSAGE, shipmentProblems } from '@/lib/orders/shipment'
 import {
   SKIP_ORDER_EMAIL_HOOKS,
   logOp,
@@ -17,6 +18,11 @@ import {
  *
  * POST /api/orders/:id/resend-shipping-email        → refuses if already sent
  * POST /api/orders/:id/resend-shipping-email?force=true → resends anyway
+ *
+ * The e-mail it sends is the one `sendOrderEmails` sends — same `sendOrderEmail('shipped')`,
+ * same template, same carrier resolution — so the manual copy can never drift from the
+ * automatic one. `?force=true` overrides the already-sent check, but never the shipment
+ * check below: a resend with nothing to track would be worse than no resend at all.
  */
 export const resendShippingEmail: Endpoint = {
   path: '/:id/resend-shipping-email',
@@ -57,6 +63,22 @@ export const resendShippingEmail: Endpoint = {
       })
       return Response.json(
         { error: 'Ordren er ikke merket som sendt. Sett status til «Sendt» først.' },
+        { status: 409 },
+      )
+    }
+
+    // Same requirement as the «Sendt» transition, applied here to the stored document: this
+    // is the other route by which a customer receives a tracking e-mail. Checked before the
+    // claim, so a refusal leaves the sentinel untouched and the order still resendable.
+    const problems = shipmentProblems(order)
+    if (problems.length > 0) {
+      logOp('resend:rejected', fields, {
+        ok: false,
+        durationMs: 0,
+        error: `Missing shipment data: ${problems.map((p) => p.path).join(', ')}`,
+      })
+      return Response.json(
+        { error: SHIPMENT_REQUIRED_MESSAGE, missing: problems.map((p) => p.path) },
         { status: 409 },
       )
     }

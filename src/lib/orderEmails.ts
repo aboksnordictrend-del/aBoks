@@ -7,6 +7,7 @@ import {
   createOrderDeliveredEmail,
   type EmailTemplate,
 } from '@/emails'
+import { normalizeShippingCarrier, normalizeTrackingNumber } from './orders/shipment'
 import { getEmailSendTimeoutMs, verifyMailTransport } from './mailTransport'
 import { orderLineDisplayName } from './orderLineName'
 import { generateReceiptPdf } from './receiptPdf'
@@ -193,6 +194,12 @@ export function buildOrderEmail(
         customerName,
         customerEmail,
         orderNumber: doc.orderNumber,
+        // Read straight off the stored order and passed through the carrier allow-list, so
+        // the «Spor pakken» URL comes from our own map and never from the document. An order
+        // with no carrier — every one predating the Forsendelse section — renders the
+        // template's own fallback instead.
+        shippingCarrier: normalizeShippingCarrier(doc.shippingCarrier),
+        trackingNumber: normalizeTrackingNumber(doc.trackingNumber),
         items: itemsOf(doc),
         total: doc.total,
       }),

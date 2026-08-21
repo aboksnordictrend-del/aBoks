@@ -1,4 +1,5 @@
 import { buildOrderSummaryRows, type OrderSummaryInput } from '@/lib/orders/renderOrderSummary'
+import type { ShippingCarrier } from '@/lib/orders/shipment'
 
 export interface OrderItem {
   /**
@@ -57,7 +58,14 @@ export interface OrderShippedData {
   customerName: string
   customerEmail: string
   orderNumber: string
-  trackingNumber?: string
+  /**
+   * The stored carrier *key*, never a name and never a URL. The template resolves both from
+   * SHIPPING_CARRIERS, so no caller can put an arbitrary link behind the «Spor pakken»
+   * button, and an unrecognised value simply renders no button at all.
+   */
+  shippingCarrier?: ShippingCarrier | null
+  /** The consignment number as stored on the order. Escaped by the template. */
+  trackingNumber?: string | null
   items: OrderItem[]
   total: number
 }

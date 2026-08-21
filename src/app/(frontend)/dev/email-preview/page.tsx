@@ -47,7 +47,10 @@ const MOCK_SHIPPED: OrderShippedData = {
   customerName: MOCK_ORDER.customerName,
   customerEmail: MOCK_ORDER.customerEmail,
   orderNumber: MOCK_ORDER.orderNumber,
-  trackingNumber: '370123456789012345',
+  // The carrier *key*, exactly as it is stored on the order — the preview resolves the name
+  // and the «Spor pakken» URL through the same map the real e-mail does.
+  shippingCarrier: 'postnord',
+  trackingNumber: '707123456789',
   items: MOCK_ITEMS,
   total: MOCK_ORDER.total,
 }

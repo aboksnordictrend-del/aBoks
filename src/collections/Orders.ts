@@ -3,6 +3,8 @@ import { DISCOUNT_TYPE_OPTIONS } from '@/lib/promo/constants'
 import { claimOrderEmails, sendOrderEmails } from './hooks/sendOrderEmails'
 import { snapshotOrderCosts } from './hooks/orderSnapshot'
 import { assignOrderNumber } from './hooks/orderNumber'
+import { validateShipment } from './hooks/orderShipment'
+import { SHIPPING_CARRIER_OPTIONS } from '@/lib/orders/shipment'
 import { resendShippingEmail } from './endpoints/resendShippingEmail'
 import { sendReviewInvitation } from './endpoints/sendReviewInvitation'
 
@@ -418,6 +420,46 @@ export const Orders: CollectionConfig = {
         position: 'sidebar',
       },
     },
+    // --- Forsendelse ---
+    //
+    // An *unnamed* group: it draws the «Forsendelse» heading in the sidebar and nothing else.
+    // The two fields stay top-level columns (`shipping_carrier`, `tracking_number`) rather
+    // than becoming `shipment_*`, so the shape matches the rest of the order's flat shipping
+    // fields (`shipping`, `actualShippingCost`) and no nesting has to be unwrapped anywhere.
+    //
+    // One carrier per order, by construction — a single radio, not three tracking-number
+    // fields. Both are optional at schema level: every order created before this section
+    // existed has them NULL and must keep saving. The requirement is enforced on the one
+    // event that needs it, the transition into «Sendt» — see `validateShipment`.
+    {
+      type: 'group',
+      label: 'Forsendelse',
+      admin: {
+        position: 'sidebar',
+        description: 'Fylles ut når pakken er registrert hos transportøren.',
+      },
+      fields: [
+        {
+          name: 'shippingCarrier',
+          type: 'radio',
+          label: 'Transportør',
+          // Labels and values both come from @/lib/orders/shipment — the same map the
+          // e-mail resolves the name and the tracking URL from.
+          options: SHIPPING_CARRIER_OPTIONS,
+          admin: {
+            layout: 'vertical',
+          },
+        },
+        {
+          name: 'trackingNumber',
+          type: 'text',
+          label: 'Sendingsnummer',
+          admin: {
+            description: 'Sendingsnummeret fra transportøren. Vises i sporingsmailen til kunden.',
+          },
+        },
+      ],
+    },
     {
       name: 'resendShippingEmail',
       type: 'ui',
@@ -519,7 +561,7 @@ export const Orders: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeValidate: [assignOrderNumber],
+    beforeValidate: [assignOrderNumber, validateShipment],
     beforeChange: [claimOrderEmails, snapshotOrderCosts],
     afterChange: [sendOrderEmails],
   },
