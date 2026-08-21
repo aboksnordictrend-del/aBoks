@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { BLOB_IMAGES_REVALIDATE_SECONDS, BLOB_IMAGES_TAG } from './blobImagesCache'
 
 /**
  * Reads image files straight out of a Vercel Blob "folder" (a pathname prefix).
@@ -8,7 +9,10 @@ import { unstable_cache } from 'next/cache'
  * @payloadcms/storage-vercel-blob, so importing it directly would be a phantom import.
  *
  * The point is that dropping a new file into the folder makes it appear on the site
- * without a code change: the listing is re-read whenever the page's ISR window expires.
+ * without a code change. The listing is re-read once a day (see blobImagesCache.ts for why
+ * the window is a day and not an hour), or immediately when an admin presses "Oppdater
+ * bildelister" — which purges BLOB_IMAGES_TAG. So a new upload still needs no deploy; it
+ * needs one button press, or a wait.
  */
 
 const BLOB_API = 'https://blob.vercel-storage.com'
@@ -87,5 +91,5 @@ export const listBlobFolderImages = unstable_cache(
     }
   },
   ['blob-folder-images'],
-  { revalidate: 3600, tags: ['blob-images'] },
+  { revalidate: BLOB_IMAGES_REVALIDATE_SECONDS, tags: [BLOB_IMAGES_TAG] },
 )

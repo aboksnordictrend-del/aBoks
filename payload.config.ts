@@ -24,6 +24,7 @@ import { EconomySettings } from './src/globals/EconomySettings'
 import { TikTokConnection } from './src/globals/TikTokConnection'
 import { PinterestConnection } from './src/globals/PinterestConnection'
 import { analyticsEndpoint } from './src/endpoints/analytics'
+import { blobImagesRevalidateEndpoint } from './src/endpoints/revalidateBlobImages'
 import { metaSyncEndpoint } from './src/endpoints/metaSync'
 import { marketingChannelsEndpoint } from './src/endpoints/marketingChannels'
 import { metaExpensesEndpoint } from './src/endpoints/metaExpenses'
@@ -97,9 +98,18 @@ export default buildConfig({
           Component: '@/components/admin/analytics/DashboardView#default',
           path: '/dashboard',
         },
+        // Manual refresh of the cached Vercel Blob folder listings. The view only renders the
+        // action; POST /api/admin/blob-images/revalidate is what enforces admin-only access.
+        blobBilder: {
+          Component: '@/components/admin/blobImages/BlobImagesView#default',
+          path: '/blob-bilder',
+        },
       },
-      // Adds the "Analyse" entry to the admin sidebar.
-      afterNavLinks: ['@/components/admin/analytics/NavLink#default'],
+      // Adds the "Analyse" and "Blob-bildelister" entries to the admin sidebar.
+      afterNavLinks: [
+        '@/components/admin/analytics/NavLink#default',
+        '@/components/admin/blobImages/NavLink#default',
+      ],
     },
   },
   collections: [
@@ -126,6 +136,9 @@ export default buildConfig({
   // /api/admin/integrations/{meta,google,pinterest,tiktok}/….
   endpoints: [
     analyticsEndpoint,
+    // Admin-only, on-demand purge of the `blob-images` cache tag, so a file added to a Blob
+    // folder shows on the storefront immediately instead of within the 24h listing window.
+    blobImagesRevalidateEndpoint,
     metaSyncEndpoint,
     marketingChannelsEndpoint,
     metaExpensesEndpoint,

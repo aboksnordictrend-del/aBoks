@@ -11,8 +11,13 @@
 // src/lib/blobImages.ts: the package is only a transitive dependency of
 // @payloadcms/storage-vercel-blob, so importing it directly would be a phantom import.
 //
-// Deliberately NOT wrapped in unstable_cache (unlike blobImages.ts) — an admin who has just
-// uploaded a Pin image expects to see it on the next preview, not an hour later.
+// Reads are served through a 60-second in-process cache (listPinterestBlobObjectsCached, at the
+// bottom of this file). The storefront's hour-long unstable_cache would be wrong here — an admin
+// who has just uploaded a Pin image expects to see it on the next preview — but listing on every
+// call was wrong too: the export page rebuilds its preview whenever a source checkbox is toggled,
+// so four clicks meant four billed `list()` operations for a folder that had not changed. A
+// minute is short enough to be invisible to the person uploading and long enough that a burst of
+// toggles costs exactly one listing.
 
 const BLOB_API = 'https://blob.vercel-storage.com'
 /** Pinned so a future default bump cannot silently change the response shape parsed below. */
@@ -125,4 +130,71 @@ export async function listPinterestBlobObjects(
   // sorting happens later in the shared pipeline; this only makes the input deterministic.
   objects.sort((a, b) => (a.pathname < b.pathname ? -1 : a.pathname > b.pathname ? 1 : 0))
   return { objects, error: null }
+}
+
+// ---------------------------------------------------------------------------------------------
+// 60-second read cache
+// ---------------------------------------------------------------------------------------------
+
+/** How long a successful listing is reused. Deliberately short: see the note at the top. */
+export const PINTEREST_BLOB_CACHE_MS = 60_000
+
+interface CacheEntry {
+  at: number
+  listing: PinterestBlobListing
+}
+
+/**
+ * Per-prefix cache and in-flight map.
+ *
+ * In-process rather than `unstable_cache`: this runs inside a Payload endpoint rather than a
+ * render, the whole point is a sub-minute window shared by one admin's burst of clicks, and an
+ * in-process map needs no framework context to be correct or to be tested.
+ */
+const cache = new Map<string, CacheEntry>()
+const inFlight = new Map<string, Promise<PinterestBlobListing>>()
+
+/** Drops every cached listing. For tests, and for anything that must force a re-read. */
+export function clearPinterestBlobCache(): void {
+  cache.clear()
+  inFlight.clear()
+}
+
+/**
+ * {@link listPinterestBlobObjects}, but at most one Blob `list()` per prefix per minute.
+ *
+ * Two properties beyond the plain TTL, both of which matter for the export page:
+ *
+ *   • **Failures are never cached.** A missing token or an unreachable API returns its error
+ *     straight through and leaves the cache empty, so the next attempt really retries. Pinning a
+ *     failure for a minute would turn one blip into a minute of a broken-looking preview.
+ *   • **Concurrent callers share one request.** Toggling checkboxes quickly fires overlapping
+ *     previews; without this they would each start their own listing. They now await the same
+ *     promise, so a burst costs one operation, not one per click.
+ */
+export async function listPinterestBlobObjectsCached(
+  prefix: string,
+  fetchImpl: typeof fetch = fetch,
+  now: () => number = Date.now,
+): Promise<PinterestBlobListing> {
+  const fresh = cache.get(prefix)
+  if (fresh && now() - fresh.at < PINTEREST_BLOB_CACHE_MS) return fresh.listing
+
+  const pending = inFlight.get(prefix)
+  if (pending) return pending
+
+  const request = (async (): Promise<PinterestBlobListing> => {
+    const listing = await listPinterestBlobObjects(prefix, fetchImpl)
+    // Only a good listing earns a place in the cache; an error must not be pinned.
+    if (listing.error === null) cache.set(prefix, { at: now(), listing })
+    else cache.delete(prefix)
+    return listing
+  })()
+
+  inFlight.set(prefix, request)
+  try {
+    return await request
+  } finally {
+    inFlight.delete(prefix)
+  }
 }
