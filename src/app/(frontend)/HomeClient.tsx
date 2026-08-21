@@ -73,14 +73,14 @@ const LIFESTYLE = [
 ]
 
 const ROOMS = [
-  { label: 'Ved TV-en',           image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Ved-TV.png' },
-  { label: 'I boden',             image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-boden.png' },
-  { label: 'På familiekjøkkenet', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-familiekj%C3%B8kkenet.png' },
-  { label: 'På soverommet',       image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-soverommet.png' },
-  { label: 'På barnerommet',      image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-barnerommet.png' },
-  { label: 'På hjemmekontoret',   image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-hjemmekontoret.png' },
-  { label: 'I gangen',            image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-gangen.png' },
-  { label: 'På vaskerommet',      image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-vaskerommet.png' },
+  { label: 'Ved TV-en',           image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-TV-ny-400x400.webp' },
+  { label: 'I boden',             image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-boden-ny.webp' },
+  { label: 'På familiekjøkkenet', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Po-kjokken-ny-400x400.webp' },
+  { label: 'På soverommet',       image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-soveromet-ny-400x400.webp' },
+  { label: 'På barnerommet',      image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Pa-barnerommet-ny.webp' },
+  { label: 'På hjemmekontoret',   image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-Office-ny-400x400.webp' },
+  { label: 'I gangen',            image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-gangen-ny-400x400.webp' },
+  { label: 'På vaskerommet',      image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/I-vaskeromet-ny-400x400.webp' },
 ]
 
 const homeTextLink: React.CSSProperties = {
