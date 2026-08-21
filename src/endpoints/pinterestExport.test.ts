@@ -354,9 +354,15 @@ describe('pinterest export — CSV generation', () => {
     assert.equal(lines.length, 3, 'header + two gallery images')
     assert.ok(lines[1].includes(PRODUCT_IMAGE))
     assert.ok(lines[2].includes(PRODUCT_IMAGE_2))
-    for (const line of lines.slice(1)) {
-      assert.ok(line.includes('https://aboks.no/produkter/aboks,'))
-    }
+
+    // Same product page on every row, but a distinct Link: Pinterest imports only the first
+    // row of any repeated Link value, so the two gallery images must not share one.
+    const pinLinks = lines.slice(1).map((line) => {
+      const match = /https:\/\/aboks\.no\/produkter\/aboks\?pin=[a-z0-9-]+/.exec(line)
+      assert.ok(match, `row must link to the product page with a pin parameter: ${line}`)
+      return match[0]
+    })
+    assert.equal(new Set(pinLinks).size, 2, 'each gallery image needs its own Link')
   })
 })
 

@@ -7,6 +7,7 @@ import {
   pinterestCsvFilename,
   pinterestCsvRow,
 } from './csv'
+import { PIN_PARAM, appendPinParam, pinParamValue } from './urls'
 import { DESCRIPTION_MAX, TITLE_MAX, guardFormula, normalizeText, truncate } from './text'
 import type { PinterestExportItem } from './types'
 
@@ -115,7 +116,9 @@ describe('Pinterest CSV — column mapping', () => {
       'Min tavle/Seksjon',
       '', // Thumbnail — video only
       'D',
-      'https://aboks.no/produkter/aboks',
+      // Link carries the per-row uniqueness parameter; its own value is asserted concretely
+      // in the "unique Link per row" suite below.
+      `https://aboks.no/produkter/aboks?pin=${pinParamValue('product', '1')}`,
       '', // Publish date — publish immediately
       'k1, k2',
     ])
@@ -266,6 +269,145 @@ describe('Pinterest CSV — HTML stripping and whitespace', () => {
   it('returns an empty string for null/undefined', () => {
     assert.equal(normalizeText(null, TITLE_MAX), '')
     assert.equal(normalizeText(undefined, TITLE_MAX), '')
+  })
+})
+
+/**
+ * Pinterest's bulk importer keeps only the FIRST row carrying a given Link value and silently
+ * drops every later row that repeats it. Confirmed by three controlled uploads:
+ *   3 rows / 1 distinct Link  → 1 imported
+ *   5 rows / 5 distinct Links → 5 imported
+ *   5 rows / 1 base URL differing only by ?pin=1…5 → 5 imported
+ * The last one is why a query parameter is sufficient.
+ */
+describe('Pinterest CSV — unique Link per row', () => {
+  /** The Link column, parsed back out of a real document rather than read off the item. */
+  function links(items: PinterestExportItem[]): string[] {
+    return parseCsv(pinterestCsv(items, 'Tavle'))
+      .slice(1)
+      .map((row) => row[5])
+  }
+
+  it('gives two rows on the same base destination different Link values', () => {
+    const [a, b] = links([
+      item({ sourceType: 'product', sourceId: 'product:1:image:10' }),
+      item({ sourceType: 'product', sourceId: 'product:1:image:11' }),
+    ])
+    assert.notEqual(a, b, 'two rows sharing a destination must not share a Link')
+    assert.ok(a.startsWith('https://aboks.no/produkter/aboks?pin='))
+    assert.ok(b.startsWith('https://aboks.no/produkter/aboks?pin='))
+  })
+
+  it('gives the same row the same Link on a repeated export', () => {
+    const row = item({ sourceType: 'blob', sourceId: 'blob:Pinterest/aBoks-olive-ny.webp' })
+    assert.equal(links([row])[0], links([row])[0])
+    // …and across separately constructed items with the same identity.
+    const again = item({ sourceType: 'blob', sourceId: 'blob:Pinterest/aBoks-olive-ny.webp' })
+    assert.equal(links([row])[0], links([again])[0])
+  })
+
+  it('is stable regardless of the row’s position in the file', () => {
+    const a = item({ sourceType: 'variant', sourceId: '7' })
+    const b = item({ sourceType: 'variant', sourceId: '8' })
+    assert.equal(links([a, b])[0], links([b, a])[1])
+  })
+
+  it('appends with ? when the destination has no query', () => {
+    const [link] = links([item({ destinationUrl: 'https://aboks.no/produkter' })])
+    assert.match(link, /^https:\/\/aboks\.no\/produkter\?pin=[a-z0-9-]+$/)
+  })
+
+  it('appends with & when the destination already has a query', () => {
+    const [link] = links([
+      item({
+        sourceType: 'variant',
+        sourceId: '3',
+        destinationUrl: 'https://aboks.no/produkter/aboks?variant=ABOKS-OLIVE-001',
+      }),
+    ])
+    assert.ok(link.includes('&pin='), 'must not create a second ?')
+    assert.equal(link.split('?').length, 2, 'exactly one ? in the URL')
+  })
+
+  it('preserves an existing variant parameter untouched', () => {
+    const [link] = links([
+      item({
+        sourceType: 'variant',
+        sourceId: '3',
+        destinationUrl: 'https://aboks.no/produkter/aboks?variant=ABOKS-OLIVE-001',
+      }),
+    ])
+    assert.ok(link.startsWith('https://aboks.no/produkter/aboks?variant=ABOKS-OLIVE-001&'))
+    assert.equal(new URL(link).searchParams.get('variant'), 'ABOKS-OLIVE-001')
+  })
+
+  it('preserves a percent-encoded variant parameter byte for byte', () => {
+    const encoded = 'https://aboks.no/produkter/aboks?variant=A%20B%2FC'
+    const [link] = links([item({ sourceType: 'variant', sourceId: '4', destinationUrl: encoded })])
+    assert.ok(link.startsWith(`${encoded}&pin=`), 'the query must not be re-serialized')
+  })
+
+  it('produces URL-safe values from ids carrying colons, slashes, dots and Norwegian letters', () => {
+    const value = pinParamValue('blob', 'blob:Pinterest/aboks-hvit-i-marmor-kjøkken.webp')
+    assert.match(value, /^[a-z0-9-]+$/, 'only unreserved URL characters')
+    assert.equal(value, encodeURIComponent(value), 'nothing that would need escaping')
+  })
+
+  it('does not repeat the source type when the id already carries it', () => {
+    assert.ok(pinParamValue('product', 'product:4:image:66').startsWith('product-4-image-66-'))
+    assert.ok(pinParamValue('variant', '16').startsWith('variant-16-'))
+    assert.ok(pinParamValue('homepage', 'hero').startsWith('homepage-hero-'))
+  })
+
+  it('bounds the readable slug but keeps distinguishing very long ids', () => {
+    const long = (suffix: string) => `blob:Pinterest/${'a'.repeat(200)}-${suffix}.webp`
+    const a = pinParamValue('blob', long('one'))
+    const b = pinParamValue('blob', long('two'))
+    assert.ok(a.length < 80, `slug must stay bounded, got ${a.length}`)
+    assert.notEqual(a, b, 'truncation must not collapse two distinct ids')
+  })
+
+  it('uses the documented parameter name', () => {
+    assert.equal(PIN_PARAM, 'pin')
+    assert.equal(appendPinParam('https://aboks.no/x', 'variant', '1'), `https://aboks.no/x?pin=${pinParamValue('variant', '1')}`)
+  })
+
+  it('keeps every Link distinct across a production-shaped export', () => {
+    // Mirrors the real 60-row export: 44 rows collapsed onto 6 destinations (20 of them on
+    // /produkter/aboks alone) plus 16 variant rows that already carry a unique ?variant=.
+    const rows: PinterestExportItem[] = []
+    const shared: [string, number][] = [
+      ['https://aboks.no/produkter/aboks', 20],
+      ['https://aboks.no/produkter/aboks-nano', 5],
+      ['https://aboks.no/produkter/aboks-mini', 5],
+      ['https://aboks.no/produkter', 5],
+      ['https://aboks.no/slik-fungerer-det', 5],
+      ['https://aboks.no/produkter/aboks-vegg', 4],
+    ]
+    let n = 0
+    for (const [destinationUrl, count] of shared) {
+      for (let i = 0; i < count; i++) {
+        rows.push(
+          item({ sourceType: 'product', sourceId: `product:${n}:image:${i}`, destinationUrl }),
+        )
+        n++
+      }
+    }
+    for (let i = 0; i < 16; i++) {
+      rows.push(
+        item({
+          sourceType: 'variant',
+          sourceId: String(i),
+          destinationUrl: `https://aboks.no/produkter/aboks?variant=SKU-${i}`,
+        }),
+      )
+    }
+    assert.equal(rows.length, 60)
+
+    const before = new Set(rows.map((r) => r.destinationUrl))
+    const after = new Set(links(rows))
+    assert.equal(before.size, 22, 'the export really does collapse onto 22 destinations')
+    assert.equal(after.size, 60, 'every exported row must carry a distinct Link')
   })
 })
 

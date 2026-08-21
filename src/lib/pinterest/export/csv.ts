@@ -15,9 +15,14 @@
 //
 // Thumbnail is always empty: it is required for video Pins only, and every aBoks source is an
 // image. Publish date is always empty, which Pinterest documents as "publish immediately".
+//
+// Link carries a per-row `pin` parameter appended here, at the single point every source's rows
+// pass through. Pinterest imports only the first row of any repeated Link value and drops the
+// rest silently — see the note above appendPinParam in ./urls.
 
 import { guardFormula } from './text'
 import type { PinterestExportItem } from './types'
+import { appendPinParam } from './urls'
 
 /**
  * The official header row, in the official order. Verified against Pinterest's sample CSV.
@@ -58,6 +63,11 @@ function csvRow(values: readonly string[]): string {
 /**
  * One export item as the eight official columns, in order.
  * `board` is shared by every row — Pinterest has no board-id column, only the board title.
+ *
+ * This is the only place the `pin` parameter is added. `item.destinationUrl` stays clean
+ * everywhere else — in the preview, in the destination allowlist and in the POST handler's
+ * membership check — so the security boundary keeps validating the URL the server produced,
+ * not the one written to the file.
  */
 export function pinterestCsvRow(item: PinterestExportItem, board: string): string[] {
   return [
@@ -66,7 +76,7 @@ export function pinterestCsvRow(item: PinterestExportItem, board: string): strin
     board,
     '', // Thumbnail — video Pins only.
     item.description,
-    item.destinationUrl,
+    appendPinParam(item.destinationUrl, item.sourceType, item.sourceId),
     '', // Publish date — empty means publish immediately.
     item.keywords,
   ]

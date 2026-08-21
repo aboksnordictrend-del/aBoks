@@ -20,6 +20,7 @@ import {
 import { DESCRIPTION_MAX, TITLE_MAX, normalizeText } from './text'
 import {
   canonicalUrl,
+  hash32,
   isCanonicalDestination,
   isPublicHttpsUrl,
   normalizeUrlForComparison,
@@ -206,16 +207,6 @@ function sortByRecency(drafts: readonly DraftRow[]): DraftRow[] {
       return a.index - b.index
     })
     .map((entry) => entry.draft)
-}
-
-/** FNV-1a (32-bit). Deterministic and dependency-free; only ever used to build an id. */
-function hash32(value: string): string {
-  let h = 0x811c9dc5
-  for (let i = 0; i < value.length; i++) {
-    h ^= value.charCodeAt(i)
-    h = Math.imul(h, 0x01000193) >>> 0
-  }
-  return h.toString(16).padStart(8, '0')
 }
 
 /**
