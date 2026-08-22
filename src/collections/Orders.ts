@@ -496,7 +496,7 @@ export const Orders: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        date: { pickerAppearance: 'dayAndTime', displayFormat: 'dd.MM.yyyy HH:mm' },
+        date: { pickerAppearance: 'dayAndTime' },
         description:
           'Settes automatisk når anmeldelsesinvitasjonen faktisk er sendt. Oppdateres ved ny utsending.',
       },
