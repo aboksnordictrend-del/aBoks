@@ -85,3 +85,37 @@ export async function revokeActiveInvitationsForOrder(
   )
   return rowsOf(revoked).length
 }
+
+/**
+ * Records on the ORDER the moment its review-invitation e-mail was actually accepted by the
+ * mail server (`orders.review_invitation_sent_at`).
+ *
+ * A single UPDATE on the pool rather than `payload.update()` on purpose: writing a timestamp
+ * must not re-enter the order document hooks — `claimOrderEmails` and `snapshotOrderCosts`
+ * both run on every order save, and neither has any business running because an invitation
+ * went out. This mirrors how the Meta CAPI receipt is stamped (@/lib/meta/capi/claim).
+ *
+ * Deliberately unconditional, unlike the e-mail *claims* elsewhere in this codebase: this is
+ * a receipt, not a lock. A resend overwrites it, so the column always holds the timestamp of
+ * the LAST successful send. The caller is responsible for only invoking it after the send
+ * resolved — a failed send must leave the previous value standing.
+ *
+ * Returns true when a row was updated (false when the adapter exposes no SQL executor, or
+ * the order no longer exists).
+ */
+export async function stampOrderReviewInvitationSentAt(
+  payload: Payload,
+  orderId: number | string,
+  sentAt: string,
+): Promise<boolean> {
+  const db = poolExecutor(payload)
+  if (!db) return false
+
+  const updated = await db.execute(
+    sql`UPDATE "orders"
+        SET "review_invitation_sent_at" = ${sentAt}::timestamptz
+        WHERE "id" = ${orderId}
+        RETURNING "id"`,
+  )
+  return rowsOf(updated).length === 1
+}

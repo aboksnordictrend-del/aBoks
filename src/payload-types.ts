@@ -477,6 +477,10 @@ export interface Order {
    * Sendingsnummeret fra transportøren. Vises i sporingsmailen til kunden.
    */
   trackingNumber?: string | null;
+  /**
+   * Settes automatisk når anmeldelsesinvitasjonen faktisk er sendt. Oppdateres ved ny utsending.
+   */
+  reviewInvitationSentAt?: string | null;
   confirmationEmailSentAt?: string | null;
   adminEmailSentAt?: string | null;
   shippedEmailSentAt?: string | null;
@@ -1193,6 +1197,7 @@ export interface OrdersSelect<T extends boolean = true> {
   notes?: T;
   shippingCarrier?: T;
   trackingNumber?: T;
+  reviewInvitationSentAt?: T;
   confirmationEmailSentAt?: T;
   adminEmailSentAt?: T;
   shippedEmailSentAt?: T;

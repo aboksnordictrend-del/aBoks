@@ -26,7 +26,7 @@ export const Orders: CollectionConfig = {
   admin: {
     useAsTitle: 'orderNumber',
     group: 'Butikk',
-    defaultColumns: ['orderNumber', 'customer', 'total', 'status', 'createdAt'],
+    defaultColumns: ['orderNumber', 'customer', 'total', 'status', 'createdAt', 'reviewInvitationSentAt'],
     description: 'Alle bestillinger fra nettbutikken.',
   },
   access: {
@@ -478,6 +478,27 @@ export const Orders: CollectionConfig = {
         components: {
           Field: '@/components/admin/SendReviewInvitation#default',
         },
+      },
+    },
+    // The receipt for the action above. The UI field is a button, not a value, so as a list
+    // column it can only ever render "<No Send Review Invitation>" — this is the column that
+    // answers "was an invitation actually sent, and when".
+    //
+    // Written by `stampOrderReviewInvitationSentAt` (@/lib/reviewInvitationDb) only *after*
+    // payload.sendEmail() resolved, so a failed send leaves the previous value standing. A
+    // resend overwrites it: the column always holds the last successful send. Read-only in
+    // the admin for the same reason the e-mail sentinels are — it is a record of what
+    // happened, not an input.
+    {
+      name: 'reviewInvitationSentAt',
+      type: 'date',
+      label: 'Review Invitation Sent At',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        date: { pickerAppearance: 'dayAndTime', displayFormat: 'dd.MM.yyyy HH:mm' },
+        description:
+          'Settes automatisk når anmeldelsesinvitasjonen faktisk er sendt. Oppdateres ved ny utsending.',
       },
     },
     // Email sentinels. Written by the order-email hooks as an atomic claim in the

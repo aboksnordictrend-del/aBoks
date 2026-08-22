@@ -3,7 +3,10 @@ import type { Order } from '@/payload-types'
 import { createReviewInvitationEmail } from '@/emails'
 import { SITE_URL } from '@/lib/site'
 import { checkInvitationEligibility, eligibilityMessage } from '@/lib/reviews'
-import { revokeActiveInvitationsForOrder } from '@/lib/reviewInvitationDb'
+import {
+  revokeActiveInvitationsForOrder,
+  stampOrderReviewInvitationSentAt,
+} from '@/lib/reviewInvitationDb'
 import {
   generateRawToken,
   hashToken,
@@ -139,6 +142,23 @@ export const sendReviewInvitation: Endpoint = {
       }).catch(() => {})
       console.error(JSON.stringify({ ...logBase, event: 'email-failed', invitationId, error: err instanceof Error ? err.message : String(err) }))
       return Response.json({ error: 'Invitasjonen kunne ikke sendes på e-post.' }, { status: 502 })
+    }
+
+    // The e-mail is out. Only now is the order's `reviewInvitationSentAt` stamped — every
+    // path above returns before reaching this line, so an ineligible order, a refused
+    // duplicate or a failed send can never move the timestamp. A resend passes through here
+    // too, which is exactly why the column ends up holding the last successful send.
+    //
+    // Writing the receipt is not allowed to turn a delivered e-mail into an error: the
+    // customer has the link either way, so a stamp failure is logged and the response stays
+    // a success.
+    try {
+      const stamped = await stampOrderReviewInvitationSentAt(payload, order.id, sentAt)
+      if (!stamped) {
+        console.warn(JSON.stringify({ ...logBase, event: 'sent-at-not-stamped', invitationId }))
+      }
+    } catch (err) {
+      console.error(JSON.stringify({ ...logBase, event: 'sent-at-stamp-failed', invitationId, error: err instanceof Error ? err.message : String(err) }))
     }
 
     console.log(JSON.stringify({ ...logBase, event: 'sent', invitationId, resend }))
