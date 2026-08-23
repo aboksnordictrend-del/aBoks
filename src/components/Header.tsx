@@ -6,8 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
-
-type ProductLink = { title: string; slug: string }
+import { type MenuEntry, buildShopMenu, nextExpandedMenu } from '@/lib/navigation'
 
 /**
  * Routes whose first section is a full-bleed hero image that the header sits on top of.
@@ -17,7 +16,7 @@ type ProductLink = { title: string; slug: string }
  */
 const HERO_TOP_ROUTES = ['/', '/bedrifter']
 
-export default function Header({ products = [] }: { products?: ProductLink[] }) {
+export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?: MenuEntry[] }) {
   const pathname = usePathname()
   const isHome = pathname === '/'
   const hasHeroTop = HERO_TOP_ROUTES.includes(pathname)
@@ -25,6 +24,8 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
   const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  /** Label of the burger menu's open submenu, or null. Only ever one at a time. */
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const lastY = useRef(0)
   const rawCount = useCartStore((s) => s.totalCount())
@@ -116,8 +117,14 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
     return () => window.removeEventListener('scroll', onScroll)
   }, []) // stable: hiddenRef keeps current value without re-registering listener
 
+  const closeMenu = () => {
+    setMenuOpen(false)
+    setExpandedMenu(null)
+  }
+
   useEffect(() => {
     setMenuOpen(false)
+    setExpandedMenu(null)
     setHidden(false)
     setScrolled(false)
   }, [pathname])
@@ -303,7 +310,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                 Meny
               </span>
               <button
-                onClick={() => setMenuOpen(false)}
+                onClick={closeMenu}
                 aria-label="Lukk"
                 type="button"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
@@ -325,12 +332,7 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
               {[
                 {
                   label: 'Handle',
-                  links: [
-                    { label: 'Alle produkter', href: '/produkter' },
-                    ...products.map(p => ({ label: p.title, href: `/produkter/${p.slug}` })),
-                    { label: 'Tilbehør', href: '/tilbehor' },
-                    { label: 'Handlekurv', href: '/handlekurv' },
-                  ],
+                  links: shopMenu,
                 },
                 {
                   label: 'Lær mer',
@@ -361,16 +363,95 @@ export default function Header({ products = [] }: { products?: ProductLink[] }) 
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {section.links.map((link) => {
                       const isActive = pathname === link.href
+                      const children = link.children ?? []
+                      const linkStyle = { fontFamily: 'var(--font-cormorant)', fontSize: '26px', fontWeight: 600, color: isActive ? '#5e6a48' : '#1a1d17', textDecoration: 'none' } as const
+
+                      // Ordinary row — unchanged from before submenus existed.
+                      if (children.length === 0) {
+                        return (
+                          <Link
+                            key={link.label}
+                            href={link.href}
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={closeMenu}
+                            style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', ...linkStyle }}
+                          >
+                            {link.label}
+                          </Link>
+                        )
+                      }
+
+                      /**
+                       * Row with an accordion. The label stays a link to its own listing page
+                       * and the chevron beside it is a separate button, so one press never has
+                       * to mean two things. The panel wrapper is always in the DOM — that keeps
+                       * `aria-controls` pointing at something real — while its contents mount
+                       * only while open, so collapsed links are never reachable by Tab.
+                       */
+                      const panelId = `menu-sub-${link.href.replace(/[^a-z0-9]+/gi, '-')}`
+                      const expanded = expandedMenu === link.label
                       return (
-                        <Link
-                          key={link.label}
-                          href={link.href}
-                          aria-current={isActive ? 'page' : undefined}
-                          onClick={() => setMenuOpen(false)}
-                          style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '26px', fontWeight: 600, color: isActive ? '#5e6a48' : '#1a1d17', textDecoration: 'none' }}
-                        >
-                          {link.label}
-                        </Link>
+                        <div key={link.label}>
+                          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e7e2d4' }}>
+                            {/* Balances the chevron so the label stays optically centred in the
+                                desktop column, where the section is text-centred. */}
+                            <span aria-hidden="true" className="hidden md:block" style={{ flex: '0 0 28px' }} />
+                            <Link
+                              href={link.href}
+                              aria-current={isActive ? 'page' : undefined}
+                              onClick={closeMenu}
+                              style={{ display: 'block', flex: '1 1 auto', padding: '11px 0', ...linkStyle }}
+                            >
+                              {link.label}
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedMenu(nextExpandedMenu(expandedMenu, link.label))}
+                              aria-expanded={expanded}
+                              aria-controls={panelId}
+                              aria-label={expanded ? `Skjul undermeny for ${link.label}` : `Vis undermeny for ${link.label}`}
+                              style={{ flex: '0 0 28px', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#6b6f63' }}
+                            >
+                              <svg
+                                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                                style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.22s ease' }}
+                              >
+                                <path d="m6 9 6 6 6-6" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div id={panelId}>
+                            <AnimatePresence initial={false}>
+                              {expanded && (
+                                <motion.div
+                                  key="panel"
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
+                                  style={{ overflow: 'hidden' }}
+                                >
+                                  {children.map((child) => {
+                                    const childActive = pathname === child.href
+                                    return (
+                                      <Link
+                                        key={child.href}
+                                        href={child.href}
+                                        aria-current={childActive ? 'page' : undefined}
+                                        onClick={closeMenu}
+                                        className="pl-[16px] md:pl-0"
+                                        style={{ display: 'block', paddingTop: '9px', paddingBottom: '9px', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '20px', fontWeight: 500, color: childActive ? '#5e6a48' : '#4a4f42', textDecoration: 'none' }}
+                                      >
+                                        {child.label}
+                                      </Link>
+                                    )
+                                  })}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </div>
                       )
                     })}
                   </div>
