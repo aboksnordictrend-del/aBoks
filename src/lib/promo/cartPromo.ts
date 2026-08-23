@@ -429,3 +429,53 @@ export function promoDisclosureView(input: {
   if (input.message) return 'expanded'
   return 'collapsed'
 }
+
+/**
+ * Submitting the compact field, including what has to happen to the keyboard.
+ *
+ * Split out of the component for the same reason everything else in this file is: the rule
+ * is "a real submission dismisses the keyboard, a no-op does not", and that is worth pinning
+ * down rather than leaving in a click handler.
+ *
+ * The dismissal happens as the request goes out, not when it comes back. Neither outcome is
+ * known at this point and neither should matter: whether the server accepts the code or
+ * rejects it, the customer is done typing, and leaving the field focused on a phone leaves
+ * the keyboard covering the summary they are waiting to see change.
+ *
+ * Returns whether anything was submitted, so a caller can tell a real click from a dead one.
+ */
+export function submitPromoCode(
+  input: { draft: string; busy: boolean },
+  effects: { apply: (code: string) => void; dismissKeyboard: () => void },
+): boolean {
+  // A second press while a check is running is already ignored by the reducer; stopping here
+  // as well means it cannot steal the keyboard away from a customer who is still correcting
+  // a code.
+  if (input.busy) return false
+  if (input.draft.trim() === '') return false
+
+  effects.apply(input.draft)
+  effects.dismissKeyboard()
+  return true
+}
+
+/**
+ * Font size for the promo input, in px. Both variants, and never below 16.
+ *
+ * This is a functional requirement, not a stylistic one: iOS Safari zooms the page into any
+ * input whose computed font-size is under 16px, and it does not zoom back out on blur. In the
+ * drawer that left a `min(440px, 100vw)` panel's right edge — «Bruk», «Fjern», the amounts —
+ * cut off the visual viewport, with no way back except pinching; on /handlekurv it left the
+ * whole page zoomed and pannable after a code was applied. Same cause, same fix.
+ *
+ * Nothing in globals.css, Tailwind's preflight or any CSS module sets a font-size on an input,
+ * and these are applied inline — so what is here is the computed size. Vertical padding is
+ * trimmed alongside them so neither field's height changes.
+ *
+ * Kept as two entries rather than one number because they are two fields with two designs;
+ * the floor is what they share, and `IOS_NO_ZOOM_MIN_FONT_PX` is what states it.
+ */
+export const PROMO_INPUT_FONT_PX = { panel: 16, compact: 16 } as const
+
+/** Below this, iOS Safari zooms the page on focus. */
+export const IOS_NO_ZOOM_MIN_FONT_PX = 16

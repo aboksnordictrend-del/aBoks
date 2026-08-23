@@ -10,9 +10,12 @@ import {
   promoCheckKey,
   promoReducer,
   restoredPromoState,
+  IOS_NO_ZOOM_MIN_FONT_PX,
   PROMO_COMPACT_TEXT,
+  PROMO_INPUT_FONT_PX,
   promoDisclosureView,
   shouldSubmitOnKey,
+  submitPromoCode,
   type PromoEvent,
   type PromoState,
   type PromoTotals,
@@ -688,5 +691,108 @@ describe('drawer summary — applying and removing a code', () => {
     const rows = buildSummaryRows(local, after.totals)
     assert.equal(rows.find((r) => r.key === 'discount'), undefined)
     assert.equal(rows.find((r) => r.key === 'total')?.value, 518)
+  })
+})
+
+/* ------------------------------ submitting on a phone ------------------------------ */
+
+/**
+ * The bug these pin down: on iPhone, tapping the drawer's `Rabattkode` field zoomed the page
+ * in (the field's text was under 16px), and pressing «Bruk» left it zoomed with the keyboard
+ * still up — the drawer's right-hand edge, «Bruk» and the amounts among it, off-screen.
+ *
+ * Two separate rules fix it, and both are here rather than in a click handler:
+ * the field's size, and what a submission does to the keyboard.
+ */
+describe('submitPromoCode', () => {
+  const spy = () => {
+    const calls: string[] = []
+    return { fn: (code = '') => calls.push(code), calls }
+  }
+
+  it('applies the code and hands the keyboard back', () => {
+    const apply = spy()
+    const dismiss = spy()
+
+    const submitted = submitPromoCode(
+      { draft: 'SOMMER20', busy: false },
+      { apply: apply.fn, dismissKeyboard: dismiss.fn },
+    )
+
+    assert.equal(submitted, true)
+    assert.deepEqual(apply.calls, ['SOMMER20'])
+    assert.equal(dismiss.calls.length, 1, 'the field must be blurred once')
+  })
+
+  /**
+   * The keyboard closes as the request goes out, so it closes on a rejected code exactly as
+   * it does on an accepted one — this function is called before either is known, which is
+   * what makes the two cases impossible to get wrong.
+   */
+  it('dismisses the keyboard before the answer is known, so both outcomes are covered', () => {
+    const order: string[] = []
+    submitPromoCode(
+      { draft: 'UTLØPT', busy: false },
+      {
+        apply: () => order.push('apply'),
+        dismissKeyboard: () => order.push('blur'),
+      },
+    )
+    assert.deepEqual(order, ['apply', 'blur'])
+  })
+
+  it('does nothing at all when there is nothing typed', () => {
+    const apply = spy()
+    const dismiss = spy()
+    for (const draft of ['', '   ']) {
+      assert.equal(
+        submitPromoCode({ draft, busy: false }, { apply: apply.fn, dismissKeyboard: dismiss.fn }),
+        false,
+      )
+    }
+    assert.equal(apply.calls.length, 0)
+    // No request went out, so the customer is still typing — taking their keyboard away here
+    // would be the field closing itself under them.
+    assert.equal(dismiss.calls.length, 0)
+  })
+
+  it('ignores a second press while a check is running, keyboard included', () => {
+    const apply = spy()
+    const dismiss = spy()
+    assert.equal(
+      submitPromoCode(
+        { draft: 'SOMMER20', busy: true },
+        { apply: apply.fn, dismissKeyboard: dismiss.fn },
+      ),
+      false,
+    )
+    assert.equal(apply.calls.length, 0)
+    assert.equal(dismiss.calls.length, 0)
+  })
+
+  it('passes the draft through untouched — trimming and casing belong to the hook', () => {
+    const apply = spy()
+    submitPromoCode(
+      { draft: '  sommer20 ', busy: false },
+      { apply: apply.fn, dismissKeyboard: () => {} },
+    )
+    assert.deepEqual(apply.calls, ['  sommer20 '])
+  })
+})
+
+describe('PROMO_INPUT_FONT_PX', () => {
+  it('keeps the drawer’s field at or above the size iOS Safari zooms below', () => {
+    assert.equal(IOS_NO_ZOOM_MIN_FONT_PX, 16)
+    assert.ok(
+      PROMO_INPUT_FONT_PX.compact >= IOS_NO_ZOOM_MIN_FONT_PX,
+      `compact field is ${PROMO_INPUT_FONT_PX.compact}px — iOS would zoom the drawer`,
+    )
+  })
+
+  it('holds the cart page’s field to the same floor — it had the same bug', () => {
+    assert.ok(
+      PROMO_INPUT_FONT_PX.panel >= IOS_NO_ZOOM_MIN_FONT_PX,
+      `panel field is ${PROMO_INPUT_FONT_PX.panel}px — iOS would zoom /handlekurv`,
+    )
   })
 })

@@ -1,9 +1,11 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { PromoDisclosureRow } from './PromoCodeDisclosure'
 import PromoCodeField from './PromoCodeField'
 import type { UsePromoCodeResult } from '@/lib/promo/usePromoCode'
+import { IOS_NO_ZOOM_MIN_FONT_PX } from '@/lib/promo/cartPromo'
 import type { PromoDisclosureView, PromoTotals } from '@/lib/promo/cartPromo'
 
 /**
@@ -161,5 +163,51 @@ describe('the two fields do not collide in one document', () => {
     const ids = together.match(/id="promo-code-input-[^"]*"/g) ?? []
     assert.equal(ids.length, 2)
     assert.notEqual(ids[0], ids[1], 'a duplicated id would point the label at the wrong field')
+  })
+})
+
+/**
+ * The iOS zoom fix, asserted on the markup the browser actually gets.
+ *
+ * The size is inline, and nothing in globals.css, Tailwind's preflight or any module sets a
+ * font-size on an input — so what is written here is the computed value. A rule that lowered
+ * it would put the drawer straight back into the zoomed, clipped state.
+ */
+describe('the drawer’s field does not make iOS zoom the page', () => {
+  /** The declared font-size of the first `<input>` in the markup, in px. */
+  const inputFontPx = (html: string): number => {
+    const tag = html.match(/<input[^>]*>/)?.[0] ?? ''
+    const declared = tag.match(/font-size:\s*([\d.]+)px/)?.[1]
+    assert.ok(declared, `no font-size on the input: ${tag}`)
+    return Number(declared)
+  }
+
+  it('renders the compact field at 16px or more', () => {
+    const px = inputFontPx(row('expanded', promo()))
+    assert.ok(
+      px >= IOS_NO_ZOOM_MIN_FONT_PX,
+      `compact input is ${px}px — Safari zooms in and never zooms back out`,
+    )
+  })
+
+  it('stays at 16px while a code is being checked and after one is refused', () => {
+    for (const state of [
+      promo({ status: 'checking', busy: true }),
+      promo({ status: 'error', message: 'Rabattkoden er utløpt.' }),
+    ]) {
+      assert.ok(inputFontPx(row('expanded', state)) >= IOS_NO_ZOOM_MIN_FONT_PX)
+    }
+  })
+
+  it('holds the cart page’s field to 16px too — the same zoom happened there', () => {
+    const px = inputFontPx(renderToStaticMarkup(<PromoCodeField promo={promo()} />))
+    assert.ok(px >= IOS_NO_ZOOM_MIN_FONT_PX, `panel input is ${px}px`)
+  })
+
+  it('never focuses the field itself — pressing Bruk must not reopen the keyboard', () => {
+    const source = readFileSync(new URL('./PromoCodeField.tsx', import.meta.url), 'utf8')
+    assert.ok(!/\.focus\(/.test(source), 'PromoCodeField must not call focus() on anything')
+    // The ref exists for exactly one purpose.
+    assert.match(source, /inputRef\.current\?\.blur\(\)/)
   })
 })

@@ -1,7 +1,13 @@
 'use client'
 
-import { useEffect, useId, useState } from 'react'
-import { PROMO_COMPACT_TEXT, PROMO_TEXT, shouldSubmitOnKey } from '@/lib/promo/cartPromo'
+import { useEffect, useId, useRef, useState } from 'react'
+import {
+  PROMO_COMPACT_TEXT,
+  PROMO_INPUT_FONT_PX,
+  PROMO_TEXT,
+  shouldSubmitOnKey,
+  submitPromoCode,
+} from '@/lib/promo/cartPromo'
 import type { UsePromoCodeResult } from '@/lib/promo/usePromoCode'
 
 /**
@@ -49,9 +55,23 @@ export default function PromoCodeField({ promo, variant = 'panel' }: Props) {
     if (applied) setDraft('')
   }, [applied])
 
+  /**
+   * Held so a submission can hand the keyboard back. Nothing ever calls `focus()` on it:
+   * pressing «Bruk» must not pull the field open again underneath the customer.
+   */
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const submit = () => {
-    if (promo.busy) return // duplicate submissions are ignored while a check is running
-    promo.apply(draft)
+    submitPromoCode(
+      { draft, busy: promo.busy },
+      {
+        apply: promo.apply,
+        // Blurring is what closes the on-screen keyboard, which otherwise sits over the
+        // summary the customer is waiting to see change. Both outcomes reach this — see
+        // submitPromoCode.
+        dismissKeyboard: () => inputRef.current?.blur(),
+      },
+    )
   }
 
   if (appliedCode) {
@@ -150,6 +170,7 @@ export default function PromoCodeField({ promo, variant = 'panel' }: Props) {
 
       <div style={{ display: 'flex', gap: '8px' }}>
         <input
+          ref={inputRef}
           id={fieldId}
           name="promoCode"
           type="text"
@@ -175,12 +196,15 @@ export default function PromoCodeField({ promo, variant = 'panel' }: Props) {
           style={{
             flex: 1,
             minWidth: 0,
-            padding: compact ? '11px 14px' : '12px 14px',
+            // Both trimmed by 1px a side against the larger text, so each field keeps the
+            // height it had at 14px. The row is a flex line, so the button stretches to match.
+            padding: compact ? '10px 14px' : '11px 14px',
             borderRadius: '999px',
             border: `1.5px solid ${isError ? '#d09a86' : '#d6cfbd'}`,
             background: promo.busy ? '#f6f3ec' : '#fff',
             fontFamily: font,
-            fontSize: '14px',
+            // 16px in both variants, and never less — see PROMO_INPUT_FONT_PX.
+            fontSize: `${compact ? PROMO_INPUT_FONT_PX.compact : PROMO_INPUT_FONT_PX.panel}px`,
             color: '#1a1d17',
           }}
         />
