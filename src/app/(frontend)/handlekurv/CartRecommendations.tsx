@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/store/cart'
 import { trackAddToCart } from '@/lib/analytics'
-import RecommendationCard from './RecommendationCard'
+import RecommendationCard, { type RecommendationCardLayout } from './RecommendationCard'
 import {
   buildCartRecommendations,
   cartRecommendationSlugs,
@@ -59,7 +59,21 @@ function isCatalogue(value: unknown): value is CartRecommendationCatalogue {
   )
 }
 
-export default function CartRecommendations() {
+export interface CartRecommendationsProps {
+  /**
+   * Presentation only.
+   *
+   * `default` is the cart page's block: full-width cards in as many columns as the page
+   * column affords. `cartGrid` is the drawer's: compact cards, always two to a row, which
+   * keeps the block short enough that the totals below it stay within reach of a scroll.
+   *
+   * Nothing about which products appear, what a click does or how the cart is written
+   * differs between the two — only the grid and the size of the cards inside it.
+   */
+  layout?: RecommendationCardLayout
+}
+
+export default function CartRecommendations({ layout = 'default' }: CartRecommendationsProps = {}) {
   const items = useCartStore((s) => s.items)
   const addItem = useCartStore((s) => s.addItem)
 
@@ -181,17 +195,30 @@ export default function CartRecommendations() {
       <div
         style={{
           display: 'grid',
-          // One column on a phone, two once the cart column is wide enough. The
-          // `min(100%, …)` floor keeps a narrow viewport from forcing a track wider than
-          // the column — which is what would put a horizontal scrollbar on the page.
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 236px), 1fr))',
-          gap: '14px',
+          ...(layout === 'cartGrid'
+            ? {
+                // Two to a row at every width. The drawer is `min(440px, 100vw)` wide, so even
+                // the narrowest phone leaves each compact card ~135px — enough for the square
+                // image, two lines of name, the price, four swatches and the pill. `minmax(0,
+                // 1fr)` is what makes that true: without the 0 floor each track would be at
+                // least as wide as its content, and a long word would push the drawer sideways.
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: '10px',
+              }
+            : {
+                // One column on a phone, two once the cart column is wide enough. The
+                // `min(100%, …)` floor keeps a narrow viewport from forcing a track wider than
+                // the column — which is what would put a horizontal scrollbar on the page.
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 236px), 1fr))',
+                gap: '14px',
+              }),
         }}
       >
         {visible.map((product) => (
           <RecommendationCard
             key={product.key}
             product={product}
+            layout={layout}
             selectedVariantId={selectedVariants[product.key]}
             busy={busyKeys.includes(product.key)}
             onSelectVariant={(variantId) => {

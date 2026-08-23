@@ -1,7 +1,10 @@
 import { describe, it, before, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { renderToStaticMarkup } from 'react-dom/server'
-import RecommendationCard, { RECOMMENDATION_LABELS } from './RecommendationCard'
+import RecommendationCard, {
+  RECOMMENDATION_LABELS,
+  type RecommendationCardLayout,
+} from './RecommendationCard'
 import {
   buildCartRecommendations,
   recommendationCartItem,
@@ -99,12 +102,14 @@ function card(props: {
   product: RecommendationProduct
   selectedVariantId?: string
   busy?: boolean
+  layout?: RecommendationCardLayout
 }): string {
   return renderToStaticMarkup(
     <RecommendationCard
       product={props.product}
       selectedVariantId={props.selectedVariantId}
       busy={props.busy ?? false}
+      layout={props.layout}
       onSelectVariant={noop}
       onAdd={noop}
     />,
@@ -367,5 +372,101 @@ describe('adding a recommendation to the real cart store', () => {
 
     assert.equal(useCartStore.getState().items.length, 1)
     assert.equal(useCartStore.getState().items[0].qty, 2)
+  })
+})
+
+describe('recommendation card — the drawer’s two-up «cartGrid» layout', () => {
+  const multi = product({
+    slug: 'aboks',
+    title: 'aBoks',
+    variants: [
+      variant({ id: 'v-sort', name: 'Sort', colorHex: '#1a1d17' }),
+      variant({ id: 'v-oliven', name: 'Olivengrønn', colorHex: '#5b6347' }),
+      variant({ id: 'v-sand', name: 'Sand', colorHex: '#d8cdb4' }),
+      variant({ id: 'v-hvit', name: 'Hvit', colorHex: '#f2efe6' }),
+    ],
+  })
+
+  it('offers exactly what the full-width card does', () => {
+    const html = card({ product: product(), layout: 'cartGrid' })
+
+    assert.ok(html.includes('aBoks Spesial'))
+    assert.ok(html.includes(formatPrice(649)))
+    assert.ok(html.includes(RECOMMENDATION_LABELS.add))
+    assert.ok(!html.includes('disabled'))
+    assert.ok(html.includes('href="/produkter/aboks-special"'))
+  })
+
+  it('shows the product’s own title, untouched and unabbreviated', () => {
+    const long = product({ title: 'aBoks Spesial Oppbevaring for AA- og AAA-batterier' })
+    assert.ok(card({ product: long, layout: 'cartGrid' }).includes(long.title))
+  })
+
+  it('stacks the image above the text at a square ratio, so two cards match', () => {
+    const html = card({ product: product(), layout: 'cartGrid' })
+    assert.match(html, /flex-direction:column/)
+    assert.match(html, /aspect-ratio:1 \/ 1/)
+    // No fixed 64px tile — the image is as wide as the card it sits in.
+    assert.ok(!html.includes('width:64px'))
+  })
+
+  it('clamps the name to two lines and lets nothing spill out of the track', () => {
+    const html = card({ product: product(), layout: 'cartGrid' })
+    assert.match(html, /-webkit-line-clamp:2/)
+    assert.match(html, /overflow-wrap:anywhere/)
+    assert.match(html, /min-width:0/)
+  })
+
+  it('pins the CTA to the bottom edge so neighbours line up', () => {
+    const html = card({ product: product(), layout: 'cartGrid' })
+    assert.match(html, /margin-top:auto/)
+    assert.match(html, /height:100%/)
+  })
+
+  it('keeps the cart’s design system at the smaller size', () => {
+    const html = card({ product: product(), layout: 'cartGrid' })
+    assert.match(html, /border-radius:999px/)
+    assert.match(html, /background:#39402c/)
+    assert.match(html, /var\(--font-manrope\)/)
+    assert.match(html, /var\(--font-cormorant\)/)
+  })
+
+  it('still asks for a colour first, and still takes all four swatches', () => {
+    const html = card({ product: multi, layout: 'cartGrid' })
+
+    for (const option of multi.variants) assert.ok(html.includes(`aria-label="${option.name}"`))
+    assert.ok(html.includes(RECOMMENDATION_LABELS.chooseVariant))
+    assert.match(html, /disabled/)
+    // Smaller than the full-width card's 26px, and none of them may be squeezed.
+    assert.match(html, /width:18px;height:18px/)
+    assert.match(html, /flex-shrink:0/)
+  })
+
+  it('enables «Legg til» once a colour is picked, exactly as the wide card does', () => {
+    const html = card({ product: multi, selectedVariantId: 'v-sand', layout: 'cartGrid' })
+
+    assert.ok(html.includes(RECOMMENDATION_LABELS.add))
+    assert.ok(!html.includes('disabled'))
+    assert.ok(html.includes('aria-pressed="true"'))
+    assert.ok(html.includes('Sand'))
+  })
+
+  it('confirms with «Lagt til» and goes inert, as before', () => {
+    const html = card({ product: product(), busy: true, layout: 'cartGrid' })
+    assert.ok(html.includes(RECOMMENDATION_LABELS.added))
+    assert.match(html, /aria-busy="true"/)
+    assert.match(html, /background:#c8c0b0/)
+  })
+
+  it('leaves the cart page’s card exactly as it was', () => {
+    // The default layout is what /handlekurv renders, and nothing above may have reached it:
+    // still a 64px tile beside the name, still no bottom-pinned button.
+    const html = card({ product: product() })
+    assert.match(html, /width:64px;height:64px/)
+    assert.ok(!html.includes('aspect-ratio'))
+    assert.ok(!html.includes('margin-top:auto'))
+    assert.ok(!html.includes('height:100%'))
+    // And still the full-size swatches, not the drawer's 18px ones.
+    assert.match(card({ product: multi }), /width:26px;height:26px/)
   })
 })

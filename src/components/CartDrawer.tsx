@@ -320,10 +320,13 @@ export default function CartDrawer({ productTitles }: Props) {
                     )
                   })}
 
-                  {/* The same cross-sell block as the cart page, unchanged: same endpoint,
-                      same rules, same ordinary `addItem`. Adding from here updates the lines
-                      above it in place — the drawer never closes and reopens for it. */}
-                  <CartRecommendations />
+                  {/* The same cross-sell block as the cart page: same endpoint, same rules,
+                      same ordinary `addItem`. Adding from here updates the lines above it in
+                      place — the drawer never closes and reopens for it. Only the layout is
+                      the drawer's own: `cartGrid` packs compact cards two to a row, so the
+                      block costs a fraction of the height a column of full-width cards did
+                      and the totals below stay a short scroll away. */}
+                  <CartRecommendations layout="cartGrid" />
 
                   <div style={{ height: '20px' }} />
                 </>
