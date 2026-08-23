@@ -9,6 +9,7 @@ import { anchorClick } from '@/lib/anchorScroll'
 import {
   bedrifterDocuments,
   isBedrifterProductKey,
+  type DocumentAnchor,
   type DocumentFile,
   type ProductDocument,
 } from '@/lib/bedrifterDocuments'
@@ -420,6 +421,27 @@ function ExternalLinkIcon() {
   )
 }
 
+/** Marks a document row that leads somewhere on the page instead of to a file. */
+function ArrowRightIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <path d="M5 12h13" />
+      <path d="m12.5 6 6 6-6 6" />
+    </svg>
+  )
+}
+
 /** The small uppercase format label on the right of a document row ("PDF", "HTML"). */
 const fileTypeStyle: React.CSSProperties = {
   flexShrink: 0,
@@ -430,18 +452,47 @@ const fileTypeStyle: React.CSSProperties = {
   color: MUTED,
 }
 
+/** The document's name, filling the row so the format label is pushed to the far right. */
+const documentNameStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  fontFamily: SANS,
+  fontWeight: 600,
+  fontSize: '14.5px',
+  lineHeight: 1.3,
+  color: 'inherit',
+}
+
+/** Shared by both kinds of full-width row, so a file row and an anchor row sit alike. */
+const documentRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '11px',
+  flex: 1,
+  minWidth: 0,
+  padding: '12px 10px',
+  textDecoration: 'none',
+  transition: 'background .18s ease, color .18s ease',
+}
+
 /**
  * Document rows inside a solution card, one row per document. A row's first format claims
  * the whole row — icon, label and all — so clicking anywhere on it downloads the PDF. Any
  * further format (today only the Tilbudsmal's browser version) sits to its right as a
  * separate link, giving the `PDF ↓  HTML ↗` pairing.
+ *
+ * A row carrying an `anchor` instead of files (the Prisliste) keeps the same shape but
+ * leads to the inquiry form, ending in `Be om tilbud →` where the others end in `PDF ↓`.
  */
 function DocumentList({
   documents,
   productName,
+  onAnchorClick,
 }: {
   documents: ProductDocument[]
   productName: string
+  /** Handles a click on an anchor row: presets the form and runs the scroll. */
+  onAnchorClick: React.MouseEventHandler<HTMLAnchorElement>
 }) {
   return (
     <div style={{ width: '100%', margin: '0 0 30px' }}>
@@ -462,22 +513,19 @@ function DocumentList({
               key={doc.label}
               style={{ borderBottom: `1px solid ${BORDER_WARM}`, display: 'flex', alignItems: 'stretch' }}
             >
-              <DocumentLink file={primary} documentLabel={doc.label} productName={productName} primary>
-                <FileIcon />
-                <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    fontFamily: SANS,
-                    fontWeight: 600,
-                    fontSize: '14.5px',
-                    lineHeight: 1.3,
-                    color: 'inherit',
-                  }}
-                >
-                  {doc.label}
-                </span>
-              </DocumentLink>
+              {doc.anchor ? (
+                <DocumentAnchorLink
+                  anchor={doc.anchor}
+                  documentLabel={doc.label}
+                  productName={productName}
+                  onClick={onAnchorClick}
+                />
+              ) : (
+                <DocumentLink file={primary} documentLabel={doc.label} productName={productName} primary>
+                  <FileIcon />
+                  <span style={documentNameStyle}>{doc.label}</span>
+                </DocumentLink>
+              )}
 
               {secondary.map((file) => (
                 <span key={file.type} style={{ display: 'flex', alignItems: 'stretch' }}>
@@ -530,22 +578,56 @@ function DocumentLink({
           ? `Åpne ${productName} ${documentLabel.toLowerCase()} i nettleseren`
           : `Last ned ${productName} ${documentLabel.toLowerCase()} som ${file.type}`
       }
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: primary ? '11px' : '7px',
-        flex: primary ? 1 : '0 0 auto',
-        minWidth: 0,
-        padding: primary ? '12px 10px' : '12px 10px 12px 12px',
-        textDecoration: 'none',
-        transition: 'background .18s ease, color .18s ease',
-      }}
+      style={
+        primary
+          ? documentRowStyle
+          : { ...documentRowStyle, gap: '7px', flex: '0 0 auto', padding: '12px 10px 12px 12px' }
+      }
     >
       {children}
       <span className="abx-doc-type" style={fileTypeStyle}>
         {file.type}
       </span>
       {opens ? <ExternalLinkIcon /> : <DownloadIcon />}
+    </a>
+  )
+}
+
+/**
+ * The Prisliste row. There is no public price sheet to download — the price depends on the
+ * order — so the row keeps a file row's shape and sends the visitor to the inquiry form,
+ * preselecting this product on the way.
+ *
+ * The `href` is a real in-page anchor, so a middle click, `/bedrifter#tilbud` typed by hand
+ * and the no-JS case all still land on the form; `onClick` only takes over a plain left
+ * click to run the site's own smooth scroll.
+ */
+function DocumentAnchorLink({
+  anchor,
+  documentLabel,
+  productName,
+  onClick,
+}: {
+  anchor: DocumentAnchor
+  documentLabel: string
+  productName: string
+  onClick: React.MouseEventHandler<HTMLAnchorElement>
+}) {
+  return (
+    <a
+      href={`#${anchor.id}`}
+      data-btn
+      className="abx-doc-row"
+      onClick={onClick}
+      aria-label={`${documentLabel} for ${productName} — ${anchor.label.toLowerCase()} i skjemaet nedenfor`}
+      style={documentRowStyle}
+    >
+      <FileIcon />
+      <span style={documentNameStyle}>{documentLabel}</span>
+      <span className="abx-doc-type" style={{ ...fileTypeStyle, whiteSpace: 'nowrap' }}>
+        {anchor.label}
+      </span>
+      <ArrowRightIcon />
     </a>
   )
 }
@@ -618,12 +700,15 @@ function ProductSectionBlock({
   imageFirst,
   reveal,
   onInterest,
+  onDocumentRequest,
 }: {
   section: ProductSection
   imageFirst: boolean
   reveal: (delay?: number) => RevealProps
   /** Presets the form's dropdown and takes over the scroll to `#foresporsel`. */
   onInterest: React.MouseEventHandler<HTMLAnchorElement>
+  /** The same, for the Prisliste row's `#tilbud` link straight to the form itself. */
+  onDocumentRequest: React.MouseEventHandler<HTMLAnchorElement>
 }) {
   const image = (
     <Image
@@ -755,7 +840,11 @@ function ProductSectionBlock({
           )}
 
           {section.documents.length > 0 && (
-            <DocumentList documents={section.documents} productName={section.name} />
+            <DocumentList
+              documents={section.documents}
+              productName={section.name}
+              onAnchorClick={onDocumentRequest}
+            />
           )}
 
           <a
@@ -793,7 +882,8 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
   const [interest, setInterest] = useState('')
 
   /** "Meld interesse" — presets the form's dropdown, then scrolls to it. */
-  const pickInterest = (value: string) => anchorClick('foresporsel', () => setInterest(value))
+  const pickInterest = (value: string, anchor = 'foresporsel') =>
+    anchorClick(anchor, () => setInterest(value))
 
   /**
    * Every product on the page, in reading order: the two upcoming models first, then the
@@ -1084,6 +1174,7 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
                 imageFirst={index % 2 === 0}
                 reveal={reveal}
                 onInterest={pickInterest(section.interestOption)}
+                onDocumentRequest={pickInterest(section.interestOption, 'tilbud')}
               />
             ))}
           </div>
@@ -1404,7 +1495,9 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
         style={{ background: PALE_SAGE, padding: SECTION_PAD, scrollMarginTop: ANCHOR_OFFSET }}
       >
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
-          <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+          {/* `#tilbud` is the form's own anchor — the section's `#foresporsel` lands a
+              little higher, on the section padding. Both clear the sticky header. */}
+          <div id="tilbud" style={{ maxWidth: '760px', margin: '0 auto', scrollMarginTop: ANCHOR_OFFSET }}>
             <motion.div {...reveal()} style={{ marginBottom: 'clamp(28px,3.4vw,42px)' }}>
               <p style={eyebrowStyle}>Kontakt oss</p>
               <h2 id="foresporsel-heading" style={h2Style}>

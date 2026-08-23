@@ -20,10 +20,23 @@ export interface DocumentFile {
   action: 'download' | 'open'
 }
 
-/** One row in the "Dokumenter" list. A row may offer the same document in several formats. */
+/** Where a row points when it asks for something instead of handing over a file. */
+export interface DocumentAnchor {
+  /** `id` of the element on the same page the row scrolls to. */
+  id: string
+  /** The call to action shown where a file row shows its format ("PDF"). */
+  label: string
+}
+
+/**
+ * One row in the "Dokumenter" list. A row either offers the document as files — possibly
+ * in several formats — or, with `anchor` and no files, sends the visitor somewhere on the
+ * page to ask for it.
+ */
 export interface ProductDocument {
   label: string
   files: DocumentFile[]
+  anchor?: DocumentAnchor
 }
 
 /**
@@ -118,7 +131,10 @@ export function bedrifterDocuments(key: BedrifterProductKey): ProductDocument[] 
   const files = FILES[key]
   return [
     { label: 'Produktark', files: [pdf(files.produktark)] },
-    { label: 'Prisliste', files: [pdf(files.prisliste)] },
+    // Prices are quoted per customer, so this row asks for a tilbud rather than handing
+    // out a price sheet. `files.prisliste` still names the PDF that sits in Blob for
+    // internal use — it is simply not linked from the page any more.
+    { label: 'Prisliste', files: [], anchor: { id: 'tilbud', label: 'Be om tilbud' } },
     {
       label: 'Tilbudsmal',
       files: [pdf(files.tilbudsmalPdf), { type: 'HTML', url: tilbudsmalHtmlUrl(key), action: 'open' }],
