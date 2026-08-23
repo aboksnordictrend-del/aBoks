@@ -122,7 +122,7 @@ const secondaryButton: React.CSSProperties = {
 const HERO_DESKTOP = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-for-bedrifter-desktop.webp'
 const HERO_MOBILE = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-for-bedrifter-mobile.webp'
 const HERO_ALT =
-  'aBoks Special montert på veggen og aBoks Office på skrivebordet i et kontormiljø'
+  'aBoks Spesial montert på veggen og aBoks Office på skrivebordet i et kontormiljø'
 
 const HERO_POINTS = ['Trygg innsamling', 'Flere innsamlingspunkter', 'For kontor og arbeidsplass']
 
@@ -160,16 +160,16 @@ interface ProductSection {
 /** The two models that have not launched yet. Images already used by "Snart fra aBoks". */
 const UPCOMING: ProductSection[] = [
   {
-    name: 'aBoks Special',
+    name: 'aBoks Spesial',
     badge: 'Kommer snart',
     subtitle: 'For trygg innsamling av brukte batterier',
     description:
       'En veggmontert beholder med ekstra kapasitet for brukte batterier. Utviklet for bedrifter og arbeidsplasser der batterier skiftes ofte og det er behov for flere lett tilgjengelige innsamlingspunkter.',
     suitableFor: ['Produksjon', 'Verksted', 'Lager', 'Kontor', 'Skoler og institusjoner'],
     image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-special-4x3.webp',
-    imageAlt: 'aBoks Special – veggmontert beholder for brukte batterier',
+    imageAlt: 'aBoks Spesial – veggmontert beholder for brukte batterier',
     imageAspect: '4 / 3',
-    interestOption: 'aBoks Special',
+    interestOption: 'aBoks Spesial',
     documents: bedrifterDocuments('aboks-special'),
   },
   {

@@ -18,7 +18,7 @@ import { normalizeMultiline, normalizeWhitespace } from '@/lib/reviewValidation'
  *  accepts exactly these — an unknown value is a hand-rolled POST, not a customer. */
 export const INTEREST_OPTIONS = [
   'Produkter til egen bedrift',
-  'aBoks Special',
+  'aBoks Spesial',
   'aBoks Office',
   'Større bestilling',
   'Forhandlersamarbeid',

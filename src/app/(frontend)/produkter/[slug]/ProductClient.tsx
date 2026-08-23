@@ -151,7 +151,7 @@ const FEATURE_SECTION_COPY = {
 
 /** `href` is null for products that have no page yet — those images stay non-clickable. */
 const FUTURE: { name: string; desc: string; image: string; href: string | null }[] = [
-  { name: 'aBoks Special',     desc: 'Veggmontert beholder for trygg innsamling av brukte batterier. Utviklet for bedrifter og steder der batterier skiftes ofte.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-special-4x3.webp', href: null },
+  { name: 'aBoks Spesial',     desc: 'Veggmontert beholder for trygg innsamling av brukte batterier. Utviklet for bedrifter og steder der batterier skiftes ofte.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-special-4x3.webp', href: null },
   { name: 'aBoks Office',      desc: 'Smart skrivebordsorganisering for kontor og hjemmekontor. Samler batterier, telefon, penner og småting på ett sted.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-office-4x3.webp', href: null },
   { name: 'aBoks Vegg',        desc: 'Snart tilgjengelig. Veggmontert oppbevaring som frigjør plass og holder batteriene lett tilgjengelige.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-vegg-kommer-snart.webp', href: null },
 ]

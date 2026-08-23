@@ -348,7 +348,7 @@ const FAMILY = [
     href: '/produkter/aboks-vegg',
   },
   {
-    name: 'aBoks Office og aBoks Special',
+    name: 'aBoks Office og aBoks Spesial',
     note: 'Bedriftsrettede modeller under utvikling. Kommer snart.',
     href: '/bedrifter',
   },

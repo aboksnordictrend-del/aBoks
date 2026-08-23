@@ -199,7 +199,7 @@ describe('validateInquiryInput — interest', () => {
   it('accepts every option the dropdown offers', () => {
     for (const option of [
       'Produkter til egen bedrift',
-      'aBoks Special',
+      'aBoks Spesial',
       'aBoks Office',
       'Større bestilling',
       'Forhandlersamarbeid',

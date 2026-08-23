@@ -76,12 +76,12 @@ function product(overrides: Partial<RecommendationProduct> = {}): Recommendation
     key: overrides.key ?? `products:${slug}`,
     collection: 'products',
     id: overrides.id ?? slug,
-    title: overrides.title ?? 'aBoks Special',
+    title: overrides.title ?? 'aBoks Spesial',
     slug,
     href: overrides.href ?? `/produkter/${slug}`,
     section: overrides.section ?? 'products',
     image: overrides.image ?? 'https://blob.example/special.webp',
-    imageAlt: overrides.imageAlt ?? 'aBoks Special',
+    imageAlt: overrides.imageAlt ?? 'aBoks Spesial',
     price: overrides.price ?? 649,
     compareAtPrice: overrides.compareAtPrice ?? null,
     // Defaults describe a product WITH colours, so every existing expectation here is
@@ -115,7 +115,7 @@ describe('recommendation card', () => {
   it('shows the name, the price and an enabled «Legg til»', () => {
     const html = card({ product: product() })
 
-    assert.ok(html.includes('aBoks Special'))
+    assert.ok(html.includes('aBoks Spesial'))
     // Through formatPrice, not a literal — it uses a non-breaking space, and the currency
     // formatting is not this component's to define.
     assert.ok(html.includes(formatPrice(649)))
@@ -228,7 +228,7 @@ describe('adding a recommendation to the real cart store', () => {
       // For a variant line the variant is still what identifies it — see cartLineRef.
       productId: 'aboks-special',
       productSlug: 'aboks-special',
-      productTitle: 'aBoks Special',
+      productTitle: 'aBoks Spesial',
       colorName: 'Sort',
       colorHex: '#1a1d17',
       colorImage: 'https://blob.example/sort.webp',
