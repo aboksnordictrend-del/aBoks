@@ -10,6 +10,9 @@ import { trackBeginCheckout } from '@/lib/analytics'
 import CartLine from '@/app/(frontend)/handlekurv/CartLine'
 import CartRecommendations from '@/app/(frontend)/handlekurv/CartRecommendations'
 import { type ProductTitlesBySlug } from '@/lib/cart/lineTitle'
+import PromoCodeDisclosure from '@/components/PromoCodeDisclosure'
+import { useSharedPromoCode } from '@/components/PromoCodeProvider'
+import { buildSummaryRows } from '@/lib/promo/cartPromo'
 
 /**
  * The slide-out cart — a second view of the one cart in @/store/cart, not a copy of it.
@@ -19,12 +22,13 @@ import { type ProductTitlesBySlug } from '@/lib/cart/lineTitle'
  * `CartRecommendations` for «Passer godt sammen med». Nothing about the cart is re-implemented
  * here; this file owns the panel, its animation and its accessibility, and nothing else.
  *
- * Deliberately NOT here: the promo-code field. `usePromoCode` issues validation requests and
- * owns the applied code, and mounting a second copy of it on top of the cart page's would mean
- * two hooks racing over one code. An applied code is shown as a note instead and stays exactly
- * where it is applied — /handlekurv and the checkout, which is also where its trusted figures
- * are computed. The totals below are the cart's own, undiscounted, as they have always been
- * before a code is applied.
+ * The promo code is the same one state too, not a second copy: `useSharedPromoCode` reads the
+ * single `usePromoCode` instance mounted above both views in the layout, so applying a code
+ * here applies it on /handlekurv and «Fjern» in either place removes it in both. That state
+ * outlives this panel's contents, which exist only while it is open — closing and reopening
+ * the drawer shows the applied code and its `Rabatt` row again with no re-check. Every figure
+ * in it is still the server's: `buildSummaryRows` picks between the cart's own totals and the
+ * validated ones, and nothing here derives a discount.
  *
  * Mounted once in the frontend layout. Its contents exist only while it is open, so a closed
  * drawer costs one boolean subscription and renders nothing at all — on the server too, which
@@ -53,7 +57,6 @@ export default function CartDrawer({ productTitles }: Props) {
   const open = useCartStore((s) => s.drawerOpen)
   const close = useCartStore((s) => s.closeCartDrawer)
   const items = useCartStore((s) => s.items)
-  const promoCode = useCartStore((s) => s.promoCode)
   const removeItem = useCartStore((s) => s.removeItem)
   const incrementItem = useCartStore((s) => s.incrementItem)
   const decrementItem = useCartStore((s) => s.decrementItem)
@@ -74,6 +77,20 @@ export default function CartDrawer({ productTitles }: Props) {
   const shippingCost = shipping()
   const total = orderTotal()
   const hasCart = items.length > 0
+
+  // The shared promo state — see the note at the top of this file.
+  const promo = useSharedPromoCode()
+  // With a code applied these rows are the server's figures (computed from live catalogue
+  // prices) and carry an extra `Rabatt` line; without one they are exactly the three rows this
+  // panel has always shown. The same helper the cart page uses.
+  const summaryRows = buildSummaryRows(
+    { subtotal: sub, shipping: shippingCost, total },
+    promo.totals,
+  )
+  const orderTotalRow = summaryRows.find((row) => row.key === 'total')!
+  // The hint follows the Frakt row that is actually on screen: with a code applied that
+  // row is the server's figure, and the note must not contradict the line above it.
+  const shippingRow = summaryRows.find((row) => row.key === 'shipping')!
 
   // Drag-to-close is a touch gesture. Enabled by viewport rather than by input type so a
   // desktop pointer never has to fight a draggable panel, and re-evaluated on rotation.
@@ -400,24 +417,44 @@ export default function CartDrawer({ productTitles }: Props) {
                   boxShadow: '0 -6px 20px -14px rgba(42,36,24,.35)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6f63' }}>Delsum</span>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', fontWeight: 600, color: '#1a1d17' }}>
-                    {formatPrice(sub)}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6f63' }}>Frakt</span>
-                  {shippingCost === 0 ? (
-                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', fontWeight: 600, color: '#5f8253' }}>Gratis</span>
-                  ) : (
-                    <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', fontWeight: 600, color: '#1a1d17' }}>
-                      {formatPrice(shippingCost)}
-                    </span>
-                  )}
-                </div>
+                {/* «Har du en rabattkode?» — collapsed to one line until asked for, and sitting
+                    directly above Delsum so the discount appears next to the totals it changes. */}
+                <PromoCodeDisclosure promo={promo} />
 
-                {shippingCost > 0 && (
+                {summaryRows
+                  .filter((row) => row.key !== 'total')
+                  .map((row) => (
+                    <div
+                      key={row.key}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        marginBottom: row.key === 'shipping' ? '12px' : '10px',
+                      }}
+                    >
+                      <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6f63', minWidth: 0, overflowWrap: 'anywhere' }}>
+                        {row.label}
+                      </span>
+                      {row.free ? (
+                        <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', fontWeight: 600, color: '#5f8253' }}>Gratis</span>
+                      ) : (
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-manrope)',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: row.key === 'discount' ? '#5f8253' : '#1a1d17',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {row.value < 0 ? `−${formatPrice(Math.abs(row.value))}` : formatPrice(row.value)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+
+                {!shippingRow.free && (
                   <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#6b6057', margin: '-6px 0 12px' }}>
                     Gratis frakt ved kjøp over kr 650
                   </p>
@@ -435,17 +472,9 @@ export default function CartDrawer({ productTitles }: Props) {
                 >
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', fontWeight: 700, color: '#1a1d17' }}>Totalt</span>
                   <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '19px', fontWeight: 700, color: '#1a1d17' }}>
-                    {formatPrice(total)}
+                    {formatPrice(orderTotalRow.value)}
                   </span>
                 </div>
-
-                {/* An applied code is named, never recalculated here: the discount is a server
-                    figure, and this panel has no trusted one to show. */}
-                {promoCode && (
-                  <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '12.5px', color: '#5f8253', margin: '-6px 0 12px' }}>
-                    Rabattkode {promoCode} trekkes fra i kassen.
-                  </p>
-                )}
 
                 <Link
                   href="/kasse"

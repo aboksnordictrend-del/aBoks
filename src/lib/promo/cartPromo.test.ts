@@ -10,6 +10,8 @@ import {
   promoCheckKey,
   promoReducer,
   restoredPromoState,
+  PROMO_COMPACT_TEXT,
+  promoDisclosureView,
   shouldSubmitOnKey,
   type PromoEvent,
   type PromoState,
@@ -557,5 +559,134 @@ describe('promo request — a product with no variants', () => {
 
   it('keeps a variant line’s fingerprint exactly as it was', () => {
     assert.equal(cartSignature([{ variantId: '10', qty: 2 } as never]), '10:2')
+  })
+})
+
+/* ------------------------------ the drawer's disclosure ------------------------------ */
+
+/**
+ * The slide-out cart shows the promo field behind a «Har du en rabattkode?» line rather than
+ * as a permanently open box — the drawer's footer is sticky, and an always-open field costs a
+ * phone the space the checkout button needs.
+ *
+ * `promoDisclosureView` is the whole open/closed decision, so what is asserted here is the
+ * behaviour, not the markup: the component owns nothing but the `toggled` boolean fed in.
+ */
+describe('promoDisclosureView', () => {
+  const base = { toggled: false, status: 'idle' as const, code: null, message: null }
+
+  it('is a single collapsed line until someone asks for it', () => {
+    assert.equal(promoDisclosureView(base), 'collapsed')
+  })
+
+  it('opens the field when the trigger is pressed, and closes again on a second press', () => {
+    assert.equal(promoDisclosureView({ ...base, toggled: true }), 'expanded')
+    assert.equal(promoDisclosureView({ ...base, toggled: false }), 'collapsed')
+  })
+
+  it('stays open while a code is being checked', () => {
+    assert.equal(promoDisclosureView({ ...base, status: 'checking', toggled: false }), 'expanded')
+  })
+
+  it('keeps itself open on a rejected code, so the reason cannot be collapsed out of sight', () => {
+    assert.equal(
+      promoDisclosureView({
+        ...base,
+        status: 'error',
+        message: 'Rabattkoden er utløpt.',
+        toggled: false,
+      }),
+      'expanded',
+    )
+  })
+
+  it('keeps itself open when the code could not be verified', () => {
+    assert.equal(
+      promoDisclosureView({ ...base, status: 'unverified', code: 'SOMMER20', message: 'Prøv igjen.' }),
+      'expanded',
+    )
+  })
+
+  /**
+   * The drawer's contents exist only while it is open, so this is what a reopened drawer sees:
+   * `toggled` is back to false, and the applied code shows anyway.
+   */
+  it('shows an applied code without anyone pressing anything — a reopened drawer still has it', () => {
+    assert.equal(
+      promoDisclosureView({ ...base, status: 'applied', code: 'SOMMER20' }),
+      'applied',
+    )
+  })
+
+  it('shows the applied state over the field, however the trigger was left', () => {
+    assert.equal(
+      promoDisclosureView({ ...base, status: 'applied', code: 'SOMMER20', toggled: true }),
+      'applied',
+    )
+  })
+
+  it('never claims a code is applied without one', () => {
+    assert.equal(promoDisclosureView({ ...base, status: 'applied', code: null }), 'collapsed')
+  })
+})
+
+describe('PROMO_COMPACT_TEXT', () => {
+  it('is the wording the drawer asks for', () => {
+    assert.equal(PROMO_COMPACT_TEXT.trigger, 'Har du en rabattkode?')
+    assert.equal(PROMO_COMPACT_TEXT.placeholder, 'Rabattkode')
+    assert.equal(PROMO_COMPACT_TEXT.apply, 'Bruk')
+    assert.equal(PROMO_COMPACT_TEXT.remove, 'Fjern')
+    assert.equal(PROMO_COMPACT_TEXT.applied('SOMMER20'), 'Rabattkode: SOMMER20')
+  })
+})
+
+/* ------------------------------ the drawer's totals ------------------------------ */
+
+/**
+ * The drawer renders the very rows the cart page does, from the same `buildSummaryRows`. What
+ * these assert is the round trip a customer makes in the drawer: apply → `Rabatt` row and a
+ * lower `Totalt`; remove → back to exactly the cart's own three rows.
+ */
+describe('drawer summary — applying and removing a code', () => {
+  const local = { subtotal: 449, shipping: 69, total: 518 }
+
+  it('adds a Rabatt row with a negative amount and lowers Totalt', () => {
+    const rows = buildSummaryRows(local, TOTALS)
+    const discount = rows.find((r) => r.key === 'discount')
+
+    assert.ok(discount, 'a discount row must be shown')
+    assert.ok(discount.label.startsWith('Rabatt'), `label was ${discount.label}`)
+    assert.equal(discount.value, -44.9)
+    assert.ok(discount.value < 0, 'the discount must read as a deduction')
+    assert.equal(rows.find((r) => r.key === 'total')?.value, 473.1)
+    // Delsum stays the pre-discount figure — the deduction is its own line, not a rewrite.
+    assert.equal(rows.find((r) => r.key === 'subtotal')?.value, 449)
+  })
+
+  it('returns to the undiscounted rows once the code is removed', () => {
+    const after = promoReducer(
+      { code: 'WELCOME10', status: 'applied', totals: TOTALS, message: null, requestId: 1 },
+      { type: 'remove' },
+    )
+    assert.equal(after.code, null)
+    assert.equal(after.totals, null)
+
+    const rows = buildSummaryRows(local, after.totals)
+    assert.equal(rows.find((r) => r.key === 'discount'), undefined)
+    assert.equal(rows.find((r) => r.key === 'total')?.value, 518)
+  })
+
+  it('shows no discount row while a rejected code is on screen', () => {
+    const after = promoReducer(
+      { code: 'WELCOME10', status: 'applied', totals: TOTALS, message: null, requestId: 2 },
+      {
+        type: 'result',
+        requestId: 2,
+        outcome: { kind: 'invalid', message: 'Rabattkoden er utløpt.' },
+      },
+    )
+    const rows = buildSummaryRows(local, after.totals)
+    assert.equal(rows.find((r) => r.key === 'discount'), undefined)
+    assert.equal(rows.find((r) => r.key === 'total')?.value, 518)
   })
 })

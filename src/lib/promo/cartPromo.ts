@@ -379,3 +379,53 @@ export function shouldSubmitOnKey(key: string): boolean {
 export function promoCheckKey(code: string | null, signature: string): string | null {
   return code ? `${code}|${signature}` : null
 }
+
+/* ------------------------------ compact (drawer) presentation ------------------------------ */
+
+/**
+ * The wording the slide-out cart uses.
+ *
+ * Separate from `PROMO_TEXT` only because the drawer's row is a *disclosure* rather than a
+ * labelled field: it has a trigger line, and the shorter `Rabattkode` / `Bruk` read better in
+ * a 440px panel. Nothing about the cart page's wording changes — `PROMO_TEXT` is untouched,
+ * and both variants drive the very same state machine above.
+ */
+export const PROMO_COMPACT_TEXT = {
+  /** The collapsed row. Reads as a link, behaves as a disclosure button. */
+  trigger: 'Har du en rabattkode?',
+  placeholder: 'Rabattkode',
+  apply: 'Bruk',
+  checking: PROMO_TEXT.checking,
+  remove: PROMO_TEXT.remove,
+  /** `Rabattkode: WELCOME10` */
+  applied: (code: string) => `Rabattkode: ${code}`,
+  /** Confirmation beneath the applied row. */
+  appliedNote: 'Rabatten er trukket fra.',
+} as const
+
+/** What the disclosure shows. */
+export type PromoDisclosureView = 'collapsed' | 'expanded' | 'applied'
+
+/**
+ * Which of the three the compact row is in.
+ *
+ * Pure on purpose: the only state the component itself owns is `toggled` (has the customer
+ * pressed the trigger), and every other reason to be open is derived from the shared promo
+ * state. That is what makes the field re-open by itself when a code is rejected — collapsing
+ * an error out of sight would hide the only explanation the customer gets.
+ *
+ * `applied` wins over everything: there is nothing left to type.
+ */
+export function promoDisclosureView(input: {
+  toggled: boolean
+  status: PromoStatus
+  code: string | null
+  message: string | null
+}): PromoDisclosureView {
+  if (input.status === 'applied' && input.code) return 'applied'
+  if (input.toggled) return 'expanded'
+  if (input.status === 'checking') return 'expanded'
+  // An error or an "we could not check it" message keeps the field open under it.
+  if (input.message) return 'expanded'
+  return 'collapsed'
+}

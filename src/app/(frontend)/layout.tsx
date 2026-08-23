@@ -6,6 +6,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import '../globals.css'
 import Header from '@/components/HeaderServer'
 import CartDrawer from '@/components/CartDrawerServer'
+import PromoCodeProvider from '@/components/PromoCodeProvider'
 import Footer from '@/components/Footer'
 import TouchPressManager from '@/components/TouchPressManager'
 
@@ -75,11 +76,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </noscript>
         <TouchPressManager />
         <Header />
-        {/* The slide-out cart: mounted once for the whole site, renders nothing until opened. */}
-        <CartDrawer />
-        <div>
-          {children}
-        </div>
+        {/* One promo-code state for both views of the cart — the drawer below and the
+            /handlekurv page inside {children}. See @/components/PromoCodeProvider. */}
+        <PromoCodeProvider>
+          {/* The slide-out cart: mounted once for the whole site, renders nothing until opened. */}
+          <CartDrawer />
+          <div>
+            {children}
+          </div>
+        </PromoCodeProvider>
         <Footer />
         {/* CookieYes consent banner */}
         <Script

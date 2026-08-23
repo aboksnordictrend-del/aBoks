@@ -9,7 +9,7 @@ import PromoCodeField from '@/components/PromoCodeField'
 import CartRecommendations from './CartRecommendations'
 import CartLine from './CartLine'
 import { type ProductTitlesBySlug } from '@/lib/cart/lineTitle'
-import { usePromoCode } from '@/lib/promo/usePromoCode'
+import { useSharedPromoCode } from '@/components/PromoCodeProvider'
 import { buildSummaryRows } from '@/lib/promo/cartPromo'
 
 /**
@@ -24,7 +24,9 @@ export default function CartClient({ productTitles }: { productTitles?: ProductT
   const total = orderTotal()
   const hasCart = items.length > 0
 
-  const promo = usePromoCode()
+  // The one promo state the site has — the same object the slide-out cart reads, so a code
+  // applied or removed in either view is applied or removed in both.
+  const promo = useSharedPromoCode()
   // With a code applied these figures come from the server (computed from live catalogue
   // prices); without one they are the cart's own, exactly as before. The client never
   // derives a discount — see src/lib/promo/cartPromo.ts.
@@ -32,6 +34,9 @@ export default function CartClient({ productTitles }: { productTitles?: ProductT
     { subtotal: sub, shipping: shippingCost, total },
     promo.totals,
   )
+  // The free-shipping hint follows the Frakt row that is actually shown, so it can never
+  // contradict a «Gratis» the server put there.
+  const shippingRow = summaryRows.find((row) => row.key === 'shipping')!
   // The checkout total is still the undiscounted one until the Kustom stage lands; tracking
   // keeps using it so analytics stays consistent with what is actually charged today.
   const checkoutTotal = total
@@ -188,7 +193,7 @@ export default function CartClient({ productTitles }: { productTitles?: ProductT
                     </div>
                   ))}
 
-                {shippingCost > 0 && (
+                {!shippingRow.free && (
                   <div style={{ marginBottom: '14px', marginTop: '-10px' }}>
                     <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '12px', color: '#6b6057' }}>
                       Gratis frakt ved kjøp over kr 650
