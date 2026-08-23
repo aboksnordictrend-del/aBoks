@@ -257,27 +257,62 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const trustSignals = isAccessory ? TRUST_UNIVERSAL : TRUST
   const featureCopy = isAccessory ? FEATURE_SECTION_COPY.accessories : FEATURE_SECTION_COPY.products
 
-  // Capacity-derived content — keeps AAA references correct per product
+  /**
+   * Capacity-derived content.
+   *
+   * Everything below is read off the product's own capacity numbers in the CMS — never off the
+   * slug — so a new model gets the right band the moment its numbers are entered. The three
+   * shapes the band can take follow from how many battery types the box holds:
+   *
+   *   two types (aBoks, Vegg)   → three rooms: AA, AAA and brukte
+   *   one type  (Mini, Nano)    → two rooms: that one type and brukte
+   *   no types  (Spesial)       → one room, for brukte only — a single, centred stat
+   */
+  const hasAA = product.capacity.aa > 0
   const hasAAA = product.capacity.aaa > 0
 
-  const capacityItems = [
-    product.capacity.aa > 0
+  /** The stats for new batteries — one per battery type the product actually has a room for. */
+  const newBatteryItems = [
+    hasAA
       ? { big: String(product.capacity.aa), unit: 'AA-batterier', note: 'Eget rom for nye AA.' }
       : null,
-    product.capacity.aaa > 0
+    hasAAA
       ? { big: String(product.capacity.aaa), unit: 'AAA-batterier', note: 'Eget rom for nye AAA.' }
-      : null,
-    product.capacity.usedCompartments > 0
-      ? {
-          big: String(product.capacity.usedCompartments),
-          unit: 'rom for brukte',
-          note: hasAAA ? 'Samle dem til gjenvinning.' : 'Samle brukte batterier til gjenvinning.',
-        }
       : null,
   ].filter((c): c is { big: string; unit: string; note: string } => c !== null)
 
-  const capacityBandEyebrow = hasAAA ? 'Tre rom, full kapasitet' : 'To rom, kompakt design'
-  const capacityBandHeading = hasAAA ? 'Plass til alt – hver for seg.' : 'Plass til AA – og brukte batterier.'
+  /** How many battery types get their own room: 2, 1 or 0. Drives the eyebrow and the heading. */
+  const newBatteryTypes = newBatteryItems.length
+
+  const capacityItems = [
+    ...newBatteryItems,
+    ...(product.capacity.usedCompartments > 0
+      ? [
+          {
+            big: String(product.capacity.usedCompartments),
+            unit: 'rom for brukte',
+            note:
+              newBatteryTypes > 1
+                ? 'Samle dem til gjenvinning.'
+                : 'Samle brukte batterier til gjenvinning.',
+          },
+        ]
+      : []),
+  ]
+
+  const capacityBandEyebrow =
+    newBatteryTypes > 1
+      ? 'Tre rom, full kapasitet'
+      : newBatteryTypes === 1
+        ? 'To rom, kompakt design'
+        : 'Ett rom, enkel løsning'
+
+  const capacityBandHeading =
+    newBatteryTypes > 1
+      ? 'Plass til alt – hver for seg.'
+      : newBatteryTypes === 1
+        ? `Plass til ${hasAA ? 'AA' : 'AAA'} – og brukte batterier.`
+        : 'Kun plass til brukte batterier.'
 
   // view_item: fires on initial mount and whenever the selected variant changes
   useEffect(() => {
@@ -616,7 +651,11 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                 {capacityBandHeading}
               </h2>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'clamp(28px,4vw,48px)' }}>
+            {/* One stat (Spesial: brukte batterier only) gets a single centred column rather
+                than a lone item stranded in a multi-column grid; two or three stats keep the
+                auto-fit row, where `justifyContent` is a no-op because the 1fr tracks already
+                fill the width. Both forms stack on narrow screens as before. */}
+            <div style={{ display: 'grid', gridTemplateColumns: capacityItems.length === 1 ? 'minmax(0, 320px)' : 'repeat(auto-fit, minmax(200px, 1fr))', justifyContent: 'center', gap: 'clamp(28px,4vw,48px)' }}>
               {capacityItems.map((c) => (
                 <div key={c.unit} style={{ textAlign: 'center', padding: '0 12px' }}>
                   <div style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(60px,7vw,88px)', lineHeight: 1, color: '#faf6ee', marginBottom: '10px' }}>{c.big}</div>

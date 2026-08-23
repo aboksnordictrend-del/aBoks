@@ -17,8 +17,13 @@ import ProductClient from './ProductClient'
 
 /** The capacity band's eyebrow colour: one occurrence in the page, only inside that band. */
 const CAPACITY_MARKER = '#a9c08f'
-const CAPACITY_HEADINGS = ['Plass til alt – hver for seg.', 'Plass til AA – og brukte batterier.']
-const CAPACITY_EYEBROWS = ['Tre rom, full kapasitet', 'To rom, kompakt design']
+const CAPACITY_HEADINGS = [
+  'Plass til alt – hver for seg.',
+  'Plass til AA – og brukte batterier.',
+  'Plass til AAA – og brukte batterier.',
+  'Kun plass til brukte batterier.',
+]
+const CAPACITY_EYEBROWS = ['Tre rom, full kapasitet', 'To rom, kompakt design', 'Ett rom, enkel løsning']
 
 /** Claims that are only true of an aBoks. */
 const PLA_TRUST = 'Laget i Norge av biobasert PLA Matte'
@@ -196,6 +201,39 @@ describe('Produkter — nothing about an aBoks page changed', () => {
     assert.ok(twoRoom.includes('To rom, kompakt design'))
     assert.ok(twoRoom.includes('Plass til AA – og brukte batterier.'))
     assert.ok(!twoRoom.includes('AAA-batterier'), 'a product with no AAA lists no AAA room')
+  })
+
+  /**
+   * The band is built from the capacity numbers alone, so Nano (AAA only) and Spesial (a used
+   * compartment and nothing else) have to come out right without either slug being named.
+   */
+  it('gives an AAA-only product the same two-room band as an AA-only one', () => {
+    const nano = render({ ...baseProduct, capacity: { aa: 0, aaa: 36, usedCompartments: 1 } })
+    assert.ok(nano.includes('To rom, kompakt design'))
+    assert.ok(nano.includes('Plass til AAA – og brukte batterier.'))
+    assert.ok(nano.includes('36'))
+    assert.ok(nano.includes('AAA-batterier'))
+    assert.ok(nano.includes('Eget rom for nye AAA.'))
+    assert.ok(nano.includes('rom for brukte'))
+    assert.ok(nano.includes('Samle brukte batterier til gjenvinning.'))
+    // 'Eget rom for nye AA.' is not a substring of 'Eget rom for nye AAA.', so this really does
+    // catch an AA stat leaking onto an AAA-only product.
+    assert.ok(!nano.includes('Eget rom for nye AA.'), 'a product with no AA lists no AA room')
+    assert.ok(!nano.includes('Tre rom, full kapasitet'))
+  })
+
+  it('renders a used-batteries-only product as one centred stat, with no empty column', () => {
+    const spesial = render({ ...baseProduct, capacity: { aa: 0, aaa: 0, usedCompartments: 1 } })
+    assert.ok(spesial.includes(CAPACITY_MARKER), 'the band is still there')
+    assert.ok(spesial.includes('Ett rom, enkel løsning'))
+    assert.ok(spesial.includes('Kun plass til brukte batterier.'))
+    assert.ok(spesial.includes('rom for brukte'))
+    assert.ok(spesial.includes('Samle brukte batterier til gjenvinning.'))
+    assert.ok(!spesial.includes('-batterier'), 'neither an AA nor an AAA stat is rendered')
+    // A single column, centred — not a lone stat sitting in the left half of a two-column row.
+    assert.ok(spesial.includes('minmax(0, 320px)'))
+    assert.ok(spesial.includes('justify-content:center'))
+    assert.ok(!spesial.includes('repeat(auto-fit, minmax(200px, 1fr))'))
   })
 
   it('keeps all five trust signals, in their original order', () => {
