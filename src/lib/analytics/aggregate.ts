@@ -221,7 +221,32 @@ async function fetchOrders(
   return docs
 }
 
-function buildWarnings(
+/**
+ * Does this line have a *broken* variant link?
+ *
+ * Only a variant-based product can lose one. An accessory that is sold without variants — a
+ * battery multipack, say — legitimately has no `variantId`, and counting those lines as a
+ * data-quality problem produced a permanent warning on the dashboard that no one could ever
+ * fix. Neither `section` nor the presence of a colour label decides this: Tilbehør holds both
+ * AA-Modul (four colours) and a multipack (none).
+ *
+ * `variantBasedProductIds` is the catalogue's answer — the products that actually have rows in
+ * `product-variants` (see fetchVariantBasedProductIds). It is used whenever the line still has
+ * a product link. When it does not — an old order whose product was unlinked — or when the
+ * catalogue lookup failed and the set is null, we fall back to the line's own snapshot: a
+ * stored colour label means it was sold as a variant and the missing link is real; no label
+ * means there was never a variant to lose.
+ */
+export function isMissingVariantLink(
+  line: Pick<AnalyticsLine, 'productId' | 'variantId' | 'variantName' | 'colorName'>,
+  variantBasedProductIds: ReadonlySet<string> | null,
+): boolean {
+  if (line.variantId) return false
+  if (variantBasedProductIds && line.productId) return variantBasedProductIds.has(line.productId)
+  return Boolean(line.variantName?.trim() || line.colorName?.trim())
+}
+
+export function buildWarnings(
   orders: AnalyticsOrder[],
   opts: {
     paidAtMissing: number
@@ -229,6 +254,11 @@ function buildWarnings(
     settings: EconomySetting | null
     expenses: MarketingExpenseInput[]
     cacUnkeyed: number
+    /**
+     * Products with at least one Product Variant. Null when the catalogue lookup failed —
+     * see isMissingVariantLink for what that falls back to.
+     */
+    variantBasedProductIds: ReadonlySet<string> | null
   },
 ): Warning[] {
   const warnings: Warning[] = []
@@ -242,7 +272,7 @@ function buildWarnings(
       if (l.costEstimated) missingCostLines += 1
       if (l.vatEstimated) vatEstimatedLines += 1
       if (!l.productId) noProductLines += 1
-      if (!l.variantId) noVariantLines += 1
+      if (isMissingVariantLink(l, opts.variantBasedProductIds)) noVariantLines += 1
     }
   }
 
@@ -362,6 +392,39 @@ async function countOrders(
     pagination: true,
   })
   return result.totalDocs
+}
+
+/**
+ * The ids of every product that is variant-based, i.e. has at least one row in
+ * `product-variants`. This is the same rule @/lib/stock uses to decide where a product's stock
+ * lives, and it is the only reliable one — a product either has variant rows or it does not.
+ * Unpublished products are included on purpose: an old order may well point at one.
+ *
+ * Returns null on failure so callers fall back to the order line's own snapshot rather than
+ * silently declaring the whole catalogue variant-less.
+ */
+async function fetchVariantBasedProductIds(payload: Payload): Promise<Set<string> | null> {
+  try {
+    const result = await payload.find({
+      collection: 'product-variants',
+      depth: 0,
+      limit: 5000,
+      pagination: false,
+    })
+    const ids = new Set<string>()
+    for (const variant of result.docs) {
+      const parent = variant.product
+      const id =
+        parent && typeof parent === 'object' ? (parent as { id: number | string }).id : parent
+      if (id != null) ids.add(String(id))
+    }
+    return ids
+  } catch (err) {
+    payload.logger.warn(
+      `[analytics] variant-based product lookup failed: ${err instanceof Error ? err.message : 'unknown'}`,
+    )
+    return null
+  }
 }
 
 interface CatalogVariant {
@@ -725,12 +788,14 @@ export async function runAnalyticsDetailed(
   const currentPeriod = { from: resolved.from, to: resolved.to }
   const previousPeriod = resolved.previous
 
-  const [currentRaw, previousRaw, cancelledCurrent, cancelledPrevious] = await Promise.all([
-    fetchOrders(payload, currentPeriod, statuses),
-    fetchOrders(payload, previousPeriod, statuses),
-    countOrders(payload, currentPeriod, CANCELLED_STATUSES),
-    countOrders(payload, previousPeriod, CANCELLED_STATUSES),
-  ])
+  const [currentRaw, previousRaw, cancelledCurrent, cancelledPrevious, variantBasedProductIds] =
+    await Promise.all([
+      fetchOrders(payload, currentPeriod, statuses),
+      fetchOrders(payload, previousPeriod, statuses),
+      countOrders(payload, currentPeriod, CANCELLED_STATUSES),
+      countOrders(payload, previousPeriod, CANCELLED_STATUSES),
+      fetchVariantBasedProductIds(payload),
+    ])
 
   // Marketing + economy figures are admin-only (§12). For editors these stay zero/empty.
   const settings = isAdmin ? await loadEconomySettings(payload) : null
@@ -791,6 +856,7 @@ export async function runAnalyticsDetailed(
       settings,
       expenses,
       cacUnkeyed: newCurrent.unkeyed,
+      variantBasedProductIds,
     }),
   }
 
