@@ -145,11 +145,10 @@ export default function PersonvernerklaerngPage() {
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>LUKOCIUS NORDICTREND</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org.nr.: 937 172 877</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Storhaugveien 13, 7240 Hitra</p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>
+            <p style={{ ...bodyStyle, marginBottom: '12px' }}>
               E-post:{' '}
               <a href="mailto:post@aboks.no" style={linkStyle}>post@aboks.no</a>
             </p>
-            <p style={{ ...bodyStyle, marginBottom: '12px' }}>Telefon: 41 88 14 22</p>
             <p style={bodyStyle}>
               Vi behandler personopplysninger i samsvar med EUs personvernforordning (GDPR) og
               norsk personopplysningslov.
@@ -353,11 +352,10 @@ export default function PersonvernerklaerngPage() {
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>LUKOCIUS NORDICTREND</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org.nr.: 937 172 877</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Storhaugveien 13, 7240 Hitra</p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>
+            <p style={{ ...bodyStyle, marginBottom: 0 }}>
               E-post:{' '}
               <a href="mailto:post@aboks.no" style={linkStyle}>post@aboks.no</a>
             </p>
-            <p style={{ ...bodyStyle, marginBottom: 0 }}>Telefon: 41 88 14 22</p>
           </Section>
 
         </div>

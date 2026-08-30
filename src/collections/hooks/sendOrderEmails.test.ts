@@ -3,10 +3,13 @@ import assert from 'node:assert/strict'
 import type { Order } from '@/payload-types'
 import { claimOrderEmails, sendOrderEmails } from './sendOrderEmails'
 import { emailsToClaim } from '@/lib/orderEmails'
+import { ANGRERETTSKJEMA_FILENAME } from '@/lib/returDocuments'
 
 process.env.EMAIL_SEND_TIMEOUT_MS = '150'
 // Disable the logo network fetch so receipt-PDF generation is deterministic and offline.
 process.env.RECEIPT_LOGO_URL = ''
+// Same for the Angrerettskjema: off by default, switched on per test with a stubbed fetch.
+process.env.ANGRERETTSKJEMA_URL = ''
 
 // Keep the structured logs out of the test output.
 beforeEach(() => {
@@ -148,6 +151,34 @@ function harness(sendEmail: SendEmailFn, initial: Partial<Order> = {}) {
 }
 
 const okSend: SendEmailFn = async () => ({ messageId: '<msg-1@zoho>' })
+
+/**
+ * Runs `fn` with a reachable Angrerettskjema: the env URL is switched on and global fetch
+ * is stubbed to hand back PDF bytes. The stub records every call, so a test can assert the
+ * skjema is fetched exactly once per delivered transition — and never on a re-save.
+ */
+async function withAngrerettskjema(fn: (fetches: string[]) => Promise<void>): Promise<void> {
+  const previousUrl = process.env.ANGRERETTSKJEMA_URL
+  const realFetch = globalThis.fetch
+  const fetches: string[] = []
+
+  process.env.ANGRERETTSKJEMA_URL = 'https://blob.test/Angrerettskjema.pdf'
+  globalThis.fetch = (async (input: unknown) => {
+    fetches.push(String(input))
+    return {
+      ok: true,
+      arrayBuffer: async () => new TextEncoder().encode('%PDF-1.4 angrerett').buffer,
+    }
+  }) as unknown as typeof fetch
+
+  try {
+    await fn(fetches)
+  } finally {
+    globalThis.fetch = realFetch
+    if (previousUrl === undefined) delete process.env.ANGRERETTSKJEMA_URL
+    else process.env.ANGRERETTSKJEMA_URL = previousUrl
+  }
+}
 const neverResolves: SendEmailFn = () => new Promise(() => {})
 
 describe('emailsToClaim', () => {
@@ -312,6 +343,57 @@ describe('status change to delivered (receipt email)', () => {
 
     assert.equal(h.sent.length, 1, 'the compare-and-set lets exactly one save win')
     assert.ok(h.row.receiptEmailSentAt)
+  })
+
+  it('attaches the Angrerettskjema alongside the kvittering', async () => {
+    await withAngrerettskjema(async (fetches) => {
+      const attachmentsSeen: unknown[] = []
+      const h = harness(async (msg) => {
+        attachmentsSeen.push((msg as { attachments?: unknown }).attachments)
+        return { messageId: '<receipt@zoho>' }
+      })
+      await h.save({ status: 'delivered' })
+
+      assert.equal(h.sent.length, 1, 'the skjema rides along — never a second e-mail')
+      assert.equal(fetches.length, 1)
+
+      const attachments = attachmentsSeen[0] as Array<{ filename: string; contentType: string }>
+      assert.deepEqual(
+        attachments.map((a) => a.filename),
+        [`Kvittering-AB-1001.pdf`, ANGRERETTSKJEMA_FILENAME],
+      )
+      assert.ok(attachments.every((a) => a.contentType === 'application/pdf'))
+    })
+  })
+
+  it('does not fetch or resend the Angrerettskjema when a delivered order is saved again', async () => {
+    await withAngrerettskjema(async (fetches) => {
+      const h = harness(okSend)
+      await h.save({ status: 'delivered' })
+      await h.save({ notes: 'Levert på døra' })
+      await h.save({ status: 'delivered' })
+
+      assert.equal(h.sent.length, 1, 'ordinary saves never resend the receipt')
+      assert.equal(fetches.length, 1, 'and never re-fetch the skjema')
+    })
+  })
+
+  it('still sends the receipt — with the download link — when the skjema is unreachable', async () => {
+    // ANGRERETTSKJEMA_URL is '' for this test, so the fetch is skipped entirely.
+    const seen: { attachments?: Array<{ filename: string }>; html?: string }[] = []
+    const h = harness(async (msg) => {
+      seen.push(msg as never)
+      return { messageId: '<receipt@zoho>' }
+    })
+    await h.save({ status: 'delivered' })
+
+    assert.equal(h.sent.length, 1)
+    assert.ok(h.row.receiptEmailSentAt, 'a missing skjema never costs the customer the receipt')
+    assert.deepEqual(
+      seen[0].attachments?.map((a) => a.filename),
+      ['Kvittering-AB-1001.pdf'],
+    )
+    assert.match(String(seen[0].html), /Last ned angrerettskjema/)
   })
 
   it('an SMTP error on the receipt is recorded and does not fail the save', async () => {

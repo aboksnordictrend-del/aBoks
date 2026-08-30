@@ -11,6 +11,7 @@ import { normalizeShippingCarrier, normalizeTrackingNumber } from './orders/ship
 import { getEmailSendTimeoutMs, verifyMailTransport } from './mailTransport'
 import { orderLineDisplayName } from './orderLineName'
 import { generateReceiptPdf } from './receiptPdf'
+import { ANGRERETTSKJEMA_FILENAME, fetchAngrerettskjemaPdf } from './returDocuments'
 
 export const ADMIN_EMAIL = 'post@aboks.no'
 
@@ -138,10 +139,17 @@ function shippingAddressOf(doc: Order) {
   }
 }
 
+/** Extra facts a template needs that the stored order does not carry. */
+export type BuildOrderEmailOptions = {
+  /** Receipt email only: whether the sender managed to attach Angrerettskjema.pdf. */
+  angrerettskjemaAttached?: boolean
+}
+
 /** Builds the template + recipient for one claimable email, or null if unsendable. */
 export function buildOrderEmail(
   kind: ClaimableEmail,
   doc: Order,
+  options: BuildOrderEmailOptions = {},
 ): { to: string; template: EmailTemplate } | null {
   const customerEmail = doc.customerInfo?.email
   if (!customerEmail) return null
@@ -212,6 +220,7 @@ export function buildOrderEmail(
       firstName: doc.customerInfo?.firstName?.trim() || customerName,
       customerEmail,
       orderNumber: doc.orderNumber,
+      angrerettskjemaAttached: options.angrerettskjemaAttached ?? false,
     }),
   }
 }
@@ -293,8 +302,11 @@ export async function sendOrderEmail(
 ): Promise<SendResult> {
   const startedAt = Date.now()
 
-  const built = buildOrderEmail(kind, doc)
-  if (!built) {
+  // Hoisted ahead of the attachment work so an order with no recipient still reports
+  // «Missing customer email» rather than whatever the PDF step happens to say. This is the
+  // same condition buildOrderEmail returns null on — every kind needs the customer address,
+  // including the admin copy, which quotes it.
+  if (!doc.customerInfo?.email) {
     const result = {
       ok: false as const,
       error: 'Missing customer email',
@@ -307,6 +319,7 @@ export async function sendOrderEmail(
   // The receipt email carries a generated PDF. Build it *before* the send: a PDF failure
   // must abort the send so the claim is released and nothing is ever marked as sent.
   let attachments: Array<{ filename: string; content: Buffer; contentType: string }> | undefined
+  let angrerettskjemaAttached = false
   if (kind === 'receipt') {
     try {
       const pdf = await generateReceiptPdf(doc)
@@ -326,6 +339,37 @@ export async function sendOrderEmail(
       logOp(`send:${kind}`, fields, result)
       return result
     }
+
+    // The statutory Angrerettskjema rides along with the receipt — the same e-mail, never a
+    // second one. Best-effort on purpose: it is a stored file rather than a generated
+    // document, so an unreachable Blob must not cost the customer their receipt. The body
+    // then falls back to the download link, which it prints either way.
+    const angrerettskjema = await fetchAngrerettskjemaPdf()
+    if (angrerettskjema) {
+      attachments.push({
+        filename: ANGRERETTSKJEMA_FILENAME,
+        content: Buffer.from(angrerettskjema),
+        contentType: 'application/pdf',
+      })
+      angrerettskjemaAttached = true
+    } else {
+      logOp(`attach:angrerettskjema`, fields, {
+        ok: false,
+        durationMs: Date.now() - startedAt,
+        error: 'Angrerettskjema unavailable — falling back to the download link',
+      })
+    }
+  }
+
+  const built = buildOrderEmail(kind, doc, { angrerettskjemaAttached })
+  if (!built) {
+    const result = {
+      ok: false as const,
+      error: 'Missing customer email',
+      durationMs: Date.now() - startedAt,
+    }
+    logOp(`send:${kind}`, fields, result)
+    return result
   }
 
   // Fire-and-forget diagnostic; resolves from cache after the first call.

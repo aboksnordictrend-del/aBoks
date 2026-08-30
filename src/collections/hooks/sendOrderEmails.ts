@@ -45,6 +45,7 @@ export const claimOrderEmails: CollectionBeforeChangeHook<Order> = async ({
     confirmationEmailSentAt: data.confirmationEmailSentAt ?? originalDoc?.confirmationEmailSentAt,
     adminEmailSentAt: data.adminEmailSentAt ?? originalDoc?.adminEmailSentAt,
     shippedEmailSentAt: data.shippedEmailSentAt ?? originalDoc?.shippedEmailSentAt,
+    receiptEmailSentAt: data.receiptEmailSentAt ?? originalDoc?.receiptEmailSentAt,
   })
 
   writeClaims(req, [])

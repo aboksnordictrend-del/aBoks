@@ -75,6 +75,12 @@ export interface OrderDeliveredData {
   firstName: string
   customerEmail: string
   orderNumber: string
+  /**
+   * Whether the sender managed to attach Angrerettskjema.pdf to this e-mail. Only the
+   * wording depends on it — the download link is printed either way, so an unreachable
+   * Blob degrades to a link instead of losing the skjema.
+   */
+  angrerettskjemaAttached?: boolean
 }
 
 export interface ReviewInvitationData {

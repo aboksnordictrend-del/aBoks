@@ -110,12 +110,6 @@ const IconEmail = () => (
   </svg>
 )
 
-const IconPhone = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.9 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 7 7l1.09-1.09a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-  </svg>
-)
-
 const IconAddress = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z" />
@@ -214,13 +208,6 @@ export default function KontaktPage() {
               </a>
             </ContactRow>
 
-            <ContactRow icon={<IconPhone />}>
-              <p style={labelStyle}>Telefon</p>
-              <a href="tel:+4741881422" style={{ ...valueStyle, color: '#1a1d17', textDecoration: 'none' }}>
-                +47 418 81 422
-              </a>
-            </ContactRow>
-
             <ContactRow icon={<IconAddress />}>
               <p style={labelStyle}>Adresse</p>
               <p style={{ ...valueStyle, margin: 0 }}>
@@ -237,8 +224,8 @@ export default function KontaktPage() {
               Har du spørsmål om aBoks, bestillingen din eller levering? Vi hjelper deg gjerne.
             </p>
             <p style={bodyStyle}>
-              Ta kontakt via e-post eller telefon, så svarer vi så raskt som mulig. Normalt
-              besvarer vi henvendelser innen <strong>1–2 virkedager</strong>.
+              Ta kontakt på e-post, så svarer vi så raskt som mulig. Normalt besvarer vi
+              henvendelser innen <strong>1–2 virkedager</strong>.
             </p>
             <p style={bodyStyle}>
               Du finner svar på de vanligste spørsmålene i våre{' '}

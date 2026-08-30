@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ANGRERETTSKJEMA_URL, RETURSKJEMA_URL } from '@/lib/returDocuments'
 
 export const metadata: Metadata = {
   title: 'Frakt og retur',
@@ -46,6 +47,56 @@ const linkStyle: React.CSSProperties = {
   color: '#39402c',
   textDecoration: 'underline',
   textUnderlineOffset: '3px',
+}
+
+/**
+ * A downloadable document. Same palette and typography as the rest of the page — an
+ * outlined row rather than a new visual language, so it reads as part of the section.
+ */
+const documentLinkStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '10px',
+  fontFamily: 'var(--font-manrope)',
+  fontWeight: 600,
+  fontSize: '14px',
+  lineHeight: 1.2,
+  color: '#39402c',
+  textDecoration: 'none',
+  background: '#ffffff',
+  border: '1px solid rgba(94,106,72,0.32)',
+  borderRadius: '2px',
+  padding: '14px 20px',
+}
+
+const documentFormatStyle: React.CSSProperties = {
+  fontWeight: 500,
+  fontSize: '11px',
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: '#6b6f63',
+}
+
+/**
+ * PDFs open in a new tab (Blob serves them inline), which is the one behaviour that works
+ * the same on desktop and on mobile — including the in-app browsers where a forced
+ * download silently does nothing.
+ */
+function DocumentLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={documentLinkStyle}
+      aria-label={`${label} (PDF, åpnes i ny fane)`}
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" style={documentFormatStyle}>
+        PDF
+      </span>
+    </a>
+  )
 }
 
 function Section({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
@@ -200,13 +251,27 @@ export default function FraktOgReturPage() {
               <li>Kunden betaler returfrakten ved vanlig retur.</li>
               <li>Bruk gjerne original emballasje dersom det er mulig.</li>
             </ul>
-            <p style={bodyStyle}>
-              Les mer om angreretten på vår{' '}
-              <Link href="/frakt-og-retur" style={linkStyle}>side om angrerett</Link>.
-            </p>
           </Section>
 
-          <Section number="07" title="Tilbakebetaling">
+          <Section number="07" title="Angrerett og retur">
+            <p style={bodyStyle}>
+              Ønsker du å benytte angreretten eller returnere en vare, finner du nødvendige
+              skjemaer her.
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                margin: '20px 0 4px',
+              }}
+            >
+              <DocumentLink href={ANGRERETTSKJEMA_URL} label="Last ned angrerettskjema" />
+              <DocumentLink href={RETURSKJEMA_URL} label="Last ned returskjema" />
+            </div>
+          </Section>
+
+          <Section number="08" title="Tilbakebetaling">
             <p style={bodyStyle}>
               Tilbakebetaling skjer etter at returen er mottatt og kontrollert. Vi behandler
               refusjonen så raskt som mulig, og beløpet tilbakeføres til den betalingsmetoden
@@ -214,19 +279,18 @@ export default function FraktOgReturPage() {
             </p>
           </Section>
 
-          <Section number="08" title="Skadet pakke ved levering">
+          <Section number="09" title="Skadet pakke ved levering">
             <p style={bodyStyle}>
               Hvis pakken er skadet ved levering, ber vi deg kontakte oss så snart som mulig og
               ta bilder av emballasjen før pakken åpnes.
             </p>
             <p style={bodyStyle}>
               Ta kontakt på{' '}
-              <a href="mailto:post@aboks.no" style={linkStyle}>post@aboks.no</a> eller ring oss
-              på 41 88 14 22.
+              <a href="mailto:post@aboks.no" style={linkStyle}>post@aboks.no</a>.
             </p>
           </Section>
 
-          <Section number="09" title="Reklamasjon">
+          <Section number="10" title="Reklamasjon">
             <p style={bodyStyle}>
               Reklamasjon behandles i henhold til Forbrukerkjøpsloven. Dersom produktet har en
               produksjonsfeil eller har blitt skadet under transport, ber vi deg kontakte oss så
@@ -239,7 +303,7 @@ export default function FraktOgReturPage() {
             </p>
           </Section>
 
-          <Section number="10" title="Kontakt oss">
+          <Section number="11" title="Kontakt oss">
             <p style={bodyStyle}>
               Har du spørsmål om frakt, levering eller retur? Ta gjerne kontakt — vi hjelper deg
               gjerne.
@@ -247,11 +311,10 @@ export default function FraktOgReturPage() {
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>LUKOCIUS NORDICTREND</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org.nr.: 937 172 877</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Storhaugveien 13, 7240 Hitra</p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>
+            <p style={{ ...bodyStyle, marginBottom: '16px' }}>
               E-post:{' '}
               <a href="mailto:post@aboks.no" style={linkStyle}>post@aboks.no</a>
             </p>
-            <p style={{ ...bodyStyle, marginBottom: '16px' }}>Telefon: 41 88 14 22</p>
             <p style={bodyStyle}>
               Du finner mer informasjon i vår{' '}
               <Link href="/personvernerklaering" style={linkStyle}>personvernerklæring</Link>{' '}
