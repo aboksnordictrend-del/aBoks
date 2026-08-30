@@ -262,6 +262,19 @@ const articles: InspirasjonArticle[] = [
     imageHeight: 1024,
     imageAlt: 'Fra plantebaserte råvarer til biobasert PLA og ferdig aBoks',
   },
+  {
+    category: 'Batteriguider',
+    title: 'Hvilke AA-batterier er best?',
+    description:
+      'Hvilke AA-batterier er egentlig best? Svaret avhenger av hva du skal bruke dem til. Her går vi gjennom forskjellen på alkalisk, litium og oppladbart, hva testene viser, og hvordan du oppbevarer batteriene trygt og ryddig hjemme.',
+    date: 'August 2026',
+    publishedAt: '2026-08-30',
+    slug: '/inspirasjon/hvilke-aa-batterier-er-best',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hvilke-AA-batterier-er-best.webp',
+    imageWidth: 1672,
+    imageHeight: 941,
+    imageAlt: 'Hvilke AA-batterier er best – aBoks guide til alkaliske, litium- og oppladbare batterier',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {
