@@ -378,7 +378,7 @@ describe('status change to delivered (receipt email)', () => {
     })
   })
 
-  it('still sends the receipt — with the download link — when the skjema is unreachable', async () => {
+  it('still sends the receipt when the skjema is unreachable', async () => {
     // ANGRERETTSKJEMA_URL is '' for this test, so the fetch is skipped entirely.
     const seen: { attachments?: Array<{ filename: string }>; html?: string }[] = []
     const h = harness(async (msg) => {
@@ -393,7 +393,9 @@ describe('status change to delivered (receipt email)', () => {
       seen[0].attachments?.map((a) => a.filename),
       ['Kvittering-AB-1001.pdf'],
     )
-    assert.match(String(seen[0].html), /Last ned angrerettskjema/)
+    // …and the body names only what it actually carries.
+    assert.match(String(seen[0].html), /Vedlagt finner du kvittering for bestillingen\./)
+    assert.ok(!String(seen[0].html).includes('og angrerettskjema'))
   })
 
   it('an SMTP error on the receipt is recorded and does not fail the save', async () => {

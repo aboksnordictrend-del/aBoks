@@ -1,13 +1,12 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { createOrderDeliveredEmail } from './order-delivered'
-import { ANGRERETTSKJEMA_URL } from '@/lib/returDocuments'
 
 /**
- * The delivered ("levert") e-mail — the one that carries the Kvittering. It must always
- * give the customer a way to reach the Angrerettskjema: attached when the sender got hold
- * of the file, and as a download link either way, so an unreachable Blob only changes the
- * wording.
+ * The delivered ("levert") e-mail — the one that carries the Kvittering and the
+ * Angrerettskjema as attachments. The body only thanks the customer and names what is
+ * enclosed: no angrerett explainer and no download link, so the return documents live on
+ * /frakt-og-retur and in the attachments, not in the e-mail copy.
  */
 
 const DATA = {
@@ -17,39 +16,44 @@ const DATA = {
 }
 
 describe('delivered / receipt email', () => {
-  it('still says the kvittering is attached', () => {
+  it('keeps the subject and the personalisation', () => {
     const email = createOrderDeliveredEmail(DATA)
     assert.equal(email.subject, 'Kvittering for ordre #AB-028412')
-    assert.ok(email.html.includes('Vedlagt finner du kvitteringen for kjøpet ditt.'))
-    assert.ok(email.text.includes('Vedlagt finner du kvitteringen for kjøpet ditt.'))
+    assert.ok(email.html.includes('Hei Kari,'))
+    assert.ok(email.html.includes('#AB-028412'))
+    assert.ok(email.text.startsWith('Hei Kari,'))
+    assert.ok(email.text.includes('Din ordre #AB-028412 er nå levert.'))
   })
 
-  it('links the angrerettskjema whether or not it was attached', () => {
-    for (const attached of [true, false]) {
-      const email = createOrderDeliveredEmail({ ...DATA, angrerettskjemaAttached: attached })
-      assert.ok(
-        email.html.includes(`href="${ANGRERETTSKJEMA_URL}"`),
-        `no angrerettskjema link (attached=${attached})`,
-      )
-      assert.ok(email.html.includes('Last ned angrerettskjema'))
-      assert.ok(email.text.includes(ANGRERETTSKJEMA_URL))
-      assert.ok(email.html.includes('14 dagers angrerett'))
+  it('thanks the customer and names both enclosed documents', () => {
+    const email = createOrderDeliveredEmail({ ...DATA, angrerettskjemaAttached: true })
+    for (const rendering of [email.html, email.text]) {
+      assert.ok(rendering.includes('Takk for at du valgte aBoks! Vi håper du blir fornøyd med kjøpet ditt.'))
+      assert.ok(rendering.includes('Vedlagt finner du kvittering og angrerettskjema for bestillingen.'))
     }
   })
 
-  it('says the skjema is enclosed only when it really is', () => {
-    const attached = createOrderDeliveredEmail({ ...DATA, angrerettskjemaAttached: true })
-    assert.ok(attached.html.includes('Angrerettskjemaet ligger vedlagt'))
-    assert.ok(attached.text.includes('Angrerettskjemaet ligger vedlagt'))
-
-    const linkOnly = createOrderDeliveredEmail({ ...DATA, angrerettskjemaAttached: false })
-    assert.ok(!linkOnly.html.includes('Angrerettskjemaet ligger vedlagt'))
-    assert.ok(linkOnly.html.includes('Angrerettskjemaet kan du laste ned her'))
+  it('names the kvittering alone when the skjema could not be attached', () => {
+    const email = createOrderDeliveredEmail({ ...DATA, angrerettskjemaAttached: false })
+    assert.ok(email.html.includes('Vedlagt finner du kvittering for bestillingen.'))
+    assert.ok(!email.html.includes('og angrerettskjema'))
   })
 
-  it('defaults to the link-only wording when the flag is omitted', () => {
+  it('has no angrerett block and no download link', () => {
+    for (const attached of [true, false]) {
+      const email = createOrderDeliveredEmail({ ...DATA, angrerettskjemaAttached: attached })
+      for (const rendering of [email.html, email.text]) {
+        assert.ok(!rendering.includes('14 dagers angrerett'), 'the angrerett explainer is gone')
+        assert.ok(!rendering.includes('Last ned angrerettskjema'), 'the download link is gone')
+        assert.ok(!rendering.includes('Angrerettskjema.pdf'), 'no link to the Blob file')
+      }
+    }
+  })
+
+  it('still points the customer at support', () => {
     const email = createOrderDeliveredEmail(DATA)
-    assert.ok(!email.html.includes('ligger vedlagt'))
-    assert.ok(email.html.includes(`href="${ANGRERETTSKJEMA_URL}"`))
+    assert.ok(email.html.includes('mailto:post@aboks.no'))
+    assert.ok(email.text.includes('post@aboks.no'))
+    assert.ok(email.text.trimEnd().endsWith('Vennlig hilsen\naBoks'))
   })
 })

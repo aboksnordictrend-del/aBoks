@@ -76,9 +76,9 @@ export interface OrderDeliveredData {
   customerEmail: string
   orderNumber: string
   /**
-   * Whether the sender managed to attach Angrerettskjema.pdf to this e-mail. Only the
-   * wording depends on it — the download link is printed either way, so an unreachable
-   * Blob degrades to a link instead of losing the skjema.
+   * Whether the sender managed to attach Angrerettskjema.pdf to this e-mail. The body
+   * lists the enclosed documents by name, so on the rare miss it names the kvittering
+   * alone rather than promising an attachment that is not there.
    */
   angrerettskjemaAttached?: boolean
 }
