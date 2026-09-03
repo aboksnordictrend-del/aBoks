@@ -65,7 +65,7 @@ export function createOrderShippedEmail(data: OrderShippedData): EmailTemplate {
 
     <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">Hei ${safeName},</p>
     <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
-      Gode nyheter – bestillingen din er nå sendt, og vi gleder oss til at du får aBoks i hendene.
+      Gode nyheter! Bestillingen din er sendt, og vi gleder oss til at du skal oppleve hvor mye enklere hverdagen blir med aBoks.
     </p>
 
     <p style="margin:0 0 4px;font-size:13px;color:#999;text-transform:uppercase;letter-spacing:1px;">Ordrenummer</p>
@@ -109,7 +109,7 @@ export function createOrderShippedEmail(data: OrderShippedData): EmailTemplate {
 
 Hei ${customerName},
 
-Gode nyheter – bestillingen din er nå sendt, og vi gleder oss til at du får aBoks i hendene.
+Gode nyheter! Bestillingen din er sendt, og vi gleder oss til at du skal oppleve hvor mye enklere hverdagen blir med aBoks.
 
 Ordrenummer: #${orderNumber}
 
