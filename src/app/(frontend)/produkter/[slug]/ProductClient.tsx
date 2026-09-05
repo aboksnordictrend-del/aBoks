@@ -14,6 +14,7 @@ import ProductImageCarousel, {
 import ImageLightbox from '@/components/ImageLightbox'
 import Breadcrumbs, { type Crumb } from '@/components/Breadcrumbs'
 import ProductSupportTrust from '@/components/ProductSupportTrust'
+import PaymentMethods from '@/components/PaymentMethods'
 import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
@@ -571,6 +572,9 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   {soldOut ? 'Utsolgt' : 'Legg i handlekurv'}
                 </button>
               </div>
+
+              {/* What the checkout accepts — badges only, directly under the cart button */}
+              <PaymentMethods />
 
               {/* Development-support credit — sits directly under the cart button */}
               <ProductSupportTrust />
