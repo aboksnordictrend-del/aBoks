@@ -7,12 +7,14 @@ import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
 import { type MenuEntry, buildShopMenu, nextExpandedMenu } from '@/lib/navigation'
+import BenefitsBar from './BenefitsBar'
 
 /**
  * Routes whose first section is a full-bleed hero image that the header sits on top of.
- * On these the header starts transparent (with the trust bar showing) and fades into its
- * blurred cream state on the first scroll. Every other page gets the solid state from the
- * start. Add a route here when it gains an edge-to-edge hero — nothing else needs to change.
+ * On these the header's nav row starts transparent and fades into its blurred cream state
+ * on the first scroll. The benefits bar above it stays solid either way. Every other page
+ * gets the solid state from the start. Add a route here when it gains an edge-to-edge hero —
+ * nothing else needs to change.
  */
 const HERO_TOP_ROUTES = ['/', '/bedrifter']
 
@@ -156,38 +158,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
           boxShadow: atHeroTop ? 'none' : '0 1px 0 rgba(42,36,24,.07)',
         }}
       >
-        {/* Trust bar */}
-        <AnimatePresence>
-          {atHeroTop && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="border-b border-[rgba(42,36,24,.09)] overflow-hidden hidden lg:block"
-            >
-              <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] py-2 flex justify-center flex-wrap gap-[clamp(14px,4vw,52px)]">
-                {['Fri frakt over kr 650', '100 dagers åpent kjøp', 'Designet i Norge'].map(
-                  (t, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        fontFamily: 'var(--font-manrope)',
-                        fontSize: '11.5px',
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase',
-                        color: '#46532e',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {t}
-                    </span>
-                  ),
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <BenefitsBar />
 
         {/* Main nav */}
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] py-[12px] grid grid-cols-[1fr_auto_1fr] lg:flex lg:justify-between items-center">

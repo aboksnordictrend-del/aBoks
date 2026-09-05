@@ -10,6 +10,18 @@
 :root {
   --font-cormorant: 'Cormorant Garamond', Georgia, serif;
   --font-manrope: 'Manrope', system-ui, sans-serif;
+
+  /* Height of the global benefits bar at the top of the fixed header.
+     @/components/BenefitsBar sizes itself from this, and the body padding below offsets
+     the whole document by exactly the same amount — so every page keeps the clearance
+     under the nav row it had before the bar was added, with no per-page changes. */
+  --benefits-bar-h: 32px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --benefits-bar-h: 36px;
+  }
 }
 
 * {
@@ -23,6 +35,7 @@ html {
 @layer base {
   body {
     margin: 0;
+    padding-top: var(--benefits-bar-h);
     background: #faf6ee;
     color: #1a1d17;
     font-family: var(--font-manrope), system-ui, sans-serif;

@@ -1048,7 +1048,7 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
 
         {/* Layered over the photo below `md` and again from `lg` up; a plain block in
             between. At `lg` the copy is nudged down by half the padding so it clears the
-            transparent header's trust bar and nav — the clearance the homepage hero leaves. */}
+            transparent header's nav row — the clearance the homepage hero leaves. */}
         <div className="absolute inset-0 z-[2] md:relative md:inset-auto lg:absolute lg:inset-0 lg:flex lg:items-center lg:pt-[96px]">
           <div className="max-w-container mx-auto h-full w-full px-[clamp(20px,5vw,48px)] md:h-auto">
             {/* Padding lives in classes so it can differ per layout: clearing the fixed

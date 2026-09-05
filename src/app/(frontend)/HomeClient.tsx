@@ -182,7 +182,9 @@ export default function HomeClient({
         {/* Mobile hero – full-bleed background image with text top, buttons bottom */}
         <div
           className="relative flex flex-col md:hidden"
-          style={{ height: '100svh', minHeight: '620px', overflow: 'hidden' }}
+          // One screen minus the global benefits bar, which now sits above the hero
+          // (see @/components/BenefitsBar) — so the hero still ends exactly at the fold.
+          style={{ height: 'calc(100svh - var(--benefits-bar-h))', minHeight: '620px', overflow: 'hidden' }}
         >
           <Image
             src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-mobile-ny.webp"
