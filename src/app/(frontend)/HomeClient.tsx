@@ -16,8 +16,9 @@ import SupportedBySection from '@/components/SupportedBySection'
 import { isSaleActive, type SaleInfo } from '@/lib/pricing'
 import { FAQS, COMPARTMENTS, CAPACITY } from '@/lib/content'
 
-const SOLUTION_VIDEO_SRC    = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video.mp4'
-const SOLUTION_VIDEO_POSTER = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-olive-video-poster.webp'
+const SOLUTION_VIDEO_SRC    = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/Presentasjon.mp4'
+// The still is the video's own last frame, so the box looks unchanged when playback ends.
+const SOLUTION_VIDEO_POSTER = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/Presentasjon-poster.webp'
 const MAIN_VIDEO_SRC        = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video.mp4'
 const MAIN_VIDEO_POSTER     = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video-poster.webp'
 
@@ -368,6 +369,7 @@ export default function HomeClient({
                 label="Spill av video: aBoks med tre rom"
                 muted
                 controlsWhenPlaying
+                resetOnEnd
                 buttonSize={64}
                 wrapperStyle={{ width: '100%', height: '100%' }}
                 videoStyle={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

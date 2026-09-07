@@ -21,6 +21,7 @@ export default function ClickToPlayVideo({
   muted = false,
   playsInline = true,
   controlsWhenPlaying = false,
+  resetOnEnd = false,
   placeholderBackground = '#efe6d3',
   buttonSize = 52,
   wrapperStyle,
@@ -35,6 +36,12 @@ export default function ClickToPlayVideo({
   playsInline?: boolean
   /** Hand over to the native player once started (big, standalone videos). */
   controlsWhenPlaying?: boolean
+  /**
+   * Return to the poster and the play button when the video ends, instead of
+   * leaving the last frame frozen on screen. Only sensible when the poster is
+   * that last frame, so nothing visibly jumps.
+   */
+  resetOnEnd?: boolean
   /** Sits behind the poster, so it only shows while that image loads. */
   placeholderBackground?: string
   buttonSize?: number
@@ -90,7 +97,18 @@ export default function ClickToPlayVideo({
         controls={controlsWhenPlaying && started}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false)
+          if (!resetOnEnd) return
+          const v = videoRef.current
+          if (!v) return
+          // A paused video keeps painting its last frame; dropping the source
+          // and re-running the media load algorithm is what brings the poster
+          // back. The next press re-assigns the URL from cache and plays from 0.
+          v.removeAttribute('src')
+          v.load()
+          setStarted(false)
+        }}
         style={videoStyle}
       />
       <div

@@ -19,12 +19,12 @@ import { getImageProps } from 'next/image'
  * its own ratio so neither one is cropped.
  */
 const DESKTOP = {
-  src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Fra-planter-til-aboks/Biobasert-PLA-4x3-Desktop.webp',
+  src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Fra-planter-til-aboks/Biobasert-PLA-4x3-Desktop-NY.webp',
   width: 1536,
   height: 1024,
 }
 const MOBILE = {
-  src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Fra-planter-til-aboks/Biobasert-PLA-4x5-Mobile.webp',
+  src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Fra-planter-til-aboks/Biobasert-PLA-4x5-Mobile-NY.webp',
   width: 1122,
   height: 1402,
 }
