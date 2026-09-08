@@ -40,6 +40,9 @@ export default function ClickToPlayVideo({
    * Return to the poster and the play button when the video ends, instead of
    * leaving the last frame frozen on screen. Only sensible when the poster is
    * that last frame, so nothing visibly jumps.
+   *
+   * This also paints the poster as a real <img> layer above the video whenever
+   * playback is not running — see the note on `posterLayer` below.
    */
   resetOnEnd?: boolean
   /** Sits behind the poster, so it only shows while that image loads. */
@@ -58,8 +61,15 @@ export default function ClickToPlayVideo({
     if (!v) return
 
     if (!started) {
-      v.src = src
-      v.load()
+      // The URL is attached once. A restart after `resetOnEnd` re-uses the media
+      // already in the element — re-assigning `src` would re-run the load
+      // algorithm and, on iOS, throw away the buffered file for no gain.
+      if (!v.currentSrc && !v.src) {
+        v.src = src
+        v.load()
+      } else if (v.currentTime !== 0) {
+        v.currentTime = 0
+      }
       setStarted(true)
       v.play().catch(() => {})
       return
@@ -72,6 +82,15 @@ export default function ClickToPlayVideo({
   // Once the native controls are visible they own play/pause, so the overlay
   // steps aside for good. Without them the button comes back on every pause.
   const showButton = controlsWhenPlaying ? !started : !playing
+
+  // iOS Safari repaints `<video poster>` only while the element has never held
+  // media; once it has played, neither `removeAttribute('src') + load()` nor a
+  // rewind reliably brings the poster back, and the box goes blank. So for
+  // `resetOnEnd` the still is painted as an ordinary <img> above the video and
+  // simply hidden while playback runs — nothing depends on the browser's poster
+  // behaviour. It resolves to the same URL as the `poster` attribute, so it is
+  // one request, not two.
+  const posterLayer = resetOnEnd && poster
 
   return (
     <div
@@ -102,15 +121,38 @@ export default function ClickToPlayVideo({
           if (!resetOnEnd) return
           const v = videoRef.current
           if (!v) return
-          // A paused video keeps painting its last frame; dropping the source
-          // and re-running the media load algorithm is what brings the poster
-          // back. The next press re-assigns the URL from cache and plays from 0.
-          v.removeAttribute('src')
-          v.load()
+          // Rewind here rather than on the next press, so the element is ready
+          // to play from the top the moment it is asked again. What the visitor
+          // sees is the poster layer, which `started === false` brings back.
+          v.pause()
+          try {
+            v.currentTime = 0
+          } catch {
+            // Seeking can throw if the media was evicted; the poster still shows
+            // and the next press reloads from the URL.
+          }
           setStarted(false)
         }}
         style={videoStyle}
       />
+      {posterLayer && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={poster}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none',
+            display: started ? 'none' : 'block',
+          }}
+        />
+      )}
       <div
         style={{
           position: 'absolute',

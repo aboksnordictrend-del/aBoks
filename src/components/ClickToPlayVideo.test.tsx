@@ -43,6 +43,25 @@ describe('ClickToPlayVideo', () => {
     assert.doesNotMatch(html, /poster=/)
   })
 
+  /**
+   * `resetOnEnd` puts the still in the markup as an <img>, because iOS Safari
+   * will not repaint `<video poster>` once the element has held media — the box
+   * would go blank after playback instead of returning to the poster.
+   */
+  it('paints the poster as its own layer when it has to come back after playing', () => {
+    const html = renderToStaticMarkup(
+      <ClickToPlayVideo src={VIDEO} poster={VARIANT_IMAGE} label="Spill av" resetOnEnd />,
+    )
+    assert.match(html, new RegExp(`<img[^>]*src="${VARIANT_IMAGE}"`))
+  })
+
+  it('leaves that layer out of every other call site', () => {
+    const html = renderToStaticMarkup(
+      <ClickToPlayVideo src={VIDEO} poster={VARIANT_IMAGE} label="Spill av" />,
+    )
+    assert.doesNotMatch(html, /<img/)
+  })
+
   it('keeps the play button reachable', () => {
     const html = renderToStaticMarkup(
       <ClickToPlayVideo src={VIDEO} poster={VARIANT_IMAGE} label="Spill av produktvideo: aBoks Sort" />,
