@@ -52,8 +52,19 @@ export default function ClickToPlayVideo({
   videoStyle?: CSSProperties
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const posterRef = useRef<HTMLImageElement>(null)
   const [started, setStarted] = useState(false)
   const [playing, setPlaying] = useState(false)
+
+  /**
+   * Raise or drop the poster layer in the current task, ahead of React's commit.
+   * The rendered style derives from `started` and settles on the same value, so
+   * this only decides *when* the flip lands, never what it lands on.
+   */
+  function showPosterNow(visible: boolean) {
+    const el = posterRef.current
+    if (el) el.style.opacity = visible ? '1' : '0'
+  }
 
   /** First press attaches the URL and starts; later presses just toggle. */
   function togglePlay() {
@@ -61,6 +72,10 @@ export default function ClickToPlayVideo({
     if (!v) return
 
     if (!started) {
+      // The video is already parked on frame 0 after a `resetOnEnd` reset, and on
+      // a first press its own `poster` attribute still covers it, so dropping the
+      // layer first reveals the same picture either way — no flash.
+      showPosterNow(false)
       // The URL is attached once. A restart after `resetOnEnd` re-uses the media
       // already in the element — re-assigning `src` would re-run the load
       // algorithm and, on iOS, throw away the buffered file for no gain.
@@ -87,9 +102,13 @@ export default function ClickToPlayVideo({
   // media; once it has played, neither `removeAttribute('src') + load()` nor a
   // rewind reliably brings the poster back, and the box goes blank. So for
   // `resetOnEnd` the still is painted as an ordinary <img> above the video and
-  // simply hidden while playback runs — nothing depends on the browser's poster
+  // only faded out while playback runs — nothing depends on the browser's poster
   // behaviour. It resolves to the same URL as the `poster` attribute, so it is
   // one request, not two.
+  //
+  // The layer stays mounted and switches on `opacity` alone: `display` would
+  // hand WebKit a layout and a decode to do at the exact moment the video ends,
+  // which is what the flip is trying to hide.
   const posterLayer = resetOnEnd && poster
 
   return (
@@ -121,27 +140,39 @@ export default function ClickToPlayVideo({
           if (!resetOnEnd) return
           const v = videoRef.current
           if (!v) return
-          // Rewind here rather than on the next press, so the element is ready
-          // to play from the top the moment it is asked again. What the visitor
-          // sees is the poster layer, which `started === false` brings back.
-          v.pause()
-          try {
-            v.currentTime = 0
-          } catch {
-            // Seeking can throw if the media was evicted; the poster still shows
-            // and the next press reloads from the URL.
-          }
+          // Cover the video before touching it. React's commit is a task away,
+          // while WebKit repaints the element the instant it is rewound, so a
+          // state update alone leaves a window in which frame 0 flashes through.
+          showPosterNow(true)
           setStarted(false)
+          // Rewind only once that cover has actually been painted: the first
+          // frame callback runs before the paint, the second after it.
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const el = videoRef.current
+              if (!el) return
+              el.pause()
+              try {
+                el.currentTime = 0
+              } catch {
+                // Seeking can throw if the media was evicted; the poster still
+                // shows and the next press reloads from the URL.
+              }
+            })
+          })
         }}
         style={videoStyle}
       />
       {posterLayer && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={posterRef}
           src={poster}
           alt=""
           aria-hidden="true"
           draggable={false}
+          // Decoded up front so raising the layer is never waiting on an image.
+          decoding="sync"
           style={{
             position: 'absolute',
             inset: 0,
@@ -149,7 +180,11 @@ export default function ClickToPlayVideo({
             height: '100%',
             objectFit: 'cover',
             pointerEvents: 'none',
-            display: started ? 'none' : 'block',
+            // Above the video, below the play button. No transition: the swap
+            // has to land in the frame it is made in.
+            zIndex: 1,
+            opacity: started ? 0 : 1,
+            transition: 'none',
           }}
         />
       )}
@@ -161,6 +196,7 @@ export default function ClickToPlayVideo({
           alignItems: 'center',
           justifyContent: 'center',
           pointerEvents: 'none',
+          zIndex: 2,
           opacity: showButton ? 1 : 0,
           transition: 'opacity 0.2s',
         }}

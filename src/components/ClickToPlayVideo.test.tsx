@@ -62,6 +62,20 @@ describe('ClickToPlayVideo', () => {
     assert.doesNotMatch(html, /<img/)
   })
 
+  /**
+   * The layer covers the video the moment playback ends, so it has to paint over
+   * it — and under the play button — with nothing to animate: a transition would
+   * put the flash back, one fade-length long.
+   */
+  it('stacks the poster over the video and under the play button, without a fade', () => {
+    const html = renderToStaticMarkup(
+      <ClickToPlayVideo src={VIDEO} poster={VARIANT_IMAGE} label="Spill av" resetOnEnd />,
+    )
+    const img = html.indexOf('<img')
+    assert.ok(html.indexOf('<video') < img && img < html.indexOf('aria-label="Spill av"'))
+    assert.match(html, /<img[^>]*z-index:1[^>]*transition:none/)
+  })
+
   it('keeps the play button reachable', () => {
     const html = renderToStaticMarkup(
       <ClickToPlayVideo src={VIDEO} poster={VARIANT_IMAGE} label="Spill av produktvideo: aBoks Sort" />,
