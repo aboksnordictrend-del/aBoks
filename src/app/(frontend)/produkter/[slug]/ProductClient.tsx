@@ -150,11 +150,15 @@ const FEATURE_SECTION_COPY = {
   },
 } as const
 
-/** `href` is null for products that have no page yet — those images stay non-clickable. */
-const FUTURE: { name: string; desc: string; image: string; href: string | null }[] = [
+/**
+ * `href` is null for products that have no page yet — those images stay non-clickable.
+ * `available` marks the one entry that is already on sale, so its image carries a status
+ * pill; the rest of the section keeps its "coming soon" framing untouched.
+ */
+const FUTURE: { name: string; desc: string; image: string; href: string | null; available?: boolean }[] = [
   { name: 'aBoks XL',          desc: 'Felles innsamlingspunkt for brukte batterier. Utviklet for kontorer, skoler og andre virksomheter.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-XL-sort-4-3.webp', href: null },
   { name: 'aBoks Office',      desc: 'Smart skrivebordsorganisering for kontor og hjemmekontor. Samler batterier, telefon, penner og småting på ett sted.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-office-4x3.webp', href: null },
-  { name: 'aBoks Vegg',        desc: 'Snart tilgjengelig. Veggmontert oppbevaring som frigjør plass og holder batteriene lett tilgjengelige.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-vegg-kommer-snart.webp', href: null },
+  { name: 'aBoks Vegg',        desc: 'Veggmontert oppbevaring som frigjør plass og holder batteriene lett tilgjengelige.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-vegg-kommer-snart.webp', href: '/produkter/aboks-vegg', available: true },
 ]
 
 // Assembly guide (PDF) shown only on the aBoks Vegg page. Matched on the CMS title — the
@@ -163,6 +167,48 @@ const FUTURE: { name: string; desc: string; image: string; href: string | null }
 const VEGG_PRODUCT_TITLE = 'aBoks Vegg'
 const VEGG_ASSEMBLY_GUIDE_URL =
   'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aboks-vegg/aBoks-Vegg-Monteringsveiledning.pdf'
+
+/**
+ * Status pill for the one card whose product already exists. Borrows the homepage
+ * "Nyhet" pill (src/components/AboksVeggSection.tsx) rather than introducing a colour:
+ * hairline border, olive text, the same warm dot. Sits over the image corner, small
+ * enough to clear the product itself.
+ */
+const FUTURE_BADGE: React.CSSProperties = {
+  position: 'absolute',
+  // 10px clears the card's 22px corner radius, and the pill's 22px height keeps its
+  // bottom edge above the photographed unit, whose top edge starts at ~8% of the frame.
+  top: '10px',
+  left: '10px',
+  zIndex: 1,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '5px 11px 5px 9px',
+  borderRadius: '999px',
+  background: 'rgba(250,246,238,.92)',
+  backdropFilter: 'blur(6px)',
+  WebkitBackdropFilter: 'blur(6px)',
+  border: '1px solid rgba(57,64,44,0.16)',
+  boxShadow: '0 1px 4px rgba(42,36,24,.08)',
+  fontFamily: 'var(--font-manrope)',
+  fontWeight: 700,
+  fontSize: '10px',
+  lineHeight: 1.2,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase',
+  color: '#5e6a48',
+  pointerEvents: 'none',
+  whiteSpace: 'nowrap',
+}
+
+const FUTURE_BADGE_DOT: React.CSSProperties = {
+  width: '5px',
+  height: '5px',
+  borderRadius: '999px',
+  background: '#c9a76a',
+  flexShrink: 0,
+}
 
 /** Shared by the clickable and non-clickable variants so both keep identical framing. */
 const FUTURE_IMAGE_BOX: React.CSSProperties = {
@@ -861,6 +907,12 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                         className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                         style={{ objectFit: 'cover' }}
                       />
+                      {p.available && (
+                        <span style={FUTURE_BADGE}>
+                          <span aria-hidden="true" style={FUTURE_BADGE_DOT} />
+                          Tilgjengelig nå
+                        </span>
+                      )}
                     </Link>
                   ) : (
                     <div style={FUTURE_IMAGE_BOX}>
