@@ -8,7 +8,7 @@ import InquiryForm from './InquiryForm'
 import { anchorClick } from '@/lib/anchorScroll'
 import {
   bedrifterDocuments,
-  isBedrifterProductKey,
+  bedrifterProductKey,
   type DocumentAnchor,
   type DocumentFile,
   type ProductDocument,
@@ -135,8 +135,7 @@ const PROBLEM_POINTS = [
 ]
 
 /**
- * The two upcoming products. Both images are the ones already used by the
- * "Snart fra aBoks" section on every product page — no new assets.
+ * The upcoming products. Their images are ones that already sit in Blob — no new assets.
  */
 /** One editorial product section. Both the upcoming models and the catalogue use this shape. */
 interface ProductSection {
@@ -158,21 +157,8 @@ interface ProductSection {
   documents: ProductDocument[]
 }
 
-/** The two models that have not launched yet. Images already used by "Snart fra aBoks". */
+/** The models that have not launched yet, in the order they render. */
 const UPCOMING: ProductSection[] = [
-  {
-    name: 'aBoks Spesial',
-    badge: 'Kommer snart',
-    subtitle: 'For trygg innsamling av brukte batterier',
-    description:
-      'En veggmontert beholder med ekstra kapasitet for brukte batterier. Utviklet for bedrifter og arbeidsplasser der batterier skiftes ofte og det er behov for flere lett tilgjengelige innsamlingspunkter.',
-    suitableFor: ['Produksjon', 'Verksted', 'Lager', 'Kontor', 'Skoler og institusjoner'],
-    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-special-4x3.webp',
-    imageAlt: 'aBoks Spesial – veggmontert beholder for brukte batterier',
-    imageAspect: '4 / 3',
-    interestOption: 'aBoks Spesial',
-    documents: bedrifterDocuments('aboks-special'),
-  },
   {
     name: 'aBoks Office',
     badge: 'Kommer snart',
@@ -186,6 +172,27 @@ const UPCOMING: ProductSection[] = [
     interestOption: 'aBoks Office',
     documents: bedrifterDocuments('aboks-office'),
   },
+  {
+    name: 'aBoks XL',
+    badge: 'Kommer snart',
+    subtitle: 'For sentral innsamling av brukte batterier',
+    description:
+      'En større veggmontert beholder for felles innsamling av brukte batterier. Utviklet for bedrifter, kommuner og institusjoner som ønsker å samle batterier fra flere rom eller avdelinger på ett sentralt sted.',
+    suitableFor: [
+      'Kontorbygg',
+      'Kommuner',
+      'Skoler',
+      'Institusjoner',
+      'Produksjon',
+      'Verksted',
+      'Lager',
+    ],
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/aBoks-XL-bla-4x3.webp',
+    imageAlt: 'aBoks XL veggmontert beholder for brukte batterier',
+    imageAspect: '4 / 3',
+    interestOption: 'aBoks XL',
+    documents: bedrifterDocuments('aboks-xl'),
+  },
 ]
 
 /**
@@ -193,7 +200,17 @@ const UPCOMING: ProductSection[] = [
  * description, photo and URL — is read from Payload, so the product data lives in one place.
  * A product without an entry here still renders, using its CMS tagline as the subtitle.
  */
-const CATALOGUE_COPY: Record<string, { subtitle: string; suitableFor: string[] }> = {
+const CATALOGUE_COPY: Record<
+  string,
+  {
+    subtitle: string
+    suitableFor: string[]
+    /** Replaces the CMS description where this page needs shorter, workplace-facing copy. */
+    description?: string
+    /** Model-specific value for the form's dropdown; the rest share the generic option. */
+    interestOption?: string
+  }
+> = {
   aboks: {
     subtitle: 'For komplett oppbevaring av AA- og AAA-batterier',
     suitableFor: ['Kontor', 'Arbeidsplass', 'Fellesområder', 'Lager'],
@@ -209,6 +226,15 @@ const CATALOGUE_COPY: Record<string, { subtitle: string; suitableFor: string[] }
   'aboks-vegg': {
     subtitle: 'For plassbesparende oppbevaring på veggen',
     suitableFor: ['Verksted', 'Lager', 'Produksjon', 'Fellesområder'],
+  },
+  // The CMS description is written for private customers; the workplace copy this page
+  // used while the model was still upcoming is kept here instead.
+  'aboks-spesial': {
+    subtitle: 'For trygg innsamling av brukte batterier',
+    description:
+      'En veggmontert beholder med ekstra kapasitet for brukte batterier. Utviklet for bedrifter og arbeidsplasser der batterier skiftes ofte og det er behov for flere lett tilgjengelige innsamlingspunkter.',
+    suitableFor: ['Produksjon', 'Verksted', 'Lager', 'Kontor', 'Skoler og institusjoner'],
+    interestOption: 'aBoks Spesial',
   },
 }
 
@@ -886,29 +912,33 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
     anchorClick(anchor, () => setInterest(value))
 
   /**
-   * Every product on the page, in reading order: the two upcoming models first, then the
+   * Every product on the page, in reading order: the upcoming models first, then the
    * catalogue in the order `page.tsx` resolved from the CMS. The catalogue entries carry
    * their own product page, so their photo links there.
    */
   const productSections: ProductSection[] = [
     ...UPCOMING,
-    ...products.map((product) => ({
-      name: product.title,
-      badge: 'Tilgjengelig',
-      subtitle: CATALOGUE_COPY[product.slug]?.subtitle ?? product.tagline,
-      description: product.description || product.tagline,
-      suitableFor: CATALOGUE_COPY[product.slug]?.suitableFor ?? [],
-      image: product.image,
-      imageAlt: product.imageAlt,
-      // The catalogue photography is square — a 4:3 crop would cut into the products.
-      imageAspect: '1 / 1',
-      href: `/produkter/${product.slug}`,
-      // The form's dropdown has no per-model option for the catalogue.
-      interestOption: 'Produkter til egen bedrift',
+    ...products.map((product) => {
+      const copy = CATALOGUE_COPY[product.slug]
       // A future CMS product with no files in the Blob folder simply renders without the
       // "Dokumenter" block rather than with links that 404.
-      documents: isBedrifterProductKey(product.slug) ? bedrifterDocuments(product.slug) : [],
-    })),
+      const documentKey = bedrifterProductKey(product.slug)
+      return {
+        name: product.title,
+        badge: 'Tilgjengelig',
+        subtitle: copy?.subtitle ?? product.tagline,
+        description: copy?.description ?? (product.description || product.tagline),
+        suitableFor: copy?.suitableFor ?? [],
+        image: product.image,
+        imageAlt: product.imageAlt,
+        // The catalogue photography is square — a 4:3 crop would cut into the products.
+        imageAspect: '1 / 1',
+        href: `/produkter/${product.slug}`,
+        // The form's dropdown carries a per-model option only for some of the catalogue.
+        interestOption: copy?.interestOption ?? 'Produkter til egen bedrift',
+        documents: documentKey ? bedrifterDocuments(documentKey) : [],
+      }
+    }),
   ]
 
   // Split into two groups so the mobile hero can use the homepage's layering: copy at the

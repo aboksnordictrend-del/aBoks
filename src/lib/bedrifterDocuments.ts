@@ -46,6 +46,7 @@ export interface ProductDocument {
 export type BedrifterProductKey =
   | 'aboks-special'
   | 'aboks-office'
+  | 'aboks-xl'
   | 'aboks-vegg'
   | 'aboks'
   | 'aboks-mini'
@@ -53,15 +54,17 @@ export type BedrifterProductKey =
 
 interface ProductFiles {
   produktark: string
-  prisliste: string
+  /** Absent for a model that has no price sheet in Blob yet — the row asks for a tilbud
+   *  either way, so nothing on the page depends on it. */
+  prisliste?: string
   tilbudsmalPdf: string
   tilbudsmalHtml: string
 }
 
 /**
- * Exact filenames in the Blob `Bedrifter` folder. `aboks-office` is the one product whose
- * product sheet does not follow the `<Produkt>-<Dokument>.pdf` pattern — it is stored as
- * `aBoks-Office-produktark-A4.pdf`, and it is spelled out here rather than derived.
+ * Exact filenames in the Blob `Bedrifter` folder. `aboks-office` and `aboks-xl` are the
+ * products whose product sheet does not follow the `<Produkt>-<Dokument>.pdf` pattern —
+ * they are stored as `…-produktark-A4.pdf`, spelled out here rather than derived.
  */
 const FILES: Record<BedrifterProductKey, ProductFiles> = {
   'aboks-special': {
@@ -75,6 +78,12 @@ const FILES: Record<BedrifterProductKey, ProductFiles> = {
     prisliste: 'aBoks-Office-Prisliste.pdf',
     tilbudsmalPdf: 'aBoks-Office-Tilbudsmal.pdf',
     tilbudsmalHtml: 'aBoks-Office-Tilbudsmal.html',
+  },
+  // No `prisliste` — aBoks XL has no price sheet in Blob yet.
+  'aboks-xl': {
+    produktark: 'aBoks-XL-produktark-A4.pdf',
+    tilbudsmalPdf: 'aBoks-XL-Tilbudsmal.pdf',
+    tilbudsmalHtml: 'aBoks-XL-Tilbudsmal.html',
   },
   'aboks-vegg': {
     produktark: 'aBoks-Vegg-Produktark.pdf',
@@ -106,6 +115,22 @@ export function isBedrifterProductKey(value: string): value is BedrifterProductK
   return Object.prototype.hasOwnProperty.call(FILES, value)
 }
 
+/**
+ * CMS slugs whose documents live under a differently spelled key. The files in Blob — and
+ * the `/dokumenter/tilbudsmal/…` route that serves them — spell the model "Special", while
+ * the product in Payload is `aboks-spesial`. Aliasing keeps both spellings working without
+ * renaming a file or changing a URL.
+ */
+const SLUG_ALIASES: Record<string, BedrifterProductKey> = {
+  'aboks-spesial': 'aboks-special',
+}
+
+/** The document key a product slug resolves to, or `null` when it has no files in Blob. */
+export function bedrifterProductKey(slug: string): BedrifterProductKey | null {
+  if (isBedrifterProductKey(slug)) return slug
+  return SLUG_ALIASES[slug] ?? null
+}
+
 /** Blob URL of a product's fillable Tilbudsmal HTML. Only the inline route reads this. */
 export function tilbudsmalHtmlBlobUrl(key: BedrifterProductKey): string {
   return `${BEDRIFTER_FOLDER}/${FILES[key].tilbudsmalHtml}`
@@ -132,8 +157,8 @@ export function bedrifterDocuments(key: BedrifterProductKey): ProductDocument[] 
   return [
     { label: 'Produktark', files: [pdf(files.produktark)] },
     // Prices are quoted per customer, so this row asks for a tilbud rather than handing
-    // out a price sheet. `files.prisliste` still names the PDF that sits in Blob for
-    // internal use — it is simply not linked from the page any more.
+    // out a price sheet. `files.prisliste`, where a model has one, still names the PDF that
+    // sits in Blob for internal use — it is simply not linked from the page any more.
     { label: 'Prisliste', files: [], anchor: { id: 'tilbud', label: 'Be om tilbud' } },
     {
       label: 'Tilbudsmal',

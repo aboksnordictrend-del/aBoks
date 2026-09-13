@@ -20,6 +20,7 @@ export const INTEREST_OPTIONS = [
   'Produkter til egen bedrift',
   'aBoks Spesial',
   'aBoks Office',
+  'aBoks XL',
   'Større bestilling',
   'Forhandlersamarbeid',
   'Dropshipping',
