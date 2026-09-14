@@ -58,12 +58,17 @@ const IMAGE_BOX: React.CSSProperties = {
  * Roughly three cards on desktop, two on tablets and one plus a sliver of the next on
  * phones — the sliver is what tells a reader the row keeps going. The divisors are
  * fractional on purpose: a whole number would hide the next card completely.
+ *
+ * Sized off `--pc-row`, a capped stand-in for the scroller's own width — the scroller is
+ * full-bleed, so measuring against it directly would let cards grow without limit on a
+ * wide screen. Below the cap the two are the same number, so every width up to 1600px
+ * keeps the card size it had.
  */
 const ITEM_CLASS = [
   'shrink-0 snap-start',
   'w-[82%]',
-  'sm:w-[calc((100%_-_var(--pc-gap))/2.25)]',
-  'lg:w-[calc((100%_-_2_*_var(--pc-gap))/3.2)]',
+  'sm:w-[calc((var(--pc-row)_-_var(--pc-gap))/2.25)]',
+  'lg:w-[calc((var(--pc-row)_-_2_*_var(--pc-gap))/3.2)]',
 ].join(' ')
 
 /**
@@ -152,14 +157,25 @@ export default function ProductCarousel({
         </div>
       </div>
 
+      {/* Full-bleed: the scroller takes the whole width of the section, which is the whole
+          width of the page, so cards are cut by the window on both sides instead of by a
+          centred container. Plain `width: auto` does it — no 100vw and no negative margin,
+          both of which would add the scrollbar's width back and give the page a horizontal
+          scrollbar of its own. Only the header above stays in the centred container. */}
       <ul
         ref={trackRef}
         // Reuses the scrollbar-hiding rule in globals.css.
         data-carousel
-        className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]"
         style={
           {
             '--pc-gap': 'clamp(20px,2.4vw,28px)',
+            '--pc-pad': 'clamp(20px,5vw,48px)',
+            // What a card is measured against. The scroller now runs the full width of the
+            // window, so cards sized off it would keep growing on a wide screen; this caps
+            // the reference at 1600px. Under that it is the scroller itself, so every width
+            // below 1600px keeps exactly the card size it had. Above it cards stop growing
+            // and the row simply shows more of them.
+            '--pc-row': 'min(calc(1600px - 2 * var(--pc-pad)), 100%)',
             display: 'flex',
             gap: 'var(--pc-gap)',
             listStyle: 'none',
@@ -168,12 +184,11 @@ export default function ProductCarousel({
             // The row is clipped vertically, so the padding below is what gives the
             // hover lift, its shadow and the focus ring somewhere to show.
             overflowY: 'hidden',
-            paddingTop: '8px',
-            paddingBottom: '20px',
+            padding: '8px var(--pc-pad) 20px',
             scrollSnapType: 'x mandatory',
             scrollBehavior: 'smooth',
-            // Matches the horizontal padding, so a snapped card sits flush under the heading.
-            scrollPaddingLeft: 'clamp(20px,5vw,48px)',
+            // Matches the left padding, so a snapped card rests where the first one does.
+            scrollPaddingLeft: 'var(--pc-pad)',
             overscrollBehaviorX: 'contain',
           } as React.CSSProperties
         }
