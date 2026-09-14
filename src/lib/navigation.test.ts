@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { PRODUCT_NAV_ORDER, buildShopMenu, nextExpandedMenu, toProductNavLinks } from './navigation'
+import { PRODUCT_NAV_ORDER, buildShopMenu, nextExpandedMenu, shouldCloseMenuOnClick, toProductNavLinks } from './navigation'
 
 /**
  * The burger menu's HANDLE column. What matters here is that the two submenus are built from
@@ -84,5 +84,41 @@ describe('nextExpandedMenu', () => {
 
   it('closes the open one when it is pressed again', () => {
     assert.equal(nextExpandedMenu('Tilbehør', 'Tilbehør'), null)
+  })
+})
+
+/**
+ * The rule behind the menu's one-frame flicker: an ordinary menu link must leave the overlay
+ * standing, because it is the only thing hiding the page being navigated away from. Header
+ * closes on the `pathname` change instead. Only the clicks that never produce one close here.
+ */
+describe('shouldCloseMenuOnClick', () => {
+  it('leaves the overlay up for an ordinary click on another page', () => {
+    assert.equal(shouldCloseMenuOnClick('/produkter', '/produkter/aboks', false), false)
+  })
+
+  it('leaves it up for every menu destination in turn', () => {
+    for (const href of ['/', '/produkter', '/bedrifter', '/inspirasjon', '/kontakt', '/produkter/aboks-mini']) {
+      assert.equal(shouldCloseMenuOnClick(href, '/produkter/aboks', false), false, href)
+    }
+  })
+
+  it('closes on a link to the page already open — no route change is coming', () => {
+    assert.equal(shouldCloseMenuOnClick('/produkter', '/produkter', false), true)
+  })
+
+  it('ignores a query or hash when deciding that', () => {
+    assert.equal(shouldCloseMenuOnClick('/produkter?farge=sort', '/produkter', false), true)
+    assert.equal(shouldCloseMenuOnClick('/#faq', '/', false), true)
+    assert.equal(shouldCloseMenuOnClick('/produkter#alle', '/produkter/aboks', false), false)
+  })
+
+  it('closes on a modified click, which leaves this document where it is', () => {
+    assert.equal(shouldCloseMenuOnClick('/produkter', '/produkter/aboks', true), true)
+  })
+
+  it('does not mistake a sibling route for the current one', () => {
+    assert.equal(shouldCloseMenuOnClick('/produkter', '/produkter/', false), false)
+    assert.equal(shouldCloseMenuOnClick('/produkter/aboks', '/produkter/aboks-mini', false), false)
   })
 })

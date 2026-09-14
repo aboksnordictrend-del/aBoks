@@ -92,12 +92,19 @@ const homeTextLink: React.CSSProperties = {
 }
 
 
+/**
+ * Spelled as a tuple rather than left to inference: Motion types a cubic-bezier as exactly
+ * four numbers, and an array literal inside an object literal widens to `number[]`, which the
+ * `ease` prop will not take. Same curve as before.
+ */
+const FADE_EASE: [number, number, number, number] = [0.22, 0.61, 0.36, 1]
+
 function fadeUp(delay = 0) {
   return {
     initial: { opacity: 0, y: 24 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true },
-    transition: { duration: 0.6, delay, ease: [0.22, 0.61, 0.36, 1] },
+    transition: { duration: 0.6, delay, ease: FADE_EASE },
   }
 }
 

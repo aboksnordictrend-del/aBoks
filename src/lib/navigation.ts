@@ -72,3 +72,26 @@ export function buildShopMenu(products: MenuLink[], accessories: MenuLink[]): Me
 export function nextExpandedMenu(current: string | null, pressed: string): string | null {
   return current === pressed ? null : pressed
 }
+
+/**
+ * Whether pressing a menu link has to close the burger menu by itself.
+ *
+ * Normally it must not. The overlay is what hides the page the customer is leaving, and a
+ * click handler's `setState` is committed *before* the router transition the same click
+ * starts — close on click and the outgoing page is uncovered for the whole pending
+ * navigation, then replaced under the customer's eyes. Header instead leaves the overlay up
+ * and takes it down on the `pathname` change, once the new route has committed.
+ *
+ * That only works for clicks that actually change `pathname`. Two do not, and they are the
+ * ones this returns true for:
+ *
+ *  - a link to the page you are already on — there is no route change to wait for;
+ *  - a modified click (ctrl/cmd/shift/alt, middle button), which opens the destination in a
+ *    new tab or window and leaves this document exactly where it was.
+ *
+ * `href` may carry a query or hash; only the path in front of them decides.
+ */
+export function shouldCloseMenuOnClick(href: string, pathname: string, modified: boolean): boolean {
+  if (modified) return true
+  return href.split(/[?#]/)[0] === pathname
+}

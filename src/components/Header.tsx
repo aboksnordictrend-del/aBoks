@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCartStore } from '@/store/cart'
-import { type MenuEntry, buildShopMenu, nextExpandedMenu } from '@/lib/navigation'
+import { type MenuEntry, buildShopMenu, nextExpandedMenu, shouldCloseMenuOnClick } from '@/lib/navigation'
 import BenefitsBar from './BenefitsBar'
 
 /**
@@ -28,6 +28,13 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
   const [menuOpen, setMenuOpen] = useState(false)
   /** Label of the burger menu's open submenu, or null. Only ever one at a time. */
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null)
+  /**
+   * True from the moment a menu link is pressed until the overlay is off the screen again.
+   * While it is set the overlay is on its way out because the page underneath it is being
+   * replaced, so it leaves in one cut instead of fading: the reveal lands on the route the
+   * customer asked for, and the one they are leaving is never uncovered. See `onMenuLinkClick`.
+   */
+  const [navigatingAway, setNavigatingAway] = useState(false)
   const [mounted, setMounted] = useState(false)
   const lastY = useRef(0)
   const rawCount = useCartStore((s) => s.totalCount())
@@ -122,6 +129,31 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
   const closeMenu = () => {
     setMenuOpen(false)
     setExpandedMenu(null)
+  }
+
+  /**
+   * What a menu link does *not* do: close the menu.
+   *
+   * It used to, and that was the flicker. A click handler's `setState` is a discrete update,
+   * committed before the router transition the very same click starts, so `setMenuOpen(false)`
+   * always won the race against the navigation. The overlay began fading off a page that was
+   * still the outgoing one — on production, where every menu destination is a fresh RSC
+   * request, it finished fading long before the new route arrived — and the customer got a
+   * look at the page they had just left, then a second, harder cut to the page they asked for.
+   *
+   * So the overlay stays up, opaque, for the whole pending navigation, and the `pathname`
+   * effect below takes it down once the new route has committed and Next has reset the scroll.
+   * The only clicks that have to close it here are the ones that never change `pathname` —
+   * see `shouldCloseMenuOnClick`. Everything else just arms the no-fade exit.
+   */
+  const onMenuLinkClick = (href: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (e.defaultPrevented) return
+    const modified = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0
+    if (shouldCloseMenuOnClick(href, pathname, modified)) {
+      closeMenu()
+      return
+    }
+    setNavigatingAway(true)
   }
 
   useEffect(() => {
@@ -250,12 +282,18 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
       </header>
 
       {/* Mobile menu */}
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={() => setNavigatingAway(false)}>
         {menuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            /* Closing by hand — the X, or a link to this very page — keeps the fade it has
+               always had. Closing because the route underneath has just been replaced cuts
+               straight out: anything slower would be a cross-fade between two pages, which is
+               the artefact this is here to remove. AnimatePresence animates the element as it
+               was on its last present render, which is why the flag is set on the click and
+               not alongside `setMenuOpen(false)`. */
+            exit={navigatingAway ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0 }}
             style={{
               position: 'fixed',
               inset: 0,
@@ -344,7 +382,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
                             key={link.label}
                             href={link.href}
                             aria-current={isActive ? 'page' : undefined}
-                            onClick={closeMenu}
+                            onClick={onMenuLinkClick(link.href)}
                             style={{ display: 'block', padding: '11px 0', borderBottom: '1px solid #e7e2d4', ...linkStyle }}
                           >
                             {link.label}
@@ -370,7 +408,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
                             <Link
                               href={link.href}
                               aria-current={isActive ? 'page' : undefined}
-                              onClick={closeMenu}
+                              onClick={onMenuLinkClick(link.href)}
                               style={{ display: 'block', flex: '1 1 auto', padding: '11px 0', ...linkStyle }}
                             >
                               {link.label}
@@ -410,7 +448,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
                                         key={child.href}
                                         href={child.href}
                                         aria-current={childActive ? 'page' : undefined}
-                                        onClick={closeMenu}
+                                        onClick={onMenuLinkClick(child.href)}
                                         className="pl-[16px] md:pl-0"
                                         style={{ display: 'block', paddingTop: '9px', paddingBottom: '9px', borderBottom: '1px solid #e7e2d4', fontFamily: 'var(--font-cormorant)', fontSize: '20px', fontWeight: 500, color: childActive ? '#5e6a48' : '#4a4f42', textDecoration: 'none' }}
                                       >
