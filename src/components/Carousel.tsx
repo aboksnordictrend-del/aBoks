@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useCallback, forwardRef, useImperativeHandle } from 'react'
 import Image from 'next/image'
+import { useDragScroll } from '@/lib/useDragScroll'
 
 interface CarouselItem {
   src: string
@@ -50,89 +51,8 @@ const Carousel = forwardRef<CarouselHandle, CarouselProps>(function Carousel(
     scrollNext: () => scrollBy(1),
   }))
 
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el || (el as HTMLDivElement & { _dragBound?: boolean })._dragBound) return
-    ;(el as HTMLDivElement & { _dragBound?: boolean })._dragBound = true
-
-    let down = false
-    let startX = 0
-    let startLeft = 0
-    let lastX = 0
-    let lastT = 0
-    let vx = 0
-    let raf = 0
-    let moved = false
-
-    const settle = () => {
-      el.style.scrollSnapType = 'x mandatory'
-      el.style.scrollBehavior = 'smooth'
-    }
-
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType && e.pointerType !== 'mouse') return
-      if (e.button != null && e.button !== 0) return
-      down = true
-      moved = false
-      startX = e.clientX
-      startLeft = el.scrollLeft
-      lastX = e.clientX
-      lastT = performance.now()
-      vx = 0
-      cancelAnimationFrame(raf)
-      el.style.scrollSnapType = 'none'
-      el.style.scrollBehavior = 'auto'
-      el.style.cursor = 'grabbing'
-      try { el.setPointerCapture(e.pointerId) } catch {}
-    }
-
-    const onMove = (e: PointerEvent) => {
-      if (!down) return
-      const dx = e.clientX - startX
-      if (Math.abs(dx) > 3) moved = true
-      el.scrollLeft = startLeft - dx
-      const now = performance.now()
-      const dt = now - lastT
-      if (dt > 0) { vx = (e.clientX - lastX) / dt; lastX = e.clientX; lastT = now }
-      e.preventDefault()
-    }
-
-    const onUp = (e: PointerEvent) => {
-      if (!down) return
-      down = false
-      el.style.cursor = 'grab'
-      try { el.releasePointerCapture(e.pointerId) } catch {}
-      let v = vx * 16
-      const step = () => {
-        v *= 0.94
-        el.scrollLeft -= v
-        const max = el.scrollWidth - el.clientWidth
-        if (el.scrollLeft <= 0 || el.scrollLeft >= max) { settle(); return }
-        if (Math.abs(v) > 0.4) raf = requestAnimationFrame(step); else settle()
-      }
-      if (Math.abs(v) > 0.6) raf = requestAnimationFrame(step); else settle()
-    }
-
-    const onClick = (e: MouseEvent) => {
-      if (moved) { e.preventDefault(); e.stopPropagation(); moved = false }
-    }
-
-    el.addEventListener('pointerdown', onDown)
-    el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerup', onUp)
-    el.addEventListener('pointercancel', onUp)
-    el.addEventListener('lostpointercapture', onUp)
-    el.addEventListener('dragstart', (e) => e.preventDefault())
-    el.addEventListener('click', onClick, true)
-
-    return () => {
-      el.removeEventListener('pointerdown', onDown)
-      el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerup', onUp)
-      el.removeEventListener('pointercancel', onUp)
-      el.removeEventListener('lostpointercapture', onUp)
-    }
-  }, [])
+  // Mouse drag-to-scroll, shared with the product carousel. Touch is untouched.
+  useDragScroll(scrollRef)
 
   return (
     <div

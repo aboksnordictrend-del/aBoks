@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { CarouselArrows } from '@/components/Carousel'
+import { useDragScroll } from '@/lib/useDragScroll'
 
 /**
  * One card's worth of a product. Deliberately narrower than the Payload doc — the page is
@@ -31,6 +32,9 @@ const CARD: React.CSSProperties = {
   overflow: 'hidden',
   color: 'inherit',
   textDecoration: 'none',
+  // Takes the row's grab/grabbing cursor instead of an anchor's pointer, so the cards do
+  // not break the drag affordance the surface around them advertises.
+  cursor: 'inherit',
 }
 
 /**
@@ -115,6 +119,10 @@ export default function ProductCarousel({
     }
   }, [measure, products.length])
 
+  // Mouse drag-to-scroll, the same behaviour the homepage galleries have. Mouse only —
+  // touch keeps the browser's native swipe, which is left exactly as it was.
+  useDragScroll(trackRef)
+
   /** One card plus one gap — the same distance a snap point sits from the next. */
   const scroll = useCallback((direction: 1 | -1) => {
     const el = trackRef.current
@@ -190,6 +198,12 @@ export default function ProductCarousel({
             // Matches the left padding, so a snapped card rests where the first one does.
             scrollPaddingLeft: 'var(--pc-pad)',
             overscrollBehaviorX: 'contain',
+            // Drag affordance. `useDragScroll` swaps this for `grabbing` while a drag is
+            // live; the cards inherit it, so the whole row reads as one draggable surface.
+            cursor: 'grab',
+            // Without this a drag selects the card titles it passes over.
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
           } as React.CSSProperties
         }
       >
@@ -207,6 +221,9 @@ export default function ProductCarousel({
                     sizes="(max-width: 640px) 82vw, (max-width: 1024px) 44vw, 30vw"
                     className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                     style={{ objectFit: 'cover' }}
+                    // Belt and braces with the hook's dragstart guard: the browser never
+                    // treats a drag that starts on a photo as dragging the photo.
+                    draggable={false}
                   />
                 )}
               </div>
