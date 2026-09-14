@@ -120,8 +120,8 @@ const secondaryButton: React.CSSProperties = {
 
 /* ────────────────────────────── page content ────────────────────────────── */
 
-const HERO_DESKTOP = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-for-bedrifter-desktop.webp'
-const HERO_MOBILE = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-for-bedrifter-mobile.webp'
+const HERO_DESKTOP = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/Hero-for-bedrifter-desktop-new.webp'
+const HERO_MOBILE = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/Hero-for-bedrifter-mobile-new.webp'
 const HERO_ALT =
   'aBoks Spesial montert på veggen og aBoks Office på skrivebordet i et kontormiljø'
 
@@ -134,66 +134,23 @@ const PROBLEM_POINTS = [
   'Batterier kan havne i restavfallet',
 ]
 
-/**
- * The upcoming products. Their images are ones that already sit in Blob — no new assets.
- */
-/** One editorial product section. Both the upcoming models and the catalogue use this shape. */
+/** One editorial product section. Every product on the page uses this shape. */
 interface ProductSection {
   name: string
-  /** "Kommer snart" for the upcoming models, "Tilgjengelig" for the catalogue. */
-  badge: string
   subtitle: string
   description: string
   suitableFor: string[]
   image: string
   imageAlt: string
-  /** The catalogue photos are square; the two upcoming ones are shot 4:3. */
+  /** The catalogue photography is square. */
   imageAspect: string
-  /** Product page the image links to — the upcoming models do not have one yet. */
+  /** Product page the image links to. */
   href?: string
   /** Value the "Meld interesse" button presets in the form's dropdown. */
   interestOption: string
   /** Produktark, Prisliste and Tilbudsmal, resolved to the product's files in Blob. */
   documents: ProductDocument[]
 }
-
-/** The models that have not launched yet, in the order they render. */
-const UPCOMING: ProductSection[] = [
-  {
-    name: 'aBoks Office',
-    badge: 'Kommer snart',
-    subtitle: 'Orden på skrivebordet – og kontroll på batteriene',
-    description:
-      'En kombinert skrivebordsorganisator med plass til nye AA-batterier, brukte batterier, telefon, penner, sakser, visittkort og små kontorartikler. AAA-batterier kan også oppbevares sammen med AA-batteriene ved behov.',
-    suitableFor: ['Kontor', 'Resepsjon', 'Møterom', 'Arbeidsstasjon', 'Hjemmekontor'],
-    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-office-4x3.webp',
-    imageAlt: 'aBoks Office – skrivebordsorganisator med plass til batterier og kontorartikler',
-    imageAspect: '4 / 3',
-    interestOption: 'aBoks Office',
-    documents: bedrifterDocuments('aboks-office'),
-  },
-  {
-    name: 'aBoks XL',
-    badge: 'Kommer snart',
-    subtitle: 'For sentral innsamling av brukte batterier',
-    description:
-      'En større veggmontert beholder for felles innsamling av brukte batterier. Utviklet for bedrifter, kommuner og institusjoner som ønsker å samle batterier fra flere rom eller avdelinger på ett sentralt sted.',
-    suitableFor: [
-      'Kontorbygg',
-      'Kommuner',
-      'Skoler',
-      'Institusjoner',
-      'Produksjon',
-      'Verksted',
-      'Lager',
-    ],
-    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/aBoks-XL-bla-4x3.webp',
-    imageAlt: 'aBoks XL veggmontert beholder for brukte batterier',
-    imageAspect: '4 / 3',
-    interestOption: 'aBoks XL',
-    documents: bedrifterDocuments('aboks-xl'),
-  },
-]
 
 /**
  * Page-specific copy for the catalogue models, keyed by slug. Everything else — title,
@@ -235,6 +192,27 @@ const CATALOGUE_COPY: Record<
       'En veggmontert beholder med ekstra kapasitet for brukte batterier. Utviklet for bedrifter og arbeidsplasser der batterier skiftes ofte og det er behov for flere lett tilgjengelige innsamlingspunkter.',
     suitableFor: ['Produksjon', 'Verksted', 'Lager', 'Kontor', 'Skoler og institusjoner'],
     interestOption: 'aBoks Spesial',
+  },
+  // Both models are in the CMS with copy written for the product page; the workplace-facing
+  // subtitle, the "Passer for" list and the dropdown option are page-specific, so they live
+  // here — exactly as they do for aBoks Spesial above.
+  'aboks-xl': {
+    subtitle: 'For sentral innsamling av brukte batterier i større virksomheter.',
+    suitableFor: [
+      'Kommuner',
+      'Skoler',
+      'Sykehjem',
+      'Kontorbygg',
+      'Fabrikker',
+      'Institusjoner',
+      'Fellesområder',
+    ],
+    interestOption: 'aBoks XL',
+  },
+  'aboks-office': {
+    subtitle: 'Orden på skrivebordet – med plass til batterier, mobil og kontorutstyr.',
+    suitableFor: ['Kontorer', 'Hjemmekontor', 'Møterom', 'Resepsjon', 'Arbeidsplasser'],
+    interestOption: 'aBoks Office',
   },
 }
 
@@ -323,35 +301,6 @@ function CheckMark({ color = CHECK_GREEN, size = 18 }: { color?: string; size?: 
     >
       <path d="M20 6L9 17l-5-5" />
     </svg>
-  )
-}
-
-/** The "Kommer snart" pill — same construction as the homepage's "Nyhet" badge. */
-function StatusPill({ label }: { label: string }) {
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignSelf: 'flex-start',
-        alignItems: 'center',
-        gap: '9px',
-        padding: '7px 16px 7px 13px',
-        borderRadius: '999px',
-        border: '1px solid rgba(57,64,44,0.16)',
-        fontFamily: SANS,
-        fontWeight: 700,
-        fontSize: '11.5px',
-        letterSpacing: '0.2em',
-        textTransform: 'uppercase',
-        color: SAGE,
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{ width: '6px', height: '6px', borderRadius: '999px', background: GOLD, flexShrink: 0 }}
-      />
-      {label}
-    </span>
   )
 }
 
@@ -714,8 +663,7 @@ function useRevealFactory() {
 
 /**
  * One full-width editorial product section: image in one column, copy in the other,
- * sides alternating down the page. Every product on the page renders through this — the
- * upcoming models and the catalogue differ only in their data.
+ * sides alternating down the page. Every product on the page renders through this.
  *
  * Below `md` the text wrapper is `display: contents`, so the intro group, the image and the
  * body become siblings in the single-column grid and the intro can be ordered above the
@@ -786,7 +734,7 @@ function ProductSectionBlock({
       </motion.div>
 
       <div className={`contents md:flex md:flex-col ${imageFirst ? 'md:order-2' : 'md:order-1'}`}>
-        {/* Badge, title and subtitle stay together as one compact intro group.
+        {/* Title and subtitle stay together as one compact intro group.
             `order: -1` lifts it above the image on mobile and keeps it first in
             the desktop column, where it is the natural DOM order anyway. */}
         <motion.div
@@ -794,7 +742,6 @@ function ProductSectionBlock({
           className="md:mb-6"
           style={{ order: -1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
         >
-          <StatusPill label={section.badge} />
           <h3
             style={{
               fontFamily: SERIF,
@@ -912,12 +859,10 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
     anchorClick(anchor, () => setInterest(value))
 
   /**
-   * Every product on the page, in reading order: the upcoming models first, then the
-   * catalogue in the order `page.tsx` resolved from the CMS. The catalogue entries carry
-   * their own product page, so their photo links there.
+   * Every product on the page, in the order `page.tsx` resolved from the CMS. Each entry
+   * carries its own product page, so its photo links there.
    */
   const productSections: ProductSection[] = [
-    ...UPCOMING,
     ...products.map((product) => {
       const copy = CATALOGUE_COPY[product.slug]
       // A future CMS product with no files in the Blob folder simply renders without the
@@ -925,7 +870,6 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
       const documentKey = bedrifterProductKey(product.slug)
       return {
         name: product.title,
-        badge: 'Tilgjengelig',
         subtitle: copy?.subtitle ?? product.tagline,
         description: copy?.description ?? (product.description || product.tagline),
         suitableFor: copy?.suitableFor ?? [],
