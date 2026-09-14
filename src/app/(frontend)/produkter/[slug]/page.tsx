@@ -4,7 +4,8 @@ import ProductClient from './ProductClient'
 import ProductMaterialStory from '@/components/ProductMaterialStory'
 import type { Crumb } from '@/components/Breadcrumbs'
 import { showsMaterialStory } from '@/lib/materialStory'
-import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
+import { getProductBySlug, getProducts, getVariantsForProduct } from '@/lib/payload'
+import type { CarouselProduct } from '@/components/ProductCarousel'
 import { getProductReviewSummary } from '@/lib/reviewServer'
 import { withVideoPosters } from '@/lib/videoPosterServer'
 import { productStock } from '@/lib/stock'
@@ -65,6 +66,24 @@ export default async function ProductPage({
     product.section === 'accessories'
       ? { label: 'Tilbehør', href: '/tilbehor' }
       : { label: 'Produkter', href: '/produkter' }
+
+  // The whole published catalogue, for the "Oppdag flere løsninger" carousel at the foot
+  // of the page. Read here so the client component gets only what a card draws; the
+  // product being viewed is dropped on the other side, by slug. Sorted by title rather
+  // than by a hand-kept order, so a product added in Payload places itself.
+  const catalogue: CarouselProduct[] = (await getProducts())
+    .map((p) => {
+      const firstImage = (p.images as any[])?.[0]
+      return {
+        slug: String(p.slug ?? ''),
+        title: p.title,
+        tagline: p.tagline ?? '',
+        image: firstImage ? mediaUrl(firstImage.image) : '',
+        imageAlt: firstImage?.alt ?? p.title,
+      }
+    })
+    .filter((p) => p.slug && p.image)
+    .sort((a, b) => a.title.localeCompare(b.title, 'nb'))
 
   const rawVariants = await getVariantsForProduct(String(product.id))
   const reviewSummary = await getProductReviewSummary(String(product.id))
@@ -181,6 +200,7 @@ export default async function ProductPage({
         },
       }}
       variants={variants}
+      catalogue={catalogue}
       initialSku={variant}
       // Rendered here rather than inside ProductClient so the section stays a server
       // component. Only products confirmed to be PLA Matte printed in Norway get it.

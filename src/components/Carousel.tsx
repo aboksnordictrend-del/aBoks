@@ -182,44 +182,61 @@ const Carousel = forwardRef<CarouselHandle, CarouselProps>(function Carousel(
 
 export default Carousel
 
+/**
+ * The arrow pair. `prevLabel`/`nextLabel` and the two `*Disabled` flags are optional and
+ * default to what the gallery carousels on the homepage have always rendered — a caller
+ * that tracks how far its row can still scroll passes them, the others do not.
+ */
 export function CarouselArrows({
   onPrev,
   onNext,
   bg = '#fff',
   bgHover = '#f2e7d7',
   border = '#d6cfbd',
+  prevLabel = 'Forrige',
+  nextLabel = 'Neste',
+  prevDisabled = false,
+  nextDisabled = false,
 }: {
   onPrev: () => void
   onNext: () => void
   bg?: string
   bgHover?: string
   border?: string
+  prevLabel?: string
+  nextLabel?: string
+  prevDisabled?: boolean
+  nextDisabled?: boolean
 }) {
   return (
     <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
       {[
-        { onClick: onPrev, label: 'Forrige', d: 'M15 18l-6-6 6-6' },
-        { onClick: onNext, label: 'Neste', d: 'M9 18l6-6-6-6' },
+        { onClick: onPrev, label: prevLabel, disabled: prevDisabled, d: 'M15 18l-6-6 6-6' },
+        { onClick: onNext, label: nextLabel, disabled: nextDisabled, d: 'M9 18l6-6-6-6' },
       ].map((btn) => (
         <button
           key={btn.label}
           onClick={btn.onClick}
           aria-label={btn.label}
+          disabled={btn.disabled}
           style={{
             width: '50px',
             height: '50px',
             borderRadius: '999px',
             border: `1.5px solid ${border}`,
             background: bg,
-            cursor: 'pointer',
+            cursor: btn.disabled ? 'default' : 'pointer',
+            // Dimmed rather than removed, so the row of controls keeps its width and
+            // nothing beside it shifts when an end is reached.
+            opacity: btn.disabled ? 0.38 : 1,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#1a1d17',
-            transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease',
+            transition: 'transform 0.15s ease, filter 0.15s ease, background 0.2s ease, opacity 0.2s ease',
             flexShrink: 0,
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = bgHover }}
+          onMouseEnter={(e) => { if (!btn.disabled) (e.currentTarget as HTMLButtonElement).style.background = bgHover }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = bg }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">

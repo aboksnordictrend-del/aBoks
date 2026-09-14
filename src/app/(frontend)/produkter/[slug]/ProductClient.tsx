@@ -12,6 +12,7 @@ import ProductImageCarousel, {
   type ProductImageCarouselHandle,
 } from '@/components/ProductImageCarousel'
 import ImageLightbox from '@/components/ImageLightbox'
+import ProductCarousel, { type CarouselProduct } from '@/components/ProductCarousel'
 import Breadcrumbs, { type Crumb } from '@/components/Breadcrumbs'
 import ProductSupportTrust from '@/components/ProductSupportTrust'
 import PaymentMethods from '@/components/PaymentMethods'
@@ -106,6 +107,12 @@ interface Props {
    * omitted for products whose material is not confirmed (see lib/materialStory).
    */
   materialStory?: React.ReactNode
+  /**
+   * Every published product in the catalogue, read from Payload by the server page. The
+   * "Oppdag flere løsninger" carousel is built from this minus the product being viewed,
+   * so the line-up it shows follows the CMS with nothing restated in code.
+   */
+  catalogue?: CarouselProduct[]
 }
 
 
@@ -150,76 +157,12 @@ const FEATURE_SECTION_COPY = {
   },
 } as const
 
-/**
- * `href` is null for products that have no page yet — those images stay non-clickable.
- * `available` marks the one entry that is already on sale, so its image carries a status
- * pill; the rest of the section keeps its "coming soon" framing untouched.
- */
-const FUTURE: { name: string; desc: string; image: string; href: string | null; available?: boolean }[] = [
-  { name: 'aBoks XL',          desc: 'Felles innsamlingspunkt for brukte batterier. Utviklet for kontorer, skoler og andre virksomheter.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-XL-sort-4-3.webp', href: null },
-  { name: 'aBoks Office',      desc: 'Smart skrivebordsorganisering for kontor og hjemmekontor. Samler batterier, telefon, penner og småting på ett sted.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-office-4x3.webp', href: null },
-  { name: 'aBoks Vegg',        desc: 'Veggmontert oppbevaring som frigjør plass og holder batteriene lett tilgjengelige.', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-vegg-kommer-snart.webp', href: '/produkter/aboks-vegg', available: true },
-]
-
 // Assembly guide (PDF) shown only on the aBoks Vegg page. Matched on the CMS title — the
 // same key the homepage section uses (src/app/(frontend)/page.tsx), so an edited slug does
 // not silently hide the link.
 const VEGG_PRODUCT_TITLE = 'aBoks Vegg'
 const VEGG_ASSEMBLY_GUIDE_URL =
   'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aboks-vegg/aBoks-Vegg-Monteringsveiledning.pdf'
-
-/**
- * Status pill for the one card whose product already exists. Borrows the homepage
- * "Nyhet" pill (src/components/AboksVeggSection.tsx) rather than introducing a colour:
- * hairline border, olive text, the same warm dot. Sits over the image corner, small
- * enough to clear the product itself.
- */
-const FUTURE_BADGE: React.CSSProperties = {
-  position: 'absolute',
-  // 10px clears the card's 22px corner radius, and the pill's 22px height keeps its
-  // bottom edge above the photographed unit, whose top edge starts at ~8% of the frame.
-  top: '10px',
-  left: '10px',
-  zIndex: 1,
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '6px',
-  padding: '5px 11px 5px 9px',
-  borderRadius: '999px',
-  background: 'rgba(250,246,238,.92)',
-  backdropFilter: 'blur(6px)',
-  WebkitBackdropFilter: 'blur(6px)',
-  border: '1px solid rgba(57,64,44,0.16)',
-  boxShadow: '0 1px 4px rgba(42,36,24,.08)',
-  fontFamily: 'var(--font-manrope)',
-  fontWeight: 700,
-  fontSize: '10px',
-  lineHeight: 1.2,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase',
-  color: '#5e6a48',
-  pointerEvents: 'none',
-  whiteSpace: 'nowrap',
-}
-
-const FUTURE_BADGE_DOT: React.CSSProperties = {
-  width: '5px',
-  height: '5px',
-  borderRadius: '999px',
-  background: '#c9a76a',
-  flexShrink: 0,
-}
-
-/** Shared by the clickable and non-clickable variants so both keep identical framing. */
-const FUTURE_IMAGE_BOX: React.CSSProperties = {
-  aspectRatio: '4/3',
-  background: '#efe6d3',
-  borderBottom: '1px dashed #cdbf9f',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  position: 'relative',
-}
 
 function isLightColor(hex: string): boolean {
   const c = hex.replace('#', '')
@@ -230,7 +173,11 @@ function isLightColor(hex: string): boolean {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65
 }
 
-export default function ProductClient({ product, variants, initialSku, breadcrumbs, reviewSummary, materialStory }: Props) {
+export default function ProductClient({ product, variants, initialSku, breadcrumbs, reviewSummary, materialStory, catalogue = [] }: Props) {
+  // The product being viewed is never recommended back to the reader. Matched on slug —
+  // the value the route itself is keyed by — so no title or name is spelled out here.
+  const relatedProducts = catalogue.filter((p) => p.slug !== product.slug)
+
   const initialVariant = initialSku
     ? (variants.find((v) => v.sku === initialSku) ?? variants[0])
     : variants[0]
@@ -879,60 +826,22 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
           </section>
         )}
 
-        {/* FUTURE PRODUCTS */}
-        <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0 clamp(96px,11vw,140px)' }}>
-          <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
-            <div style={{ maxWidth: '600px', marginBottom: 'clamp(36px,4vw,52px)' }}>
-              <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px' }}>Snart fra aBoks</p>
-              <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.8vw,46px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: 0 }}>
-                Mer orden er på vei.
-              </h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'clamp(20px,2.4vw,28px)' }}>
-              {FUTURE.map((p) => (
-                <div key={p.name} style={{ background: '#fff', borderRadius: '22px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(42,36,24,.05)' }}>
-                  {p.image && (p.href ? (
-                    /* Only the image links — title, text and the rest of the card stay inert. */
-                    <Link
-                      href={p.href}
-                      data-btn
-                      aria-label={`Åpne ${p.name}`}
-                      className="group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#5e6a48]"
-                      style={{ ...FUTURE_IMAGE_BOX, cursor: 'pointer', textDecoration: 'none', overflow: 'hidden' }}
-                    >
-                      <Image
-                        src={p.image}
-                        alt={p.name}
-                        fill
-                        className="transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                        style={{ objectFit: 'cover' }}
-                      />
-                      {p.available && (
-                        <span style={FUTURE_BADGE}>
-                          <span aria-hidden="true" style={FUTURE_BADGE_DOT} />
-                          Tilgjengelig nå
-                        </span>
-                      )}
-                    </Link>
-                  ) : (
-                    <div style={FUTURE_IMAGE_BOX}>
-                      <Image
-                        src={p.image}
-                        alt={p.name}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                      />
-                    </div>
-                  ))}
-                  <div style={{ padding: '24px 26px 28px' }}>
-                    <h3 style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '19px', color: '#1a1d17', margin: '0 0 8px' }}>{p.name}</h3>
-                    <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', lineHeight: 1.55, color: '#6b6f63', margin: 0 }}>{p.desc}</p>
-                  </div>
+        {/* MORE PRODUCTS — every other product in the catalogue, as a carousel */}
+        {relatedProducts.length > 0 && (
+          <section style={{ background: '#faf6ee', padding: 'clamp(64px,8vw,104px) 0 clamp(96px,11vw,140px)' }}>
+            <ProductCarousel
+              products={relatedProducts}
+              header={
+                <div style={{ maxWidth: '600px' }}>
+                  <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 16px' }}>Oppdag flere løsninger</p>
+                  <h2 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(30px,3.8vw,46px)', letterSpacing: '-0.02em', lineHeight: 1.07, color: '#1a1d17', margin: 0 }}>
+                    Finn flere smarte løsninger.
+                  </h2>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
+              }
+            />
+          </section>
+        )}
       </main>
 
       {/* LIGHTBOX */}
