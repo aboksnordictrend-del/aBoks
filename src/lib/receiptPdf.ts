@@ -18,12 +18,12 @@ import { buildOrderSummaryRows } from './orders/renderOrderSummary'
  */
 
 // Seller (legal entity) identity — the single place to change when the selling company
-// changes. ABOKS AS is not yet registered, so sales currently run through LUKOCIUS
-// NORDICTREND. Once ABOKS AS is registered, either set the COMPANY_NAME / COMPANY_ORG_NR
-// env vars or update these two defaults — nothing else in the receipt logic depends on it.
-// The aBoks brand (logo), email and website are separate and stay the same regardless.
-const DEFAULT_SELLER_NAME = 'LUKOCIUS NORDICTREND'
-const DEFAULT_SELLER_ORG_NR = '937 172 877'
+// changes. Sales now run through the registered ABOKS AS; the COMPANY_NAME /
+// COMPANY_ORG_NR env vars still override these defaults, and nothing else in the receipt
+// logic depends on them. The aBoks brand (logo), email and website are separate and stay
+// the same regardless.
+const DEFAULT_SELLER_NAME = 'ABOKS AS'
+const DEFAULT_SELLER_ORG_NR = '834 012 952'
 
 export const SELLER_EMAIL = 'post@aboks.no'
 export const SELLER_WEBSITE = 'aboks.no'
@@ -170,6 +170,11 @@ const HAIRLINE = rgb(0.878, 0.878, 0.878)
 const A4 = { width: 595.28, height: 841.89 }
 const MARGIN = 48
 
+// Title block geometry: the gap between the header (logo / seller block) and the
+// "KVITTERING" heading, and the heading's own font size.
+const TITLE_TOP_GAP = 46
+const TITLE_SIZE = 22
+
 /**
  * WinAnsi (the encoding of pdf-lib's standard Helvetica) covers Norwegian æ/ø/å and
  * common CP1252 punctuation, but throws on anything outside it (emoji, non-Latin). We
@@ -261,12 +266,18 @@ export async function renderReceiptPdf(
   // ── Header: logo (or text fallback) left, seller details right ──
   const headerTop = ctx.y
   let logoDrawn = false
+  // Lowest point the left header column actually reaches; the text fallback's descender
+  // sits a few points under its baseline. Tracked so the title below keeps a real gap from
+  // the logo whatever the image's aspect ratio turns out to be.
+  let logoBottom = headerTop - 18
   if (logo) {
     try {
       const img = await pdf.embedPng(logo)
       const w = 90
       const h = (img.height / img.width) * w
-      page.drawImage(img, { x: MARGIN, y: headerTop - h + 8, width: w, height: h })
+      const logoY = headerTop - h + 8
+      page.drawImage(img, { x: MARGIN, y: logoY, width: w, height: h })
+      logoBottom = logoY
       logoDrawn = true
     } catch {
       logoDrawn = false
@@ -277,11 +288,10 @@ export async function renderReceiptPdf(
   }
 
   // Seller block, right-aligned, under a "Selger:" label. The seller is the legal entity
-  // (currently LUKOCIUS NORDICTREND); the aBoks logo above is the brand — the two are
-  // deliberately distinct.
+  // (ABOKS AS); the aBoks logo above is the brand — the two are deliberately distinct.
   const sellerLines = [
     model.seller,
-    ...(model.sellerOrgNr ? [`Org.nr. ${model.sellerOrgNr}`] : []),
+    ...(model.sellerOrgNr ? [`Org. nr. ${model.sellerOrgNr}`] : []),
     model.sellerEmail,
     model.sellerWebsite,
   ]
@@ -298,10 +308,13 @@ export async function renderReceiptPdf(
     sy -= i === 0 ? 15 : 12
   })
 
-  ctx.y = Math.min(headerTop - 84, sy) - 16
+  // The title starts below whichever header column reaches lowest — the logo image or the
+  // seller block — plus a fixed breathing gap, so it can never crowd the logo. The rule
+  // under it and the whole body cascade from this same ctx.y.
+  ctx.y = Math.min(logoBottom, sy) - TITLE_TOP_GAP
 
   // ── Title ──
-  drawText(ctx, model.title, MARGIN, 26, { font: bold })
+  drawText(ctx, model.title, MARGIN, TITLE_SIZE, { font: bold })
   ctx.y -= 14
   page.drawLine({
     start: { x: MARGIN, y: ctx.y },

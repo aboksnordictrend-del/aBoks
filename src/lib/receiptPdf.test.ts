@@ -85,7 +85,7 @@ describe('buildReceiptModel', () => {
     const model = buildReceiptModel(order())
     assert.equal(model.title, 'KVITTERING')
     assert.equal(model.paymentStatus, 'Betalt')
-    assert.equal(model.seller, 'LUKOCIUS NORDICTREND')
+    assert.equal(model.seller, 'ABOKS AS')
   })
 
   it('renders the paid total exactly from the stored order amount', () => {
@@ -139,19 +139,19 @@ describe('buildReceiptModel', () => {
     )
   })
 
-  it('defaults the seller to LUKOCIUS NORDICTREND with its org number', () => {
+  it('defaults the seller to ABOKS AS with its org number', () => {
     delete process.env.COMPANY_NAME
     delete process.env.COMPANY_ORG_NR
     const model = buildReceiptModel(order())
-    assert.equal(model.seller, 'LUKOCIUS NORDICTREND')
-    assert.equal(model.sellerOrgNr, '937 172 877')
+    assert.equal(model.seller, 'ABOKS AS')
+    assert.equal(model.sellerOrgNr, '834 012 952')
   })
 
   it('lets COMPANY_NAME / COMPANY_ORG_NR override the seller in one place', () => {
-    process.env.COMPANY_NAME = 'ABOKS AS'
+    process.env.COMPANY_NAME = 'LUKOCIUS NORDICTREND'
     process.env.COMPANY_ORG_NR = '123 456 789'
     const model = buildReceiptModel(order())
-    assert.equal(model.seller, 'ABOKS AS')
+    assert.equal(model.seller, 'LUKOCIUS NORDICTREND')
     assert.equal(model.sellerOrgNr, '123 456 789')
   })
 })
