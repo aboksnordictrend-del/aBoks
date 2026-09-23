@@ -308,8 +308,8 @@ export default function FraktOgReturPage() {
               Har du spørsmål om frakt, levering eller retur? Ta gjerne kontakt — vi hjelper deg
               gjerne.
             </p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>LUKOCIUS NORDICTREND</p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org.nr.: 937 172 877</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>ABOKS AS</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org. nr.: 834 012 952</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Storhaugveien 13, 7240 Hitra</p>
             <p style={{ ...bodyStyle, marginBottom: '16px' }}>
               E-post:{' '}

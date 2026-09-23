@@ -142,8 +142,8 @@ export default function PersonvernerklaerngPage() {
             <p style={bodyStyle}>
               Behandlingsansvarlig for personopplysninger på dette nettstedet er:
             </p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>LUKOCIUS NORDICTREND</p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org.nr.: 937 172 877</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>ABOKS AS</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org. nr.: 834 012 952</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Storhaugveien 13, 7240 Hitra</p>
             <p style={{ ...bodyStyle, marginBottom: '12px' }}>
               E-post:{' '}
@@ -349,8 +349,8 @@ export default function PersonvernerklaerngPage() {
             <p style={bodyStyle}>
               Har du spørsmål om hvordan vi behandler personopplysningene dine, ta gjerne kontakt:
             </p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>LUKOCIUS NORDICTREND</p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org.nr.: 937 172 877</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>ABOKS AS</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org. nr.: 834 012 952</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Storhaugveien 13, 7240 Hitra</p>
             <p style={{ ...bodyStyle, marginBottom: 0 }}>
               E-post:{' '}

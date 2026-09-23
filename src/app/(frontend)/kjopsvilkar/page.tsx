@@ -131,7 +131,7 @@ export default function KjopsvilkarPage() {
 
           <Section number="01" title="Avtalen">
             <p style={bodyStyle}>
-              Kjøpsavtalen inngås mellom deg som kjøper og LUKOCIUS NORDICTREND (se kontaktinformasjon
+              Kjøpsavtalen inngås mellom deg som kjøper og ABOKS AS (se kontaktinformasjon
               nederst). Ved å gjennomføre et kjøp bekrefter du at du har lest og akseptert disse kjøpsvilkårene.
             </p>
             <p style={bodyStyle}>
@@ -278,8 +278,8 @@ export default function KjopsvilkarPage() {
           </Section>
 
           <Section number="13" title="Kontaktinformasjon">
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>LUKOCIUS NORDICTREND</p>
-            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org.nr.: 937 172 877</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>ABOKS AS</p>
+            <p style={{ ...bodyStyle, marginBottom: '4px' }}>Org. nr.: 834 012 952</p>
             <p style={{ ...bodyStyle, marginBottom: '4px' }}>Storhaugveien 13, 7240 Hitra</p>
             <p style={{ ...bodyStyle, marginBottom: 0 }}>
               E-post:{' '}

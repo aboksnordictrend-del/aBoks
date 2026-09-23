@@ -211,8 +211,8 @@ export default function KontaktPage() {
             <ContactRow icon={<IconAddress />}>
               <p style={labelStyle}>Adresse</p>
               <p style={{ ...valueStyle, margin: 0 }}>
-                LUKOCIUS NORDICTREND<br />
-                Org.nr. 937 172 877<br />
+                ABOKS AS<br />
+                Org. nr. 834 012 952<br />
                 Storhaugveien 13<br />
                 7240 Hitra, Norge
               </p>
