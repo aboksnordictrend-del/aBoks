@@ -62,14 +62,15 @@ interface ProductFiles {
 }
 
 /**
- * Exact filenames in the Blob `Bedrifter` folder. `aboks-office` and `aboks-xl` are the
- * products whose product sheet does not follow the `<Produkt>-<Dokument>.pdf` pattern —
- * Office is stored as `…-produktark-A4.pdf` and XL as `…-produktark-v2.pdf`, spelled out
- * here rather than derived.
+ * Exact filenames in the Blob `Bedrifter` folder. Three product sheets do not follow the
+ * `<Produkt>-<Dokument>.pdf` pattern: Office is stored as `…-produktark-A4.pdf`, XL as
+ * `…-produktark-v2.pdf`, and Spesial as `aBoks-Spesial-produktark-v2.pdf` — the one file
+ * in this table spelled "Spesial" rather than "Special". All of them are spelled out here
+ * rather than derived.
  */
 const FILES: Record<BedrifterProductKey, ProductFiles> = {
   'aboks-special': {
-    produktark: 'aBoks-Special-Produktark.pdf',
+    produktark: 'aBoks-Spesial-produktark-v2.pdf',
     prisliste: 'aBoks-Special-Prisliste.pdf',
     tilbudsmalPdf: 'aBoks-Special-Tilbudsmal.pdf',
     tilbudsmalHtml: 'aBoks-Special-Tilbudsmal.html',
