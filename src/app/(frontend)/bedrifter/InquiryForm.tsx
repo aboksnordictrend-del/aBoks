@@ -108,10 +108,19 @@ type Status = 'idle' | 'submitting' | 'success' | 'error'
 export default function InquiryForm({
   interest,
   onInterestChange,
+  message: messageProp,
+  onMessageChange,
 }: {
   /** Lifted so the "Meld interesse" buttons further up the page can preselect a product. */
   interest: string
   onInterestChange: (value: string) => void
+  /**
+   * The same lifting for the message, so a "Be om tilbud" button can open the form with
+   * the solution it came from already named. Optional: without both props the field keeps
+   * its own state, exactly as it did before.
+   */
+  message?: string
+  onMessageChange?: (value: string) => void
 }) {
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -121,7 +130,9 @@ export default function InquiryForm({
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [quantity, setQuantity] = useState('')
-  const [message, setMessage] = useState('')
+  const [ownMessage, setOwnMessage] = useState('')
+  const message = messageProp ?? ownMessage
+  const setMessage = onMessageChange ?? setOwnMessage
 
   const [errors, setErrors] = useState<InquiryFieldErrors>({})
   const [summary, setSummary] = useState('')

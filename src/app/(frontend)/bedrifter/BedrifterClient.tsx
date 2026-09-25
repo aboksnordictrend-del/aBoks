@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import InquiryForm from './InquiryForm'
 import { anchorClick } from '@/lib/anchorScroll'
 import {
@@ -13,6 +13,32 @@ import {
   type DocumentFile,
   type ProductDocument,
 } from '@/lib/bedrifterDocuments'
+import {
+  ANCHOR_OFFSET,
+  BEIGE,
+  BORDER_WARM,
+  CHECK_GREEN,
+  CREAM,
+  GOLD,
+  INK,
+  MUTED,
+  OLIVE,
+  PALE_SAGE,
+  SAGE,
+  SANS,
+  SECTION_PAD,
+  SERIF,
+  SOFT,
+  cardLabelStyle,
+  eyebrowStyle,
+  h2Style,
+  introStyle,
+  primaryButton,
+  secondaryButton,
+} from './theme'
+import { useRevealFactory, type RevealProps } from './useReveal'
+import BusinessSolutions from './BusinessSolutions'
+import type { BusinessSolution } from '@/lib/bedrifterSolutions'
 
 /** Existing catalogue entry, assembled from Payload in `page.tsx`. */
 export interface BedrifterProduct {
@@ -25,98 +51,8 @@ export interface BedrifterProduct {
 }
 
 /* ────────────────────────────── design tokens ──────────────────────────────
-   Same values the homepage and product pages use inline — kept as constants
-   here because this page repeats them across ten sections. */
-
-const SANS = 'var(--font-manrope)'
-const SERIF = 'var(--font-cormorant)'
-
-const INK = '#1a1d17'
-const SOFT = '#3a3f33'
-const MUTED = '#6b6f63'
-const SAGE = '#5e6a48'
-const OLIVE = '#39402c'
-const CREAM = '#faf6ee'
-const BEIGE = '#f2e7d7'
-const PALE_SAGE = '#e6ecdf'
-const GOLD = '#c9a76a'
-const BORDER_WARM = '#ddd2bb'
-const CHECK_GREEN = '#5f8253'
-
-const SECTION_PAD = 'clamp(72px,9vw,120px) 0'
-/**
- * Clears the fixed header when an in-page anchor is targeted *without* JavaScript running
- * the scroll — a `/bedrifter#foresporsel` URL opened directly, or a no-JS visit. Clicks
- * inside the page go through `anchorClick`, which measures the header instead of
- * approximating it; see `lib/anchorScroll.ts`.
- */
-const ANCHOR_OFFSET = 'clamp(84px,11vh,110px)'
-
-const eyebrowStyle: React.CSSProperties = {
-  fontFamily: SANS,
-  fontWeight: 700,
-  fontSize: '12px',
-  letterSpacing: '0.2em',
-  textTransform: 'uppercase',
-  color: SAGE,
-  margin: '0 0 18px',
-}
-
-const h2Style: React.CSSProperties = {
-  fontFamily: SERIF,
-  fontWeight: 500,
-  fontSize: 'clamp(32px,4vw,52px)',
-  letterSpacing: '-0.02em',
-  lineHeight: 1.07,
-  color: INK,
-  margin: 0,
-}
-
-const introStyle: React.CSSProperties = {
-  fontFamily: SANS,
-  fontSize: 'clamp(16px,1.4vw,18px)',
-  lineHeight: 1.7,
-  color: SOFT,
-  margin: '22px 0 0',
-  maxWidth: '62ch',
-}
-
-/** Horizontal padding comes from a class so the two hero buttons can sit side by side on
- *  a narrow phone — the homepage mobile hero uses the same one-row treatment. */
-const primaryButton: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingTop: '17px',
-  paddingBottom: '17px',
-  borderRadius: '999px',
-  background: OLIVE,
-  color: CREAM,
-  fontFamily: SANS,
-  fontWeight: 600,
-  fontSize: '15px',
-  letterSpacing: '0.01em',
-  textDecoration: 'none',
-  minHeight: '54px',
-}
-
-const secondaryButton: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingTop: '17px',
-  paddingBottom: '17px',
-  borderRadius: '999px',
-  background: 'rgba(255,255,255,.55)',
-  color: INK,
-  fontFamily: SANS,
-  fontWeight: 600,
-  fontSize: '15px',
-  letterSpacing: '0.01em',
-  border: '1.5px solid rgba(26,29,23,.22)',
-  textDecoration: 'none',
-  minHeight: '54px',
-}
+   The values the homepage and product pages use inline. They live in `theme.ts` because
+   the page is split across several files now — see the note there. */
 
 /* ────────────────────────────── page content ────────────────────────────── */
 
@@ -302,17 +238,6 @@ function CheckMark({ color = CHECK_GREEN, size = 18 }: { color?: string; size?: 
       <path d="M20 6L9 17l-5-5" />
     </svg>
   )
-}
-
-/** Small uppercase label used inside the solution cards ("Passer for", "Dokumenter"). */
-const cardLabelStyle: React.CSSProperties = {
-  fontFamily: SANS,
-  fontWeight: 700,
-  fontSize: '11.5px',
-  letterSpacing: '0.18em',
-  textTransform: 'uppercase',
-  color: SAGE,
-  margin: '0 0 14px',
 }
 
 function Tag({ children }: { children: React.ReactNode }) {
@@ -644,23 +569,6 @@ const PRODUCT_SECTION_CSS = `
   }
 `
 
-/** Motion props for the shared reveal, produced by the page component. */
-type RevealProps = ReturnType<ReturnType<typeof useRevealFactory>>
-
-function useRevealFactory() {
-  const reduceMotion = useReducedMotion()
-  // Motion props stay identical on the server and the client — only the timing changes
-  // under reduced motion, so the SSR markup never gets stuck at opacity 0.
-  return (delay = 0) => ({
-    initial: { opacity: 0, y: 22 },
-    whileInView: { opacity: 1, y: 0 },
-    viewport: { once: true, margin: '-80px' },
-    transition: reduceMotion
-      ? { duration: 0 }
-      : { duration: 0.65, delay, ease: [0.22, 0.61, 0.36, 1] as const },
-  })
-}
-
 /**
  * One full-width editorial product section: image in one column, copy in the other,
  * sides alternating down the page. Every product on the page renders through this.
@@ -853,10 +761,30 @@ function ProductSectionBlock({
 export default function BedrifterClient({ products }: { products: BedrifterProduct[] }) {
   const reveal = useRevealFactory()
   const [interest, setInterest] = useState('')
+  const [message, setMessage] = useState('')
+  /** The last message this page wrote into the form — see `presetMessage`. */
+  const presetMessage = useRef('')
 
   /** "Meld interesse" — presets the form's dropdown, then scrolls to it. */
   const pickInterest = (value: string, anchor = 'foresporsel') =>
     anchorClick(anchor, () => setInterest(value))
+
+  /**
+   * "Be om tilbud" on a solution — the same as `pickInterest`, plus a message naming the
+   * solution the visitor came from, since the dropdown has no option per package.
+   *
+   * Anything the visitor typed themselves is left alone: the message is only written when
+   * the field is empty or still holds a preset this page put there.
+   */
+  const requestQuote = (solution?: BusinessSolution) =>
+    anchorClick('foresporsel', () => {
+      setInterest(solution?.interestOption ?? 'Produkter til egen bedrift')
+      const next = solution
+        ? `Vi ønsker et tilbud på ${solution.name}.`
+        : 'Vi ønsker hjelp til å finne en løsning som passer våre lokaler.'
+      setMessage((current) => (current === '' || current === presetMessage.current ? next : current))
+      presetMessage.current = next
+    })
 
   /**
    * Every product on the page, in the order `page.tsx` resolved from the CMS. Each entry
@@ -1033,6 +961,11 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
           </div>
         </div>
       </section>
+
+      {/* ==================== COMPLETE SOLUTIONS ====================
+          The packages, introduced before the individual models further down. Its content
+          lives in `lib/bedrifterSolutions.ts`; each card leads to /bedrifter/<slug>. */}
+      <BusinessSolutions products={products} reveal={reveal} onQuoteRequest={requestQuote} />
 
       {/* ==================== PROBLEM ==================== */}
       <section aria-labelledby="utfordringer-heading" style={{ background: BEIGE, padding: SECTION_PAD }}>
@@ -1483,7 +1416,12 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
             </motion.div>
 
             <motion.div {...reveal(0.08)}>
-              <InquiryForm interest={interest} onInterestChange={setInterest} />
+              <InquiryForm
+              interest={interest}
+              onInterestChange={setInterest}
+              message={message}
+              onMessageChange={setMessage}
+            />
             </motion.div>
           </div>
         </div>
