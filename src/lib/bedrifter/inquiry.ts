@@ -22,6 +22,7 @@ import { normalizeMultiline, normalizeWhitespace } from '@/lib/reviewValidation'
 export const SOLUTION_INTEREST_OPTIONS = [
   'aBoks Kontorpakke',
   'aBoks Produksjonspakke',
+  'aBoks Skolepakke',
 ] as const
 
 /** The dropdown's options. The select is the only way to set `interest`, so the server
