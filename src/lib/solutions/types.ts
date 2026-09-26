@@ -14,6 +14,20 @@ export interface SolutionStep {
   text: string
 }
 
+/**
+ * One product's place in a solution, for a solution whose products do different jobs.
+ * A solution that only needs a flat list of rooms uses `placement.items` instead.
+ */
+export interface SolutionPlacementRole {
+  /** The product this is about, as it is written on the page. */
+  product: string
+  /** What kind of place it belongs in — "Kontor og arbeidsrom". */
+  label: string
+  text: string
+  /** Concrete examples, shown as tags. */
+  locations: string[]
+}
+
 /** A titled point in the benefits grid. */
 export interface SolutionBenefit {
   title: string
@@ -56,7 +70,15 @@ export interface SolutionPageContent {
     intro?: string
     items: SolutionStep[]
   }
-  placement: { heading: string; intro: string; items: string[]; note?: string }
+  placement: {
+    heading: string
+    intro: string
+    /** Places the whole solution suits, as tags. Used when `roles` is absent. */
+    items?: string[]
+    /** Per-product placement. A solution with these renders them instead of `items`. */
+    roles?: SolutionPlacementRole[]
+    note?: string
+  }
   configurator: SolutionConfiguratorContent
   benefits: { heading: string; intro?: string; items: SolutionBenefit[] }
   inquiry: {

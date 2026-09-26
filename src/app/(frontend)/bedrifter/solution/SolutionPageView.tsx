@@ -36,6 +36,40 @@ import {
 } from '../theme'
 import { useRevealFactory } from '../useReveal'
 
+/** A place name, as a tag. Shared by both placement layouts. */
+const placementTagStyle: React.CSSProperties = {
+  fontFamily: SANS,
+  fontSize: '14px',
+  fontWeight: 600,
+  color: '#4a4e41',
+  border: `1px solid ${BORDER_WARM}`,
+  borderRadius: '999px',
+  padding: '9px 18px',
+  background: 'rgba(255,255,255,.6)',
+}
+
+const placementNoteStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: '16px',
+  fontFamily: SERIF,
+  fontStyle: 'italic',
+  fontWeight: 500,
+  fontSize: 'clamp(18px,1.9vw,23px)',
+  lineHeight: 1.4,
+  color: OLIVE,
+  margin: 'clamp(26px,3vw,36px) 0 0',
+  maxWidth: '46ch',
+}
+
+const placementNoteRuleStyle: React.CSSProperties = {
+  width: '26px',
+  height: '1.5px',
+  background: GOLD,
+  flexShrink: 0,
+  marginTop: '15px',
+}
+
 /**
  * A complete solution page — hero, how it works, where it fits, the configurator, the
  * benefits and the inquiry form.
@@ -77,6 +111,18 @@ export default function SolutionPageView({
 
   const otherSolutions = BUSINESS_SOLUTIONS.filter((s) => s.slug !== solution.slug)
   const illustration = solution.illustration
+  const roles = content.placement.roles
+
+  /** The placement heading, in whichever of the two layouts the section takes. */
+  const placementIntro = (
+    <>
+      <p style={eyebrowStyle}>Tilpasses lokalene</p>
+      <h2 id="plassering-heading" style={h2Style}>
+        {content.placement.heading}
+      </h2>
+      <p style={introStyle}>{content.placement.intro}</p>
+    </>
+  )
 
   return (
     <main>
@@ -214,76 +260,133 @@ export default function SolutionPageView({
         </div>
       </section>
 
-      {/* ==================== PLACEMENT ==================== */}
+      {/* ==================== PLACEMENT ====================
+          Two shapes from the same content: a solution whose products all do the same job
+          lists the rooms it suits, while one whose products have distinct roles gives each
+          product its own card. Which one is a property of the content, not of the slug. */}
       <section aria-labelledby="plassering-heading" style={{ background: CREAM, padding: SECTION_PAD }}>
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
-          <div
-            className="grid grid-cols-1 lg:grid-cols-2"
-            style={{ columnGap: 'clamp(40px,6vw,88px)', rowGap: 'clamp(28px,4vw,40px)' }}
-          >
-            <motion.div {...reveal()}>
-              <p style={eyebrowStyle}>Tilpasses lokalene</p>
-              <h2 id="plassering-heading" style={h2Style}>
-                {content.placement.heading}
-              </h2>
-              <p style={introStyle}>{content.placement.intro}</p>
-            </motion.div>
+          {roles ? (
+            <>
+              <motion.div {...reveal()} style={{ maxWidth: '760px', marginBottom: 'clamp(36px,4.5vw,56px)' }}>
+                {placementIntro}
+              </motion.div>
 
-            <motion.div {...reveal(0.08)}>
               <ul
-                style={{
-                  listStyle: 'none',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '10px',
-                  margin: 0,
-                  padding: 0,
-                }}
+                className="grid grid-cols-1 md:grid-cols-3"
+                style={{ listStyle: 'none', margin: 0, padding: 0, gap: 'clamp(18px,2.2vw,26px)' }}
               >
-                {content.placement.items.map((item) => (
-                  <li
-                    key={item}
+                {roles.map((role, i) => (
+                  <motion.li
+                    key={role.product}
+                    {...reveal(i * 0.06)}
                     style={{
-                      fontFamily: SANS,
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      color: '#4a4e41',
-                      border: `1px solid ${BORDER_WARM}`,
-                      borderRadius: '999px',
-                      padding: '9px 18px',
-                      background: 'rgba(255,255,255,.6)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: 'clamp(22px,2.6vw,30px)',
+                      background: '#fff',
+                      border: `1px solid ${BORDER_WARM}99`,
+                      borderRadius: '22px',
                     }}
                   >
-                    {item}
-                  </li>
+                    <p
+                      style={{
+                        fontFamily: SANS,
+                        fontWeight: 700,
+                        fontSize: '11.5px',
+                        letterSpacing: '0.16em',
+                        textTransform: 'uppercase',
+                        color: '#5e6a48',
+                        margin: 0,
+                      }}
+                    >
+                      {role.product}
+                    </p>
+                    <h3
+                      style={{
+                        fontFamily: SERIF,
+                        fontWeight: 500,
+                        fontSize: 'clamp(21px,2.1vw,26px)',
+                        letterSpacing: '-0.015em',
+                        lineHeight: 1.15,
+                        color: INK,
+                        margin: '12px 0 0',
+                      }}
+                    >
+                      {role.label}
+                    </h3>
+                    <p
+                      style={{
+                        fontFamily: SANS,
+                        fontSize: '15px',
+                        lineHeight: 1.65,
+                        color: SOFT,
+                        margin: '12px 0 0',
+                      }}
+                    >
+                      {role.text}
+                    </p>
+                    <ul
+                      style={{
+                        listStyle: 'none',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        margin: 'clamp(18px,2vw,22px) 0 0',
+                        padding: 0,
+                      }}
+                    >
+                      {role.locations.map((location) => (
+                        <li key={location} style={placementTagStyle}>
+                          {location}
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.li>
                 ))}
               </ul>
 
               {content.placement.note && (
-                <p
+                <motion.p {...reveal(0.1)} style={placementNoteStyle}>
+                  <span aria-hidden="true" style={placementNoteRuleStyle} />
+                  {content.placement.note}
+                </motion.p>
+              )}
+            </>
+          ) : (
+            <div
+              className="grid grid-cols-1 lg:grid-cols-2"
+              style={{ columnGap: 'clamp(40px,6vw,88px)', rowGap: 'clamp(28px,4vw,40px)' }}
+            >
+              <motion.div {...reveal()}>{placementIntro}</motion.div>
+
+              <motion.div {...reveal(0.08)}>
+                <ul
                   style={{
+                    listStyle: 'none',
                     display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '16px',
-                    fontFamily: SERIF,
-                    fontStyle: 'italic',
-                    fontWeight: 500,
-                    fontSize: 'clamp(18px,1.9vw,23px)',
-                    lineHeight: 1.4,
-                    color: OLIVE,
-                    margin: 'clamp(26px,3vw,36px) 0 0',
-                    maxWidth: '46ch',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    margin: 0,
+                    padding: 0,
                   }}
                 >
-                  <span
-                    aria-hidden="true"
-                    style={{ width: '26px', height: '1.5px', background: GOLD, flexShrink: 0, marginTop: '15px' }}
-                  />
-                  {content.placement.note}
-                </p>
-              )}
-            </motion.div>
-          </div>
+                  {(content.placement.items ?? []).map((item) => (
+                    <li key={item} style={placementTagStyle}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+
+                {content.placement.note && (
+                  <p style={placementNoteStyle}>
+                    <span aria-hidden="true" style={placementNoteRuleStyle} />
+                    {content.placement.note}
+                  </p>
+                )}
+              </motion.div>
+            </div>
+          )}
         </div>
       </section>
 

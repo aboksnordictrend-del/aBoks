@@ -7,11 +7,13 @@
  */
 
 import { KONTORPAKKE } from './kontorpakke'
+import { PRODUKSJONSPAKKE } from './produksjonspakke'
 import type { SolutionPageContent } from './types'
 
 const SOLUTION_PAGES: Record<string, SolutionPageContent> = {
   [KONTORPAKKE.slug]: KONTORPAKKE,
-  // produksjonspakke, skolepakke, borettslagspakke — still placeholders.
+  [PRODUKSJONSPAKKE.slug]: PRODUKSJONSPAKKE,
+  // skolepakke, borettslagspakke — still placeholders.
 }
 
 /** The written page for this solution, or undefined while it is still a placeholder. */

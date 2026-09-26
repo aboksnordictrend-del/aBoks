@@ -19,7 +19,10 @@ import { normalizeMultiline, normalizeWhitespace } from '@/lib/reviewValidation'
  * which package it is about. Kept as its own list: the three remaining packages get their
  * pages one at a time, and each one is a single entry here — nothing else changes.
  */
-export const SOLUTION_INTEREST_OPTIONS = ['aBoks Kontorpakke'] as const
+export const SOLUTION_INTEREST_OPTIONS = [
+  'aBoks Kontorpakke',
+  'aBoks Produksjonspakke',
+] as const
 
 /** The dropdown's options. The select is the only way to set `interest`, so the server
  *  accepts exactly these — an unknown value is a hand-rolled POST, not a customer. */
