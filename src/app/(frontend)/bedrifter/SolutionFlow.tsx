@@ -14,7 +14,15 @@ import type { RevealProps } from './useReveal'
  * under each step, so the sequence still reads as one flow. Four columns only from `lg`:
  * on a tablet they would leave about eleven characters per line.
  */
-export default function SolutionFlow({ reveal }: { reveal: (delay?: number) => RevealProps }) {
+export default function SolutionFlow({
+  reveal,
+  steps = SOLUTION_FLOW,
+}: {
+  reveal: (delay?: number) => RevealProps
+  /** Defaults to the four steps of the system shown on /bedrifter. A solution page passes
+   *  its own, so both read as the same flow in the same shape. */
+  steps?: typeof SOLUTION_FLOW
+}) {
   return (
     <ol
       className="grid grid-cols-1 lg:grid-cols-4"
@@ -26,8 +34,8 @@ export default function SolutionFlow({ reveal }: { reveal: (delay?: number) => R
         rowGap: '0',
       }}
     >
-      {SOLUTION_FLOW.map((step, i) => {
-        const last = i === SOLUTION_FLOW.length - 1
+      {steps.map((step, i) => {
+        const last = i === steps.length - 1
         return (
           <motion.li key={step.number} {...reveal(i * 0.08)}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '18px' }}>

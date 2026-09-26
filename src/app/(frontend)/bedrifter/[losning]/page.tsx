@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { BUSINESS_SOLUTIONS, findSolution } from '@/lib/bedrifterSolutions'
+import { solutionPageContent } from '@/lib/solutions'
+import type { ConfigurableProduct, SolutionPageContent } from '@/lib/solutions/types'
+import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
+import SolutionPageView from '../solution/SolutionPageView'
 import {
   BORDER_WARM,
   CREAM,
@@ -17,10 +21,12 @@ import {
 } from '../theme'
 
 /**
- * Placeholder route for one business solution — `/bedrifter/kontorpakke` and the three
- * others. It exists so the "Se løsningen" buttons on /bedrifter lead somewhere real while
- * the full pages (hero, floor plan, placement, benefits, product sheets, offer) are still
- * being written. Everything it shows comes from `lib/bedrifterSolutions.ts`.
+ * One business solution — `/bedrifter/kontorpakke` and the three others.
+ *
+ * A solution whose page has been written renders it from its content module in
+ * `lib/solutions`; one that has not keeps the "Mer informasjon kommer" placeholder, so the
+ * "Se løsningen" buttons on /bedrifter always lead somewhere real. Publishing the next
+ * package is a content module and nothing on this route.
  *
  * `dynamicParams = false` keeps this to the four known slugs: anything else is a 404
  * rather than an empty solution page.
@@ -32,6 +38,69 @@ export function generateStaticParams() {
   return BUSINESS_SOLUTIONS.map((solution) => ({ losning: solution.slug }))
 }
 
+/** Payload upload fields arrive either as an id string or as a populated media doc. */
+function mediaUrl(val: unknown): string {
+  if (typeof val === 'string') return val
+  if (val && typeof val === 'object' && 'url' in val)
+    return String((val as { url?: string }).url ?? '')
+  return ''
+}
+
+/**
+ * The configurator's products, read from the catalogue by the slugs the content module
+ * names — through the very same helpers the product pages use, so there is one source for
+ * the price, the colours and the stock.
+ *
+ * A slug that does not resolve is skipped rather than fatal: a page that explains the
+ * solution and takes an inquiry is better than a 500 because one product is unpublished.
+ */
+async function getConfigurableProducts(
+  content: SolutionPageContent,
+): Promise<ConfigurableProduct[]> {
+  const resolved = await Promise.all(
+    content.configurator.productSlugs.map(async (slug): Promise<ConfigurableProduct | null> => {
+      try {
+        const doc = await getProductBySlug(slug)
+        if (!doc) return null
+
+        const variants = await getVariantsForProduct(String(doc.id))
+        const firstImage = (doc.images as { image?: unknown; alt?: string }[] | undefined)?.[0]
+
+        return {
+          id: String(doc.id),
+          slug: String(doc.slug ?? slug),
+          title: doc.title,
+          tagline: doc.tagline ?? '',
+          price: doc.price ?? 0,
+          sale: {
+            salePrice: doc.salePrice ?? null,
+            saleStartDate: doc.saleStartDate ?? null,
+            saleEndDate: doc.saleEndDate ?? null,
+          },
+          image: firstImage ? mediaUrl(firstImage.image) : '',
+          imageAlt: firstImage?.alt ?? doc.title,
+          defaultQuantity: content.configurator.defaultQuantities?.[slug] ?? 0,
+          variants: variants.map((variant) => ({
+            id: String(variant.id),
+            name: variant.name ?? '',
+            colorHex: variant.colorHex ?? '#000000',
+            image: mediaUrl((variant as { image?: unknown }).image),
+            inventory: variant.inventory ?? 0,
+          })),
+        }
+      } catch (err) {
+        console.error(
+          `[SOLUTION] Failed to read product "${slug}" for /bedrifter/${content.slug}:`,
+          err instanceof Error ? err.message : String(err),
+        )
+        return null
+      }
+    }),
+  )
+
+  return resolved.filter((product): product is ConfigurableProduct => product !== null)
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -41,19 +110,24 @@ export async function generateMetadata({
   const solution = findSolution(losning)
   if (!solution) return {}
 
+  const content = solutionPageContent(losning)
+  const title = `${solution.name} | aBoks`
+  const description = content?.ingress ?? solution.description
+
   return {
-    title: { absolute: `${solution.name} | aBoks` },
-    description: solution.description,
+    title: { absolute: title },
+    description,
     alternates: { canonical: `/bedrifter/${solution.slug}` },
-    // The page has no content of its own yet — it should not be indexed before it does.
-    robots: { index: false, follow: true },
+    // A placeholder has nothing to index; a written page is indexed only once its content
+    // module says it has been reviewed.
+    ...(content?.indexable ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       type: 'website',
       locale: 'nb_NO',
       siteName: 'aBoks',
       url: `/bedrifter/${solution.slug}`,
-      title: `${solution.name} | aBoks`,
-      description: solution.description,
+      title,
+      description,
     },
   }
 }
@@ -62,6 +136,12 @@ export default async function SolutionPage({ params }: { params: Promise<{ losni
   const { losning } = await params
   const solution = findSolution(losning)
   if (!solution) notFound()
+
+  const content = solutionPageContent(losning)
+  if (content) {
+    const products = await getConfigurableProducts(content)
+    return <SolutionPageView solution={solution} content={content} products={products} />
+  }
 
   return (
     // The fixed header is solid on this route (HERO_TOP_ROUTES in Header.tsx covers

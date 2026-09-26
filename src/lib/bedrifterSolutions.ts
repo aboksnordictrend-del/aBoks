@@ -60,8 +60,13 @@ export interface BusinessSolution {
   note?: string
   products: SolutionProduct[]
   /**
-   * The finished floor-plan illustration. Until it is set, the card renders a placeholder
-   * of the same size, so dropping the image in later changes nothing about the layout.
+   * The finished floor-plan illustration, in the Blob `Bedrifter` folder. A solution
+   * without one renders a placeholder of exactly the same size instead. The files are
+   * 16:9 while the card's area is 16:10, so the card fits the whole drawing inside it
+   * rather than cropping into the callout circles near its edges.
+   *
+   * The borettslag file is spelled `Burettslagspakke.webp` in Blob. That is the name it
+   * was uploaded under — it is not a typo to fix here.
    */
   illustration?: {
     src: string
@@ -87,6 +92,10 @@ export function solutionHref(solution: Pick<BusinessSolution, 'slug'>): string {
 export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
   {
     slug: 'kontorpakke',
+    illustration: {
+      src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/Kontorpakke.webp',
+      alt: 'Illustrasjon av aBoks Kontorpakke for kontormiljø',
+    },
     name: 'aBoks Kontorpakke',
     category: 'Kontor · Hjemmekontor · Administrasjon',
     description:
@@ -102,6 +111,10 @@ export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
   },
   {
     slug: 'produksjonspakke',
+    illustration: {
+      src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/Produksjonpakke.webp',
+      alt: 'Illustrasjon av aBoks Produksjonspakke for produksjon og lager',
+    },
     name: 'aBoks Produksjonspakke',
     category: 'Produksjon · Lager · Verksted',
     description:
@@ -118,6 +131,10 @@ export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
   },
   {
     slug: 'skolepakke',
+    illustration: {
+      src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/Skolepakke.webp',
+      alt: 'Illustrasjon av aBoks Skolepakke for skole og undervisningsmiljø',
+    },
     name: 'aBoks Skolepakke',
     category: 'Skole · Barnehage · Undervisning',
     description:
@@ -134,6 +151,10 @@ export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
   },
   {
     slug: 'borettslagspakke',
+    illustration: {
+      src: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Bedrifter/Burettslagspakke.webp',
+      alt: 'Illustrasjon av aBoks Borettslagspakke for leiligheter og fellesområde',
+    },
     name: 'aBoks Borettslagspakke',
     category: 'Borettslag · Sameier · Boligselskaper',
     headline: 'Fra leiligheten til felles innsamling',

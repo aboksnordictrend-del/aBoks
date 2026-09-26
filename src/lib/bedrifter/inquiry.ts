@@ -14,10 +14,18 @@
 
 import { normalizeMultiline, normalizeWhitespace } from '@/lib/reviewValidation'
 
+/**
+ * The complete solutions, one option each, so an inquiry that starts on a solution page says
+ * which package it is about. Kept as its own list: the three remaining packages get their
+ * pages one at a time, and each one is a single entry here — nothing else changes.
+ */
+export const SOLUTION_INTEREST_OPTIONS = ['aBoks Kontorpakke'] as const
+
 /** The dropdown's options. The select is the only way to set `interest`, so the server
  *  accepts exactly these — an unknown value is a hand-rolled POST, not a customer. */
 export const INTEREST_OPTIONS = [
   'Produkter til egen bedrift',
+  ...SOLUTION_INTEREST_OPTIONS,
   'aBoks Spesial',
   'aBoks Office',
   'aBoks XL',

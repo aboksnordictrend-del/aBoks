@@ -75,31 +75,24 @@ export const SOLUTION_CARD_CSS = `
 `
 
 /**
- * The illustration area. A solution with no drawing yet renders a placeholder of exactly
- * the size the finished floor plan will take, so adding the image later is a data change
- * and never a layout change.
+ * The illustration panel — one half of the card, edge to edge. It has no frame, padding or
+ * radius of its own: the card clips it, so the drawing follows the card's rounded corners
+ * on the side it sits against.
+ *
+ * Height comes from the 16:9 ratio while the card is one column, and from the row itself
+ * from `lg`, where the panel stretches to the full height of the copy beside it. The
+ * minimum keeps a short solution from squeezing the drawing into a strip.
  */
-function SolutionIllustration({
-  solution,
-  aspect,
-  sizes,
-}: {
-  solution: BusinessSolution
-  aspect: string
-  sizes: string
-}) {
+function SolutionIllustration({ solution, sizes }: { solution: BusinessSolution; sizes: string }) {
   const illustration = solution.illustration
 
   return (
     <div
+      className="aspect-[16/9] lg:aspect-auto lg:min-h-[320px]"
       style={{
         position: 'relative',
         width: '100%',
-        aspectRatio: aspect,
-        borderRadius: '20px',
-        overflow: 'hidden',
-        background: '#f4f0e6',
-        border: illustration ? `1px solid ${BORDER_WARM}` : `1px dashed ${BORDER_WARM}`,
+        background: illustration ? '#fff' : '#f4f0e6',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -111,7 +104,12 @@ function SolutionIllustration({
           alt={illustration.alt ?? solution.plannedIllustration}
           fill
           sizes={sizes}
-          style={{ objectFit: 'cover' }}
+          // The drawing fills the panel's width edge to edge. `contain`, not `cover`: while
+          // the card is one column the panel is 16:9 and the two are identical, but from
+          // `lg` the panel is as tall as the copy beside it (about 1.29:1, and 1.01:1 on
+          // the borettslag card) — a cover crop there would take 27% to 43% off the width
+          // and cut straight through the callout circles at both edges.
+          style={{ objectFit: 'contain' }}
         />
       ) : (
         <span
@@ -240,15 +238,20 @@ export default function SolutionCard({
   onQuoteRequest: (solution: BusinessSolution) => React.MouseEventHandler<HTMLAnchorElement>
 }) {
   const illustration = (
-    <SolutionIllustration
-      solution={solution}
-      aspect="16 / 10"
-      sizes="(max-width: 1023px) 100vw, 46vw"
-    />
+    <SolutionIllustration solution={solution} sizes="(max-width: 1023px) 100vw, 56vw" />
   )
 
+  // The card has no padding of its own any more — the illustration runs to its edges, so
+  // the padding that used to sit on the card now sits on this column alone.
   const body = (
-    <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flexGrow: 1,
+        padding: 'clamp(22px,2.6vw,32px)',
+      }}
+    >
       <p
         style={{
           fontFamily: SANS,
@@ -386,16 +389,16 @@ export default function SolutionCard({
         borderRadius: '28px',
         border: `1px solid ${BORDER_WARM}99`,
         boxShadow: '0 2px 8px rgba(42,36,24,.05)',
-        padding: 'clamp(22px,2.6vw,32px)',
+        // The illustration reaches the card's edges, so the card carries no padding and
+        // clips its own corners instead.
+        overflow: 'hidden',
       }}
     >
       {/* Every card takes the full width of the section, so illustration and copy sit side
-          by side from `lg` — where the card is actually wide enough for two columns. Below
-          that the grid collapses to one column: illustration first, copy under it. */}
-      <div
-        className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr]"
-        style={{ columnGap: 'clamp(28px,3.4vw,52px)', rowGap: 'clamp(24px,3vw,32px)', flexGrow: 1 }}
-      >
+          by side from `lg` — the drawing takes a little over half, with no gap between
+          them. Below that the grid collapses to one column: illustration first, copy
+          under it. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr]" style={{ flexGrow: 1 }}>
         {illustration}
         {body}
       </div>
