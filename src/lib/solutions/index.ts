@@ -25,4 +25,15 @@ export function solutionPageContent(slug: string): SolutionPageContent | undefin
   return SOLUTION_PAGES[slug]
 }
 
+/**
+ * The solutions that may be indexed, in registry order.
+ *
+ * The sitemap reads this, so a page enters and leaves it by the one `indexable` flag its
+ * content module already uses for its robots metadata. The next solution appears in the
+ * sitemap the moment it is approved, with nothing to remember to add.
+ */
+export function indexableSolutions(): SolutionPageContent[] {
+  return Object.values(SOLUTION_PAGES).filter((solution) => solution.indexable)
+}
+
 export type { SolutionPageContent } from './types'

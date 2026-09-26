@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
 import { readdirSync } from 'fs'
 import { join } from 'path'
 import { getAccessories, getProducts } from '@/lib/payload'
+import { indexableSolutions } from '@/lib/solutions'
 import { getTotalPages as getInspirasjonTotalPages } from './(frontend)/inspirasjon/_data'
 
 export const revalidate = 3600
@@ -12,6 +13,8 @@ const STATIC_PAGES: MetadataRoute.Sitemap = [
   { url: BASE_URL, changeFrequency: 'daily', priority: 1 },
   { url: `${BASE_URL}/produkter`, changeFrequency: 'daily', priority: 0.9 },
   { url: `${BASE_URL}/tilbehor`, changeFrequency: 'weekly', priority: 0.6 },
+  // The B2B hub. Its four solution pages are added further down, from the registry.
+  { url: `${BASE_URL}/bedrifter`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${BASE_URL}/slik-fungerer-det`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${BASE_URL}/historien`, changeFrequency: 'monthly', priority: 0.7 },
   { url: `${BASE_URL}/inspirasjon`, changeFrequency: 'weekly', priority: 0.8 },
@@ -55,6 +58,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }))
 
+  // The B2B solution pages, taken from the solution registry rather than listed here: a
+  // page appears once its content module says it may be indexed, which is the same flag the
+  // route uses for its robots metadata. A solution still showing its placeholder has no
+  // entry and stays out.
+  const solutionPages: MetadataRoute.Sitemap = indexableSolutions().map(solution => ({
+    url: `${BASE_URL}/bedrifter/${solution.slug}`,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }))
+
   const inspirasjonTotalPages = getInspirasjonTotalPages()
   const inspirasjonPaginationPages: MetadataRoute.Sitemap = Array.from(
     { length: Math.max(0, inspirasjonTotalPages - 1) },
@@ -65,5 +78,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   )
 
-  return [...STATIC_PAGES, ...productPages, ...articlePages, ...inspirasjonPaginationPages]
+  return [
+    ...STATIC_PAGES,
+    ...productPages,
+    ...solutionPages,
+    ...articlePages,
+    ...inspirasjonPaginationPages,
+  ]
 }

@@ -128,6 +128,6 @@ export const BORETTSLAGSPAKKE: SolutionPageContent = {
       'Hei, vi ønsker et tilbud på aBoks Borettslagspakke til vårt borettslag/sameie.',
   },
 
-  // Turned on once the finished page has been reviewed in the browser.
-  indexable: false,
+  // Reviewed and approved 2026-09-26.
+  indexable: true,
 }

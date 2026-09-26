@@ -105,6 +105,6 @@ export const KONTORPAKKE: SolutionPageContent = {
     message: 'Vi ønsker et tilbud på aBoks Kontorpakke.',
   },
 
-  // Turned on once the finished page has been reviewed in the browser.
-  indexable: false,
+  // Reviewed and approved 2026-09-26.
+  indexable: true,
 }
