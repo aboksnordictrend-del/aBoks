@@ -1282,14 +1282,14 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
 
       {/* ==================== PRODUCT SOLUTIONS ==================== */}
       <section
-        id="losninger"
-        aria-labelledby="losninger-heading"
+        id="produkter"
+        aria-labelledby="produkter-heading"
         style={{ background: CREAM, padding: SECTION_PAD, scrollMarginTop: ANCHOR_OFFSET }}
       >
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
           <motion.div {...reveal()} style={{ maxWidth: '720px', marginBottom: 'clamp(48px,6vw,80px)' }}>
             <p style={eyebrowStyle}>Løsninger for ulike behov</p>
-            <h2 id="losninger-heading" style={h2Style}>
+            <h2 id="produkter-heading" style={h2Style}>
               Utviklet for arbeidsplassen.
             </h2>
             <p style={introStyle}>

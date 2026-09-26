@@ -88,9 +88,18 @@ export default function BusinessSolutions({
         </div>
 
         {/* ── The four packages ── */}
-        <div style={{ margin: 'clamp(64px,8vw,104px) 0 0' }}>
+        {/* The hero's "Se løsningene" lands here rather than on the block above: the
+            packages are what that button promises. `scrollMarginTop` keeps the heading
+            clear of the fixed header for a direct /bedrifter#losninger hit; a click goes
+            through `anchorClick`, which measures the header instead. */}
+        <section
+          id="losninger"
+          aria-labelledby="losninger-heading"
+          style={{ margin: 'clamp(64px,8vw,104px) 0 0', scrollMarginTop: ANCHOR_OFFSET }}
+        >
           <motion.div {...reveal()} style={{ maxWidth: '720px' }}>
             <h3
+              id="losninger-heading"
               style={{
                 fontFamily: SERIF,
                 fontWeight: 500,
@@ -125,7 +134,7 @@ export default function BusinessSolutions({
               />
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </section>
 

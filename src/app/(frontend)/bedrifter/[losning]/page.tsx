@@ -247,7 +247,7 @@ export default async function SolutionPage({
                 Be om tilbud
               </Link>
               <Link
-                href="/bedrifter#bedriftslosninger"
+                href="/bedrifter#losninger"
                 data-btn
                 className="w-full justify-center px-8 sm:w-auto"
                 style={secondaryButton}
