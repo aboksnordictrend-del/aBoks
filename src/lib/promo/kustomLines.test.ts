@@ -28,6 +28,9 @@ function cartOf(...lines: { variantId: string; productId: string; unitKr: number
       lineTotalOere,
       unitPriceKr: unitPriceOere / 100,
       lineTotalKr: lineTotalOere / 100,
+      baseUnitPriceOere: unitPriceOere,
+      baseUnitPriceKr: unitPriceOere / 100,
+      quoteAvailable: false,
       inventory: 10,
     }
   })

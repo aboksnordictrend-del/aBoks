@@ -5,6 +5,13 @@ import type { ConfigurableProduct, SolutionConfiguratorContent } from '@/lib/sol
 import { useCartStore } from '@/store/cart'
 import { trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice } from '@/lib/pricing'
+import {
+  getLineTotal,
+  getNextPricingTier,
+  getUnitPrice,
+  isQuoteThresholdReached,
+} from '@/lib/quantityPricing'
+import { QUOTE_TEXT, quoteExplanationFor } from '@/lib/quoteRequest'
 import { formatPrice } from '@/lib/format'
 import ConfiguratorRow from './ConfiguratorRow'
 import {
@@ -54,11 +61,18 @@ export default function SolutionConfigurator({
   products,
   /** Scrolls to the inquiry form. */
   onQuoteRequest,
+  /**
+   * Called just before `onQuoteRequest`, with what the customer has actually configured, so
+   * the enquiry form can open already describing it. Optional — a caller that does not pass
+   * it gets exactly the previous behaviour.
+   */
+  onQuoteContext,
   anchorId = 'konfigurer',
 }: {
   content: SolutionConfiguratorContent
   products: ConfigurableProduct[]
   onQuoteRequest: React.MouseEventHandler<HTMLAnchorElement>
+  onQuoteContext?: (context: { totalQuantity: number; summary: string }) => void
   anchorId?: string
 }) {
   const [selections, setSelections] = useState<Record<string, Selection>>(() =>
@@ -77,26 +91,52 @@ export default function SolutionConfigurator({
     setSelections((current) => ({ ...current, [slug]: { ...current[slug], ...patch } }))
 
   /**
-   * Everything the summary, the total and the add all need, in one pass. The effective price
-   * is computed here — once per product, from the CMS price and its sale window — so the row,
-   * the summary and the cart line can never disagree.
+   * Everything the summary, the total and the add all need, in one pass.
+   *
+   * Each product is priced by **its own** quantity through the shared engine — a package of
+   * 3 XL + 12 Office + 25 Spesial is three independent questions, never one about 40. There is
+   * no package price, no bundle discount and no cross-product tier: the configurator simply
+   * asks the same table the cart will ask when these lines arrive in it.
    */
   const lines = products.map((product) => {
     const selection = selections[product.slug]
     const variant = product.variants.find((v) => v.id === selection?.variantId)
-    const unitPrice = getEffectivePrice(product.price, product.sale)
     const quantity = selection?.quantity ?? 0
+    // What one of these costs on its own: the CMS price through the sale window. This is what
+    // goes on the cart line, so the cart can re-derive the band from the quantity it ends up
+    // holding rather than inheriting whichever band this page happened to be showing.
+    const basePrice = getEffectivePrice(product.price, product.sale)
+    const unitPrice = getUnitPrice(product, Math.max(1, quantity))
     return {
       product,
       variant,
       quantity,
+      basePrice,
       unitPrice,
-      lineTotal: unitPrice * quantity,
+      lineTotal: quantity > 0 ? getLineTotal(product, quantity) : 0,
+      /**
+       * The next band down, or null when this product has no cheaper automatic price left.
+       *
+       * Straight from the engine, which knows only about *price* bands — the quote threshold
+       * is not one of them, so a product sitting in its last band (20–39, or 7–10 for aBoks
+       * XL) returns null here and the card promotes nothing. That is what stops «Kjøp 40 stk.»
+       * ever being offered for a price that does not actually fall at 40.
+       */
+      nextTier: getNextPricingTier(product, Math.max(1, quantity)),
+      quoteAvailable: isQuoteThresholdReached(product, quantity),
       // A product with colours needs one chosen before it can go in the cart; one without is
       // buyable as itself. Same rule the product page applies.
       addable: quantity > 0 && (product.variants.length === 0 || Boolean(variant)),
     }
   })
+
+  /**
+   * Products in the configuration that have reached their own quote threshold.
+   *
+   * Per product, never per package — aBoks XL offers a quote at 11 and a standard model at
+   * 40, and reaching one says nothing about the others.
+   */
+  const quoteLines = lines.filter((line) => line.quoteAvailable)
 
   const chosen = lines.filter((line) => line.quantity > 0)
   const total = chosen.reduce((sum, line) => sum + line.lineTotal, 0)
@@ -106,7 +146,7 @@ export default function SolutionConfigurator({
     if (addableLines.length === 0) return
 
     for (const line of addableLines) {
-      const { product, variant, quantity, unitPrice } = line
+      const { product, variant, quantity, basePrice, unitPrice } = line
       addItem(
         {
           // Only ever set when there really is a variant — never a placeholder id.
@@ -117,12 +157,18 @@ export default function SolutionConfigurator({
           colorName: variant?.name ?? '',
           colorHex: variant?.colorHex ?? '',
           colorImage: variant?.image || product.image || '',
-          price: unitPrice,
+          // The catalogue price, not the band this page is showing — see `basePrice` above.
+          // The cart reprices the line from the quantity it actually ends up with, which is
+          // what makes "Legg løsningen i handlekurven" need no package-specific pricing at
+          // all: 22 Spesial land in the cart and the cart charges the 20–39 price by itself.
+          price: basePrice,
         },
         quantity,
       )
       // The existing per-line tracking, once per product — the shared analytics and CAPI
-      // deduplication are left exactly as they are.
+      // deduplication are left exactly as they are. The price reported is the effective one
+      // for the quantity being added, so a package of twelve is not reported at twelve times
+      // the single-unit price.
       trackAddToCart({
         variantId: variant?.id ?? `product-${product.id}`,
         variantName: variant?.name ?? '',
@@ -135,6 +181,31 @@ export default function SolutionConfigurator({
     // Once, after every line is in: the drawer is the confirmation for the whole solution,
     // not for each product.
     openCartDrawer()
+  }
+
+  /**
+   * What the customer has configured, written out for the enquiry form.
+   *
+   * Every figure is the one the panel above is showing, taken from the same `lines` — so a
+   * quote request can never name a price the page did not display. Built only when the button
+   * is pressed, so it costs nothing on every render.
+   */
+  const handleQuoteRequest: React.MouseEventHandler<HTMLAnchorElement> = (event) => {
+    if (onQuoteContext && chosen.length > 0) {
+      onQuoteContext({
+        totalQuantity: chosen.reduce((sum, line) => sum + line.quantity, 0),
+        summary:
+          chosen
+            .map(
+              (line) =>
+                `${line.quantity} × ${line.product.title}` +
+                (line.variant ? ` (${line.variant.name})` : '') +
+                ` – ${formatPrice(line.unitPrice)} per stk.`,
+            )
+            .join('\n') + `\n\nTotalt: ${formatPrice(total)}`,
+      })
+    }
+    onQuoteRequest(event)
   }
 
   return (
@@ -195,7 +266,10 @@ export default function SolutionConfigurator({
                 product={line.product}
                 variant={line.variant}
                 quantity={line.quantity}
+                basePrice={line.basePrice}
                 unitPrice={line.unitPrice}
+                lineTotal={line.lineTotal}
+                nextTier={line.nextTier}
                 onVariantChange={(variantId) => update(line.product.slug, { variantId })}
                 onQuantityChange={(quantity) => update(line.product.slug, { quantity })}
               />
@@ -275,6 +349,24 @@ export default function SolutionConfigurator({
                             {line.variant.name}
                           </span>
                         )}
+                        {/* The effective unit price for this product's own quantity. Each
+                            line has its own band — they are never pooled. */}
+                        <span
+                          style={{
+                            display: 'block',
+                            fontFamily: SANS,
+                            fontSize: '13px',
+                            color: line.unitPrice < line.basePrice ? OLIVE : MUTED,
+                            marginTop: '2px',
+                          }}
+                        >
+                          {formatPrice(line.unitPrice)} per stk.
+                          {line.unitPrice < line.basePrice && (
+                            <span style={{ color: MUTED, textDecoration: 'line-through', marginLeft: '7px' }}>
+                              {formatPrice(line.basePrice)}
+                            </span>
+                          )}
+                        </span>
                       </span>
                       <span
                         style={{
@@ -388,10 +480,38 @@ export default function SolutionConfigurator({
               >
                 {content.quoteText}
               </p>
+              {/*
+                The products in THIS configuration that have reached their own quote
+                threshold, named one by one. aBoks XL offers a quote from 11 and a standard
+                model from 40, so the note has to be per product — and none of it changes a
+                price: every line above is still charged at its published band, and «Legg
+                løsningen i handlekurven» is untouched.
+              */}
+              {quoteLines.length > 0 && (
+                <ul style={{ listStyle: 'none', margin: '-6px 0 18px', padding: 0 }}>
+                  {quoteLines.map((line) => (
+                    <li
+                      key={line.product.slug}
+                      style={{
+                        fontFamily: SANS,
+                        fontSize: '13.5px',
+                        lineHeight: 1.6,
+                        color: OLIVE,
+                        marginTop: '8px',
+                      }}
+                    >
+                      <strong style={{ fontWeight: 700 }}>
+                        {line.quantity} × {line.product.title}:
+                      </strong>{' '}
+                      {quoteExplanationFor(line.product) ?? ''} {QUOTE_TEXT.note}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <a
                 href="#foresporsel"
                 data-btn
-                onClick={onQuoteRequest}
+                onClick={handleQuoteRequest}
                 className="w-full justify-center"
                 style={{ ...secondaryButton, paddingLeft: '24px', paddingRight: '24px' }}
               >

@@ -1,6 +1,7 @@
 import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
 import type { CartItem } from './cart'
+import { MAX_LINE_QUANTITY } from '@/lib/quantityLimits'
 
 /**
  * Store tests run against a minimal in-memory `window.localStorage`, installed before the
@@ -375,5 +376,257 @@ describe('cart store — a mixed cart', () => {
     assert.equal(useCartStore.getState().items[0].qty, 2)
     useCartStore.getState().removeItem('20')
     assert.equal(useCartStore.getState().items.length, 0)
+  })
+})
+
+/**
+ * Quantity pricing through the store.
+ *
+ * This is where "recalculates immediately" is actually pinned down: every operation the cart
+ * offers is exercised, and the subtotal is asserted after each one. The store holds no priced
+ * state — `subtotal()` derives it — so there is nothing to go stale and nothing to refresh.
+ */
+describe('cart store — quantity pricing', () => {
+  /** aBoks Mini: 349 / 299 / 249, quote at 40. */
+  const mini: Omit<CartItem, 'qty'> = {
+    variantId: '60',
+    productSlug: 'aboks-mini',
+    productTitle: 'aBoks Mini',
+    colorName: 'Sort',
+    colorHex: '#1a1d17',
+    colorImage: '/sort.jpg',
+    price: 349,
+  }
+
+  /** aBoks XL: 849 / 799 / 749 on 1–3 / 4–6 / 7+, quote at 11. */
+  const xl: Omit<CartItem, 'qty'> = {
+    variantId: '61',
+    productSlug: 'aboks-xl',
+    productTitle: 'aBoks XL',
+    colorName: 'Sort',
+    colorHex: '#1a1d17',
+    colorImage: '/xl.jpg',
+    price: 849,
+  }
+
+  it('reprices the line the moment a quantity crosses a band', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 9)
+    assert.equal(useCartStore.getState().subtotal(), 9 * 349)
+
+    // One press of «+» — and the whole line, all ten units, moves to 299.
+    useCartStore.getState().incrementItem('60')
+    assert.equal(useCartStore.getState().items[0].qty, 10)
+    assert.equal(useCartStore.getState().subtotal(), 10 * 299)
+
+    // And one press of «−» puts it straight back.
+    useCartStore.getState().decrementItem('60')
+    assert.equal(useCartStore.getState().subtotal(), 9 * 349)
+  })
+
+  it('crosses the 20 boundary in both directions', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 19)
+    assert.equal(useCartStore.getState().subtotal(), 19 * 299)
+
+    useCartStore.getState().incrementItem('60')
+    assert.equal(useCartStore.getState().subtotal(), 20 * 249)
+
+    useCartStore.getState().decrementItem('60')
+    assert.equal(useCartStore.getState().subtotal(), 19 * 299)
+  })
+
+  it('bands a line built up by several separate adds', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 4)
+    useCartStore.getState().addItem(mini, 4)
+    assert.equal(useCartStore.getState().subtotal(), 8 * 349)
+
+    // The add that takes the line to 10 reprices all ten, not the two that were added.
+    useCartStore.getState().addItem(mini, 2)
+    assert.equal(useCartStore.getState().items.length, 1)
+    assert.equal(useCartStore.getState().items[0].qty, 10)
+    assert.equal(useCartStore.getState().subtotal(), 10 * 299)
+  })
+
+  it('adds many units at once and bands on the result', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 25)
+    assert.equal(useCartStore.getState().subtotal(), 25 * 249)
+  })
+
+  it('keeps the price at the quote threshold, and above it', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 39)
+    const at39 = useCartStore.getState().subtotal()
+    assert.equal(at39, 39 * 249)
+
+    useCartStore.getState().incrementItem('60')
+    // 40 is not a fourth discount: the same unit price, and the line is still in the cart,
+    // still in the subtotal, still checkoutable.
+    assert.equal(useCartStore.getState().subtotal(), 40 * 249)
+    assert.equal(useCartStore.getState().items.length, 1)
+    assert.equal(useCartStore.getState().orderTotal(), 40 * 249)
+  })
+
+  it('gives aBoks XL its own bands inside the same cart', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(xl, 3)
+    assert.equal(useCartStore.getState().subtotal(), 3 * 849)
+
+    useCartStore.getState().incrementItem('61')
+    assert.equal(useCartStore.getState().subtotal(), 4 * 799)
+
+    useCartStore.getState().decrementItem('61')
+    assert.equal(useCartStore.getState().subtotal(), 3 * 849)
+  })
+
+  it('never pools quantities of different products', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 9) // one short of its band
+    useCartStore.getState().addItem(xl, 3) // one short of its band
+    // 12 units between them, and neither line moves.
+    assert.equal(useCartStore.getState().totalCount(), 12)
+    assert.equal(useCartStore.getState().subtotal(), 9 * 349 + 3 * 849)
+  })
+
+  it('reprices what is left when the other line is removed', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 12)
+    useCartStore.getState().addItem(xl, 5)
+    assert.equal(useCartStore.getState().subtotal(), 12 * 299 + 5 * 799)
+
+    useCartStore.getState().removeItem('61')
+    assert.equal(useCartStore.getState().subtotal(), 12 * 299)
+  })
+
+  it('decides shipping on the effective subtotal', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 1)
+    assert.equal(useCartStore.getState().shipping(), 69)
+    assert.equal(useCartStore.getState().orderTotal(), 349 + 69)
+
+    useCartStore.getState().addItem(mini, 9) // 10 × 299 = 2 990, well over the threshold
+    assert.equal(useCartStore.getState().shipping(), 0)
+    assert.equal(useCartStore.getState().orderTotal(), 2990)
+  })
+
+  it('leaves a product with no configured bands alone', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(
+      {
+        productId: '70',
+        productSlug: 'aa-modul',
+        productTitle: 'AA-Modul',
+        colorName: '',
+        colorHex: '',
+        colorImage: '',
+        price: 99,
+      },
+      40,
+    )
+    assert.equal(useCartStore.getState().subtotal(), 40 * 99)
+  })
+
+  it('prices a restored cart from its quantity, not from the band it was saved in', () => {
+    // What localStorage holds is the catalogue price and a quantity — never a banded price —
+    // so a cart written at 9 units and read back at 12 is priced at 12 units.
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(mini, 12)
+
+    const saved = JSON.parse(storage.getItem('aboks-cart') as string)
+    assert.equal(saved.state.items[0].price, 349, 'the catalogue price is what is persisted')
+    assert.equal(saved.state.items[0].qty, 12)
+
+    // Rehydrating that payload gives the banded subtotal back with no extra step.
+    useCartStore.persist.rehydrate()
+    assert.equal(useCartStore.getState().items[0].qty, 12)
+    assert.equal(useCartStore.getState().subtotal(), 12 * 299)
+  })
+})
+
+/**
+ * The one quantity limit, as the cart applies it.
+ *
+ * A business customer has to be able to buy more than 99 units through the normal checkout,
+ * and the configurator has to be unable to build a line the checkout would then refuse.
+ */
+describe('cart store — the quantity limit', () => {
+  const spesial: Omit<CartItem, 'qty'> = {
+    variantId: '80',
+    productSlug: 'aboks-spesial',
+    productTitle: 'aBoks Spesial',
+    colorName: 'Sort',
+    colorHex: '#1a1d17',
+    colorImage: '/sort.jpg',
+    price: 299,
+  }
+
+  it('holds a 120-unit line and prices it at the 20–39 band', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(spesial, 120)
+    assert.equal(useCartStore.getState().items[0].qty, 120)
+    assert.equal(useCartStore.getState().subtotal(), 23_880)
+    assert.equal(useCartStore.getState().shipping(), 0)
+    assert.equal(useCartStore.getState().orderTotal(), 23_880)
+  })
+
+  it('goes all the way to the limit and no further', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(spesial, MAX_LINE_QUANTITY)
+    assert.equal(useCartStore.getState().items[0].qty, MAX_LINE_QUANTITY)
+
+    // «+» at the limit is a no-op rather than a quantity the checkout would refuse.
+    useCartStore.getState().incrementItem('80')
+    assert.equal(useCartStore.getState().items[0].qty, MAX_LINE_QUANTITY)
+  })
+
+  it('clamps an add that would cross the limit', () => {
+    useCartStore.getState().clearCart()
+    // What a solution configurator set to a huge quantity would hand over.
+    useCartStore.getState().addItem(spesial, 50_000)
+    assert.equal(useCartStore.getState().items[0].qty, MAX_LINE_QUANTITY)
+
+    // And the same for a second add onto an existing line.
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(spesial, 9000)
+    useCartStore.getState().addItem(spesial, 5000)
+    assert.equal(useCartStore.getState().items[0].qty, MAX_LINE_QUANTITY)
+  })
+
+  it('never goes below one unit', () => {
+    useCartStore.getState().clearCart()
+    useCartStore.getState().addItem(spesial, 1)
+    useCartStore.getState().decrementItem('80')
+    assert.equal(useCartStore.getState().items[0].qty, 1)
+  })
+
+  it('sanitises a persisted quantity on rehydration', () => {
+    // A cart written by an older build, or edited by hand in devtools.
+    storage.setItem(
+      'aboks-cart',
+      JSON.stringify({
+        state: {
+          items: [
+            { ...spesial, qty: 250_000 },
+            { ...spesial, variantId: '81', qty: -4 },
+            { ...spesial, variantId: '82', qty: 12.7 },
+          ],
+          promoCode: null,
+        },
+        version: 0,
+      }),
+    )
+    useCartStore.persist.rehydrate()
+
+    const items = useCartStore.getState().items
+    assert.equal(items[0].qty, MAX_LINE_QUANTITY, 'capped rather than refused at checkout')
+    assert.equal(items[1].qty, 1, 'a negative becomes the minimum')
+    assert.equal(items[2].qty, 12, 'a fraction becomes whole units')
+    // And the sanitised cart prices correctly straight away.
+    assert.equal(
+      useCartStore.getState().subtotal(),
+      MAX_LINE_QUANTITY * 199 + 1 * 299 + 12 * 249,
+    )
   })
 })

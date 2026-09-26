@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Script from 'next/script'
 import {
   INTEREST_OPTIONS,
@@ -110,6 +110,7 @@ export default function InquiryForm({
   onInterestChange,
   message: messageProp,
   onMessageChange,
+  quantity: quantityProp,
 }: {
   /** Lifted so the "Meld interesse" buttons further up the page can preselect a product. */
   interest: string
@@ -121,6 +122,16 @@ export default function InquiryForm({
    */
   message?: string
   onMessageChange?: (value: string) => void
+  /**
+   * A starting value for «Omtrent antall produkter», so a «Be om tilbud» that came from a
+   * cart line or a price table does not make the customer retype the quantity they were just
+   * looking at.
+   *
+   * A *starting* value only — the field keeps its own state and the customer stays free to
+   * change it. `undefined` (the default, and what every other caller passes) leaves the field
+   * untouched, so nothing about the form changes for them.
+   */
+  quantity?: string
 }) {
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -129,10 +140,24 @@ export default function InquiryForm({
   const [contactPerson, setContactPerson] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [quantity, setQuantity] = useState('')
+  const [quantity, setQuantity] = useState(quantityProp ?? '')
   const [ownMessage, setOwnMessage] = useState('')
   const message = messageProp ?? ownMessage
   const setMessage = onMessageChange ?? setOwnMessage
+
+  /**
+   * The quantity this form last filled in by itself. Same rule the page applies to the
+   * message: a preset only ever lands in an empty field or over a previous preset, so a
+   * second «Be om tilbud» never overwrites a number the customer has typed.
+   */
+  const presetQuantity = useRef(quantityProp ?? '')
+  useEffect(() => {
+    if (quantityProp === undefined) return
+    setQuantity((current) =>
+      current === '' || current === presetQuantity.current ? quantityProp : current,
+    )
+    presetQuantity.current = quantityProp
+  }, [quantityProp])
 
   const [errors, setErrors] = useState<InquiryFieldErrors>({})
   const [summary, setSummary] = useState('')

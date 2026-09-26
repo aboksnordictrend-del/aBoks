@@ -1,8 +1,21 @@
 import type { Payload } from 'payload'
-import { getEffectivePrice } from './pricing'
 import { formatVariantDisplayName } from '@/collections/hooks/variantDisplayName'
 import { lineRefFor, parseLineRef } from './cart/lineRef'
 import { canFulfil, productStock } from './stock'
+import { oereToKr, toOere } from './money'
+import { MAX_LINE_QUANTITY, MIN_LINE_QUANTITY, isValidLineQuantity } from './quantityLimits'
+import {
+  FREE_SHIPPING_THRESHOLD_KR,
+  FREE_SHIPPING_THRESHOLD_OERE,
+  SHIPPING_COST_KR,
+  SHIPPING_COST_OERE,
+  shippingForSubtotalOere,
+} from './shipping'
+import {
+  baseUnitPriceOere,
+  getUnitPriceOere,
+  isQuoteThresholdReached,
+} from './quantityPricing'
 
 /**
  * Trusted, server-side pricing of a cart.
@@ -21,28 +34,29 @@ import { canFulfil, productStock } from './stock'
  * rest of the project stores decimal kroner (Orders.unitPrice, subtotal, total …) and Kustom
  * wants øre, so both are returned: the `*Oere` fields are the arithmetic truth, the kroner
  * fields are the snapshot to store and display. No sum is ever accumulated in floating point.
+ *
+ * ── Quantity pricing ──
+ * A line's unit price is the effective price for ITS OWN quantity, from the one authoritative
+ * table in @/lib/quantityPricing. This is the trust boundary for it too: the browser sends a
+ * quantity, never a price, so a tampered cart cannot claim a volume price it has not reached —
+ * nor be charged a base price for a quantity that has.
  */
 
-/** Shipping the customer pays when the cart is under the free-shipping threshold. */
-export const SHIPPING_COST_KR = 69
-/** Goods subtotal (BEFORE any promo discount) at which shipping becomes free. */
-export const FREE_SHIPPING_THRESHOLD_KR = 650
-
-export const SHIPPING_COST_OERE = SHIPPING_COST_KR * 100
-export const FREE_SHIPPING_THRESHOLD_OERE = FREE_SHIPPING_THRESHOLD_KR * 100
-
-/** Kroner → øre. The single rounding step between the catalogue and all arithmetic. */
-export function toOere(kr: number): number {
-  return Math.round(kr * 100)
+// Re-exported so every existing importer of these names keeps working unchanged; the
+// definitions moved to @/lib/money and @/lib/shipping so the cart store and the pricing engine
+// can share them without importing this server-side module.
+export { toOere, oereToKr }
+export {
+  SHIPPING_COST_KR,
+  FREE_SHIPPING_THRESHOLD_KR,
+  SHIPPING_COST_OERE,
+  FREE_SHIPPING_THRESHOLD_OERE,
+  shippingForSubtotalOere,
 }
 
-/** Øre → kroner. Exact for any integer øre value (no 0.1 + 0.2 drift). */
-export function oereToKr(oere: number): number {
-  return oere / 100
-}
-
-/** Maximum quantity for a single line — mirrors the cart's own +/- clamp. */
-export const MAX_LINE_QUANTITY = 99
+// The one quantity limit, shared with the cart store, the steppers and the configurator, and
+// re-exported here so every existing importer of `MAX_LINE_QUANTITY` is unchanged.
+export { MAX_LINE_QUANTITY, MIN_LINE_QUANTITY }
 
 /**
  * What the client is allowed to send: an identifier and a count. Nothing else.
@@ -74,10 +88,23 @@ export interface PricedLine {
   /** Colour / variant label ("Mørk blå"). Empty for a product with no variants. */
   variantName: string
   quantity: number
+  /** The effective price for THIS line's quantity — see @/lib/quantityPricing. */
   unitPriceOere: number
   lineTotalOere: number
   unitPriceKr: number
   lineTotalKr: number
+  /**
+   * What one unit would have cost at quantity 1 — the catalogue price through the sale rule.
+   * Equal to `unitPriceOere` unless a volume band applied. Carried so a summary can show what
+   * the quantity pricing saved without recomputing anything.
+   */
+  baseUnitPriceOere: number
+  baseUnitPriceKr: number
+  /**
+   * Has this line reached its product's quote threshold? A CTA fact, never a price one: the
+   * line is priced, charged and totalled exactly the same either way.
+   */
+  quoteAvailable: boolean
   /**
    * Current stock from this line's own authoritative source — the variant's `inventory` for a
    * variant line, the product's `stock` for a variant-less one. Null means nothing is stored.
@@ -156,6 +183,8 @@ type VariantDoc = {
 type ProductDoc = {
   id: number | string
   title?: string | null
+  /** The key the quantity-pricing table is written against. */
+  slug?: string | null
   price?: number | null
   published?: boolean | null
   salePrice?: number | null
@@ -189,27 +218,6 @@ function resolveDisplayName(variant: VariantDoc, product: ProductDoc): string {
   if (title && colorName) return formatVariantDisplayName(title, colorName)
   if (title) return title
   return colorName ?? ''
-}
-
-/** A whole number in [1, MAX_LINE_QUANTITY]. Rejects NaN, 0, negatives and fractions. */
-function isValidQuantity(quantity: unknown): quantity is number {
-  return (
-    typeof quantity === 'number' &&
-    Number.isInteger(quantity) &&
-    quantity >= 1 &&
-    quantity <= MAX_LINE_QUANTITY
-  )
-}
-
-/**
- * Shipping for a given goods subtotal.
- *
- * Deliberately takes the subtotal **before** any promo discount: a promo code must never
- * push an order back under the free-shipping threshold, and must never buy free shipping
- * either. This preserves exactly the rule the cart and the current checkout already apply.
- */
-export function shippingForSubtotalOere(subtotalOere: number): number {
-  return subtotalOere >= FREE_SHIPPING_THRESHOLD_OERE ? 0 : SHIPPING_COST_OERE
 }
 
 /** One normalised, deduplicated request line, before the catalogue has been consulted. */
@@ -266,7 +274,7 @@ export async function priceCart(
     const parsed = ref ? parseLineRef(ref) : null
     if (!ref || !parsed) return fail('invalid_line')
 
-    if (!isValidQuantity(line.quantity)) return fail('invalid_quantity', ref)
+    if (!isValidLineQuantity(line.quantity)) return fail('invalid_quantity', ref)
 
     // A repeated line is merged rather than rejected — two entries for the same thing are a
     // client bug, not an attack, and merging keeps the discount base and the stock check
@@ -274,7 +282,7 @@ export async function priceCart(
     const existing = wanted.find((w) => w.ref === ref)
     if (existing) {
       const merged = existing.quantity + line.quantity
-      if (!isValidQuantity(merged)) return fail('invalid_quantity', ref)
+      if (!isValidLineQuantity(merged)) return fail('invalid_quantity', ref)
       existing.quantity = merged
     } else {
       wanted.push({
@@ -406,14 +414,24 @@ export async function priceCart(
     }
 
     // Sale handling stays in the existing shared rule — sale window, sale-must-be-lower and
-    // all — so the cart, the product page and checkout can never disagree about the price.
-    const effectiveKr = getEffectivePrice(product.price, {
-      salePrice: product.salePrice,
-      saleStartDate: product.saleStartDate,
-      saleEndDate: product.saleEndDate,
-    })
+    // all — and quantity pricing is layered on top of it by the one shared engine, so the
+    // cart, the product page, /bedrifter and checkout can never disagree about the price.
+    //
+    // The quantity used is this line's own, already merged and validated above. Quantities of
+    // different products are never added together: each line asks the engine by itself.
+    const priceable = {
+      slug: product.slug?.trim() ?? '',
+      price: product.price,
+      sale: {
+        salePrice: product.salePrice,
+        saleStartDate: product.saleStartDate,
+        saleEndDate: product.saleEndDate,
+      },
+    }
 
-    const unitPriceOere = toOere(effectiveKr)
+    const unitPriceOere = getUnitPriceOere(priceable, quantity)
+    // The effective price applies to every unit on the line, not only those above the
+    // boundary — 10 × 299, never 9 × 349 + 1 × 299.
     const lineTotalOere = unitPriceOere * quantity
     subtotalOere += lineTotalOere
 
@@ -429,6 +447,9 @@ export async function priceCart(
       lineTotalOere,
       unitPriceKr: oereToKr(unitPriceOere),
       lineTotalKr: oereToKr(lineTotalOere),
+      baseUnitPriceOere: baseUnitPriceOere(priceable),
+      baseUnitPriceKr: oereToKr(baseUnitPriceOere(priceable)),
+      quoteAvailable: isQuoteThresholdReached(priceable, quantity),
       inventory,
     })
   }

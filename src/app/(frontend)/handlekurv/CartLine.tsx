@@ -1,8 +1,16 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { formatPrice } from '@/lib/format'
 import { cartLineTitle, type ProductTitlesBySlug } from '@/lib/cart/lineTitle'
+import {
+  cartLineHasVolumePrice,
+  cartLineQuoteAvailable,
+  cartLineTotal,
+  cartLineUnitPrice,
+} from '@/lib/cart/linePricing'
+import { QUOTE_TEXT, quoteExplanationFor, quoteRequestHref } from '@/lib/quoteRequest'
 import type { CartItem } from '@/store/cart'
 
 /**
@@ -16,6 +24,14 @@ import type { CartItem } from '@/store/cart'
  *
  * Presentational only: no store access, no state. The title is resolved by the parent and
  * passed in, so this component has no way to invent one.
+ *
+ * ── Prices ──
+ *
+ * Nothing here multiplies, compares or discounts. The effective unit price, the line total and
+ * whether a quote is offered all come from @/lib/cart/linePricing, which reads the one
+ * quantity-pricing table — so a `+` that crosses a band reprices the whole line on the next
+ * render, and a `−` that crosses back reverses it, with no effect and no reload. There is
+ * deliberately no `if (qty >= 10)` in this file.
  */
 
 export interface CartLineProps {
@@ -34,13 +50,23 @@ export default function CartLine({
   onIncrement,
   onRemove,
 }: CartLineProps) {
+  // One question each, answered by the shared engine.
+  const unitPrice = cartLineUnitPrice(item)
+  const lineTotal = cartLineTotal(item)
+  const volumePriceActive = cartLineHasVolumePrice(item)
+  // A CTA fact, not a price one: the line above is priced, totalled and charged identically
+  // whether this is true or false.
+  const quoteAvailable = cartLineQuoteAvailable(item)
+  const quoteExplanation = quoteAvailable ? quoteExplanationFor({ slug: item.productSlug }) : null
+
   return (
+    // The row itself is unchanged; the padding and the rule moved out to this wrapper so the
+    // quote offer can sit under the line, inside the same bordered block.
+    <div style={{ padding: '24px 0', borderBottom: '1px solid #e7e2d4' }}>
     <div
       style={{
         display: 'flex',
         gap: '20px',
-        padding: '24px 0',
-        borderBottom: '1px solid #e7e2d4',
         alignItems: 'center',
       }}
     >
@@ -98,9 +124,97 @@ export default function CartLine({
           </button>
         </div>
       </div>
-      <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17', whiteSpace: 'nowrap' }}>
-        {formatPrice(item.qty * item.price)}
+      <div style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+        <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17' }}>
+          {formatPrice(lineTotal)}
+        </div>
+        {/* The effective unit price, under the line total. Omitted at a single unit, where the
+            total already is the unit price and a second identical amount would be noise. */}
+        {item.qty > 1 && (
+          <div
+            style={{
+              fontFamily: 'var(--font-manrope)',
+              fontSize: '13px',
+              color: '#6b6f63',
+              marginTop: '5px',
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'flex-end',
+              gap: '7px',
+            }}
+          >
+            {/* The ordinary price, struck through, only while a volume band is active. */}
+            {volumePriceActive && (
+              <span style={{ color: '#9a9488', textDecoration: 'line-through' }}>
+                {formatPrice(item.price)}
+              </span>
+            )}
+            <span style={volumePriceActive ? { fontWeight: 600, color: '#5f8253' } : undefined}>
+              {formatPrice(unitPrice)} per stk.
+            </span>
+          </div>
+        )}
       </div>
+    </div>
+
+    {/*
+      «Be om tilbud», from the quantity the customer has actually asked for.
+
+      An addition, never a redirection: the price above still applies, the line still counts
+      towards the subtotal and towards free shipping, and «Gå til kassen» is untouched. The
+      link is an ordinary href to the B2B enquiry form that already exists on /bedrifter, with
+      the product and the quantity carried across.
+    */}
+    {quoteAvailable && quoteExplanation && (
+      <div
+        style={{
+          marginTop: '18px',
+          padding: '16px 18px',
+          background: '#f2efe4',
+          borderRadius: '14px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px 18px',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: 'var(--font-manrope)',
+            fontSize: '13.5px',
+            lineHeight: 1.6,
+            color: '#5b5646',
+            margin: 0,
+            maxWidth: '46ch',
+          }}
+        >
+          {quoteExplanation}{' '}
+          <span style={{ color: '#6b6057' }}>{QUOTE_TEXT.note}</span>
+        </p>
+        <Link
+          href={quoteRequestHref({ productSlug: item.productSlug, quantity: item.qty })}
+          data-btn
+          style={{
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '11px 22px',
+            borderRadius: '999px',
+            border: '1.5px solid #39402c',
+            background: 'transparent',
+            color: '#39402c',
+            fontFamily: 'var(--font-manrope)',
+            fontWeight: 600,
+            fontSize: '13.5px',
+            textDecoration: 'none',
+          }}
+        >
+          {QUOTE_TEXT.cta}
+        </Link>
+      </div>
+    )}
     </div>
   )
 }

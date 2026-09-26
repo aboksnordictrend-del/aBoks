@@ -5,6 +5,7 @@ import {
   sendBrowserCapiEvent,
 } from '@/lib/meta/capi/browserEvent'
 import { resolvedLineRef } from '@/lib/cart/lineRef'
+import { cartLineUnitPrice } from '@/lib/cart/linePricing'
 
 declare global {
   interface Window {
@@ -33,7 +34,10 @@ interface CartLikeItem {
   /** Absent for a product that has no variants; `productId` then identifies the line. */
   variantId?: string
   productId?: string
+  /** The quantity-pricing key. Absent only on a line persisted before the field existed. */
+  productSlug?: string
   colorName: string
+  /** The line's catalogue unit price. The reported price is the *effective* one — see below. */
   price: number
   qty: number
 }
@@ -125,7 +129,12 @@ export function cartItemToGA4(item: CartLikeItem): GA4Item {
     item_id: resolvedLineRef(item),
     item_name: 'aBoks',
     item_variant: item.colorName,
-    price: item.price,
+    // The price the customer is actually paying for this line, quantity pricing included.
+    // Reporting the catalogue price here would make every item row disagree with the event's
+    // own `value`, which has always been the cart's real total — and would overstate revenue
+    // on exactly the largest orders. A volume price is a price, not a promo discount, so it
+    // belongs in `price` and NOT in GA4's `discount` field (which stays for promo codes).
+    price: cartLineUnitPrice(item),
     quantity: item.qty,
     item_category: 'Battery Organizer',
   }
@@ -240,11 +249,13 @@ export function trackBeginCheckout(items: CartLikeItem[], total: number): void {
     eventName: 'InitiateCheckout',
     eventId,
     value: total,
-    // The same line references GA4 gets as `item_id`, with each line's real quantity.
+    // The same line references GA4 gets as `item_id`, with each line's real quantity and the
+    // same effective unit price — so the Pixel and the server event agree with each other and
+    // with `value`.
     contents: items.map((item) => ({
       id: resolvedLineRef(item),
       quantity: item.qty,
-      itemPrice: item.price,
+      itemPrice: cartLineUnitPrice(item),
     })),
     numItems: items.reduce((count, item) => count + item.qty, 0),
     ...withPageContext(),

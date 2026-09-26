@@ -109,6 +109,28 @@ export default function SolutionPageView({
     presetMessage.current = next
   })
 
+  /**
+   * What the customer had configured when they pressed "Be om tilbud" beside the summary.
+   *
+   * The configurator hands this over on the click itself; the page adds it to the message it
+   * was already writing, so the enquiry names the products, the quantities and the published
+   * prices rather than only the package. `undefined` until a configuration exists, which
+   * leaves both fields exactly as they were.
+   */
+  const [quoteQuantity, setQuoteQuantity] = useState<string | undefined>(undefined)
+  const handleQuoteContext = ({
+    totalQuantity,
+    summary,
+  }: {
+    totalQuantity: number
+    summary: string
+  }) => {
+    const next = `${content.inquiry.message}\n\n${summary}`
+    setMessage((current) => (current === '' || current === presetMessage.current ? next : current))
+    presetMessage.current = next
+    setQuoteQuantity(String(totalQuantity))
+  }
+
   const otherSolutions = BUSINESS_SOLUTIONS.filter((s) => s.slug !== solution.slug)
   const illustration = solution.illustration
   const roles = content.placement.roles
@@ -406,6 +428,7 @@ export default function SolutionPageView({
           content={content.configurator}
           products={products}
           onQuoteRequest={requestQuote}
+          onQuoteContext={handleQuoteContext}
         />
       )}
 
@@ -488,6 +511,7 @@ export default function SolutionPageView({
               onInterestChange={setInterest}
               message={message}
               onMessageChange={setMessage}
+              quantity={quoteQuantity}
             />
           </div>
         </div>

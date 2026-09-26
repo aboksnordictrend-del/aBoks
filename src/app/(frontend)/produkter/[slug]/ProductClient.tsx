@@ -19,6 +19,14 @@ import PaymentMethods from '@/components/PaymentMethods'
 import { formatPrice } from '@/lib/format'
 import { trackViewItem, trackAddToCart } from '@/lib/analytics'
 import { getEffectivePrice, isSaleActive, type SaleInfo } from '@/lib/pricing'
+import {
+  getLineTotal,
+  getNextPricingTier,
+  getUnitPrice,
+  isQuoteThresholdReached,
+} from '@/lib/quantityPricing'
+import { QUOTE_TEXT, quoteExplanationFor, quoteRequestHref } from '@/lib/quoteRequest'
+import { MAX_LINE_QUANTITY, MIN_LINE_QUANTITY } from '@/lib/quantityLimits'
 import { availableStock, isSoldOut } from '@/lib/stock'
 import { cartLineRef } from '@/store/cart'
 import SaleCountdown from '@/components/SaleCountdown'
@@ -222,6 +230,22 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   const effectivePrice = saleExpired ? product.price : getEffectivePrice(product.price, product.sale)
   const saleActive = !saleExpired && isSaleActive(product.price, product.sale)
 
+  /**
+   * Quantity pricing for the number currently in the stepper.
+   *
+   * The headline price above is unchanged — it is what one of these costs, which is what a
+   * product page is for. Everything that depends on `qty` goes through the shared engine
+   * instead of multiplying, so the amount shown beside the stepper is the amount that will be
+   * charged, and the hint below it is the real next band rather than a guess.
+   */
+  const priceableProduct = { slug: product.slug, price: effectivePrice, sale: null }
+  const quantityUnitPrice = getUnitPrice(priceableProduct, qty)
+  const quantityLineTotal = getLineTotal(priceableProduct, qty)
+  const volumePriceActive = quantityUnitPrice < effectivePrice
+  const nextTier = getNextPricingTier(priceableProduct, qty)
+  const quoteAvailable = isQuoteThresholdReached(product, qty)
+  const quoteExplanation = quoteAvailable ? quoteExplanationFor(product) : null
+
   // Does this product have colours to choose between at all? Everything below branches on
   // this rather than on `selectedVariant` being falsy, so a variant-less product is a real
   // buyable state and not an error state.
@@ -230,8 +254,13 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
   // the product's own stock. Nothing else on this page reads either field directly.
   const stock = availableStock(product, variants, selectedVariant)
   const soldOut = isSoldOut(stock)
-  /** Upper bound on the stepper. Unchanged (99) for variant products; capped by stock for the rest. */
-  const maxQty = hasVariants ? 99 : Math.min(99, stock)
+  /**
+   * Upper bound on the stepper: the shared line limit for a variant product, and that same
+   * limit capped by what is actually in stock for a variant-less one. The limit itself lives
+   * in @/lib/quantityLimits — the cart, the configurator and the server all read the same one,
+   * so a quantity this page offers is always a quantity the checkout will accept.
+   */
+  const maxQty = hasVariants ? MAX_LINE_QUANTITY : Math.min(MAX_LINE_QUANTITY, stock)
 
   /**
    * Is this a Tilbehør page?
@@ -358,12 +387,19 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
     if (addable <= 0) return
 
     addItem(line, addable)
-    // add_to_cart: fires after item is added to cart
+    // add_to_cart: fires after item is added to cart.
+    //
+    // The price reported is the effective one for the quantity the line ENDS UP at, not for
+    // the units being added on their own: adding 4 to a line that already holds 8 takes the
+    // whole line into the 10–19 band, and that is what the customer will pay. `alreadyInCart`
+    // is recomputed here for every kind of line — above it is deliberately 0 for a variant
+    // product, because there it is a stock cap and variants are not capped.
+    const existingQty = cartItems.find((i) => cartLineRef(i) === cartLineRef(line))?.qty ?? 0
     trackAddToCart({
       variantId: selectedVariant?.id ?? cartLineRef({ productId: product.id }),
       variantName: selectedVariant?.name ?? '',
       productTitle: product.title,
-      price: effectivePrice,
+      price: getUnitPrice(priceableProduct, existingQty + addable),
       quantity: addable,
     })
     // Only now, with the line actually in the cart: every early return above — no colour
@@ -531,14 +567,14 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
               {/* Qty + Add to cart */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', marginBottom: '24px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', border: '1.5px solid #d6cfbd', borderRadius: '999px', overflow: 'hidden', background: '#fff' }}>
-                  <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Færre"
+                  <button onClick={() => setQty((q) => Math.max(MIN_LINE_QUANTITY, q - 1))} aria-label="Færre"
                     style={{ width: '48px', height: '50px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#1a1d17', lineHeight: 1 }}>
                     −
                   </button>
                   <span style={{ minWidth: '42px', textAlign: 'center', fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '16px', color: '#1a1d17' }}>
                     {qty}
                   </span>
-                  <button onClick={() => setQty((q) => Math.max(1, Math.min(maxQty, q + 1)))} aria-label="Flere"
+                  <button onClick={() => setQty((q) => Math.max(MIN_LINE_QUANTITY, Math.min(maxQty, q + 1)))} aria-label="Flere"
                     style={{ width: '48px', height: '50px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: '#1a1d17', lineHeight: 1 }}>
                     +
                   </button>
@@ -565,6 +601,94 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   {soldOut ? 'Utsolgt' : 'Legg i handlekurv'}
                 </button>
               </div>
+
+              {/*
+                Quantity pricing, for the number in the stepper.
+
+                Only ever shown when it says something: a line that has reached a volume band
+                (what it now costs per unit and in total), or one that is close enough to the
+                next band for the hint to be useful. At quantity 1 on a product with no bands
+                this renders nothing at all, which is the page exactly as it was.
+              */}
+              {!soldOut && (volumePriceActive || (nextTier && qty > 1)) && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'baseline',
+                    gap: '6px 14px',
+                    margin: '-8px 0 22px',
+                    fontFamily: 'var(--font-manrope)',
+                    fontSize: '14px',
+                  }}
+                >
+                  {volumePriceActive && (
+                    <span style={{ color: '#3a3f33' }}>
+                      <strong style={{ color: '#5f8253' }}>
+                        {formatPrice(quantityUnitPrice)} per stk.
+                      </strong>{' '}
+                      <span style={{ color: '#9a9488', textDecoration: 'line-through' }}>
+                        {formatPrice(effectivePrice)}
+                      </span>{' '}
+                      · {formatPrice(quantityLineTotal)} for {qty} stk.
+                    </span>
+                  )}
+                  {nextTier && (
+                    <span style={{ color: '#6b6057' }}>
+                      Kjøp {nextTier.minQuantity} stk. og betal{' '}
+                      {formatPrice(nextTier.unitPrice)} per stk.
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/*
+                «Be om tilbud», once the stepper reaches this product's quote threshold.
+
+                Beside the ordinary «Legg i handlekurv», never instead of it: the published
+                price above still applies at this quantity and the checkout is untouched.
+              */}
+              {!soldOut && quoteAvailable && quoteExplanation && (
+                <div
+                  style={{
+                    margin: '0 0 24px',
+                    padding: '18px 20px',
+                    background: '#f2efe4',
+                    borderRadius: '16px',
+                  }}
+                >
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-manrope)',
+                      fontSize: '14px',
+                      lineHeight: 1.6,
+                      color: '#5b5646',
+                      margin: '0 0 14px',
+                    }}
+                  >
+                    {quoteExplanation} <span style={{ color: '#6b6057' }}>{QUOTE_TEXT.note}</span>
+                  </p>
+                  <Link
+                    href={quoteRequestHref({ productSlug: product.slug, quantity: qty })}
+                    data-btn
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '12px 26px',
+                      borderRadius: '999px',
+                      border: '1.5px solid #39402c',
+                      color: '#39402c',
+                      fontFamily: 'var(--font-manrope)',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {QUOTE_TEXT.cta}
+                  </Link>
+                </div>
+              )}
 
               {/* What the checkout accepts — badges only, directly under the cart button */}
               <PaymentMethods />
@@ -881,10 +1005,13 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
               {/* Unchanged for a product with colours; a product without one names itself. */}
               {selectedVariant ? `aBoks · ${selectedVariant.name}` : product.title}
             </div>
-            {saleActive ? (
+            {/* The amount that will actually be charged for `qty` units — quantity pricing
+                included, so this bar can never quote less than the block above it. The
+                struck-through figure is what the same quantity costs without any reduction. */}
+            {saleActive || volumePriceActive ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#b06a4a' }}>
-                  {formatPrice(effectivePrice * qty)}
+                <span style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: volumePriceActive && !saleActive ? '#5f8253' : '#b06a4a' }}>
+                  {formatPrice(quantityLineTotal)}
                 </span>
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', color: '#9a9488', textDecoration: 'line-through' }}>
                   {formatPrice(product.price * qty)}
@@ -892,7 +1019,7 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
               </div>
             ) : (
               <div style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '18px', color: '#1a1d17' }}>
-                {formatPrice(product.price * qty)}
+                {formatPrice(quantityLineTotal)}
               </div>
             )}
           </div>

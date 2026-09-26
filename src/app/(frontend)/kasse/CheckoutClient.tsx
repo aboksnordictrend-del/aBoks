@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { cartLineRef, useCartStore } from '@/store/cart'
 import { resolvedLineRef } from '@/lib/cart/lineRef'
+import { cartLineTotal } from '@/lib/cart/linePricing'
 import { formatPrice } from '@/lib/format'
 import { initKustomCheckout, fetchExistingCheckout } from './actions'
 import type { CheckoutTotals } from '@/lib/promo/checkoutFlow'
@@ -362,7 +363,10 @@ export default function CheckoutClient({ productTitles }: { productTitles?: Prod
                   // trusted line instead of every such line matching on an empty variant id.
                   const ref = cartLineRef(item)
                   const trustedLine = trustedLines?.find((l) => resolvedLineRef(l) === ref)
-                  const lineTotal = trustedLine ? trustedLine.lineTotal : item.qty * item.price
+                  // Until it has, the cart's own figure stands in — computed by the shared
+                  // quantity-pricing engine, never by multiplying, so the placeholder already
+                  // matches the amount the server is about to return.
+                  const lineTotal = trustedLine ? trustedLine.lineTotal : cartLineTotal(item)
                   return (
                     <div key={ref} style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
                       <div

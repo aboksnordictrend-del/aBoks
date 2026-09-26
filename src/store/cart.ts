@@ -3,6 +3,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { resolvedLineRef } from '@/lib/cart/lineRef'
+import { cartSubtotal } from '@/lib/cart/linePricing'
+import { shippingForSubtotalKr } from '@/lib/shipping'
+import { MAX_LINE_QUANTITY, MIN_LINE_QUANTITY, clampLineQuantity } from '@/lib/quantityLimits'
 
 export interface CartItem {
   /**
@@ -40,6 +43,17 @@ export interface CartItem {
   colorHex: string
   /** The line's thumbnail: the variant's image, or the product's own for a variant-less line. */
   colorImage: string
+  /**
+   * The line's catalogue unit price in kroner, with any sale already applied — i.e. what one
+   * of these costs on its own.
+   *
+   * Deliberately NOT the quantity-adjusted price: a volume band depends on the quantity, and
+   * the quantity changes under this field. Storing the adjusted price would mean rewriting
+   * every line on every `+`/`−`, and a cart restored from localStorage would carry whatever
+   * band it was last saved at. The effective price is always derived instead — see
+   * @/lib/cart/linePricing — so it is correct the instant the quantity moves and correct again
+   * the moment a persisted cart is read back.
+   */
   price: number
   qty: number
 }
@@ -118,7 +132,10 @@ export const useCartStore = create<CartState>()(
                 j === idx
                   ? {
                       ...i,
-                      qty: i.qty + qty,
+                      // Clamped to the one shared limit, so "Legg løsningen i handlekurven"
+                      // with a large configuration cannot build a line the checkout would
+                      // later refuse as `invalid_quantity`.
+                      qty: clampLineQuantity(i.qty + qty),
                       // Heal a line persisted before `productTitle` existed. Only ever fills a
                       // gap — an existing title is left alone, and quantity, price and the
                       // chosen variant are untouched either way.
@@ -128,7 +145,7 @@ export const useCartStore = create<CartState>()(
               ),
             }
           }
-          return { items: [...state.items, { ...item, qty }] }
+          return { items: [...state.items, { ...item, qty: clampLineQuantity(qty) }] }
         })
       },
 
@@ -138,14 +155,14 @@ export const useCartStore = create<CartState>()(
       incrementItem: (ref) =>
         set((state) => ({
           items: state.items.map((i) =>
-            cartLineRef(i) === ref ? { ...i, qty: Math.min(99, i.qty + 1) } : i,
+            cartLineRef(i) === ref ? { ...i, qty: Math.min(MAX_LINE_QUANTITY, i.qty + 1) } : i,
           ),
         })),
 
       decrementItem: (ref) =>
         set((state) => ({
           items: state.items.map((i) =>
-            cartLineRef(i) === ref ? { ...i, qty: Math.max(1, i.qty - 1) } : i,
+            cartLineRef(i) === ref ? { ...i, qty: Math.max(MIN_LINE_QUANTITY, i.qty - 1) } : i,
           ),
         })),
 
@@ -165,9 +182,20 @@ export const useCartStore = create<CartState>()(
 
       totalCount: () => get().items.reduce((sum, i) => sum + i.qty, 0),
 
-      subtotal: () => get().items.reduce((sum, i) => sum + i.qty * i.price, 0),
+      /**
+       * The goods subtotal at the effective, quantity-adjusted prices.
+       *
+       * A derived selector rather than stored state, which is what makes the cart recalculate
+       * with no page reload and no effect to remember: adding, incrementing, decrementing,
+       * removing, adding several units at once and rehydrating from localStorage all change
+       * `items`, every subscriber re-runs this, and the whole line is repriced — a 10th unit
+       * repriceses the nine below it, and dropping back to 9 puts the price straight back.
+       */
+      subtotal: () => cartSubtotal(get().items),
 
-      shipping: () => (get().subtotal() >= 650 ? 0 : 69),
+      // Free shipping is decided on what the customer actually pays for the goods, so a
+      // volume price counts towards the threshold exactly as an ordinary price does.
+      shipping: () => shippingForSubtotalKr(get().subtotal()),
 
       orderTotal: () => get().subtotal() + get().shipping(),
     }),
@@ -184,6 +212,26 @@ export const useCartStore = create<CartState>()(
        * version instead would risk discarding carts that customers already have.
        */
       partialize: (state) => ({ items: state.items, promoCode: state.promoCode }),
+      /**
+       * Sanitises a cart read back from localStorage before it becomes state.
+       *
+       * localStorage is the customer's to edit, and a cart can also have been written by an
+       * older build of the site — so a persisted `qty` is untrusted input like any other. Each
+       * one is put through the same `clampLineQuantity` the steppers use, which turns a
+       * fraction, a negative, a NaN or a quantity past the limit into something the checkout
+       * will actually accept, instead of letting it fail at the payment step.
+       *
+       * Deliberately the only thing it touches: everything else is merged exactly as zustand's
+       * default does, so a cart persisted before `promoCode` (or before `productTitle`)
+       * existed still rehydrates precisely as it did before.
+       */
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<CartState>
+        const items = Array.isArray(saved.items)
+          ? saved.items.map((item) => ({ ...item, qty: clampLineQuantity(item?.qty) }))
+          : current.items
+        return { ...current, ...saved, items }
+      },
     },
   ),
 )

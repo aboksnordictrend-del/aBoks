@@ -6,9 +6,18 @@
  * borrow a constant. `QuantityStepper` re-exports them, so its callers are unchanged.
  */
 
-/** The range a solution configurator allows. A B2B order can be hundreds of units. */
+import { MAX_LINE_QUANTITY } from '@/lib/quantityLimits'
+
+/**
+ * The range a solution configurator allows. A B2B order can be hundreds of units.
+ *
+ * The maximum is the shared cart/order limit, not a number of its own: a configuration the
+ * page accepts has to be one "Legg løsningen i handlekurven" can actually add and the
+ * checkout can actually price. The minimum is 0 — the configurator's way of saying "not this
+ * product" — which is why it is still written here rather than taken from the same module.
+ */
 export const SOLUTION_QTY_MIN = 0
-export const SOLUTION_QTY_MAX = 9999
+export const SOLUTION_QTY_MAX = MAX_LINE_QUANTITY
 
 /**
  * Reads whatever is in the field and returns the quantity it means.

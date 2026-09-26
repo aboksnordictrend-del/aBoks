@@ -56,6 +56,15 @@ async function getExistingProducts(): Promise<BedrifterProduct[]> {
           description: (doc.description as string) ?? '',
           image: firstImage ? mediaUrl(firstImage.image) : '',
           imageAlt: firstImage?.alt ?? (doc.title as string),
+          // The catalogue price and its sale window, exactly as the product page reads them.
+          // The quantity price table on this page is built from these plus the shared tier
+          // configuration — there is no B2B price list written into this route.
+          price: doc.price ?? 0,
+          sale: {
+            salePrice: doc.salePrice ?? null,
+            saleStartDate: doc.saleStartDate ?? null,
+            saleEndDate: doc.saleEndDate ?? null,
+          },
         }
       })
       // A product without a slug would render a broken link.
