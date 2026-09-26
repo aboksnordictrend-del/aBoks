@@ -38,6 +38,7 @@ import {
 } from './theme'
 import { useRevealFactory, type RevealProps } from './useReveal'
 import BusinessSolutions from './BusinessSolutions'
+import BusinessCalculator from './calculator/BusinessCalculator'
 import type { BusinessSolution } from '@/lib/bedrifterSolutions'
 
 /** Existing catalogue entry, assembled from Payload in `page.tsx`. */
@@ -965,7 +966,22 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
       {/* ==================== COMPLETE SOLUTIONS ====================
           The packages, introduced before the individual models further down. Its content
           lives in `lib/bedrifterSolutions.ts`; each card leads to /bedrifter/<slug>. */}
-      <BusinessSolutions products={products} reveal={reveal} onQuoteRequest={requestQuote} />
+      {/* ==================== COMPLETE SOLUTIONS + CALCULATOR ====================
+          The calculator answers the question the four cards leave behind — which one fits
+          us, and how many units? — so it is rendered between them and the closing note,
+          through `afterCards`. Its rules live in `lib/bedrifter/calculator`; the result
+          links on to the solution page with the recommended quantities in the URL. */}
+      <BusinessSolutions
+        products={products}
+        reveal={reveal}
+        onQuoteRequest={requestQuote}
+        afterCards={
+          <BusinessCalculator
+            reveal={reveal}
+            productTitles={Object.fromEntries(products.map((p) => [p.slug, p.title]))}
+          />
+        }
+      />
 
       {/* ==================== PROBLEM ==================== */}
       <section aria-labelledby="utfordringer-heading" style={{ background: BEIGE, padding: SECTION_PAD }}>

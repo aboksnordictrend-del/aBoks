@@ -46,6 +46,11 @@ export interface SolutionConfiguratorContent {
   /** Starting quantity per slug. A slug with no entry starts at 0 — a configuration
    *  is something the customer builds, not a bundle handed to them pre-filled. */
   defaultQuantities?: Record<string, number>
+  /**
+   * A line of guidance under the intro, set apart from it — a rule of thumb for how many
+   * units a solution tends to need. Guidance, never a formula the page enforces.
+   */
+  note?: string
   /** Heading of the summary panel — "Din Kontorpakke". */
   summaryHeading: string
   /** The line above the "Be om tilbud" action beside the summary. */

@@ -1,32 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  SOLUTION_QTY_MAX,
+  SOLUTION_QTY_MIN,
+  normalizeQuantity,
+} from '@/lib/solutions/quantity'
 import { INK } from '../theme'
 
-/** The range a solution configurator allows. A B2B order can be hundreds of units. */
-export const SOLUTION_QTY_MIN = 0
-export const SOLUTION_QTY_MAX = 9999
-
 /**
- * Reads whatever is in the field and returns the quantity it means.
- *
- * Everything that is not a digit is dropped before parsing, so a minus sign, a decimal
- * point, an exponent or pasted text can never reach the state — a negative is impossible to
- * express rather than clamped after the fact. An empty field means `min`, and anything above
- * `max` is capped.
- *
- * Exported so the rule is testable on its own, and so the caller and the field can never
- * disagree about what a typed value means.
+ * The range and the parsing rule live in `@/lib/solutions/quantity`, so the server route can
+ * apply the same limits to a quantity handed over in a URL. Re-exported here because this is
+ * where the configurator's callers already look for them.
  */
-export function normalizeQuantity(raw: string, min = SOLUTION_QTY_MIN, max = SOLUTION_QTY_MAX): number {
-  const digits = raw.replace(/[^\d]/g, '')
-  if (digits === '') return min
-  // `digits` is all digits, so parseInt cannot return NaN here; the guard is for a string so
-  // long it overflows to Infinity.
-  const parsed = Number.parseInt(digits, 10)
-  if (!Number.isFinite(parsed)) return max
-  return Math.max(min, Math.min(max, parsed))
-}
+export { SOLUTION_QTY_MAX, SOLUTION_QTY_MIN, normalizeQuantity }
 
 /**
  * Minus / editable quantity / plus, in the pill the product page uses.

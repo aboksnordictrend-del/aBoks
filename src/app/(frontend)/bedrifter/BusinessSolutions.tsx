@@ -33,6 +33,7 @@ export default function BusinessSolutions({
   products,
   reveal,
   onQuoteRequest,
+  afterCards,
 }: {
   /** The catalogue from Payload, as `page.tsx` resolved it. */
   products: BedrifterProduct[]
@@ -42,6 +43,13 @@ export default function BusinessSolutions({
    * by the closing call to action, and by any solution with a `quote` action.
    */
   onQuoteRequest: (solution?: BusinessSolution) => React.MouseEventHandler<HTMLAnchorElement>
+  /**
+   * Rendered between the cards and the closing note, full width — the calculator answers
+   * exactly the question the four cards leave behind, so it belongs inside this block
+   * rather than after it. A full-bleed band cannot live inside the container the cards sit
+   * in, which is why the block is two sections with the slot between them.
+   */
+  afterCards?: React.ReactNode
 }) {
   // Keyed by slug so a card can reach its products without searching the array per chip.
   const cmsProducts: Record<string, BedrifterProduct> = Object.fromEntries(
@@ -49,10 +57,17 @@ export default function BusinessSolutions({
   )
 
   return (
+    <>
     <section
       id="bedriftslosninger"
       aria-labelledby="bedriftslosninger-heading"
-      style={{ background: CREAM, padding: SECTION_PAD, scrollMarginTop: ANCHOR_OFFSET }}
+      style={{
+        background: CREAM,
+        // A little tighter at the foot than a standalone section: what follows is the next
+        // step in the same thought, not a new subject.
+        padding: 'clamp(72px,9vw,120px) 0 clamp(56px,7vw,88px)',
+        scrollMarginTop: ANCHOR_OFFSET,
+      }}
     >
       <style>{SOLUTION_CARD_CSS}</style>
 
@@ -111,13 +126,21 @@ export default function BusinessSolutions({
             ))}
           </div>
         </div>
+      </div>
+    </section>
 
-        {/* ── Closing note ── */}
+    {afterCards}
+
+    {/* ── Closing note ── */}
+    <section
+      aria-labelledby="tilpasset-tilbud-heading"
+      style={{ background: CREAM, padding: 'clamp(56px,7vw,88px) 0 clamp(72px,9vw,120px)' }}
+    >
+      <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
         <motion.div
           {...reveal()}
           className="grid grid-cols-1 lg:grid-cols-[1.4fr_auto]"
           style={{
-            margin: 'clamp(40px,5vw,64px) 0 0',
             padding: 'clamp(30px,4vw,52px) clamp(26px,4vw,56px)',
             background: PALE_SAGE,
             borderRadius: '28px',
@@ -128,6 +151,7 @@ export default function BusinessSolutions({
         >
           <div>
             <h3
+              id="tilpasset-tilbud-heading"
               style={{
                 fontFamily: SERIF,
                 fontWeight: 500,
@@ -170,5 +194,6 @@ export default function BusinessSolutions({
         </motion.div>
       </div>
     </section>
+    </>
   )
 }

@@ -10,6 +10,7 @@ import ConfiguratorRow from './ConfiguratorRow'
 import {
   BORDER_WARM,
   CREAM,
+  GOLD,
   INK,
   MUTED,
   OLIVE,
@@ -153,6 +154,33 @@ export default function SolutionConfigurator({
             {content.heading}
           </h2>
           <p style={introStyle}>{content.intro}</p>
+          {content.note && (
+            <p
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '14px',
+                fontFamily: SANS,
+                fontSize: '15px',
+                lineHeight: 1.65,
+                color: MUTED,
+                margin: '18px 0 0',
+                maxWidth: '62ch',
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: '22px',
+                  height: '1.5px',
+                  background: GOLD,
+                  flexShrink: 0,
+                  marginTop: '12px',
+                }}
+              />
+              {content.note}
+            </p>
+          )}
         </div>
 
         <div

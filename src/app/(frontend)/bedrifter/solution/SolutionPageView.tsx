@@ -272,9 +272,17 @@ export default function SolutionPageView({
                 {placementIntro}
               </motion.div>
 
+              {/* `auto-fit` rather than a fixed column count: a solution with two roles gets
+                  two columns and one with three gets three, with no empty track either way. */}
               <ul
-                className="grid grid-cols-1 md:grid-cols-3"
-                style={{ listStyle: 'none', margin: 0, padding: 0, gap: 'clamp(18px,2.2vw,26px)' }}
+                style={{
+                  listStyle: 'none',
+                  margin: 0,
+                  padding: 0,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                  gap: 'clamp(18px,2.2vw,26px)',
+                }}
               >
                 {roles.map((role, i) => (
                   <motion.li

@@ -82,6 +82,41 @@ function withPageContext(): { eventSourceUrl?: string; fbclid?: string } {
   }
 }
 
+/**
+ * A plain dataLayer event — no `ecommerce` payload, and no `event_id`, because these are not
+ * Meta conversions and must not take part in the CAPI deduplication the ecommerce events use.
+ * The reset above is deliberately not run here: there is no ecommerce object to clear.
+ */
+function pushEvent(event: string, params: Record<string, unknown>): void {
+  if (typeof window === 'undefined') return
+  window.dataLayer = window.dataLayer || []
+  window.dataLayer.push({ event, ...params })
+}
+
+/** The B2B calculator on /bedrifter: which kind of workplace the visitor picked. */
+export function trackCalculatorTypeSelected(kind: string): void {
+  pushEvent('calculator_type_selected', { calculator_type: kind })
+}
+
+/**
+ * A recommendation the visitor actually saw. The caller waits for the numbers to settle
+ * before calling this, so typing a quantity does not report a result per keystroke.
+ */
+export function trackCalculatorResultViewed(solutionSlug: string): void {
+  pushEvent('calculator_result_viewed', { calculator_solution: solutionSlug })
+}
+
+/** A click from the recommendation through to the solution page or its inquiry form. */
+export function trackCalculatorSolutionClicked(
+  solutionSlug: string,
+  target: 'solution' | 'inquiry',
+): void {
+  pushEvent('calculator_solution_clicked', {
+    calculator_solution: solutionSlug,
+    calculator_target: target,
+  })
+}
+
 export function cartItemToGA4(item: CartLikeItem): GA4Item {
   return {
     // The line's own reference — the variant id as it has always been, or `product-<id>` for

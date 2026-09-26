@@ -5,6 +5,7 @@ import { BUSINESS_SOLUTIONS, findSolution } from '@/lib/bedrifterSolutions'
 import { solutionPageContent } from '@/lib/solutions'
 import type { ConfigurableProduct, SolutionPageContent } from '@/lib/solutions/types'
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
+import { parseQuantityParam } from '@/lib/solutions/quantity'
 import SolutionPageView from '../solution/SolutionPageView'
 import {
   BORDER_WARM,
@@ -46,6 +47,9 @@ function mediaUrl(val: unknown): string {
   return ''
 }
 
+/** What a URL can carry into the page. Next hands repeated parameters over as an array. */
+type SolutionSearchParams = Record<string, string | string[] | undefined>
+
 /**
  * The configurator's products, read from the catalogue by the slugs the content module
  * names — through the very same helpers the product pages use, so there is one source for
@@ -53,9 +57,16 @@ function mediaUrl(val: unknown): string {
  *
  * A slug that does not resolve is skipped rather than fatal: a page that explains the
  * solution and takes an inquiry is better than a 500 because one product is unpublished.
+ *
+ * `query` is how the calculator on /bedrifter hands a recommendation over: one parameter per
+ * product, named by that product's own slug. It is read generically — the solution already
+ * knows which products it has, so nothing here knows about any particular one — and a
+ * parameter that is not a plain quantity is ignored, leaving the solution's own default.
+ * Unknown parameters are never looked at.
  */
 async function getConfigurableProducts(
   content: SolutionPageContent,
+  query: SolutionSearchParams,
 ): Promise<ConfigurableProduct[]> {
   const resolved = await Promise.all(
     content.configurator.productSlugs.map(async (slug): Promise<ConfigurableProduct | null> => {
@@ -79,7 +90,11 @@ async function getConfigurableProducts(
           },
           image: firstImage ? mediaUrl(firstImage.image) : '',
           imageAlt: firstImage?.alt ?? doc.title,
-          defaultQuantity: content.configurator.defaultQuantities?.[slug] ?? 0,
+          // The URL wins over the solution's default, and only when it says something
+          // usable. Resolved on the server, so the configurator's first paint already shows
+          // the recommended quantity rather than counting up from 0 after hydration.
+          defaultQuantity:
+            parseQuantityParam(query[slug]) ?? content.configurator.defaultQuantities?.[slug] ?? 0,
           variants: variants.map((variant) => ({
             id: String(variant.id),
             name: variant.name ?? '',
@@ -132,14 +147,20 @@ export async function generateMetadata({
   }
 }
 
-export default async function SolutionPage({ params }: { params: Promise<{ losning: string }> }) {
+export default async function SolutionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ losning: string }>
+  searchParams: Promise<SolutionSearchParams>
+}) {
   const { losning } = await params
   const solution = findSolution(losning)
   if (!solution) notFound()
 
   const content = solutionPageContent(losning)
   if (content) {
-    const products = await getConfigurableProducts(content)
+    const products = await getConfigurableProducts(content, await searchParams)
     return <SolutionPageView solution={solution} content={content} products={products} />
   }
 
