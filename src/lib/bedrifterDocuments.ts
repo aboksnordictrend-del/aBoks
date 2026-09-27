@@ -153,15 +153,19 @@ function pdf(filename: string): DocumentFile {
   return { type: 'PDF', url: `${BEDRIFTER_FOLDER}/${filename}?download=1`, action: 'download' }
 }
 
-/** The three document rows for one product, in the order they render. */
+/**
+ * The document rows for one product, in the order they render on /bedrifter.
+ *
+ * No Prisliste row: prices are quoted per customer, and the price table above the
+ * documents on the page already answers "hva koster den". `files.prisliste`, where a model
+ * has one, still names the PDF that sits in Blob for internal use — it is not offered on
+ * the page. Nothing else reads this function, so the row is gone from /bedrifter only; the
+ * individual product pages build their own documents.
+ */
 export function bedrifterDocuments(key: BedrifterProductKey): ProductDocument[] {
   const files = FILES[key]
   return [
     { label: 'Produktark', files: [pdf(files.produktark)] },
-    // Prices are quoted per customer, so this row asks for a tilbud rather than handing
-    // out a price sheet. `files.prisliste`, where a model has one, still names the PDF that
-    // sits in Blob for internal use — it is simply not linked from the page any more.
-    { label: 'Prisliste', files: [], anchor: { id: 'tilbud', label: 'Be om tilbud' } },
     {
       label: 'Tilbudsmal',
       files: [pdf(files.tilbudsmalPdf), { type: 'HTML', url: tilbudsmalHtmlUrl(key), action: 'open' }],
