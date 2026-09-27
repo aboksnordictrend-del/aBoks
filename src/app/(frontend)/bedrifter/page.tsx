@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import BedrifterClient, { type BedrifterProduct } from './BedrifterClient'
-import { getProducts } from '@/lib/payload'
+import BedrifterClient from './BedrifterClient'
+import { getBedrifterProducts } from '@/lib/bedrifterProducts'
 
 export const revalidate = 3600
 
@@ -25,60 +25,9 @@ export const metadata: Metadata = {
   },
 }
 
-/**
- * Order of the existing catalogue among the product sections. Products not listed
- * (a future launch) still render, after these — the page follows the CMS, not this list.
- */
-const PRODUCT_SLUG_ORDER = ['aboks', 'aboks-mini', 'aboks-nano', 'aboks-vegg']
-
-/** Payload upload fields arrive either as an id string or as a populated media doc. */
-function mediaUrl(val: unknown): string {
-  if (typeof val === 'string') return val
-  if (val && typeof val === 'object' && 'url' in val) return String((val as { url?: string }).url ?? '')
-  return ''
-}
-
-async function getExistingProducts(): Promise<BedrifterProduct[]> {
-  try {
-    const docs = await getProducts()
-    return [...docs]
-      .sort((a, b) => {
-        const ai = PRODUCT_SLUG_ORDER.indexOf(a.slug as string)
-        const bi = PRODUCT_SLUG_ORDER.indexOf(b.slug as string)
-        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
-      })
-      .map((doc) => {
-        const firstImage = doc.images?.[0]
-        return {
-          title: doc.title as string,
-          slug: doc.slug as string,
-          tagline: doc.tagline ?? '',
-          description: (doc.description as string) ?? '',
-          image: firstImage ? mediaUrl(firstImage.image) : '',
-          imageAlt: firstImage?.alt ?? (doc.title as string),
-          // The catalogue price and its sale window, exactly as the product page reads them.
-          // The quantity price table on this page is built from these plus the shared tier
-          // configuration — there is no B2B price list written into this route.
-          price: doc.price ?? 0,
-          sale: {
-            salePrice: doc.salePrice ?? null,
-            saleStartDate: doc.saleStartDate ?? null,
-            saleEndDate: doc.saleEndDate ?? null,
-          },
-        }
-      })
-      // A product without a slug would render a broken link.
-      .filter((product) => Boolean(product.slug))
-  } catch (err) {
-    console.error(
-      '[BEDRIFTER] Failed to fetch products from Payload:',
-      err instanceof Error ? err.message : String(err),
-    )
-    return []
-  }
-}
-
 export default async function BedrifterPage() {
-  const products = await getExistingProducts()
+  // The same catalogue, in the same order, that the package pages build their product
+  // sections from — see `lib/bedrifterProducts`.
+  const products = await getBedrifterProducts()
   return <BedrifterClient products={products} />
 }

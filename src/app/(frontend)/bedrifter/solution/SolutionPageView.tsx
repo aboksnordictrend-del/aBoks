@@ -5,6 +5,12 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { anchorClick } from '@/lib/anchorScroll'
+import type { BedrifterProduct } from '@/lib/bedrifterProducts'
+import {
+  quoteContextFor,
+  quoteRequestMessage,
+  quoteRequestQuantityField,
+} from '@/lib/quoteRequest'
 import {
   BUSINESS_SOLUTIONS,
   solutionHref,
@@ -13,6 +19,7 @@ import {
 import type { ConfigurableProduct, SolutionPageContent } from '@/lib/solutions/types'
 import InquiryForm from '../InquiryForm'
 import SolutionFlow from '../SolutionFlow'
+import ProductSectionList, { buildProductSections } from '../ProductSections'
 import SolutionConfigurator from './SolutionConfigurator'
 import {
   ANCHOR_OFFSET,
@@ -82,11 +89,17 @@ export default function SolutionPageView({
   solution,
   content,
   products,
+  catalogueProducts,
 }: {
   solution: BusinessSolution
   content: SolutionPageContent
   /** The configurator's products, resolved from Payload. Empty hides the configurator. */
   products: ConfigurableProduct[]
+  /**
+   * The same products as editorial sections — the full blocks /bedrifter shows, for this
+   * package only, resolved by the route from the shared catalogue. Empty hides the section.
+   */
+  catalogueProducts: BedrifterProduct[]
 }) {
   const reveal = useRevealFactory()
 
@@ -130,6 +143,32 @@ export default function SolutionPageView({
     presetMessage.current = next
     setQuoteQuantity(String(totalQuantity))
   }
+
+  /**
+   * The product sections, built by the same helper /bedrifter uses, so a price, a document
+   * or a line of copy is written in exactly one place for both pages.
+   */
+  const productSections = buildProductSections(catalogueProducts)
+
+  /** "Meld interesse" on a product — presets the dropdown to it, then scrolls to the form. */
+  const pickProductInterest = (interestOption: string) =>
+    anchorClick('foresporsel', () => setInterest(interestOption))
+
+  /**
+   * A product section's "Be om tilbud" — the price table's quote row.
+   *
+   * The same enquiry the rest of the site opens: `quoteContextFor` builds the sentence from
+   * the live catalogue entry and the quantity the row names. Anything the customer has typed
+   * is left alone; only an empty field or a preset this page wrote is replaced.
+   */
+  const requestProductQuote = (product: BedrifterProduct, requestedQuantity: number) =>
+    anchorClick('foresporsel', () => {
+      const context = quoteContextFor(product, requestedQuantity)
+      const next = quoteRequestMessage(context)
+      setMessage((current) => (current === '' || current === presetMessage.current ? next : current))
+      presetMessage.current = next
+      setQuoteQuantity(quoteRequestQuantityField(context))
+    })
 
   const otherSolutions = BUSINESS_SOLUTIONS.filter((s) => s.slug !== solution.slug)
   const illustration = solution.illustration
@@ -488,6 +527,48 @@ export default function SolutionPageView({
           </ul>
         </div>
       </section>
+
+      {/* ==================== PRODUCTS IN THIS SOLUTION ====================
+          The full editorial sections from /bedrifter, for this package's products only and
+          in the order its content module names them. Same component, same data — see
+          `ProductSections.tsx`. Hidden when the catalogue could not be read. */}
+      {productSections.length > 0 && (
+        <section
+          id="produkter"
+          aria-labelledby="produkter-heading"
+          style={{ background: CREAM, padding: SECTION_PAD, scrollMarginTop: ANCHOR_OFFSET }}
+        >
+          <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+            <motion.div {...reveal()} style={{ maxWidth: '720px', marginBottom: 'clamp(44px,5.5vw,72px)' }}>
+              <p style={eyebrowStyle}>Produktene i løsningen</p>
+              <h2 id="produkter-heading" style={h2Style}>
+                Dette inngår i løsningen.
+              </h2>
+            </motion.div>
+
+            <ProductSectionList
+              sections={productSections}
+              reveal={reveal}
+              // This page's form is the `#foresporsel` section; it has no separate `#tilbud`.
+              quoteHref="#foresporsel"
+              // The configurator's "Se produktdetaljer" links land on these sections.
+              withAnchorIds
+              onInterest={(section) => pickProductInterest(section.interestOption)}
+              // This page has one form and one anchor — `#foresporsel` — so both the
+              // interest button and any document row that asks for something lead there.
+              onDocumentRequest={(section) => pickProductInterest(section.interestOption)}
+              onPriceTableQuote={(section) =>
+                requestProductQuote(
+                  section.product,
+                  // A product with no threshold renders no quote row, so the fallback is
+                  // never actually used.
+                  section.quoteQuantity ?? 1,
+                )
+              }
+            />
+          </div>
+        </section>
+      )}
 
       {/* ==================== INQUIRY ==================== */}
       <section

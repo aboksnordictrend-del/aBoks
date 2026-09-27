@@ -5,6 +5,7 @@ import { BUSINESS_SOLUTIONS, findSolution } from '@/lib/bedrifterSolutions'
 import { solutionPageContent } from '@/lib/solutions'
 import type { ConfigurableProduct, SolutionPageContent } from '@/lib/solutions/types'
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
+import { getBedrifterProducts, selectBedrifterProducts } from '@/lib/bedrifterProducts'
 import { parseQuantityParam } from '@/lib/solutions/quantity'
 import SolutionPageView from '../solution/SolutionPageView'
 import {
@@ -161,7 +162,22 @@ export default async function SolutionPage({
   const content = solutionPageContent(losning)
   if (content) {
     const products = await getConfigurableProducts(content, await searchParams)
-    return <SolutionPageView solution={solution} content={content} products={products} />
+    // The full product sections above the inquiry form, for this package's products only.
+    // `configurator.productSlugs` is the one place that says what a package is made of, so
+    // the sections and the configurator can never list different products, and the entries
+    // come from the same catalogue /bedrifter renders.
+    const catalogueProducts = selectBedrifterProducts(
+      await getBedrifterProducts(),
+      content.configurator.productSlugs,
+    )
+    return (
+      <SolutionPageView
+        solution={solution}
+        content={content}
+        products={products}
+        catalogueProducts={catalogueProducts}
+      />
+    )
   }
 
   return (

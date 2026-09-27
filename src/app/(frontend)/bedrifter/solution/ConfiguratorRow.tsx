@@ -1,9 +1,9 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import type { ConfigurableProduct, ConfigurableVariant } from '@/lib/solutions/types'
 import { formatPrice } from '@/lib/format'
+import { productSectionHref } from '@/lib/productAnchor'
 import ColorSwatchPicker from './ColorSwatchPicker'
 import QuantityStepper from './QuantityStepper'
 import { BORDER_WARM, INK, MUTED, OLIVE, SAGE, SANS, SERIF, SOFT } from '../theme'
@@ -59,6 +59,15 @@ export default function ConfiguratorRow({
   // Is a volume band actually active at this quantity?
   const volumePriceActive = unitPrice < basePrice
   const image = variant?.image || product.image
+  /**
+   * "Se produktdetaljer" — the product's full section further down this same page, rather
+   * than /produkter/<slug>. Everything the product page would explain is already here, so
+   * the link keeps the customer inside the configuration they are building.
+   *
+   * A plain hash: the browser scrolls it natively and `scroll-margin-top` on the section
+   * keeps its heading clear of the header, so this needs no click handler of its own.
+   */
+  const detailsHref = productSectionHref(product.slug)
 
   return (
     <div
@@ -71,8 +80,8 @@ export default function ConfiguratorRow({
         borderRadius: '22px',
       }}
     >
-      <Link
-        href={`/produkter/${product.slug}`}
+      <a
+        href={detailsHref}
         data-btn
         aria-label={`Se produktdetaljer for ${product.title}`}
         style={{
@@ -95,7 +104,7 @@ export default function ConfiguratorRow({
             style={{ objectFit: 'cover' }}
           />
         )}
-      </Link>
+      </a>
 
       <div style={{ minWidth: 0 }}>
         {/* Name + price */}
@@ -158,8 +167,8 @@ export default function ConfiguratorRow({
           </p>
         )}
 
-        <Link
-          href={`/produkter/${product.slug}`}
+        <a
+          href={detailsHref}
           style={{
             fontFamily: SANS,
             fontWeight: 600,
@@ -170,7 +179,7 @@ export default function ConfiguratorRow({
           }}
         >
           Se produktdetaljer
-        </Link>
+        </a>
 
         {/* Colour */}
         {product.variants.length > 0 && (
