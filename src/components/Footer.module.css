@@ -12,6 +12,15 @@
 
 .brand {
   grid-column: auto;
+  /* Logo + details are one unit. The box hugs the details (fit-content), and the logo is
+     taken out of flow so its own width can't widen that box — that way "centred" means
+     centred on the text, not on the grid column. The reserved padding is the logo's
+     height (the artwork is 1983×793, so height = 0.4 × width) less the 2px the logo is
+     pulled up by, keeping the gap to ABOKS AS exactly as it was. */
+  --logo-w: clamp(140px, 20vw, 168px);
+  position: relative;
+  width: fit-content;
+  padding-top: calc(var(--logo-w) * 0.4 - 2px);
 }
 
 .heading {
@@ -76,5 +85,70 @@
 @media (max-width: 374px) {
   .heading {
     letter-spacing: 0.01em;
+  }
+}
+
+/* ── Brand column: logo + ABOKS AS company details ──
+   The wordmark is near-black ink on transparency, which is invisible against this
+   footer's #20241a — so it is flattened to the same cream the column's text uses
+   (brightness(0) turns every opaque pixel black, invert(1) then makes it white;
+   the slight opacity lands it on the footer's cream rather than pure white).
+   Width is capped and the height left auto, so the aspect ratio stays the browser's. */
+.logo {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--logo-w);
+  /* The unit box is narrower than the mark now, and Tailwind's preflight caps images at
+     max-width:100% of it — which would shrink the logo. Opt out; the width above is the
+     only size that applies, with height auto keeping the aspect ratio. */
+  max-width: none;
+  height: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.92;
+  /* The artwork carries ~12% empty space above the glyphs, which pushed the visible
+     wordmark below the HANDLE / LÆR MER / KUNDESERVICE headings even though the boxes
+     were flush; top lifts the inked top to just above them and opens up the gap down to
+     ABOKS AS. The mark is out of flow, so moving it leaves the details put. left and
+     transform centre it on the .brand unit, i.e. on the details below — the mark is wider
+     than the longest detail line, so it overhangs that text slightly on both sides. */
+}
+
+.company {
+  font-family: var(--font-manrope);
+  font-style: normal;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #9aa18c;
+  margin: 0;
+}
+
+/* Company / address / email read as three groups, separated by whitespace only. */
+.companyGroup {
+  margin: 0 0 12px;
+}
+
+.companyName {
+  color: #d7dccd;
+  font-weight: 600;
+}
+
+.companyEmail {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #d7dccd;
+  text-decoration: none;
+  /* Backstop in case the address ever outgrows a narrow column. */
+  overflow-wrap: break-word;
+}
+
+/* On phones .brand spans the full row (see above), so keep the mark flush with the
+   details' left edge instead of letting it overhang into the page gutter. */
+@media (max-width: 767px) {
+  .logo {
+    left: 0;
+    transform: none;
   }
 }

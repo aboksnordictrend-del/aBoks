@@ -1,36 +1,59 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import styles from './Footer.module.css'
+
+/** Horizontal aBoks wordmark (blob storage); intrinsic size is needed by next/image. */
+const LOGO_URL =
+  'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Logowf-horizontal-upscale.webp'
+const LOGO_WIDTH = 1983
+const LOGO_HEIGHT = 793
 
 export default function Footer() {
   return (
     <footer style={{ background: '#20241a', padding: 'clamp(56px,7vw,88px) 0 36px' }}>
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
         <div className={styles.grid}>
-          {/* Brand */}
+          {/* Brand — legal entity details; same company data as /kontakt and the terms pages. */}
           <div className={styles.brand}>
-            <div
-              style={{
-                fontFamily: 'var(--font-cormorant)',
-                fontWeight: 600,
-                fontSize: '30px',
-                color: '#faf6ee',
-                marginBottom: '14px',
-              }}
-            >
-              aBoks
-            </div>
-            <p
-              style={{
-                fontFamily: 'var(--font-manrope)',
-                fontSize: '14px',
-                lineHeight: 1.6,
-                color: '#9aa18c',
-                margin: 0,
-                maxWidth: '220px',
-              }}
-            >
-              Smart batteriorganisering, designet i Norge.
-            </p>
+            <Image
+              src={LOGO_URL}
+              alt="ABOKS AS"
+              width={LOGO_WIDTH}
+              height={LOGO_HEIGHT}
+              sizes="170px"
+              className={styles.logo}
+            />
+            <address className={styles.company}>
+              <p className={styles.companyGroup}>
+                <span className={styles.companyName}>ABOKS AS</span>
+                <br />
+                Org. nr. 834 012 952
+              </p>
+              <p className={styles.companyGroup}>
+                Storhaugveien 13
+                <br />
+                7240 Hitra, Norge
+              </p>
+              <a href="mailto:post@aboks.no" className={styles.companyEmail}>
+                {/* Same envelope the /kontakt page draws — the project has no icon
+                    library, so icons are inline SVG inheriting currentColor. */}
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <path d="m2 7 10 7 10-7" />
+                </svg>
+                post@aboks.no
+              </a>
+            </address>
           </div>
 
           {/* Handle */}
