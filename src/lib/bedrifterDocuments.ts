@@ -63,14 +63,14 @@ interface ProductFiles {
 
 /**
  * Exact filenames in the Blob `Bedrifter` folder. Four product sheets do not follow the
- * `<Produkt>-<Dokument>.pdf` pattern: Office, XL and Spesial are stored as
- * `…-produktark-v2.pdf`, the plain aBoks sheet as `aBoks-produktark_3.pdf`, and the Spesial
- * file is the one in this table spelled "Spesial" rather than "Special". All of them are
- * spelled out here rather than derived.
+ * `<Produkt>-<Dokument>.pdf` pattern: Office is stored as `…-produktark-v2.pdf`, XL and
+ * Spesial as `…-produktark-v3.pdf`, and the plain aBoks sheet as `aBoks-produktark_3.pdf`.
+ * The Spesial file is the one in this table spelled "Spesial" rather than "Special". All of
+ * them are spelled out here rather than derived.
  */
 const FILES: Record<BedrifterProductKey, ProductFiles> = {
   'aboks-special': {
-    produktark: 'aBoks-Spesial-produktark-v2.pdf',
+    produktark: 'aBoks-Spesial-produktark-v3.pdf',
     prisliste: 'aBoks-Special-Prisliste.pdf',
     tilbudsmalPdf: 'aBoks-Special-Tilbudsmal.pdf',
     tilbudsmalHtml: 'aBoks-Special-Tilbudsmal.html',
@@ -83,7 +83,7 @@ const FILES: Record<BedrifterProductKey, ProductFiles> = {
   },
   // No `prisliste` — aBoks XL has no price sheet in Blob yet.
   'aboks-xl': {
-    produktark: 'aBoks-XL-produktark-v2.pdf',
+    produktark: 'aBoks-XL-produktark-v3.pdf',
     tilbudsmalPdf: 'aBoks-XL-Tilbudsmal.pdf',
     tilbudsmalHtml: 'aBoks-XL-Tilbudsmal.html',
   },

@@ -45,10 +45,10 @@ test('no other model shares a product sheet with Office or aBoks', () => {
 // The sheets this change must leave alone, spelled out so a later edit to the table cannot
 // silently move them.
 test('the other models keep their existing product sheets', () => {
-  assert.equal(produktarkUrl('aboks-xl'), `${BLOB}/Bedrifter/aBoks-XL-produktark-v2.pdf`)
+  assert.equal(produktarkUrl('aboks-xl'), `${BLOB}/Bedrifter/aBoks-XL-produktark-v3.pdf`)
   assert.equal(
     produktarkUrl('aboks-spesial'),
-    `${BLOB}/Bedrifter/aBoks-Spesial-produktark-v2.pdf`,
+    `${BLOB}/Bedrifter/aBoks-Spesial-produktark-v3.pdf`,
   )
   assert.equal(produktarkUrl('aboks-vegg'), `${BLOB}/Bedrifter/aBoks-Vegg-Produktark.pdf`)
   assert.equal(produktarkUrl('aboks-mini'), `${BLOB}/Bedrifter/aBoks-Mini-Produktark.pdf`)
