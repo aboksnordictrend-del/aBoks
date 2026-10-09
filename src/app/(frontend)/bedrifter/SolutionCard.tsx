@@ -72,6 +72,58 @@ export const SOLUTION_CARD_CSS = `
     outline: 2px solid ${SAGE};
     outline-offset: 3px;
   }
+
+  /* The four product chips and their "+" separators stay on ONE line at every width.
+
+     Everything in the row is derived from a single length, --abx-chip-font, taken from the
+     row's own inline size rather than the viewport: the card turns two-column at \`lg\`, so
+     the row is ~872px wide on a 1023px screen and ~358px at 1024px. A vw-based clamp()
+     tuned for one side of that breakpoint overflows the other, while 100cqi is the width
+     the chips actually have.
+
+     3cqi is the largest coefficient that still fits the longest of the four rows — the
+     borettslag card, whose aBoks and aBoks XL chips also carry a placement note, and whose
+     note is therefore what sets the chip's width rather than the product name. The whole
+     row measures 29.95 x --abx-chip-font plus the 8px of chip borders, which do not scale,
+     so 3cqi leaves 7-9% of the row free at every width from 234px (a 320px phone) upwards.
+     The cap keeps the type from growing past the size the cards were designed at.
+
+     \`container-type\` is safe on this element specifically: it makes it a containing block
+     for absolutely positioned descendants, and .abx-solution-cta::after — the overlay that
+     makes the whole card clickable — is in a sibling of this subtree, not inside it. */
+  html[data-site="frontend"] .abx-product-combination {
+    container-type: inline-size;
+  }
+  html[data-site="frontend"] .abx-product-row {
+    --abx-chip-font: min(14.5px, 3cqi);
+    flex-wrap: nowrap;
+    gap: calc(var(--abx-chip-font) * 0.3);
+  }
+  /* Nothing in the row may squeeze or wrap: a chip shrunk below its text would clip the
+     product name, which is the one thing that has to stay readable and complete. */
+  html[data-site="frontend"] .abx-product-chip,
+  html[data-site="frontend"] .abx-product-plus {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  html[data-site="frontend"] .abx-product-chip {
+    padding: calc(var(--abx-chip-font) * 0.68) calc(var(--abx-chip-font) * 0.45);
+    /* Proportional to the type, capped at the original 14px, so the chip keeps the same
+       rounded-rectangle shape instead of collapsing into a pill as the row narrows. */
+    border-radius: min(14px, calc(var(--abx-chip-font) * 0.96));
+  }
+  html[data-site="frontend"] .abx-product-chip--img {
+    padding-left: calc(var(--abx-chip-font) * 0.55);
+  }
+  html[data-site="frontend"] .abx-product-name {
+    font-size: var(--abx-chip-font);
+  }
+  html[data-site="frontend"] .abx-product-note {
+    font-size: calc(var(--abx-chip-font) * 0.8);
+  }
+  html[data-site="frontend"] .abx-product-plus {
+    font-size: calc(var(--abx-chip-font) * 1.05);
+  }
 `
 
 /**
@@ -132,19 +184,25 @@ function SolutionIllustration({ solution, sizes }: { solution: BusinessSolution;
 
 /** One product in the solution, as a chip. */
 function ProductChip({ product, cmsProduct }: { product: SolutionProduct; cmsProduct?: BedrifterProduct }) {
+  // One value for both the modifier class and the <Image>, so the photo and the padding
+  // that makes room for it can never disagree.
+  const chipImage = SHOW_PRODUCT_IMAGES ? cmsProduct?.image : undefined
+
   return (
     <li
+      // The padding, the radius and the type come from `.abx-product-chip` in
+      // SOLUTION_CARD_CSS, which scales them all from one container-relative length —
+      // they cannot be inline, because an inline style would win over that rule.
+      className={`abx-product-chip${chipImage ? ' abx-product-chip--img' : ''}`}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        padding: SHOW_PRODUCT_IMAGES && cmsProduct?.image ? '8px 16px 8px 8px' : '10px 16px',
-        borderRadius: '14px',
         border: `1px solid ${BORDER_WARM}`,
         background: 'rgba(255,255,255,.6)',
       }}
     >
-      {SHOW_PRODUCT_IMAGES && cmsProduct?.image && (
+      {chipImage && (
         <span
           style={{
             position: 'relative',
@@ -156,15 +214,17 @@ function ProductChip({ product, cmsProduct }: { product: SolutionProduct; cmsPro
             flexShrink: 0,
           }}
         >
-          <Image src={cmsProduct.image} alt="" fill sizes="38px" style={{ objectFit: 'cover' }} />
+          <Image src={chipImage} alt="" fill sizes="38px" style={{ objectFit: 'cover' }} />
         </span>
       )}
       <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-        <span style={{ fontFamily: SANS, fontWeight: 600, fontSize: '14.5px', color: INK }}>
+        <span className="abx-product-name" style={{ fontFamily: SANS, fontWeight: 600, color: INK }}>
           {product.name}
         </span>
         {product.note && (
-          <span style={{ fontFamily: SANS, fontSize: '12.5px', color: MUTED }}>{product.note}</span>
+          <span className="abx-product-note" style={{ fontFamily: SANS, color: MUTED }}>
+            {product.note}
+          </span>
         )}
       </span>
     </li>
@@ -180,17 +240,17 @@ function ProductCombination({
   cmsProducts: Record<string, BedrifterProduct>
 }) {
   return (
-    <div>
+    // The query container the chip row sizes itself from — see `.abx-product-combination`.
+    <div className="abx-product-combination">
       <p style={{ ...cardLabelStyle, margin: '0 0 12px' }}>Inngår i løsningen</p>
       <ul
+        className="abx-product-row"
         style={{
           listStyle: 'none',
           margin: 0,
           padding: 0,
           display: 'flex',
-          flexWrap: 'wrap',
           alignItems: 'center',
-          gap: '8px',
         }}
       >
         {products.map((product, i) => (
@@ -198,7 +258,8 @@ function ProductCombination({
             {i > 0 && (
               <li
                 aria-hidden="true"
-                style={{ fontFamily: SANS, fontWeight: 600, fontSize: '15px', color: MUTED }}
+                className="abx-product-plus"
+                style={{ fontFamily: SANS, fontWeight: 600, color: MUTED }}
               >
                 +
               </li>

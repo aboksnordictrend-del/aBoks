@@ -54,7 +54,7 @@ function initialVariantId(product: ConfigurableProduct): string {
  * It is a solution, not a bundle. There is no bundle SKU, no bundle price and no fixed ratio
  * between the products — each line is added as the ordinary product variant it is, exactly as
  * the product page would add it, so the cart, the drawer and the checkout treat it as
- * something they already understand. Any number of products works; this page passes two.
+ * something they already understand. Any number of products works; this page passes four.
  */
 export default function SolutionConfigurator({
   content,

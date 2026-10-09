@@ -101,6 +101,8 @@ export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
     description:
       'En komplett løsning for kontorer der batterier brukes på flere arbeidsplasser. aBoks Office gir enkel oppbevaring lokalt, mens aBoks XL fungerer som et felles innsamlingspunkt for brukte batterier.',
     products: [
+      { name: 'aBoks', slug: 'aboks' },
+      { name: 'aBoks Spesial', slug: 'aboks-spesial' },
       { name: 'aBoks Office', slug: 'aboks-office' },
       { name: 'aBoks XL', slug: 'aboks-xl' },
     ],
@@ -122,6 +124,7 @@ export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
     products: [
       { name: 'aBoks', slug: 'aboks' },
       { name: 'aBoks Spesial', slug: 'aboks-spesial' },
+      { name: 'aBoks Office', slug: 'aboks-office' },
       { name: 'aBoks XL', slug: 'aboks-xl' },
     ],
     plannedIllustration:
@@ -140,8 +143,9 @@ export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
     description:
       'En samlet løsning for skoler og undervisningsmiljøer med flere rom og bruksområder. Lokale aBoks-enheter gjør batterihåndteringen enkel der batteriene brukes, mens aBoks XL samler brukte batterier på ett felles sted.',
     products: [
-      { name: 'aBoks Office', slug: 'aboks-office' },
+      { name: 'aBoks', slug: 'aboks' },
       { name: 'aBoks Spesial', slug: 'aboks-spesial' },
+      { name: 'aBoks Office', slug: 'aboks-office' },
       { name: 'aBoks XL', slug: 'aboks-xl' },
     ],
     plannedIllustration:
@@ -163,6 +167,8 @@ export const BUSINESS_SOLUTIONS: BusinessSolution[] = [
     note: 'Antall aBoks-enheter tilpasses antall leiligheter og behovet i borettslaget eller sameiet.',
     products: [
       { name: 'aBoks', slug: 'aboks', note: 'i leilighetene' },
+      { name: 'aBoks Spesial', slug: 'aboks-spesial' },
+      { name: 'aBoks Office', slug: 'aboks-office' },
       { name: 'aBoks XL', slug: 'aboks-xl', note: 'i fellesområdet' },
     ],
     plannedIllustration:
