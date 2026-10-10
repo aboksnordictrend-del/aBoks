@@ -45,24 +45,44 @@ const RESULT_EVENT_DELAY_MS = 1200
  *
  * Answers are kept per kind, so switching from a borettslag with 48 apartments to an office
  * cannot silently turn into 48 employees.
+ *
+ * The same component serves /bedrifter, where the kind is the first question, and the four
+ * package pages, where it is already settled — see `fixedBusinessType`. There is one set of
+ * rules, one set of fields and one result panel either way.
  */
 export default function BusinessCalculator({
   reveal,
   /** Live CMS titles by product slug, so the result names products as the shop does. */
   productTitles,
+  /**
+   * Lock the calculator to one kind of workplace.
+   *
+   * Set by a page that is already about one package: the kind is selected from the first
+   * render, its badge replaces the four choices, and nothing in the UI can change it. Left
+   * out on /bedrifter, where picking the kind is the first thing the customer does.
+   */
+  fixedBusinessType,
   anchorId = 'kalkulator',
 }: {
   reveal: (delay?: number) => RevealProps
   productTitles: Record<string, string>
+  fixedBusinessType?: SolutionKind
   anchorId?: string
 }) {
-  const [kind, setKind] = useState<SolutionKind | null>(null)
+  const [pickedKind, setPickedKind] = useState<SolutionKind | null>(null)
   const [valuesByKind, setValuesByKind] = useState<Partial<Record<SolutionKind, FieldValues>>>({})
+
+  /**
+   * Derived rather than seeded into state, so a locked calculator cannot end up holding a
+   * kind its page no longer passes, and so `reset` needs no special case: clearing the
+   * picked kind simply falls back to the fixed one where there is one.
+   */
+  const kind: SolutionKind | null = fixedBusinessType ?? pickedKind
 
   const values: FieldValues = (kind && valuesByKind[kind]) || {}
 
   const selectKind = (next: SolutionKind) => {
-    setKind(next)
+    setPickedKind(next)
     trackCalculatorTypeSelected(next)
   }
 
@@ -75,7 +95,7 @@ export default function BusinessCalculator({
   }
 
   const reset = () => {
-    setKind(null)
+    setPickedKind(null)
     setValuesByKind({})
   }
 
@@ -173,9 +193,15 @@ export default function BusinessCalculator({
                 margin: '0 0 16px',
               }}
             >
-              Hva slags virksomhet gjelder det?
+              {/* A page locked to one package is not asking anything — the badge under this
+                  heading states which solution the figures below are for. */}
+              {fixedBusinessType ? 'Valgt løsning' : 'Hva slags virksomhet gjelder det?'}
             </h3>
-            <CalculatorTypeSelector selected={kind} onSelect={selectKind} />
+            <CalculatorTypeSelector
+              selected={kind}
+              onSelect={selectKind}
+              fixed={fixedBusinessType !== undefined}
+            />
 
             {kind && (
               <div

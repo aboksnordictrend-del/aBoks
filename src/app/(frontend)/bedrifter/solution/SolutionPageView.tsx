@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { anchorClick } from '@/lib/anchorScroll'
 import type { BedrifterProduct } from '@/lib/bedrifterProducts'
+import { calculatorKindForSolution } from '@/lib/bedrifter/calculator/config'
 import {
   quoteContextFor,
   quoteRequestMessage,
@@ -19,6 +20,7 @@ import {
 import type { ConfigurableProduct, SolutionPageContent } from '@/lib/solutions/types'
 import InquiryForm from '../InquiryForm'
 import SolutionFlow from '../SolutionFlow'
+import BusinessCalculator from '../calculator/BusinessCalculator'
 import ProductSectionList, { buildProductSections } from '../ProductSections'
 import SolutionConfigurator from './SolutionConfigurator'
 import {
@@ -170,6 +172,23 @@ export default function SolutionPageView({
       setQuoteQuantity(quoteRequestQuantityField(context))
     })
 
+  /**
+   * The kind of workplace this package is for, read back out of the calculator's own
+   * configuration — so the page never names a kind the calculator does not recommend to it,
+   * and a package with no calculator rules simply renders no calculator.
+   */
+  const calculatorKind = calculatorKindForSolution(solution.slug)
+
+  /**
+   * Product titles for the recommendation panel, so it names products as the shop does.
+   *
+   * This package's catalogue entries are enough: a recommendation for this kind can only
+   * name products the package configures — `calculate.test.ts` holds that invariant — and
+   * these are exactly those entries. A slug that is missing because the catalogue could not
+   * be read falls back to the rules' own name inside the panel.
+   */
+  const productTitles = Object.fromEntries(catalogueProducts.map((p) => [p.slug, p.title]))
+
   const otherSolutions = BUSINESS_SOLUTIONS.filter((s) => s.slug !== solution.slug)
   const illustration = solution.illustration
   const roles = content.placement.roles
@@ -305,6 +324,21 @@ export default function SolutionPageView({
           </div>
         </div>
       </section>
+
+      {/* ==================== CALCULATOR ====================
+          The /bedrifter calculator, locked to this package's kind of workplace: the same
+          component, the same fields and the same rules, with the "what kind of business"
+          step already answered. It sits directly under the hero because "how many do we
+          need?" is the question a visitor arrives with, and its result links on to this
+          page's own configurator with the recommended quantities in the URL — the behaviour
+          the calculator already had, now pointing at the configurator further down. */}
+      {calculatorKind && (
+        <BusinessCalculator
+          reveal={reveal}
+          productTitles={productTitles}
+          fixedBusinessType={calculatorKind}
+        />
+      )}
 
       {/* ==================== HOW IT WORKS ==================== */}
       <section aria-labelledby="slik-fungerer-heading" style={{ background: BEIGE, padding: SECTION_PAD }}>
@@ -464,6 +498,19 @@ export default function SolutionPageView({
           the solution and still takes an inquiry, rather than showing an empty configurator. */}
       {products.length > 0 && (
         <SolutionConfigurator
+          /*
+           * Keyed on the quantities the URL asked for.
+           *
+           * The configurator seeds its selections in a lazy `useState`, which only runs when
+           * it mounts. Coming from /bedrifter that is a different route, so a recommendation
+           * in the URL has always landed. The calculator above is on *this* route, so its
+           * "Tilpass løsningen" is a same-path navigation that changes nothing but the query
+           * — React would reconcile the existing instance and keep the old quantities. The
+           * key changes exactly when the recommended quantities do, which remounts it and
+           * lets the seeding it already has run again. Nothing else about how quantities
+           * reach the cart or the configurator is touched.
+           */
+          key={products.map((product) => `${product.slug}:${product.defaultQuantity}`).join(',')}
           content={content.configurator}
           products={products}
           onQuoteRequest={requestQuote}

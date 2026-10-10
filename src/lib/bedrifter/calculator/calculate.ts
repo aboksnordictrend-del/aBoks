@@ -92,14 +92,25 @@ function kontorLines(answers: CalculatorAnswers): RecommendedLine[] {
   const r = CALCULATOR_RULES.kontor
   const ansatte = num(answers, 'ansatte')
   const arbeidsomrader = num(answers, 'arbeidsomrader')
-  // `etasjer` and `fellesomrader` are asked for context and named in the summary sentence;
-  // neither changes a quantity, because the central point does not multiply with the
-  // building. See CALCULATOR_RULES.centralXlUnits.
+  const fellesomrader = num(answers, 'fellesomrader')
+  // `etasjer` is asked for context and named in the summary sentence; it changes no
+  // quantity, because the central point does not multiply with the building. See
+  // CALCULATOR_RULES.centralXlUnits.
 
   // Work areas are the real driver; headcount is the floor under them.
   let office = Math.max(ceil(ansatte / r.employeesPerOfficeUnit), arbeidsomrader)
   // Many small rooms and few people should not add up to a unit per room.
   if (ansatte > 0) office = Math.min(office, ansatte * r.maxOfficeUnitsPerEmployee)
+
+  /**
+   * One aBoks per common area with battery use, straight through.
+   *
+   * Deliberately not bounded by headcount the way the Office line is: an area the customer
+   * has counted is an area that needs a box, so eighty of them means eighty. `num` has
+   * already floored the answer and dropped anything below one, and the field's own `max`
+   * caps what can be typed, so there is nothing further to defend against here.
+   */
+  const aboks = fellesomrader * r.aboksPerCommonArea
 
   return used([
     {
@@ -107,6 +118,12 @@ function kontorLines(answers: CalculatorAnswers): RecommendedLine[] {
       name: CALCULATOR_SOLUTIONS.kontor.productNames['aboks-office'],
       quantity: office,
       note: 'Lokal oppbevaring ved arbeidsplassene, med eget rom for brukte batterier.',
+    },
+    {
+      slug: 'aboks',
+      name: CALCULATOR_SOLUTIONS.kontor.productNames.aboks,
+      quantity: aboks,
+      note: 'Én per fellesområde med batteribruk, med nye AA- og AAA-batterier og et eget rom for brukte.',
     },
     {
       slug: 'aboks-xl',

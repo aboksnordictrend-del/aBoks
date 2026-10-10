@@ -29,6 +29,13 @@ export const CALCULATOR_RULES = {
      * cannot recommend 80 units. Expressed per employee.
      */
     maxOfficeUnitsPerEmployee: 1,
+    /**
+     * One aBoks per common area where batteries are actually used — a reception, a shared
+     * workspace, a technical room. Unlike the Office units there is no ceiling against
+     * headcount: the customer has counted these rooms themselves, so the answer is taken at
+     * face value rather than second-guessed.
+     */
+    aboksPerCommonArea: 1,
   },
   produksjon: {
     /** One aBoks per this many employees, before office areas are considered. */
@@ -75,7 +82,7 @@ export const CALCULATOR_SOLUTIONS: Record<
     hint: 'Kontor og administrasjon',
     solutionSlug: 'kontorpakke',
     solutionName: 'aBoks Kontorpakke',
-    productNames: { 'aboks-office': 'aBoks Office', 'aboks-xl': 'aBoks XL' },
+    productNames: { 'aboks-office': 'aBoks Office', aboks: 'aBoks', 'aboks-xl': 'aBoks XL' },
   },
   produksjon: {
     label: 'Produksjon / lager',
@@ -110,6 +117,19 @@ export const CALCULATOR_SOLUTIONS: Record<
 
 /** The order the type cards appear in. */
 export const CALCULATOR_KINDS: SolutionKind[] = ['kontor', 'produksjon', 'skole', 'borettslag']
+
+/**
+ * The kind of workplace a solution page is about — the reverse of
+ * `CALCULATOR_SOLUTIONS[kind].solutionSlug`.
+ *
+ * Read back out of that same table rather than written down a second time, so the mapping
+ * cannot drift: a package page asks which kind it is, and gets the one the calculator
+ * already sends to it. `undefined` for a slug no kind recommends, which is what lets a
+ * future package carry the calculator only once it has rules of its own.
+ */
+export function calculatorKindForSolution(solutionSlug: string): SolutionKind | undefined {
+  return CALCULATOR_KINDS.find((kind) => CALCULATOR_SOLUTIONS[kind].solutionSlug === solutionSlug)
+}
 
 /** Property types for a borettslag, which decide how the XL rule reads. */
 export const BORETTSLAG_PROPERTY = {
@@ -149,8 +169,8 @@ export const CALCULATOR_FIELDS: Record<SolutionKind, CalculatorField[]> = {
     {
       type: 'number',
       id: 'fellesomrader',
-      label: 'Antall fellesområder',
-      // Context for us and for the summary sentence. It does not change any quantity.
+      label: 'Antall fellesområder med batteribruk',
+      // Drives the aBoks line one for one — see CALCULATOR_RULES.kontor.aboksPerCommonArea.
       help: 'For eksempel resepsjon, fellesarbeidsplass eller teknisk rom.',
       max: 200,
       phrase: { one: 'fellesområde', many: 'fellesområder' },

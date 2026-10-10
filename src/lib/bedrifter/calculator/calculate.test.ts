@@ -1,7 +1,12 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { calculateRecommendation, recommendationHref } from './calculate'
-import { BORETTSLAG_PROPERTY, CALCULATOR_SOLUTIONS } from './config'
+import {
+  BORETTSLAG_PROPERTY,
+  CALCULATOR_KINDS,
+  CALCULATOR_SOLUTIONS,
+  calculatorKindForSolution,
+} from './config'
 import type { CalculatorAnswers, SolutionKind } from './types'
 import { solutionPageContent } from '@/lib/solutions'
 
@@ -86,6 +91,77 @@ describe('calculator — kontor', () => {
 
   it('still scales the local units with the workplace', () => {
     assert.equal(qty('kontor', answers({ ansatte: 300, arbeidsomrader: 42 }), 'aboks-office'), 42)
+  })
+
+  /**
+   * Common areas with battery use get one aBoks each, taken at face value. This is the one
+   * kontor line with no ceiling over it, so these pin the "exactly what was entered" part
+   * as much as the arithmetic.
+   */
+  it('gives one aBoks per fellesområde, exactly as entered', () => {
+    for (const fellesomrader of [0, 1, 2, 100]) {
+      const input = answers({ ansatte: 20, arbeidsomrader: 3, etasjer: 1, fellesomrader })
+      assert.equal(
+        qty('kontor', input, 'aboks'),
+        fellesomrader,
+        `${fellesomrader} fellesområder`,
+      )
+    }
+  })
+
+  it('leaves aBoks out of the result entirely when there are no fellesområder', () => {
+    const outcome = calculateRecommendation('kontor', answers({ ansatte: 20, arbeidsomrader: 3 }))
+    assert.equal(outcome.status, 'ready')
+    if (outcome.status !== 'ready') return
+    // Not "0 × aBoks" — absent, the way every unused product is.
+    assert.deepEqual(
+      outcome.recommendation.lines.map((line) => line.slug),
+      ['aboks-office', 'aboks-xl'],
+    )
+  })
+
+  it('recommends all three products together, Office first and the XL last', () => {
+    const outcome = calculateRecommendation(
+      'kontor',
+      answers({ ansatte: 20, arbeidsomrader: 3, etasjer: 1, fellesomrader: 2 }),
+    )
+    assert.equal(outcome.status, 'ready')
+    if (outcome.status !== 'ready') return
+    assert.deepEqual(
+      outcome.recommendation.lines.map((line) => [line.slug, line.quantity]),
+      [
+        ['aboks-office', 3],
+        ['aboks', 2],
+        ['aboks-xl', 1],
+      ],
+    )
+    // Every line names a product and says why, so the panel never shows a blank reason.
+    for (const line of outcome.recommendation.lines) {
+      assert.ok(line.name, `${line.slug} has a fallback name`)
+      assert.ok(line.note, `${line.slug} has a note`)
+    }
+  })
+
+  it('carries the fellesområde aBoks into the configurator link', () => {
+    const outcome = calculateRecommendation(
+      'kontor',
+      answers({ ansatte: 20, arbeidsomrader: 3, etasjer: 1, fellesomrader: 2 }),
+    )
+    assert.equal(outcome.status, 'ready')
+    if (outcome.status !== 'ready') return
+    assert.equal(
+      recommendationHref(outcome.recommendation, 'konfigurer'),
+      '/bedrifter/kontorpakke?aboks-office=3&aboks=2&aboks-xl=1#konfigurer',
+    )
+  })
+
+  it('does not let fellesområder disturb the Office or XL lines', () => {
+    const base = { ansatte: 20, arbeidsomrader: 3, etasjer: 1 }
+    for (const fellesomrader of [0, 1, 2, 100]) {
+      const input = answers({ ...base, fellesomrader })
+      assert.equal(qty('kontor', input, 'aboks-office'), 3, `office at ${fellesomrader}`)
+      assert.equal(qty('kontor', input, 'aboks-xl'), 1, `xl at ${fellesomrader}`)
+    }
   })
 })
 
@@ -363,5 +439,26 @@ describe('calculator — the handoff link', () => {
         )
       }
     }
+  })
+})
+
+/**
+ * What a package page uses to lock the calculator to itself. It has to be the exact inverse
+ * of the table the calculator sends recommendations through, or a page would show one kind's
+ * badge above another kind's questions.
+ */
+describe('calculator — which kind a solution page is about', () => {
+  it('is the inverse of CALCULATOR_SOLUTIONS, both ways round', () => {
+    for (const kind of CALCULATOR_KINDS) {
+      assert.equal(calculatorKindForSolution(CALCULATOR_SOLUTIONS[kind].solutionSlug), kind)
+    }
+    // And no two kinds claim the same page, which the round-trip above would hide.
+    const slugs = CALCULATOR_KINDS.map((kind) => CALCULATOR_SOLUTIONS[kind].solutionSlug)
+    assert.equal(new Set(slugs).size, slugs.length, 'each kind has its own solution page')
+  })
+
+  it('answers undefined for a page no kind recommends', () => {
+    assert.equal(calculatorKindForSolution('ikke-en-pakke'), undefined)
+    assert.equal(calculatorKindForSolution(''), undefined)
   })
 })
