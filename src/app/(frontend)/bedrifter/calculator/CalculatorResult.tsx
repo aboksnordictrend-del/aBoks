@@ -16,7 +16,6 @@ import {
   SOFT,
   cardLabelStyle,
   primaryButton,
-  secondaryButton,
 } from '../theme'
 
 /**
@@ -24,8 +23,8 @@ import {
  *
  * Quantities only — no prices. What something costs depends on the colours and quantities
  * the customer settles on in the solution configurator, and duplicating pricing here would
- * be a second opinion about it. The two actions carry the recommended quantities to that
- * configurator in the URL.
+ * be a second opinion about it. The one action carries the recommended quantities to that
+ * configurator in the URL, where the customer picks colours and can ask for a quote.
  *
  * `aria-live="polite"` on the panel: the numbers change as the customer types, and a screen
  * reader is told the new recommendation without losing the field it is in.
@@ -38,7 +37,7 @@ export default function CalculatorResult({
 }: {
   outcome: CalculatorOutcome | null
   productTitles: Record<string, string>
-  onSolutionClick?: (target: 'solution' | 'inquiry') => void
+  onSolutionClick?: (target: 'solution') => void
 }) {
   const empty = outcome === null || outcome.status === 'incomplete'
 
@@ -173,15 +172,6 @@ export default function CalculatorResult({
               style={{ ...primaryButton, background: OLIVE, color: CREAM }}
             >
               Tilpass løsningen
-            </Link>
-            <Link
-              href={recommendationHref(outcome.recommendation, 'foresporsel')}
-              data-btn
-              onClick={() => onSolutionClick?.('inquiry')}
-              className="w-full justify-center px-8 sm:w-auto"
-              style={secondaryButton}
-            >
-              Be om tilbud
             </Link>
           </div>
 
