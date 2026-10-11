@@ -78,6 +78,15 @@ export default buildConfig({
           defaultFromAddress: process.env.EMAIL_FROM!,
           defaultFromName: process.env.EMAIL_FROM_NAME || 'aBoks',
           transport: getMailTransport()!,
+          // The adapter verifies the transport by default, and it does so inside Payload's
+          // own init (`await config.email`) — so every route that constructs Payload, plain
+          // storefront pages included, waited on an SMTP round-trip it had no use for, and
+          // paid the full connection timeout whenever that round-trip stalled. verify() also
+          // opens a second connection alongside any send, which is exactly the
+          // concurrent-connection cost src/lib/mailTransport.ts already avoids on purpose.
+          // Sending is unaffected: sendMail opens its own connection. Verification stays
+          // available on demand through verifyMailTransport() / SMTP_VERIFY=true.
+          skipVerify: true,
         }),
       }
     : {}),
