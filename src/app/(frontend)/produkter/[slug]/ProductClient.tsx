@@ -31,6 +31,7 @@ import { availableStock, isSoldOut } from '@/lib/stock'
 import { cartLineRef } from '@/store/cart'
 import SaleCountdown from '@/components/SaleCountdown'
 import Stars from '@/components/reviews/Stars'
+import { productGuide, type ProductGuide } from '@/lib/productGuides'
 
 interface Variant {
   id: string
@@ -165,13 +166,6 @@ const FEATURE_SECTION_COPY = {
   },
 } as const
 
-// Assembly guide (PDF) shown only on the aBoks Vegg page. Matched on the CMS title — the
-// same key the homepage section uses (src/app/(frontend)/page.tsx), so an edited slug does
-// not silently hide the link.
-const VEGG_PRODUCT_TITLE = 'aBoks Vegg'
-const VEGG_ASSEMBLY_GUIDE_URL =
-  'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aboks-vegg/aBoks-Vegg-Monteringsveiledning.pdf'
-
 function isLightColor(hex: string): boolean {
   const c = hex.replace('#', '')
   const full = c.length === 3 ? c.split('').map((ch) => ch + ch).join('') : c
@@ -181,10 +175,58 @@ function isLightColor(hex: string): boolean {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.65
 }
 
+/**
+ * The link to a model's PDF guide, shown directly below the product's accordion group.
+ *
+ * Deliberately quiet — a 15px download glyph, the page's muted green and no button frame —
+ * so it reads as a utility next to the accordions rather than competing with the cart
+ * button above. `inline-flex` inside a centred block keeps icon and text on one line and
+ * centred at every width, so it needs no breakpoint of its own.
+ */
+function ProductGuideLink({ guide, productTitle }: { guide: ProductGuide; productTitle: string }) {
+  return (
+    <div style={{ textAlign: 'center', marginTop: '18px' }}>
+      <a
+        href={guide.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${guide.downloadLabel} for ${productTitle} (PDF, åpnes i ny fane)`}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: '7px',
+          fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#5a6150',
+          textDecoration: 'none', opacity: 0.85, transition: 'opacity 0.15s ease',
+        }}
+        onMouseEnter={(e) => {
+          const el = e.currentTarget as HTMLAnchorElement
+          el.style.opacity = '1'
+          el.style.textDecoration = 'underline'
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLAnchorElement
+          el.style.opacity = '0.85'
+          el.style.textDecoration = 'none'
+        }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="M7 10l5 5 5-5" />
+          <path d="M12 15V3" />
+        </svg>
+        {guide.downloadLabel}
+      </a>
+    </div>
+  )
+}
+
 export default function ProductClient({ product, variants, initialSku, breadcrumbs, reviewSummary, materialStory, catalogue = [] }: Props) {
   // The product being viewed is never recommended back to the reader. Matched on slug —
   // the value the route itself is keyed by — so no title or name is spelled out here.
   const relatedProducts = catalogue.filter((p) => p.slug !== product.slug)
+
+  // Bruksveiledning or monteringsveiledning, whichever this model ships with. Keyed by the
+  // slug the route itself is keyed by, so every colour of a model gets the same guide and
+  // an edited CMS title cannot silently hide the link.
+  const guide = productGuide(product.slug)
 
   const initialVariant = initialSku
     ? (variants.find((v) => v.sku === initialSku) ?? variants[0])
@@ -722,38 +764,10 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                 />
               )}
 
-              {/* Assembly guide — aBoks Vegg only */}
-              {product.title.trim().toLowerCase() === VEGG_PRODUCT_TITLE.toLowerCase() && (
-                <div style={{ textAlign: 'center', marginTop: '18px' }}>
-                  <a
-                    href={VEGG_ASSEMBLY_GUIDE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '7px',
-                      fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#5a6150',
-                      textDecoration: 'none', opacity: 0.85, transition: 'opacity 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget as HTMLAnchorElement
-                      el.style.opacity = '1'
-                      el.style.textDecoration = 'underline'
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget as HTMLAnchorElement
-                      el.style.opacity = '0.85'
-                      el.style.textDecoration = 'none'
-                    }}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                      <path d="M7 10l5 5 5-5" />
-                      <path d="M12 15V3" />
-                    </svg>
-                    Last ned monteringsveiledning
-                  </a>
-                </div>
-              )}
+              {/* The model's PDF guide — under the whole accordion group, outside its
+                  collapsible panels, so it is visible without opening anything. Absent for
+                  a product that has no guide in Blob (see lib/productGuides). */}
+              {guide && <ProductGuideLink guide={guide} productTitle={product.title} />}
             </div>
           </div>
         </section>

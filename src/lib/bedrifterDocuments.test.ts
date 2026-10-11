@@ -66,3 +66,41 @@ test('the Tilbudsmal rows still resolve inside the Bedrifter folder', () => {
     `${BLOB}/Bedrifter/aBoks-Tilbudsmal.pdf?download=1`,
   )
 })
+
+// The guide row sits between Produktark and Tilbudsmal, carries the model's own PDF and
+// opens in a new tab instead of downloading. Checked across all seven models so no card
+// loses its guide or gains another model's.
+test('each card offers its guide directly after Produktark', () => {
+  const expected: Record<string, string> = {
+    aboks: 'Bruksveiledning',
+    'aboks-mini': 'Bruksveiledning',
+    'aboks-nano': 'Bruksveiledning',
+    'aboks-office': 'Bruksveiledning',
+    'aboks-spesial': 'Monteringsveiledning',
+    'aboks-vegg': 'Monteringsveiledning',
+    'aboks-xl': 'Monteringsveiledning',
+  }
+  for (const [slug, label] of Object.entries(expected)) {
+    const key = bedrifterProductKey(slug)
+    assert.ok(key, `no document key for "${slug}"`)
+    const rows = bedrifterDocuments(key)
+    assert.deepEqual(
+      rows.map((row) => row.label),
+      ['Produktark', label, 'Tilbudsmal'],
+      `wrong document rows for "${slug}"`,
+    )
+    const guide = rows[1]
+    assert.equal(guide.files.length, 1)
+    assert.equal(guide.files[0].type, 'PDF')
+    assert.equal(guide.files[0].action, 'open')
+    assert.ok(guide.files[0].url.endsWith(`-${label}.pdf`), guide.files[0].url)
+    // No `?download=1`: the guide is read in the browser, not saved.
+    assert.ok(!guide.files[0].url.includes('download=1'))
+  }
+})
+
+test('every model gets a different guide file', () => {
+  const slugs = ['aboks', 'aboks-mini', 'aboks-nano', 'aboks-office', 'aboks-spesial', 'aboks-vegg', 'aboks-xl']
+  const urls = slugs.map((slug) => bedrifterDocuments(bedrifterProductKey(slug)!)[1].files[0].url)
+  assert.equal(new Set(urls).size, slugs.length)
+})

@@ -7,6 +7,8 @@
  * links on the page can never drift apart.
  */
 
+import { productGuide } from './productGuides'
+
 /** The public Blob host the page's hero and product photos are already served from. */
 const BLOB_BASE = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com'
 const BEDRIFTER_FOLDER = `${BLOB_BASE}/Bedrifter`
@@ -164,8 +166,17 @@ function pdf(filename: string): DocumentFile {
  */
 export function bedrifterDocuments(key: BedrifterProductKey): ProductDocument[] {
   const files = FILES[key]
+  // Bruksveiledning or monteringsveiledning, from the same table the product pages read —
+  // so the guide a model is offered here is the file its own page links to. It sits
+  // directly after Produktark, and the row is skipped for a model with no guide in Blob.
+  const guide = productGuide(key)
   return [
     { label: 'Produktark', files: [pdf(files.produktark)] },
+    // The guide lives outside the `Bedrifter` folder and opens in a new tab rather than
+    // downloading, so it is not built by `pdf()`.
+    ...(guide
+      ? [{ label: guide.cardLabel, files: [{ type: 'PDF' as const, url: guide.url, action: 'open' as const }] }]
+      : []),
     {
       label: 'Tilbudsmal',
       files: [pdf(files.tilbudsmalPdf), { type: 'HTML', url: tilbudsmalHtmlUrl(key), action: 'open' }],
