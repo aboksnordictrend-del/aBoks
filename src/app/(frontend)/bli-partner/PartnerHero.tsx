@@ -94,6 +94,17 @@ export default function PartnerHero() {
             'linear-gradient(180deg, rgba(20,22,17,.45) 0%, rgba(20,22,17,.25) 38%, rgba(20,22,17,.88) 100%)',
         }}
       />
+      {/* Mobile only: the copy sits at the top below `md`, and its last lines fall over the
+          lighter window and wall in the mobile photo. This deepens that band and fades out
+          before the people, so the image itself is unchanged where nothing sits on it. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 md:hidden"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(20,22,17,.25) 0%, rgba(20,22,17,.32) 38%, rgba(20,22,17,0) 56%)',
+        }}
+      />
       {/* Header scrim: a little extra depth behind the transparent nav row. */}
       <div
         aria-hidden="true"
@@ -160,9 +171,12 @@ export default function PartnerHero() {
         </svg>
       </div>
 
-      {/* ── copy ── */}
-      <div className="max-w-container mx-auto flex w-full flex-1 flex-col justify-end px-[clamp(20px,5vw,48px)] pb-[calc(clamp(88px,14vh,128px)+env(safe-area-inset-bottom))] pt-[clamp(120px,18vh,160px)] md:justify-center md:pb-[clamp(96px,12vh,140px)]">
-        <div className="max-w-[680px]">
+      {/* ── copy ──
+          Below `md` the /bedrifter mobile pattern: a full-height column with the text group
+          directly under the header (same top padding) and the actions pushed to the bottom
+          by `mt-auto`. From `md` up the inner block is plain and centred, exactly as before. */}
+      <div className="max-w-container mx-auto flex w-full flex-1 flex-col px-[clamp(20px,5vw,48px)] pb-[calc(clamp(88px,14vh,128px)+env(safe-area-inset-bottom))] pt-[clamp(88px,22vw,120px)] md:justify-center md:pb-[clamp(96px,12vh,140px)] md:pt-[clamp(120px,18vh,160px)]">
+        <div className="flex max-w-[680px] flex-1 flex-col text-center md:block md:flex-none md:text-left">
           <p
             className={styles.rise}
             style={{
@@ -210,13 +224,14 @@ export default function PartnerHero() {
           </h1>
 
           <p
-            className={styles.rise}
+            className={`${styles.rise} mx-auto md:mx-0`}
             style={{
               fontFamily: SANS,
               fontSize: 'clamp(16px,1.45vw,19px)',
               lineHeight: 1.65,
               color: 'rgba(250,246,238,.86)',
-              margin: '0 0 34px',
+              marginTop: 0,
+              marginBottom: '34px',
               maxWidth: '52ch',
               animationDelay: '0.55s',
             }}
@@ -224,67 +239,71 @@ export default function PartnerHero() {
             {PARTNER_HERO.subheadline}
           </p>
 
-          <div
-            className={`${styles.rise} flex flex-col gap-3 min-[420px]:flex-row min-[420px]:flex-wrap`}
-            style={{ animationDelay: '0.7s' }}
-          >
-            <a
-              href="#sok"
-              data-btn
-              onClick={anchorClick('sok')}
-              className="inline-flex items-center justify-center gap-2 rounded-full px-8"
-              style={{
-                minHeight: '54px',
-                background: CREAM,
-                color: INK,
-                fontFamily: SANS,
-                fontWeight: 700,
-                fontSize: '15px',
-                textDecoration: 'none',
-              }}
+          {/* Actions: pinned to the bottom on mobile (with at least 40px above them), in the
+              normal flow from `md`. */}
+          <div className="mt-auto pt-10 md:mt-0 md:pt-0">
+            <div
+              className={`${styles.rise} mx-auto flex w-full max-w-[380px] flex-wrap gap-3 md:mx-0 md:max-w-none`}
+              style={{ animationDelay: '0.7s' }}
             >
-              {PARTNER_HERO.primaryCta}
-              <span className={styles.ctaArrow}>
-                <Icon name="arrow" size={18} color={INK} strokeWidth={2} />
-              </span>
-            </a>
-            <a
-              href="#slik-fungerer-det"
-              data-btn
-              onClick={anchorClick('slik-fungerer-det')}
-              className="inline-flex items-center justify-center rounded-full px-8"
-              style={{
-                minHeight: '54px',
-                background: 'rgba(250,246,238,.08)',
-                color: CREAM,
-                border: '1.5px solid rgba(250,246,238,.45)',
-                fontFamily: SANS,
-                fontWeight: 600,
-                fontSize: '15px',
-                textDecoration: 'none',
-                backdropFilter: 'blur(6px)',
-                WebkitBackdropFilter: 'blur(6px)',
-              }}
-            >
-              {PARTNER_HERO.secondaryCta}
-            </a>
-          </div>
-
-          <ul
-            className={`${styles.rise} mt-7 flex flex-wrap gap-x-6 gap-y-2`}
-            style={{ listStyle: 'none', padding: 0, animationDelay: '0.85s' }}
-          >
-            {POINTS.map((point) => (
-              <li
-                key={point}
-                className="flex items-center gap-2"
-                style={{ fontFamily: SANS, fontWeight: 600, fontSize: '14px', color: 'rgba(250,246,238,.82)' }}
+              <a
+                href="#sok"
+                data-btn
+                onClick={anchorClick('sok')}
+                className="inline-flex grow basis-[calc(50%-6px)] items-center justify-center gap-2 whitespace-nowrap rounded-full px-8 md:grow-0 md:basis-auto"
+                style={{
+                  minHeight: '54px',
+                  background: CREAM,
+                  color: INK,
+                  fontFamily: SANS,
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  textDecoration: 'none',
+                }}
               >
-                <Icon name="check" size={16} color={GOLD} strokeWidth={2.2} />
-                {point}
-              </li>
-            ))}
-          </ul>
+                {PARTNER_HERO.primaryCta}
+                <span className={styles.ctaArrow}>
+                  <Icon name="arrow" size={18} color={INK} strokeWidth={2} />
+                </span>
+              </a>
+              <a
+                href="#slik-fungerer-det"
+                data-btn
+                onClick={anchorClick('slik-fungerer-det')}
+                className="inline-flex grow basis-[calc(50%-6px)] items-center justify-center whitespace-nowrap rounded-full px-8 md:grow-0 md:basis-auto"
+                style={{
+                  minHeight: '54px',
+                  background: 'rgba(250,246,238,.08)',
+                  color: CREAM,
+                  border: '1.5px solid rgba(250,246,238,.45)',
+                  fontFamily: SANS,
+                  fontWeight: 600,
+                  fontSize: '15px',
+                  textDecoration: 'none',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                }}
+              >
+                {PARTNER_HERO.secondaryCta}
+              </a>
+            </div>
+
+            <ul
+              className={`${styles.rise} mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 md:justify-start`}
+              style={{ listStyle: 'none', padding: 0, animationDelay: '0.85s' }}
+            >
+              {POINTS.map((point) => (
+                <li
+                  key={point}
+                  className="flex items-center gap-2"
+                  style={{ fontFamily: SANS, fontWeight: 600, fontSize: '14px', color: 'rgba(250,246,238,.82)' }}
+                >
+                  <Icon name="check" size={16} color={GOLD} strokeWidth={2.2} />
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 
