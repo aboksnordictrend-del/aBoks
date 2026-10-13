@@ -1,0 +1,247 @@
+/*
+ * Motion for /bli-partner that must not depend on JavaScript.
+ *
+ * The hero copy is animated with CSS rather than framer-motion on purpose: a framer `initial`
+ * state is server-rendered as `opacity: 0`, which would leave the page's H1 — its LCP element —
+ * invisible until hydration, and invisible forever without JS. A CSS animation with
+ * `animation-fill-mode: both` plays on first paint instead.
+ *
+ * Everything here is switched off under `prefers-reduced-motion: reduce`.
+ */
+
+/* ── hero entrance ── */
+
+.rise {
+  animation: rise 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  /* Room for descenders inside the clipping box. */
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.wordInner {
+  display: inline-block;
+  animation: wordUp 1s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes wordUp {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* ── hero decoration ── */
+
+.line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 2.6s cubic-bezier(0.65, 0, 0.35, 1) 0.4s forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.orb {
+  animation: float 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+.orbSlow {
+  animation: float 19s ease-in-out -6s infinite reverse;
+  will-change: transform;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(2%, -4%, 0);
+  }
+}
+
+/* ── scroll cue ── */
+
+.scrollDot {
+  animation: scrollDot 2.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes scrollDot {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── flow diagram (customer ↔ partner ↔ ABOKS AS) ── */
+
+.flow {
+  stroke-dasharray: 4 8;
+  animation: flow 1.6s linear infinite;
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+/* ── cards ── */
+
+.card {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.35s ease;
+}
+
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 48px -28px rgba(26, 29, 23, 0.35);
+  }
+}
+
+.ctaArrow {
+  transition: transform 0.25s ease;
+}
+
+@media (hover: hover) {
+  a:hover .ctaArrow {
+    transform: translateX(4px);
+  }
+}
+
+/* ── range input (calculator) ── */
+
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #39402c 0%,
+    #39402c var(--fill, 0%),
+    #ddd2bb var(--fill, 0%),
+    #ddd2bb 100%
+  );
+}
+
+.range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: #ddd2bb;
+}
+
+.range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: #39402c;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: #faf6ee;
+  border: 2px solid #39402c;
+  box-shadow: 0 2px 6px rgba(26, 29, 23, 0.18);
+}
+
+.range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #faf6ee;
+  border: 2px solid #39402c;
+}
+
+.range:focus-visible {
+  outline: 2px solid #5e6a48;
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+/* ── chart bars: keyboard focus ── */
+
+.bar:focus {
+  outline: none;
+}
+
+.bar:focus-visible .barRect {
+  stroke: #1a1d17;
+  stroke-width: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .wordInner,
+  .line,
+  .orb,
+  .orbSlow,
+  .scrollDot,
+  .flow {
+    animation: none !important;
+  }
+
+  .line {
+    stroke-dashoffset: 0;
+  }
+
+  .scrollDot {
+    opacity: 1;
+  }
+
+  .card,
+  .ctaArrow {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}

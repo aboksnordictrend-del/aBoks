@@ -16,6 +16,7 @@ const STATIC_PAGES: MetadataRoute.Sitemap = [
   // The B2B hub. Its four solution pages are added further down, from the registry.
   { url: `${BASE_URL}/bedrifter`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${BASE_URL}/slik-fungerer-det`, changeFrequency: 'monthly', priority: 0.8 },
+  { url: `${BASE_URL}/bli-partner`, changeFrequency: 'monthly', priority: 0.6 },
   { url: `${BASE_URL}/historien`, changeFrequency: 'monthly', priority: 0.7 },
   { url: `${BASE_URL}/inspirasjon`, changeFrequency: 'weekly', priority: 0.8 },
   { url: `${BASE_URL}/vanlige-sporsmal`, changeFrequency: 'monthly', priority: 0.7 },

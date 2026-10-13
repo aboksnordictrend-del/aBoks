@@ -16,7 +16,15 @@ import BenefitsBar from './BenefitsBar'
  * gets the solid state from the start. Add a route here when it gains an edge-to-edge hero —
  * nothing else needs to change.
  */
-const HERO_TOP_ROUTES = ['/', '/bedrifter']
+const HERO_TOP_ROUTES = ['/', '/bedrifter', '/bli-partner']
+
+/**
+ * The subset of HERO_TOP_ROUTES whose hero is DARK. While the header is transparent over one
+ * of these, its nav text and icons switch to cream and the logo is rendered white, so they
+ * stay readable; the moment the header turns solid it is the ordinary dark-on-cream header
+ * again. Light-hero routes (the homepage, /bedrifter) are unaffected.
+ */
+const DARK_HERO_TOP_ROUTES = ['/bli-partner']
 
 export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?: MenuEntry[] }) {
   const pathname = usePathname()
@@ -172,6 +180,21 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
   const blur = atHeroTop ? '' : 'saturate-[140%] backdrop-blur-[14px]'
   const shadow = atHeroTop ? '' : 'shadow-header'
   const textColor = 'text-ink'
+  // Same `mounted` gate as `atHeroTop` (it is derived from it), so the server render and the
+  // first client render always agree: both are the ordinary dark header.
+  const onDarkHero = atHeroTop && DARK_HERO_TOP_ROUTES.includes(pathname)
+  const navColor = onDarkHero ? '#faf6ee' : '#1a1d17'
+  // An inline transition replaces the global press-feedback one in globals.css, so the same
+  // transform/filter/opacity timings are restated alongside the colour fade.
+  const colorTransition =
+    'color 0.3s ease, transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.22s ease'
+  const logoStyle: React.CSSProperties = {
+    height: '56px',
+    width: 'auto',
+    // The one logo file, turned white over a dark hero; no second asset to keep in sync.
+    filter: onDarkHero ? 'brightness(0) invert(1)' : 'none',
+    transition: 'filter 0.3s ease',
+  }
 
   return (
     <>
@@ -203,7 +226,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
               aria-label="Meny"
               type="button"
               className="flex lg:hidden items-center"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: navColor, transition: colorTransition }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                 <path d="M3 6h18M3 12h18M3 18h18" />
@@ -211,29 +234,32 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
             </button>
             {/* Desktop: logo */}
             <Link href="/" aria-label="aBoks – hjem" className="hidden lg:flex items-center">
-              <Image src="/logo.png" alt="aBoks" height={56} width={62} style={{ height: '56px', width: 'auto' }} priority />
+              <Image src="/logo.png" alt="aBoks" height={56} width={62} style={logoStyle} priority />
             </Link>
           </div>
 
           {/* CENTER col: logo (mobile only) */}
           <Link href="/" aria-label="aBoks – hjem" className="flex lg:hidden items-center justify-center">
-            <Image src="/logo.png" alt="aBoks" height={56} width={62} style={{ height: '56px', width: 'auto' }} priority />
+            <Image src="/logo.png" alt="aBoks" height={56} width={62} style={logoStyle} priority />
           </Link>
 
           {/* RIGHT col: nav (desktop only) + cart (always) + hamburger (desktop only) */}
           <div className="flex items-center justify-end" style={{ gap: 'clamp(16px,2.6vw,38px)' }}>
             <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]" aria-label="Primærnavigasjon">
-              <Link href="/produkter" style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
+              <Link href="/produkter" style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: navColor, transition: colorTransition, textDecoration: 'none', padding: '6px 0' }}>
                 Produkter
               </Link>
               {[
                 { label: 'For bedrifter',     href: '/bedrifter' },
+                // From `xl` only: at `lg` widths a seventh item would crowd the row. Below
+                // `xl` the page is reached from the footer and, on mobile, the menu.
+                { label: 'Partnerskap',       href: '/bli-partner', className: 'hidden xl:inline-block' },
                 { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                 { label: 'Historien',         href: '/historien' },
                 { label: 'Inspirasjon',       href: '/inspirasjon' },
                 { label: 'Vanlige spørsmål',  href: '/vanlige-sporsmal' },
-              ].map((item) => (
-                <Link key={item.label} href={item.href} style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: '#1a1d17', textDecoration: 'none', padding: '6px 0' }}>
+              ].map((item: { label: string; href: string; className?: string }) => (
+                <Link key={item.label} href={item.href} className={item.className} style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: navColor, transition: colorTransition, textDecoration: 'none', padding: '6px 0' }}>
                   {item.label}
                 </Link>
               ))}
@@ -247,7 +273,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
               // about. Announcing the dialog one paint later costs nothing.
               aria-haspopup={mounted && cartOpensDrawer ? 'dialog' : undefined}
               onClick={onCartClick}
-              style={{ position: 'relative', color: '#1a1d17', display: 'flex', alignItems: 'center', padding: '6px' }}
+              style={{ position: 'relative', color: navColor, transition: colorTransition, display: 'flex', alignItems: 'center', padding: '6px' }}
             >
               <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="9" cy="20" r="1.1" />
@@ -271,7 +297,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
               aria-label="Meny"
               type="button"
               className="hidden lg:flex items-center"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: '#1a1d17' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', color: navColor, transition: colorTransition }}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                 <path d="M3 6h18M3 12h18M3 18h18" />
@@ -348,6 +374,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
                   links: [
                     { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                     { label: 'For bedrifter',      href: '/bedrifter' },
+                    { label: 'Partnerskap',        href: '/bli-partner' },
                     { label: 'Historien',          href: '/historien' },
                     { label: 'Inspirasjon',        href: '/inspirasjon' },
                     { label: 'Anmeldelser',        href: '/anmeldelser' },

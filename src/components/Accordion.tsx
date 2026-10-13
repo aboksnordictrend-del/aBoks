@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 interface AccordionItem {
@@ -17,14 +17,22 @@ interface AccordionProps {
 
 export default function Accordion({ items, defaultOpen, borderColor = '#ddd2bb' }: AccordionProps) {
   const [open, setOpen] = useState<string | null>(defaultOpen ?? null)
+  // Stable per-instance prefix so two accordions on one page never share an id.
+  const baseId = useId()
 
   return (
     <div>
       {items.map((item) => {
         const isOpen = open === item.id
+        const buttonId = `${baseId}-${item.id}-button`
+        const panelId = `${baseId}-${item.id}-panel`
         return (
           <div key={item.id} style={{ borderBottom: `1px solid ${borderColor}` }}>
             <button
+              type="button"
+              id={buttonId}
+              aria-expanded={isOpen}
+              aria-controls={panelId}
               onClick={() => setOpen(isOpen ? null : item.id)}
               style={{
                 width: '100%',
@@ -50,6 +58,7 @@ export default function Accordion({ items, defaultOpen, borderColor = '#ddd2bb' 
                 {item.question}
               </span>
               <span
+                aria-hidden="true"
                 style={{
                   display: 'inline-block',
                   fontSize: '24px',
@@ -68,6 +77,9 @@ export default function Accordion({ items, defaultOpen, borderColor = '#ddd2bb' 
               {isOpen && (
                 <motion.div
                   key="content"
+                  id={panelId}
+                  role="region"
+                  aria-labelledby={buttonId}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
