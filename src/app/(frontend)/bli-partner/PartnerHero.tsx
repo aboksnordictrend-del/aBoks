@@ -27,8 +27,6 @@ import styles from './bliPartner.module.css'
  * keeps that row readable whatever the photo looks like at the top.
  */
 
-const POINTS = ['Gratis å søke', 'Ingen varelager', 'Hele Norge']
-
 export default function PartnerHero() {
   const ref = useRef<HTMLElement>(null)
   const reduceMotion = useReducedMotion()
@@ -39,7 +37,12 @@ export default function PartnerHero() {
   const mobile = PARTNER_HERO_IMAGE.mobile || PARTNER_HERO_IMAGE.desktop
   const hasImage = Boolean(desktop)
 
-  const words = PARTNER_HERO.headline.split(' ')
+  // The second sentence is set in the accent style, on its own line.
+  const words = [
+    ...PARTNER_HERO.headline.split(' ').map((text) => ({ text, accent: false })),
+    ...PARTNER_HERO.headlineAccent.split(' ').map((text) => ({ text, accent: true })),
+  ]
+  const accentStart = words.findIndex((w) => w.accent)
 
   return (
     <section
@@ -198,7 +201,7 @@ export default function PartnerHero() {
             style={{
               fontFamily: SERIF,
               fontWeight: 600,
-              fontSize: 'clamp(44px,7.2vw,96px)',
+              fontSize: 'clamp(40px,6.4vw,88px)',
               letterSpacing: '-0.025em',
               lineHeight: 1.0,
               color: CREAM,
@@ -206,19 +209,20 @@ export default function PartnerHero() {
             }}
           >
             {words.map((word, i) => (
-              <span key={`${word}-${i}`}>
+              <span key={`${word.text}-${i}`}>
+                {i === accentStart && <br />}
                 <span className={styles.word}>
                   <span
                     className={styles.wordInner}
                     style={{
-                      animationDelay: `${0.15 + i * 0.09}s`,
-                      ...(word === 'aBoks' ? { fontStyle: 'italic', color: '#e4d3ae' } : null),
+                      animationDelay: `${0.15 + i * 0.08}s`,
+                      ...(word.accent ? { fontStyle: 'italic', color: '#e4d3ae' } : null),
                     }}
                   >
-                    {word}
+                    {word.text}
                   </span>
                 </span>
-                {i < words.length - 1 ? ' ' : null}
+                {i < words.length - 1 && i + 1 !== accentStart ? ' ' : null}
               </span>
             ))}
           </h1>
@@ -267,9 +271,9 @@ export default function PartnerHero() {
                 </span>
               </a>
               <a
-                href="#slik-fungerer-det"
+                href="#metoder"
                 data-btn
-                onClick={anchorClick('slik-fungerer-det')}
+                onClick={anchorClick('metoder')}
                 className="inline-flex grow basis-[calc(50%-6px)] items-center justify-center whitespace-nowrap rounded-full px-8 md:grow-0 md:basis-auto"
                 style={{
                   minHeight: '54px',
@@ -292,7 +296,7 @@ export default function PartnerHero() {
               className={`${styles.rise} mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 md:justify-start`}
               style={{ listStyle: 'none', padding: 0, animationDelay: '0.85s' }}
             >
-              {POINTS.map((point) => (
+              {PARTNER_HERO.points.map((point) => (
                 <li
                   key={point}
                   className="flex items-center gap-2"
@@ -315,10 +319,10 @@ export default function PartnerHero() {
         style={{ bottom: 'calc(28px + env(safe-area-inset-bottom))' }}
       >
         <a
-          href="#programmer"
+          href="#metoder"
           data-btn
-          onClick={anchorClick('programmer')}
-          aria-label="Bla ned til partnerprogrammene"
+          onClick={anchorClick('metoder')}
+          aria-label="Bla ned til de tre metodene"
           className={`${styles.rise} pointer-events-auto flex flex-col items-center gap-2`}
           style={{
             animationDelay: '1.2s',

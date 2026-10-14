@@ -15,7 +15,7 @@ export interface AdminPartnerApplicationData extends CleanApplication {
 }
 
 /**
- * Internal notification of a Salgspartner application from /bli-partner.
+ * Internal notification of a partner application from /bli-partner.
  *
  * This e-mail is the only record of the application — no collection is written — so every
  * submitted field is printed, with «Ikke oppgitt» for an optional field left empty. It
@@ -76,7 +76,7 @@ export function createAdminPartnerApplicationEmail(data: AdminPartnerApplication
     `<h2 style="margin:0 0 8px;font-size:15px;font-weight:600;color:#1a1d17;border-bottom:2px solid #1a1d17;padding-bottom:8px;">${escapeHtml(title)}</h2>`
 
   const body = `
-    <h1 style="margin:0 0 4px;font-size:22px;font-weight:bold;color:#1a1d17;">Ny søknad: aBoks-salgspartner</h1>
+    <h1 style="margin:0 0 4px;font-size:22px;font-weight:bold;color:#1a1d17;">Ny søknad: aBoks-partner</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#555;">
       <strong>${escapeHtml(fullName)}</strong> (${escapeHtml(typeLabel)}) har sendt inn søknadsskjemaet på ${escapeHtml(source)}.
     </p>

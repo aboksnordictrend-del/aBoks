@@ -1,5 +1,5 @@
 /**
- * Validation and normalisation for the Salgspartner application form on /bli-partner.
+ * Validation and normalisation for the partner application form on /bli-partner.
  *
  * Pure and isomorphic, like `@/lib/bedrifter/inquiry`, which it mirrors: the client form and
  * the endpoint import the same limits, messages and validator, so the browser and the server

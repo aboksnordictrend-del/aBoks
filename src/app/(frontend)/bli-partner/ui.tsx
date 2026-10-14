@@ -119,7 +119,37 @@ export function AnimatedNumber({
   )
 }
 
-/* ────────────────────────────── heading ────────────────────────────── */
+/* ────────────────────────────── headings ────────────────────────────── */
+
+/** An h3 block heading inside a method tab: the section's h2 already sits above it. */
+export function SubHeading({
+  eyebrow,
+  title,
+  intro,
+  id,
+}: {
+  eyebrow?: string
+  title: React.ReactNode
+  intro?: React.ReactNode
+  id?: string
+}) {
+  return (
+    <div>
+      {eyebrow && <p style={{ ...eyebrowStyle, margin: '0 0 12px' }}>{eyebrow}</p>}
+      <h3
+        id={id}
+        style={{
+          ...h2Style,
+          fontSize: 'clamp(28px,3vw,40px)',
+          margin: 0,
+        }}
+      >
+        {title}
+      </h3>
+      {intro && <p style={{ ...introStyle, fontSize: 'clamp(15.5px,1.3vw,17px)', marginTop: '12px' }}>{intro}</p>}
+    </div>
+  )
+}
 
 export function SectionHeading({
   eyebrow,

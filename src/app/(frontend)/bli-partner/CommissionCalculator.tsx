@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   CORPORATE_EXAMPLE,
   PARTNER_COMMISSION_PERCENT,
@@ -10,15 +10,15 @@ import {
   formatPercent,
 } from '@/lib/partnerProgram/calculator'
 import { CALCULATOR_DISCLAIMER } from '@/lib/partnerProgram/content'
-import { BORDER_WARM, CREAM, GOLD, INK, MUTED, OLIVE, PALE_SAGE, SANS, SECTION_PAD, SERIF, SOFT } from '../bedrifter/theme'
+import { BORDER_WARM, CREAM, GOLD, INK, MUTED, OLIVE, PALE_SAGE, SANS, SERIF, SOFT } from '../bedrifter/theme'
 import Reveal from '../historien/Reveal'
 import EarningsChart from './EarningsChart'
 import OrderBreakdown from './OrderBreakdown'
-import { AnimatedNumber, Icon, SectionHeading } from './ui'
-import styles from './bliPartner.module.css'
+import { Field, parseNumber } from './CalculatorField'
+import { AnimatedNumber, Icon, SubHeading } from './ui'
 
 /**
- * The interactive commission calculator.
+ * The interactive commission calculator for the Promokode method, shown inside its tab.
  *
  * Real state and real arithmetic: every figure on this panel — and every bar in the order
  * breakdown beside it — is `calculatePartnerExample` applied to the three inputs, and its
@@ -29,12 +29,6 @@ import styles from './bliPartner.module.css'
  * Inputs are held as the strings the visitor typed, so a half-typed number never jumps; the
  * calculation reads them through `parseNumber` and the shared clamping.
  */
-
-/** «50 000», «50000», «1 299,5» → number; anything else → NaN (the calculator then clamps). */
-function parseNumber(text: string): number {
-  const cleaned = text.replace(/[\s  ]/g, '').replace(',', '.')
-  return cleaned === '' ? Number.NaN : Number(cleaned)
-}
 
 const SLIDER = {
   orderValue: { min: 500, max: 100_000, step: 500 },
@@ -59,16 +53,12 @@ export default function CommissionCalculator() {
   const { total, input } = result
 
   return (
-    <section
-      id="kalkulator"
-      aria-labelledby="kalkulator-title"
-      style={{ background: CREAM, padding: SECTION_PAD, scrollMarginTop: '90px' }}
-    >
-      <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+    <section id="kalkulator" aria-labelledby="kalkulator-title" style={{ scrollMarginTop: '90px' }}>
+      <div>
         <Reveal>
-          <SectionHeading
+          <SubHeading
             id="kalkulator-title"
-            eyebrow="Provisjonskalkulator"
+            eyebrow="Provisjonskalkulator · Promokode"
             title="Regn på ditt eget eksempel"
             intro="Juster ordreverdi, antall ordrer og bedriftsrabatt, og se hvordan rabattene og provisjonen henger sammen."
           />
@@ -97,7 +87,7 @@ export default function CommissionCalculator() {
               />
               <Field
                 label="Antall ordrer"
-                hint="Med partnerkoden din"
+                hint="Med promokoden din"
                 value={orders}
                 onChange={setOrders}
                 slider={SLIDER.orders}
@@ -106,7 +96,7 @@ export default function CommissionCalculator() {
               />
               <Field
                 label="Bedriftsrabatt"
-                hint="Mengderabatt før partnerrabatten, 0 % for vanlige kjøp"
+                hint="Mengderabatt før promokoden, 0 % for vanlige kjøp"
                 suffix="%"
                 value={corporate}
                 onChange={setCorporate}
@@ -117,7 +107,7 @@ export default function CommissionCalculator() {
 
               <dl className="mt-2 grid grid-cols-2 gap-2.5">
                 {[
-                  ['Partnerrabatt', formatPercent(PARTNER_DISCOUNT_PERCENT)],
+                  ['Promokode-rabatt', formatPercent(PARTNER_DISCOUNT_PERCENT)],
                   ['Provisjon', formatPercent(PARTNER_COMMISSION_PERCENT)],
                 ].map(([label, value]) => (
                   <div key={label} style={{ background: PALE_SAGE, borderRadius: '14px', padding: '12px 12px 10px' }}>
@@ -228,93 +218,5 @@ export default function CommissionCalculator() {
         </p>
       </div>
     </section>
-  )
-}
-
-function Field({
-  label,
-  hint,
-  suffix,
-  value,
-  onChange,
-  slider,
-  sliderValue,
-  formatSlider,
-}: {
-  label: string
-  hint: string
-  suffix?: string
-  value: string
-  onChange: (value: string) => void
-  slider: { min: number; max: number; step: number }
-  sliderValue: number
-  formatSlider: (n: number) => string
-}) {
-  const id = useId()
-  const hintId = `${id}-hint`
-  const clamped = Math.min(Math.max(sliderValue, slider.min), slider.max)
-  const fill = ((clamped - slider.min) / (slider.max - slider.min)) * 100
-
-  return (
-    <div style={{ marginBottom: '22px' }}>
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-        <label htmlFor={id} style={{ fontFamily: SANS, fontWeight: 700, fontSize: '14.5px', color: INK }}>
-          {label}
-          <span id={hintId} style={{ display: 'block', fontWeight: 500, fontSize: '12.5px', color: MUTED, marginTop: '2px' }}>
-            {hint}
-          </span>
-        </label>
-        <span
-          className="flex items-center"
-          style={{ border: `1px solid ${BORDER_WARM}`, borderRadius: '12px', background: CREAM, paddingRight: suffix ? '12px' : 0 }}
-        >
-          <input
-            id={id}
-            type="text"
-            inputMode="decimal"
-            autoComplete="off"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            aria-describedby={hintId}
-            style={{
-              width: suffix === 'kr' ? '120px' : '84px',
-              padding: '10px 12px',
-              border: 'none',
-              background: 'transparent',
-              fontFamily: SANS,
-              fontWeight: 700,
-              fontSize: '16px',
-              color: INK,
-              textAlign: 'right',
-              outline: 'none',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-            onBlur={() => {
-              // Snap to what was actually calculated, so the field never shows a value the
-              // result does not reflect (e.g. «0» orders, or 90 % corporate discount).
-              // `sliderValue` is the calculator's normalised input, not the slider's range.
-              if (parseNumber(value) !== sliderValue) onChange(String(sliderValue))
-            }}
-          />
-          {suffix && (
-            <span aria-hidden="true" style={{ fontFamily: SANS, fontWeight: 600, fontSize: '14px', color: MUTED }}>
-              {suffix}
-            </span>
-          )}
-        </span>
-      </div>
-      <input
-        type="range"
-        className={`${styles.range} mt-3`}
-        min={slider.min}
-        max={slider.max}
-        step={slider.step}
-        value={clamped}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label={`${label}, glidebryter`}
-        aria-valuetext={formatSlider(clamped)}
-        style={{ ['--fill' as string]: `${fill}%` } as React.CSSProperties}
-      />
-    </div>
   )
 }

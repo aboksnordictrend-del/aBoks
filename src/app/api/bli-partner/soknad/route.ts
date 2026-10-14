@@ -4,7 +4,7 @@ import { clientIpFromHeaders } from '@/lib/rateLimit'
 import { handlePartnerApplication } from '@/lib/partnerProgram/applicationEndpoint'
 
 /**
- * POST /api/bli-partner/soknad — the Salgspartner application form on /bli-partner.
+ * POST /api/bli-partner/soknad — the partner application form on /bli-partner.
  *
  * A thin adapter, exactly like `/api/bedrifter/foresporsel`: everything that decides
  * anything lives in `handlePartnerApplication`. The Payload client is built lazily inside the

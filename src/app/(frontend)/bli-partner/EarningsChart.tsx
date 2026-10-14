@@ -53,7 +53,7 @@ export default function EarningsChart() {
         </p>
         <p style={{ fontFamily: SANS, fontSize: '13.5px', lineHeight: 1.6, color: MUTED, margin: '6px 0 0' }}>
           Forutsetninger: {formatNok(EARNINGS_EXAMPLE.orderValueKr * 100)} per ordre før rabatt, ingen
-          bedriftsrabatt og {formatPercent(PARTNER_DISCOUNT_PERCENT)} partnerrabatt. Uavhengig av
+          bedriftsrabatt og {formatPercent(PARTNER_DISCOUNT_PERCENT)} rabatt med promokoden. Uavhengig av
           kalkulatoren.
         </p>
       </figcaption>

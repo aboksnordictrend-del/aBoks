@@ -20,7 +20,7 @@ import {
 import { APPLICATION_RESPONSE_MESSAGES } from '@/lib/partnerProgram/applicationResponses'
 
 /**
- * The Salgspartner application form.
+ * The partner application form — one form for the whole programme and all three methods.
  *
  * Posts to `POST /api/bli-partner/soknad`, which e-mails post@aboks.no and the applicant and
  * succeeds only when both were accepted. Submitting creates nothing: no partner, no code, no
@@ -409,7 +409,7 @@ export default function ApplicationForm() {
           required
           value={values.promotionPlan}
           onChange={(e) => set('promotionPlan', e.target.value)}
-          placeholder="Fortell for eksempel om nettverket ditt, kanalene du bruker eller bedriftene du kan introdusere aBoks for."
+          placeholder="Fortell for eksempel om nettverket ditt og kanalene du bruker, og om du ser for deg promokode, bedriftssalg, forhandlersalg eller en kombinasjon."
           aria-invalid={errors.promotionPlan ? true : undefined}
           aria-describedby={describedBy('promotionPlan')}
           style={fieldStyle('promotionPlan', { resize: 'vertical', minHeight: '132px', lineHeight: 1.6 })}

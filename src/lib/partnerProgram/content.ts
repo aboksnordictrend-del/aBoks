@@ -1,10 +1,12 @@
 /**
- * Copy for /bli-partner that is not tied to one programme card: the hero, the Salgspartner
- * terms, the process, the benefits, the marketing toolkit and the FAQ.
+ * Copy for /bli-partner that is shared by all three earning methods: the hero, the terms every
+ * partner has in common, the process, the marketing toolkit and the FAQ. Method-specific copy
+ * lives in `./methods`.
  *
  * Every statement here describes the programme terms ABOKS AS has set. Where something is
  * decided case by case or in the partner agreement, the copy says so rather than inventing a
- * rule. Nothing here promises income, employment, automated payouts or a partner dashboard.
+ * rule. Nothing here promises income, employment, automated payouts, a partner dashboard or
+ * automated tracking of business or retailer sales.
  */
 
 /* ────────────────────────────── hero ────────────────────────────── */
@@ -25,14 +27,17 @@ export const PARTNER_HERO_IMAGE = {
 
 export const PARTNER_HERO = {
   eyebrow: 'ABOKS AS · PARTNERPROGRAM',
-  headline: 'Voks sammen med aBoks',
+  /** Rendered on two lines; the second is set in the accent style. */
+  headline: 'Én partneravtale.',
+  headlineAccent: 'Tre måter å tjene på.',
   subheadline:
-    'Anbefal smartere batterihåndtering. Gi kundene gode fordeler. Tjen provisjon på salgene du skaper.',
-  primaryCta: 'Bli salgspartner',
-  secondaryCta: 'Se hvordan det fungerer',
+    'Del din personlige promokode, formidle salg til bedrifter eller rekrutter forhandlere. Bruk én metode eller kombiner alle tre – i ditt eget tempo.',
+  primaryCta: 'Søk om partnerskap',
+  secondaryCta: 'Se de tre metodene',
+  points: ['Gratis å søke', 'Ingen salgskrav', 'Ingen varelager'],
 } as const
 
-/* ────────────────────────────── Salgspartner ────────────────────────────── */
+/* ────────────────────────────── shared terms ────────────────────────────── */
 
 export const OPEN_TO = ['Privatpersoner', 'Enkeltpersonforetak', 'Bedrifter'] as const
 
@@ -56,11 +61,22 @@ export interface ProgramTerm {
   text: string
 }
 
-export const SALGSPARTNER_TERMS: readonly ProgramTerm[] = [
+/** What every partner gets and agrees to, whichever methods they use. */
+export const SHARED_TERMS: readonly ProgramTerm[] = [
+  {
+    icon: 'contract',
+    title: 'Én partneravtale',
+    text: 'Én signert avtale gir tilgang til alle tre metodene. Du søker bare én gang.',
+  },
   {
     icon: 'free',
     title: 'Gratis å søke og delta',
-    text: 'Ingen innmeldingsavgift, ingen kjøpsplikt og ingen krav til salgsvolum.',
+    text: 'Ingen innmeldingsavgift, ingen kjøpsplikt og ingen oppstartskostnader.',
+  },
+  {
+    icon: 'self',
+    title: 'Ingen salgs- eller aktivitetskrav',
+    text: 'Du velger selv om, når og hvordan du er aktiv. Det finnes ingen minstekrav til salg.',
   },
   {
     icon: 'approval',
@@ -68,34 +84,9 @@ export const SALGSPARTNER_TERMS: readonly ProgramTerm[] = [
     text: 'Alle søknader vurderes individuelt. Søknaden i seg selv gir ikke partnerstatus.',
   },
   {
-    icon: 'contract',
-    title: 'Signert partneravtale',
-    text: 'Samarbeidet starter når partneravtalen er signert av begge parter.',
-  },
-  {
     icon: 'code',
-    title: 'Personlig partnerkode',
-    text: 'Hver godkjente partner får sin egen kode, som knytter salgene til deg.',
-  },
-  {
-    icon: 'discount',
-    title: '10 % ekstra rabatt til kunden',
-    text: 'Kunden får 10 % rabatt med koden – også i tillegg til gjeldende mengderabatt.',
-  },
-  {
-    icon: 'commission',
-    title: '15 % provisjon',
-    text: 'Av det kunden faktisk betaler for varene etter alle rabatter. Frakt regnes ikke med.',
-  },
-  {
-    icon: 'repeat',
-    title: 'Også på gjenkjøp',
-    text: 'Når kunden bruker koden din igjen, gir også det nye kjøpet provisjon.',
-  },
-  {
-    icon: 'self',
-    title: 'Egne kjøp teller',
-    text: 'Du kan bruke din egen kode og få provisjon etter samme beregning, med forbehold om skattemessig behandling.',
+    title: 'Personlig promokode',
+    text: 'Alle godkjente partnere får sin egen kode – også om du mest jobber med bedrifter eller butikker.',
   },
   {
     icon: 'map',
@@ -105,25 +96,20 @@ export const SALGSPARTNER_TERMS: readonly ProgramTerm[] = [
   {
     icon: 'noStock',
     title: 'Ingen lager eller frakt',
-    text: 'Ingen innkjøp, ingen varelager og ikke noe ansvar for forsendelser.',
+    text: 'Ingen innkjøp, ingen varelager og ikke noe ansvar for betaling eller forsendelser.',
   },
   {
     icon: 'service',
     title: 'Vi tar oss av resten',
-    text: 'ABOKS AS håndterer kasse, betaling, produksjon, levering, returer og kundeservice.',
-  },
-  {
-    icon: 'calendar',
-    title: 'Månedlig oppgjør',
-    text: 'Provisjon gjøres opp månedlig for ferdigbehandlede og kvalifiserte ordrer.',
+    text: 'ABOKS AS håndterer betaling, fakturering, produksjon, levering, returer og kundeservice.',
   },
 ]
 
-/** The limits stated next to the terms, so the good news never stands without them. */
-export const SALGSPARTNER_CONDITIONS = [
-  'Kansellerte og refunderte ordrer gir ikke provisjon. Ved delvis refusjon justeres provisjonen forholdsmessig.',
-  'Provisjon opptjenes bare på kvalifiserte salg. Ingen inntekt er garantert.',
-  'Frakt inngår aldri i provisjonsgrunnlaget.',
+/** The limits stated next to the shared terms, so the good news never stands without them. */
+export const SHARED_CONDITIONS = [
+  'Provisjon opptjenes bare på kvalifiserte, betalte salg. Kansellerte og refunderte ordrer gir ikke provisjon. Ingen inntekt er garantert.',
+  'Provisjonen beregnes av betalt vareverdi. Frakt og eventuelle avgifter som faktureres i tillegg, inngår aldri i grunnlaget.',
+  'Deltakelsen er frivillig, men partneravtalen inneholder vilkår som gjelder for samarbeidet, blant annet om markedsføring og oppgjør.',
 ] as const
 
 /* ────────────────────────────── process ────────────────────────────── */
@@ -135,49 +121,30 @@ export interface ProcessStep {
 
 export const PROCESS_STEPS: readonly ProcessStep[] = [
   {
-    title: 'Send inn søknad',
+    title: 'Send inn én søknad',
     text: 'Fyll ut søknadsskjemaet og fortell kort hvordan du ønsker å gjøre aBoks kjent.',
   },
   {
     title: 'Signer partneravtalen',
-    text: 'Blir søknaden godkjent, inngår du en partneravtale med ABOKS AS.',
+    text: 'Blir søknaden godkjent, inngår du én partneravtale med ABOKS AS som dekker alle tre metodene.',
   },
   {
-    title: 'Få din personlige partnerkode',
-    text: 'Du får en unik kode som kundene dine bruker når de handler.',
+    title: 'Få koden og materiellet',
+    text: 'Du får din personlige promokode og tilgang til markedsføringsmateriell.',
   },
   {
-    title: 'Del og anbefal aBoks',
-    text: 'Anbefal produktene i nettverket ditt, i digitale kanaler eller til forretningskontakter.',
+    title: 'Velg hvordan du vil jobbe',
+    text: 'Del koden, formidle bedriftssalg, rekrutter forhandlere – eller kombiner metodene.',
   },
   {
-    title: 'Kundene handler på aboks.no',
-    text: 'Kunden får rabatten, mens ABOKS AS tar seg av kjøpet og leveringen.',
+    title: 'ABOKS AS tar seg av ordren',
+    text: 'Vi håndterer betaling, fakturering, produksjon og levering.',
   },
   {
     title: 'Motta provisjon',
-    text: 'Du tjener provisjon på kvalifiserte salg – også når kunden handler igjen med koden.',
+    text: 'Du får provisjon på kvalifiserte, betalte salg etter satsen for metoden som er brukt.',
   },
 ]
-
-/* ────────────────────────────── benefits ────────────────────────────── */
-
-export const CUSTOMER_BENEFITS = [
-  '10 % ekstra rabatt med partnerkoden',
-  'Rabatten gjelder vanlige kjøp og kommer i tillegg til gjeldende mengderabatt for bedrifter',
-  'Bestilling direkte på aboks.no',
-  'Produktene leveres av ABOKS AS',
-  'Ingen mellomledd i kjøpet',
-] as const
-
-export const PARTNER_BENEFITS = [
-  '15 % provisjon på kvalifiserte salg',
-  'Provisjon også ved gjenkjøp med koden',
-  'Ingen varelager og ingen forsendelser',
-  'Ingen påkrevd investering',
-  'Fleksibel markedsføring, i egne kanaler og eget tempo',
-  'Mulighet til å introdusere bedriftskunder',
-] as const
 
 /* ────────────────────────────── corporate ────────────────────────────── */
 
@@ -198,7 +165,7 @@ export const TOOLKIT_ITEMS = [
   { title: 'Produktbeskrivelser', text: 'Fakta om modeller, farger og bruksområder.' },
   { title: 'Digitalt materiell', text: 'Materiell tilpasset sosiale medier og nett.' },
   { title: 'Produktinformasjon', text: 'Veiledning om bruk og plassering av aBoks.' },
-  { title: 'Din partnerkode', text: 'Din personlige kode, klar til å deles.' },
+  { title: 'Din promokode', text: 'Din personlige kode, klar til å deles.' },
 ] as const
 
 /* ────────────────────────────── FAQ ────────────────────────────── */
@@ -214,7 +181,19 @@ export const PARTNER_FAQ: readonly FaqItem[] = [
     id: 'hvem',
     question: 'Hvem kan bli aBoks-partner?',
     answer:
-      'Salgspartnerprogrammet er åpent for privatpersoner, enkeltpersonforetak og bedrifter. Alle søknader vurderes individuelt av ABOKS AS, og et partnerskap forutsetter at søknaden er godkjent og at partneravtalen er signert.',
+      'Partnerprogrammet er åpent for privatpersoner, enkeltpersonforetak og bedrifter. Alle søknader vurderes individuelt av ABOKS AS, og et partnerskap forutsetter at søknaden er godkjent og at partneravtalen er signert.',
+  },
+  {
+    id: 'en-avtale',
+    question: 'Må jeg søke om hver metode for seg?',
+    answer:
+      'Nei. Du sender én søknad og inngår én partneravtale. Som godkjent partner har du tilgang til alle tre metodene – promokode, bedriftssalg og forhandlersalg – og kan bruke én, flere, alle eller ingen av dem. Det finnes ingen obligatoriske salgsmål eller aktivitetskrav.',
+  },
+  {
+    id: 'krav',
+    question: 'Må jeg selge et bestemt antall eller være aktiv hele tiden?',
+    answer:
+      'Nei. Det er frivillig hvilke metoder du bruker og hvor aktiv du er, og programmet har ingen salgsmål, aktivitetskrav eller krav om eksklusivitet. Partneravtalen inneholder likevel vilkår som gjelder for samarbeidet, for eksempel om markedsføring og oppgjør.',
   },
   {
     id: 'kostnad',
@@ -223,46 +202,70 @@ export const PARTNER_FAQ: readonly FaqItem[] = [
       'Nei. Det er gratis å søke og gratis å delta. Det er ingen innmeldingsavgift, ingen kjøpsplikt, ingen krav til salgsvolum og ingen krav om å holde varelager.',
   },
   {
-    id: 'kode',
-    question: 'Hvordan fungerer partnerkoden?',
-    answer:
-      'Som godkjent partner får du en personlig kode. Kunden skriver inn koden i handlekurven på aboks.no og får 10 % ekstra rabatt på kvalifiserte varer. Når ordren er betalt, registreres kjøpet på koden din, slik at salget knyttes til deg.',
-  },
-  {
-    id: 'bedrift',
-    question: 'Får kunden 10 % rabatt også på bedriftsbestillinger?',
-    answer:
-      'Ja. Partnerrabatten gjelder også bestillinger med mengderabatt, og den beregnes av prisen etter mengderabatten. Eksempel: en bestilling på 50 000 kr med 20 % bedriftsrabatt koster 40 000 kr – med partnerkoden blir prisen 36 000 kr. I nettbutikken trekkes partnerrabatten fra den rabatterte mengdeprisen. For bedriftstilbud som avtales direkte med oss, må partnerkoden og rabatten være med i det avtalte tilbudet eller bekreftes av ABOKS AS.',
-  },
-  {
     id: 'provisjon',
     question: 'Hvordan beregnes provisjonen?',
     answer:
-      'Provisjonen er 15 % av det kunden faktisk betaler for varene etter alle gjeldende rabatter. Frakt regnes ikke med. Eksempel: en ordre på 1 000 kr får 10 % partnerrabatt, og kunden betaler 900 kr for varene. Provisjonen blir 135 kr. På en bedriftsbestilling på 50 000 kr med 20 % bedriftsrabatt betaler kunden 36 000 kr, og provisjonen blir 5 400 kr.',
+      'Provisjonen beregnes alltid av det kunden faktisk betaler for varene etter rabatter. Frakt og eventuelle avgifter som faktureres i tillegg, regnes ikke med. Satsene er 15 % for promokode, 25 % for bedriftssalg og 15 % for forhandlersalg. Eksempel med promokode: en ordre på 1 000 kr får 10 % rabatt, kunden betaler 900 kr for varene, og provisjonen blir 135 kr.',
+  },
+  {
+    id: 'kode',
+    question: 'Hvordan fungerer promokoden?',
+    answer:
+      'Som godkjent partner får du en personlig kode. Kunden skriver inn koden i handlekurven på aboks.no og får 10 % rabatt på kvalifiserte varer. Når ordren er betalt, registreres kjøpet på koden din, slik at salget knyttes til deg.',
+  },
+  {
+    id: 'bedrift',
+    question: 'Får kunden 10 % rabatt også på bedriftsbestillinger med promokoden?',
+    answer:
+      'Ja, når kunden selv bestiller i nettbutikken med koden din. Rabatten beregnes da av prisen etter mengderabatten. Eksempel: en bestilling på 50 000 kr med 20 % bedriftsrabatt koster 40 000 kr – med promokoden blir prisen 36 000 kr. For bedriftstilbud som avtales direkte med oss, må promokoden og rabatten være med i det avtalte tilbudet eller bekreftes av ABOKS AS.',
+  },
+  {
+    id: 'forskjell',
+    question: 'Hva er forskjellen på promokode og bedriftssalg?',
+    answer:
+      'Med promokoden handler kunden selv på aboks.no, får 10 % rabatt i tillegg til gjeldende mengderabatt, og du får 15 % av det kunden betaler for varene. Ved bedriftssalg er det du som finner kunden og forhandler frem bestillingen, mens ABOKS AS bekrefter ordren og fakturerer kunden. Kunden får gjeldende mengderabatt, men ingen ekstra rabatt fra promokoden, og du får 25 % av den endelige betalte vareverdien.',
+  },
+  {
+    id: 'forhandler',
+    question: 'Hvordan fungerer forhandlersalg?',
+    answer:
+      'Du introduserer aBoks for en butikk som vil selge produktene videre. Forhandleren registreres hos ABOKS AS og knyttes til deg. Forhandleren får 35 % rabatt beregnet av ordinær veiledende utsalgspris – aldri av kampanje- eller tilbudspriser. Rabatten kommer i stedet for mengderabatt og andre rabatter, ikke i tillegg. ABOKS AS fakturerer og leverer. Du får 15 % av det forhandleren faktisk betaler for varene, på hver betalte bestilling fra forhandleren – også bestillinger den gjør direkte hos ABOKS AS – så lenge partneravtalen din gjelder.',
+  },
+  {
+    id: 'registrering',
+    question: 'Hvordan knyttes bedriftskunder og forhandlere til meg?',
+    answer:
+      'Salg med promokoden registreres på koden din når ordren er betalt. Bedriftssalg og forhandlere knyttes ikke til deg via koden: Du melder dem inn til ABOKS AS, som registrerer dem på deg. Et salg eller en forhandler som ikke er registrert på deg, gir ikke provisjon.',
   },
   {
     id: 'gjenkjop',
     question: 'Får jeg provisjon når kunden handler igjen?',
     answer:
-      'Ja, så lenge kunden bruker partnerkoden din også ved det nye kjøpet. Provisjonen knyttes til koden som brukes i kassen, ikke til kunden som person.',
+      'Med promokoden: ja, så lenge kunden bruker koden din også ved det nye kjøpet. For forhandlere du har rekruttert: ja, du får 15 % av hver senere betalte bestilling fra forhandleren som er registrert på deg, også når forhandleren bestiller direkte fra ABOKS AS, så lenge partneravtalen din gjelder. Ved bedriftssalg gjelder provisjonen ordren du har formidlet.',
   },
   {
     id: 'egen-kode',
-    question: 'Kan jeg bruke min egen partnerkode?',
+    question: 'Kan jeg bruke min egen promokode?',
     answer:
       'Ja. Du får den samme rabatten som kundene dine, og provisjonen beregnes på samme måte som for andre kvalifiserte salg. Vær oppmerksom på at fordeler fra egne kjøp kan ha skattemessige konsekvenser.',
   },
   {
     id: 'lager',
-    question: 'Må jeg kjøpe eller lagre produkter?',
+    question: 'Må jeg kjøpe, lagre eller sende produkter?',
     answer:
-      'Nei. Du kjøper ikke inn varer og har ikke noe lager eller forsendelsesansvar. Kunden handler direkte på aboks.no, og ABOKS AS tar seg av betaling, produksjon, levering, returer og kundeservice.',
+      'Nei. Du kjøper ikke inn varer og har ikke noe lager eller forsendelsesansvar. ABOKS AS tar seg av betaling, fakturering, produksjon, levering, returer og kundeservice – uansett hvilken metode du bruker.',
   },
   {
     id: 'utbetaling',
     question: 'Når utbetales provisjonen?',
     answer:
-      'Provisjonen gjøres opp månedlig for ordrer som er betalt, ferdigbehandlet og kvalifiserte. Utbetalingsmåte og nærmere vilkår for oppgjøret fastsettes i partneravtalen.',
+      'Provisjon fra promokoden gjøres opp månedlig for ordrer som er betalt, ferdigbehandlet og kvalifiserte. Utbetalingsmåte og nærmere vilkår for oppgjøret fastsettes i partneravtalen.',
+  },
+  {
+    id: 'opptjening',
+    question: 'Når opptjenes provisjonen ved bedriftssalg og forhandlersalg?',
+    answer:
+      'Først når ABOKS AS har mottatt betaling fra kunden eller forhandleren. En ordre som ikke er betalt, gir ikke provisjon. Kansellerte og refunderte ordrer gir ikke endelig provisjon, og ved delvis refusjon justeres provisjonen forholdsmessig.',
   },
   {
     id: 'hele-norge',

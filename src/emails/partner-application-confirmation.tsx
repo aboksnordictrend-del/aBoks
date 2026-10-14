@@ -7,7 +7,7 @@ import {
 } from '@/lib/partnerProgram/application'
 
 /**
- * Receipt for a Salgspartner application, addressed to the applicant.
+ * Receipt for a partner application, addressed to the applicant.
  *
  * Says that the application has arrived and will be assessed — and, explicitly, that it is
  * neither an approval nor an agreement. No partner code is mentioned as issued, because none
@@ -45,7 +45,7 @@ export function createPartnerApplicationConfirmationEmail(data: CleanApplication
     <h1 style="margin:0 0 8px;font-size:22px;font-weight:bold;color:#1a1d17;">Takk for interessen!</h1>
     <p style="margin:0 0 20px;font-size:15px;color:#555;line-height:1.6;">Hei ${escapeHtml(fullName)},</p>
     <p style="margin:0 0 20px;font-size:15px;color:#555;line-height:1.6;">
-      Vi har mottatt søknaden din om å bli aBoks-salgspartner og vil ta kontakt etter at den er vurdert.
+      Vi har mottatt søknaden din om å bli aBoks-partner og vil ta kontakt etter at den er vurdert.
     </p>
     <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">${escapeHtml(NOT_AN_AGREEMENT)}</p>
 
@@ -71,7 +71,7 @@ export function createPartnerApplicationConfirmationEmail(data: CleanApplication
 
 Hei ${fullName},
 
-Vi har mottatt søknaden din om å bli aBoks-salgspartner og vil ta kontakt etter at den er vurdert.
+Vi har mottatt søknaden din om å bli aBoks-partner og vil ta kontakt etter at den er vurdert.
 
 ${NOT_AN_AGREEMENT}
 

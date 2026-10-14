@@ -85,7 +85,7 @@ function ToolkitMockup() {
         style={{ left: '12%', bottom: '2%', width: '70%', borderRadius: '24px', background: `linear-gradient(155deg, #3f4730 0%, ${OLIVE} 60%, #262a1e 100%)`, color: CREAM, padding: '24px', boxShadow: '0 30px 60px -30px rgba(26,29,23,.55)' }}
       >
         <span style={{ display: 'block', fontFamily: SANS, fontWeight: 700, fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: GOLD }}>
-          Din partnerkode
+          Din promokode
         </span>
         <span
           className="mt-3 inline-flex items-center gap-3"

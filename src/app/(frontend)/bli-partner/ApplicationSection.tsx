@@ -6,11 +6,15 @@ import { Icon, SectionHeading } from './ui'
 
 const NEXT_STEPS = [
   'Vi vurderer søknaden og tar kontakt.',
-  'Blir den godkjent, får du partneravtalen til signering.',
-  'Etter signering får du din personlige partnerkode.',
+  'Blir den godkjent, får du én partneravtale til signering. Den dekker alle tre metodene.',
+  'Etter signering får du din personlige promokode og kan ta i bruk de metodene du ønsker.',
 ]
 
-/** «Klar til å bli aBoks-partner?» — the closing call to action and the application form. */
+/**
+ * «Klar til å bli aBoks-partner?» — the closing call to action and the ONE application form.
+ * One application and one agreement cover all three earning methods; there is deliberately no
+ * per-method form.
+ */
 export default function ApplicationSection() {
   return (
     <section
@@ -26,9 +30,9 @@ export default function ApplicationSection() {
         <Reveal>
           <SectionHeading
             id="sok-title"
-            eyebrow="Søk nå · Salgspartner"
+            eyebrow="Søk nå · Én søknad for alle tre metodene"
             title="Klar til å bli aBoks-partner?"
-            intro="Send oss en søknad og fortell litt om hvordan du ønsker å bidra til å gjøre aBoks kjent."
+            intro="Én søknad og én partneravtale gir tilgang til promokode, bedriftssalg og forhandlersalg. Fortell oss gjerne hvilke metoder du er mest interessert i."
             light
           />
           <ol className="mt-9" style={{ listStyle: 'none', padding: 0 }}>

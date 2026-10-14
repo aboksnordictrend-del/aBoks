@@ -3,22 +3,27 @@ import { getBedrifterProducts } from '@/lib/bedrifterProducts'
 import { buildPriceTableRows, hasQuantityPricing } from '@/lib/quantityPricing'
 import { SITE_URL } from '@/lib/site'
 import { PARTNER_HERO_IMAGE } from '@/lib/partnerProgram/content'
+import { indexableSolutions } from '@/lib/solutions'
+import { methodById } from '@/lib/partnerProgram/methods'
 import PartnerHero from './PartnerHero'
-import ProgramCards from './ProgramCards'
-import SalgspartnerSection from './SalgspartnerSection'
-import ProcessTimeline from './ProcessTimeline'
-import BenefitsPanels from './BenefitsPanels'
+import MethodCards from './MethodCards'
+import MethodTabs from './MethodTabs'
+import MethodPanel from './MethodPanel'
+import PromoExample from './PromoExample'
 import CommissionCalculator from './CommissionCalculator'
-import CorporateSection, { type CorporateTierTable } from './CorporateSection'
+import BusinessSaleDetails, { type CorporateTierTable } from './BusinessSaleDetails'
+import { BusinessSaleCalculator, RetailerCalculator, type CalculatorProduct } from './SaleCalculators'
+import ProcessTimeline from './ProcessTimeline'
+import SharedTermsSection from './SharedTermsSection'
 import ToolkitSection from './ToolkitSection'
 import PartnerFaq from './PartnerFaq'
 import ApplicationSection from './ApplicationSection'
 
 export const revalidate = 3600
 
-const TITLE = 'Bli aBoks-partner | Tjen 15 % provisjon | ABOKS AS'
+const TITLE = 'Bli aBoks-partner | Én avtale, tre måter å tjene på | ABOKS AS'
 const DESCRIPTION =
-  'Bli salgspartner hos aBoks. Gi kundene 10 % rabatt og tjen 15 % provisjon på kvalifiserte salg. Gratis å søke for privatpersoner og bedrifter.'
+  'Ett partnerprogram med tre metoder: promokode (15 %), bedriftssalg (25 %) og forhandlersalg (15 %). Én søknad og én avtale. Gratis å søke, ingen salgskrav og ingen varelager.'
 const OG_IMAGE = PARTNER_HERO_IMAGE.desktop || '/images/hero-desktop.webp'
 
 export const metadata: Metadata = {
@@ -68,6 +73,12 @@ export default async function BliPartnerPage() {
     rows: buildPriceTableRows({ slug: p.slug, price: p.price, sale: p.sale }),
   }))
 
+  // The calculators' model list: every box with quantity pricing, at its live CMS price.
+  const calculatorProducts: CalculatorProduct[] = products
+    .filter((p) => hasQuantityPricing(p))
+    .map((p) => ({ slug: p.slug, title: p.title, price: p.price, sale: p.sale }))
+  const solutions = indexableSolutions().map((s) => ({ slug: s.slug, title: s.title }))
+
   return (
     <main>
       <script
@@ -75,12 +86,30 @@ export default async function BliPartnerPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <PartnerHero />
-      <ProgramCards />
-      <SalgspartnerSection />
+      <MethodCards />
+      <MethodTabs
+        panels={{
+          promokode: (
+            <MethodPanel method={methodById('promokode')}>
+              <PromoExample />
+              <CommissionCalculator />
+            </MethodPanel>
+          ),
+          bedriftssalg: (
+            <MethodPanel method={methodById('bedriftssalg')}>
+              <BusinessSaleCalculator products={calculatorProducts} />
+              <BusinessSaleDetails tiers={tiers} solutions={solutions} />
+            </MethodPanel>
+          ),
+          forhandlersalg: (
+            <MethodPanel method={methodById('forhandlersalg')}>
+              <RetailerCalculator products={calculatorProducts} />
+            </MethodPanel>
+          ),
+        }}
+      />
       <ProcessTimeline />
-      <BenefitsPanels />
-      <CommissionCalculator />
-      <CorporateSection tiers={tiers} />
+      <SharedTermsSection />
       <ToolkitSection />
       <PartnerFaq />
       <ApplicationSection />

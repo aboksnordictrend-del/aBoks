@@ -59,7 +59,7 @@ export default function OrderBreakdown({ result }: { result: PartnerExampleResul
         ]
       : []),
     {
-      label: `Partnerrabatt ${formatPercent(partnerDiscountPercent)}`,
+      label: `Promokode-rabatt ${formatPercent(partnerDiscountPercent)}`,
       note: o.corporateDiscountOere > 0 ? 'av prisen etter bedriftsrabatt' : undefined,
       from: o.customerPaysOere,
       to: o.afterCorporateOere,
