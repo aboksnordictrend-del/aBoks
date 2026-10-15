@@ -26,6 +26,12 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/produkter/aboks-special',
+        destination: '/produkter/aboks-spesial',
+        // Explicit 301 (not `permanent`, which sends 308) for the misspelt product URL.
+        statusCode: 301,
+      },
+      {
         source: '/vilkar',
         destination: '/kjopsvilkar',
         permanent: true,

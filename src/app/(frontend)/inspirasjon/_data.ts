@@ -275,6 +275,19 @@ const articles: InspirasjonArticle[] = [
     imageHeight: 941,
     imageAlt: 'Hvilke AA-batterier er best – aBoks guide til alkaliske, litium- og oppladbare batterier',
   },
+  {
+    category: 'Hjem & organisering',
+    title: 'Hvorfor trenger vi aBoks? Fordi en skuff ikke er et system',
+    description:
+      'Hvorfor trenger vi en kalkulator når vi har en kuleramme? Det samme spørsmålet gjelder batterier. Skuffen fungerer, men den er ikke et system. Her er tanken bak aBoks, og hvorfor små rutiner gjør riktig batterihåndtering enklere.',
+    date: 'Oktober 2026',
+    publishedAt: '2026-10-15',
+    slug: '/inspirasjon/hvorfor-trenger-vi-aboks',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Inspirasjon/From%20Battery%20Clutter%20to%20Recycling.webp',
+    imageWidth: 1448,
+    imageHeight: 1086,
+    imageAlt: 'Oppbevaring av batterier i et rolig nordisk hjem – en ryddig batteriboks på en eikehylle i myk morgensol',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {
