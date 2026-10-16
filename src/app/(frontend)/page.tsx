@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import HomeClient from './HomeClient'
-import { getProductBySlug, getPublishedProductByTitle } from '@/lib/payload'
+import { getProductBySlug, getPublishedProductByTitle, getVariantsForProduct } from '@/lib/payload'
 import { listBlobFolderImages } from '@/lib/blobImages'
 import type { AboksVeggSectionData } from '@/components/AboksVeggSection'
 import type { SaleInfo } from '@/lib/pricing'
@@ -97,6 +97,9 @@ const websiteJsonLd = {
 export default async function HomePage() {
   let sale: SaleInfo | null = null
   let price = 499
+  // Colour labels keyed by SKU, read from the same Payload variants the product page shows,
+  // so renaming a colour in the CMS renames it on the homepage too.
+  let colorNames: Record<string, string> = {}
   try {
     const product = await getProductBySlug('aboks')
     if (product) {
@@ -106,6 +109,10 @@ export default async function HomePage() {
         saleStartDate: product.saleStartDate ?? null,
         saleEndDate: product.saleEndDate ?? null,
       }
+      const variants = await getVariantsForProduct(String(product.id))
+      colorNames = Object.fromEntries(
+        variants.filter((v) => v.sku && v.name).map((v) => [v.sku as string, v.name as string]),
+      )
     } else {
       console.warn('[HOME] no product found with slug "aboks"')
     }
@@ -123,7 +130,7 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
-      <HomeClient sale={sale} price={price} vegg={vegg} />
+      <HomeClient sale={sale} price={price} vegg={vegg} colorNames={colorNames} />
     </>
   )
 }

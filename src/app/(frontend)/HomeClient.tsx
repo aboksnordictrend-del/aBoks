@@ -22,11 +22,13 @@ const SOLUTION_VIDEO_POSTER = 'https://cnmxattx5v3y5fdc.public.blob.vercel-stora
 const MAIN_VIDEO_SRC        = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video.mp4'
 const MAIN_VIDEO_POSTER     = 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Video/aBoks-blue-video-poster.webp'
 
+// `name` is only the fallback label: the live one comes from the Payload variant with the
+// same SKU (see `colorNames`), the source the product page uses.
 const COLORS = [
   { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-olive.webp' },
   { id: 'blue',  name: 'Mørk blå',    swatch: '#243153', sku: 'ABOKS-BLUE-001',  image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-blue.webp' },
   { id: 'black', name: 'Sort',         swatch: '#1d1d1f', sku: 'ABOKS-SORT-001',  image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-sort.webp' },
-  { id: 'cream', name: 'Creme',        swatch: '#FAF7F2', sku: 'ABOKS-CREME-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp' },
+  { id: 'cream', name: 'Kremhvit',     swatch: '#FAF7F2', sku: 'ABOKS-CREME-001', image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/aBoks-creme.webp' },
 ]
 
 const FEATURES = [
@@ -113,15 +115,18 @@ export default function HomeClient({
   sale,
   price,
   vegg,
+  colorNames = {},
 }: {
   sale: SaleInfo | null
   price: number
   vegg: AboksVeggSectionData | null
+  colorNames?: Record<string, string>
 }) {
   const [colorId, setColorId] = useState('olive')
   const [saleExpired, setSaleExpired] = useState(false)
   const saleActive = !saleExpired && isSaleActive(price, sale)
-  const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
+  const colors = COLORS.map((c) => ({ ...c, name: colorNames[c.sku] || c.name }))
+  const activeColor = colors.find((c) => c.id === colorId) ?? colors[0]
   const prodCarouselRef   = useRef<CarouselHandle>(null)
   const lifeCarouselRef   = useRef<CarouselHandle>(null)
 
@@ -178,6 +183,7 @@ export default function HomeClient({
               }}
             >
               <HeroContent
+                colors={colors}
                 colorId={colorId}
                 setColorId={setColorId}
                 sale={saleActive ? sale : null}
@@ -256,7 +262,7 @@ export default function HomeClient({
                 <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', fontWeight: 600, color: '#fff' }}>{activeColor.name}</span>
               </div>
               <div style={{ display: 'flex', gap: '14px' }}>
-                {COLORS.map((c) => (
+                {colors.map((c) => (
                   <button key={c.id} onClick={() => setColorId(c.id)} aria-label={c.name} style={{
                     width: '44px', height: '44px', borderRadius: '999px', border: 'none', cursor: 'pointer', padding: 0, background: c.swatch,
                     boxShadow: colorId === c.id ? '0 0 0 2.5px rgba(255,255,255,0.9), 0 0 0 4.5px rgba(255,255,255,0.4)' : '0 0 0 1px rgba(255,255,255,0.35)',
@@ -827,7 +833,7 @@ export default function HomeClient({
               </div>
             </div>
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
-              {COLORS.map((c) => (
+              {colors.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => setColorId(c.id)}
@@ -857,23 +863,19 @@ export default function HomeClient({
 }
 
 function HeroContent({
+  colors,
   colorId,
   setColorId,
   sale,
   onExpire,
 }: {
+  colors: { id: string; name: string; swatch: string; sku: string }[]
   colorId: string
   setColorId: (id: string) => void
   sale: SaleInfo | null
   onExpire: () => void
 }) {
-  const COLORS = [
-    { id: 'olive', name: 'Olivengrønn', swatch: '#5b6347', sku: 'ABOKS-OLIVE-001' },
-    { id: 'blue',  name: 'Mørk blå',    swatch: '#243153', sku: 'ABOKS-BLUE-001'  },
-    { id: 'black', name: 'Sort',         swatch: '#1d1d1f', sku: 'ABOKS-SORT-001'  },
-    { id: 'cream', name: 'Creme',        swatch: '#FAF7F2', sku: 'ABOKS-CREME-001' },
-  ]
-  const activeColor = COLORS.find((c) => c.id === colorId) ?? COLORS[0]
+  const activeColor = colors.find((c) => c.id === colorId) ?? colors[0]
 
   return (
     <>
@@ -953,7 +955,7 @@ function HeroContent({
           </span>
         </div>
         <div style={{ display: 'flex', gap: '14px', alignItems: 'center', justifyContent: 'center' }}>
-          {COLORS.map((c) => (
+          {colors.map((c) => (
             <button
               key={c.id}
               onClick={() => setColorId(c.id)}
