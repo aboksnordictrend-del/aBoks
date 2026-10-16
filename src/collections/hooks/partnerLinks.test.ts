@@ -2,12 +2,10 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { APIError, ValidationError } from 'payload'
+import { APIError } from 'payload'
 import {
   PARTNER_IN_USE_MESSAGE,
-  PROMO_MODEL_IN_USE_MESSAGE,
   guardPartnerDelete,
-  guardPromoModelRemoval,
   propagatePartnerName,
 } from './partnerLinks'
 
@@ -36,62 +34,8 @@ function stubReq(counts: Record<string, number> = {}) {
   return { req, calls }
 }
 
-type ChangeArgs = Parameters<typeof guardPromoModelRemoval>[0]
 type DeleteArgs = Parameters<typeof guardPartnerDelete>[0]
 type AfterArgs = Parameters<typeof propagatePartnerName>[0]
-
-const removeModel = (
-  data: Record<string, unknown>,
-  originalDoc: Record<string, unknown>,
-  linkedCodes: number,
-) => {
-  const { req, calls } = stubReq({ 'promo-codes': linkedCodes })
-  return {
-    run: () =>
-      guardPromoModelRemoval({ operation: 'update', data, originalDoc, req } as unknown as ChangeArgs),
-    calls,
-  }
-}
-
-/* ------------------------------ guardPromoModelRemoval ------------------------------ */
-
-describe('guardPromoModelRemoval', () => {
-  const PROMO_PARTNER = { id: 5, partnershipTypes: ['promoCode', 'wholesale'] }
-
-  it('refuses dropping Promokode while promo codes are linked', async () => {
-    const g = removeModel({ partnershipTypes: ['wholesale'] }, PROMO_PARTNER, 2)
-    await assert.rejects(g.run, (err: unknown) => {
-      assert.ok(err instanceof ValidationError)
-      const data = (err as ValidationError).data as { errors: { path: string; message: string }[] }
-      assert.equal(data.errors[0].path, 'partnershipTypes')
-      assert.equal(data.errors[0].message, PROMO_MODEL_IN_USE_MESSAGE)
-      return true
-    })
-    assert.deepEqual(g.calls.count[0].where, { partner: { equals: 5 } })
-  })
-
-  it('allows dropping Promokode when no code is linked', async () => {
-    await removeModel({ partnershipTypes: ['wholesale'] }, PROMO_PARTNER, 0).run()
-  })
-
-  it('allows any change that keeps Promokode, without a lookup', async () => {
-    const g = removeModel({ partnershipTypes: ['promoCode'] }, PROMO_PARTNER, 2)
-    await g.run()
-    assert.equal(g.calls.count.length, 0)
-  })
-
-  it('allows editing other models on a partner that never had Promokode', async () => {
-    const g = removeModel({ partnershipTypes: [] }, { id: 5, partnershipTypes: ['dropshipping'] }, 2)
-    await g.run()
-    assert.equal(g.calls.count.length, 0)
-  })
-
-  it('ignores an update that does not carry the models', async () => {
-    const g = removeModel({ name: 'Nytt navn' }, PROMO_PARTNER, 2)
-    await g.run()
-    assert.equal(g.calls.count.length, 0)
-  })
-})
 
 /* ------------------------------ guardPartnerDelete ------------------------------ */
 

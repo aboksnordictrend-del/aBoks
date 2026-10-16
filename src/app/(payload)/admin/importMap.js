@@ -4,6 +4,7 @@ import { default as default_f66c89f6032ef643e074b39a9575a6eb } from '@/component
 import { default as default_8e500b3aa60f187de05fcfb9f2454b83 } from '@/components/admin/partner/PartnerStatistics'
 import { default as default_4f7fe3d4c7717409bc070473e8212fe3 } from '@/components/admin/PromoCodeUsage'
 import { default as default_eed50fff2a8e06d1aa3615fb1acd3bd0 } from '@/components/admin/partner/PromoCodeCell'
+import { default as default_a81d46c341dfc8bcd804f6be14ff0149 } from '@/components/admin/partner/StandardPartnerBenefits'
 import { default as default_3357797c56031bdeee9b0c4cffc2942b } from '@/components/admin/marketing/MarketingChannelsView'
 import { default as default_bba035f4e82e87fc16fb8369eefc73af } from '@/components/admin/marketing/meta/MetaMarketingView'
 import { default as default_a0af3ce36fd7dea958a24f7e562573d5 } from '@/components/admin/marketing/google/GoogleMarketingView'
@@ -26,6 +27,7 @@ export const importMap = {
   "@/components/admin/partner/PartnerStatistics#default": default_8e500b3aa60f187de05fcfb9f2454b83,
   "@/components/admin/PromoCodeUsage#default": default_4f7fe3d4c7717409bc070473e8212fe3,
   "@/components/admin/partner/PromoCodeCell#default": default_eed50fff2a8e06d1aa3615fb1acd3bd0,
+  "@/components/admin/partner/StandardPartnerBenefits#default": default_a81d46c341dfc8bcd804f6be14ff0149,
   "@/components/admin/marketing/MarketingChannelsView#default": default_3357797c56031bdeee9b0c4cffc2942b,
   "@/components/admin/marketing/meta/MetaMarketingView#default": default_bba035f4e82e87fc16fb8369eefc73af,
   "@/components/admin/marketing/google/GoogleMarketingView#default": default_a0af3ce36fd7dea958a24f7e562573d5,

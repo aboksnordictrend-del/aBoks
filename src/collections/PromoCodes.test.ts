@@ -412,11 +412,11 @@ describe('PromoCodes — link to a partner record', () => {
     assert.ok(names.indexOf('partner') < names.indexOf('partnerName'))
   })
 
-  it('offers only partners with the Promokode model', () => {
+  it('offers only active partners for a new link', () => {
     const field = fieldNamed('partner') as { filterOptions?: unknown }
     assert.equal(typeof field.filterOptions, 'function')
     const where = (field.filterOptions as (args: unknown) => unknown)({})
-    assert.deepEqual(where, { partnershipTypes: { in: ['promoCode'] } })
+    assert.deepEqual(where, { status: { equals: 'active' } })
   })
 
   it('shows the partner selector on a partner code only', () => {

@@ -314,3 +314,37 @@
   background: transparent;
   opacity: 0.8;
 }
+
+/* --- Standard partnerfordeler (partner edit page, information only) --- */
+
+.benefits {
+  margin: 0.5rem 0 1.75rem;
+}
+
+.benefitList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--theme-elevation-100);
+  border-radius: 12px;
+  font-size: 0.84rem;
+}
+
+.benefitRow {
+  padding: 0.75rem 1.15rem;
+  border-bottom: 1px solid var(--theme-elevation-100);
+}
+
+.benefitRow:last-child {
+  border-bottom: none;
+}
+
+.benefitTitle {
+  font-weight: 600;
+}
+
+.benefitText {
+  margin-top: 0.25rem;
+  opacity: 0.7;
+  line-height: 1.5;
+}

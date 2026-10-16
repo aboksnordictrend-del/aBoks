@@ -5,26 +5,58 @@ import {
   type RelationshipFieldSingleValidation,
 } from 'payload'
 import { relationship as defaultRelationshipValidation } from 'payload/shared'
+import { PROMO_LINK_ELIGIBLE_STATUS } from '@/lib/partner/partnerships'
 
-export const PARTNER_WITHOUT_PROMO_MODEL_MESSAGE =
-  'Partneren kan ikke knyttes til rabattkoden fordi den ikke har samarbeidsformen «Promokode». Legg til «Promokode» på partneren først, eller velg en annen partner.'
+export const PARTNER_NOT_ACTIVE_MESSAGE =
+  'Bare partnere med status «Aktiv» kan knyttes til en rabattkode. Sett partneren til «Aktiv» først, eller velg en annen partner.'
+
+/** The `partners` filter for a NEW link — also what the admin dropdown offers. */
+export const ELIGIBLE_PARTNER_FILTER = { status: { equals: PROMO_LINK_ELIGIBLE_STATUS } } as const
 
 /**
- * Validation for `promo-codes.partner`: Payload's own relationship validation, in Norwegian.
+ * Validation for `promo-codes.partner`.
  *
- * Payload's validator is kept — it is what re-runs the field's `filterOptions` (partners with the
- * Promokode model only) on the server and checks the id exists. Its refusal is an English
- * «This field has the following invalid selections: 7». That message is replaced with one that
- * says why; every other result passes through unchanged.
+ * ── New links: active partners only ──
+ *
+ * Payload's own relationship validation is kept — it re-runs the field's `filterOptions`
+ * (`status = active`) on the server and checks the id exists. Its refusal is an English
+ * «This field has the following invalid selections: 7», replaced here with a Norwegian message.
+ *
+ * ── Existing links are never invalidated ──
+ *
+ * A code already linked to a partner who has since been set to «Pause» or «Avsluttet» must keep
+ * saving — deactivating the code, editing its note — without touching the link. So an UNCHANGED
+ * link is accepted as it is. "Unchanged" is read from Payload's `previousValue` when it is
+ * supplied, and otherwise from the stored promo code itself: the admin's form-state pass does not
+ * always carry `previousValue`, and refusing there would block the save in the browser.
  */
 export const validatePartnerLink: RelationshipFieldSingleValidation = async (value, options) => {
+  const next = relationshipId(value)
+  if (next !== null && 'previousValue' in options && relationshipId(options.previousValue) === next) {
+    return true
+  }
+
   const result = await defaultRelationshipValidation(value, options)
   if (result === true) return true
+
   const invalidSelections = options.req?.t?.('validation:invalidSelections')
-  if (typeof result === 'string' && invalidSelections && result.startsWith(invalidSelections)) {
-    return PARTNER_WITHOUT_PROMO_MODEL_MESSAGE
+  if (typeof result !== 'string' || !invalidSelections || !result.startsWith(invalidSelections)) {
+    return result
   }
-  return result
+
+  // Refused by the active-only filter. Still fine if this is the link the code already has.
+  if (next !== null && options.id != null && options.req?.payload) {
+    const stored = (await options.req.payload.findByID({
+      collection: 'promo-codes',
+      id: options.id,
+      depth: 0,
+      overrideAccess: true,
+      disableErrors: true,
+      req: options.req,
+    })) as { partner?: unknown } | null
+    if (relationshipId(stored?.partner) === next) return true
+  }
+  return PARTNER_NOT_ACTIVE_MESSAGE
 }
 
 /**

@@ -4,18 +4,16 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { Field } from 'payload'
 import { Partners } from './Partners'
-import { PARTNERSHIP_DEFAULT_PERCENT, PARTNERSHIP_TYPES } from '@/lib/partner/partnerships'
 
 /**
- * The Partners register (Phase 1).
+ * The Partners collection after the programme correction: one programme, three standard earning
+ * methods shown as information, two optional agreements as independent checkboxes, and the
+ * first release's fields kept hidden and frozen.
  *
  * Reached through the exported `CollectionConfig`, the same way `PartnerPayouts.test.ts` tests
- * access. Beyond access, these tests pin the Phase 1 boundary: the collection holds
- * configuration only, stores no promo-code rate, and links to nothing yet — so it cannot
- * change checkout, commission or payout behaviour.
+ * access.
  */
 
-type AccessFn = (args: { req: { user: unknown } }) => unknown
 type AnyField = Field & {
   name?: string
   label?: unknown
@@ -23,18 +21,21 @@ type AnyField = Field & {
   defaultValue?: unknown
   required?: boolean
   hasMany?: boolean
-  options?: { label: string; value: string }[]
+  access?: { create?: (args: unknown) => unknown; update?: (args: unknown) => unknown }
   validate?: (value: unknown, args: unknown) => unknown
-  admin?: { condition?: (data: unknown, siblingData: unknown, ctx: unknown) => boolean }
+  admin?: {
+    hidden?: boolean
+    condition?: (data: unknown, siblingData: unknown, ctx: unknown) => boolean
+    components?: { Field?: unknown }
+  }
 }
+type AccessFn = (args: { req: { user: unknown } }) => unknown
 
 /** Every field with data, flattened through rows and collapsibles (which store nothing). */
 function dataFields(fields: Field[]): AnyField[] {
   return fields.flatMap((f) => {
     const field = f as AnyField
-    if ((field.type === 'row' || field.type === 'collapsible') && field.fields) {
-      return dataFields(field.fields)
-    }
+    if ((field.type === 'row' || field.type === 'collapsible') && field.fields) return dataFields(field.fields)
     return [field]
   })
 }
@@ -45,28 +46,26 @@ const byName = (name: string) => {
   assert.ok(field, `field ${name} must exist`)
   return field
 }
+const visible = fields.filter((f) => f.admin?.hidden !== true)
 
 const access = Partners.access!
 const ADMIN = { id: 1, role: 'admin' }
 const EDITOR = { id: 2, role: 'editor' }
-const NO_ROLE = { id: 3 }
 
-const PERCENT_FIELDS = {
-  businessSaleCommissionPercent: 'businessSale',
-  retailerReferralCommissionPercent: 'retailerReferral',
-  dropshippingDiscountPercent: 'dropshipping',
-  wholesaleDiscountPercent: 'wholesale',
-} as const
+const LEGACY = ['partnershipTypes', 'businessSaleCommissionPercent', 'retailerReferralCommissionPercent'] as const
+const AGREEMENTS = [
+  { checkbox: 'dropshippingEnabled', percent: 'dropshippingDiscountPercent', label: 'Dropshipping', def: 20 },
+  { checkbox: 'wholesaleEnabled', percent: 'wholesaleDiscountPercent', label: 'Forhandlerinnkjøp', def: 35 },
+] as const
 
 /* ------------------------------ access ------------------------------ */
 
-describe('Partners — access control', () => {
+describe('Partners — access control (unchanged)', () => {
   for (const op of ['read', 'create', 'update'] as const) {
     it(`requires authentication to ${op}`, () => {
       const fn = access[op] as AccessFn
       assert.equal(fn({ req: { user: null } }), false)
       assert.equal(fn({ req: { user: EDITOR } }), true)
-      assert.equal(fn({ req: { user: ADMIN } }), true)
     })
   }
 
@@ -74,207 +73,210 @@ describe('Partners — access control', () => {
     const fn = access.delete as AccessFn
     assert.equal(fn({ req: { user: null } }), false)
     assert.equal(fn({ req: { user: EDITOR } }), false)
-    assert.equal(fn({ req: { user: NO_ROLE } }), false)
+    assert.equal(fn({ req: { user: { id: 3 } } }), false)
     assert.equal(fn({ req: { user: ADMIN } }), true)
   })
 })
 
-/* ------------------------------ shape ------------------------------ */
+/* ------------------------------ one programme ------------------------------ */
 
-describe('Partners — collection shape', () => {
-  it('is the `partners` collection with Norwegian admin labels', () => {
-    assert.equal(Partners.slug, 'partners')
-    assert.deepEqual(Partners.labels, { singular: 'Partner', plural: 'Partnere' })
-    assert.equal(Partners.admin?.group, 'Partnere')
-    assert.equal(Partners.admin?.useAsTitle, 'name')
+describe('Partners — standard earning methods are information, not settings', () => {
+  it('shows «Standard partnerfordeler» through a read-only UI component', () => {
+    const ui = byName('standardBenefits')
+    assert.equal(ui.type, 'ui')
+    assert.equal(ui.admin?.components?.Field, '@/components/admin/partner/StandardPartnerBenefits#default')
   })
 
-  it('requires a name and defaults the status to active', () => {
-    const name = byName('name')
-    assert.equal(name.required, true)
-    assert.equal(name.label, 'Partnernavn')
-    assert.notEqual(name.validate!('   ', {}), true, 'a blank name must be refused')
-    assert.equal(name.validate!('Ola Nordmann', {}), true)
-
-    const status = byName('status')
-    assert.equal(status.required, true)
-    assert.equal(status.defaultValue, 'active')
+  it('has no visible field to select or rate Promokode, Bedriftssalg or Forhandlersalg', () => {
+    const names = visible.filter((f) => f.type !== 'join').map((f) => f.name ?? '')
+    for (const banned of ['partnershipTypes', 'businessSaleCommissionPercent', 'retailerReferralCommissionPercent', 'commissionRate', 'commissionBase']) {
+      assert.equal(names.includes(banned), false, `${banned} must not be an admin setting`)
+    }
+    assert.equal(names.some((n) => /promo/i.test(n)), false, 'no stored promo-code field on the partner')
   })
 
-  it('lets one partner take part in several models through one multi-select', () => {
-    const types = byName('partnershipTypes')
-    assert.equal(types.type, 'select')
-    assert.equal(types.hasMany, true)
-    assert.equal(types.label, 'Samarbeidsformer')
+  it('needs no field at all for a partner to have the three standard methods', () => {
+    // A partner with only a name and status validates: nothing has to be ticked.
+    for (const field of visible) {
+      if (field.name === 'name' || field.name === 'status') continue
+      assert.notEqual(field.required, true, `${field.name} must not be required`)
+    }
+  })
+})
+
+/* ------------------------------ optional agreements ------------------------------ */
+
+describe('Partners — «Ekstra samarbeidsavtaler»', () => {
+  it('groups the two optional agreements under one collapsible', () => {
+    const section = (Partners.fields as AnyField[]).find((f) => f.type === 'collapsible' && f.label === 'Ekstra samarbeidsavtaler')
+    assert.ok(section)
     assert.deepEqual(
-      (types.options as { value: string }[]).map((o) => o.value),
-      [...PARTNERSHIP_TYPES],
+      dataFields(section.fields!).map((f) => f.name),
+      ['dropshippingEnabled', 'dropshippingDiscountPercent', 'wholesaleEnabled', 'wholesaleDiscountPercent'],
     )
   })
 
-  it('holds the contact and payment details previously only on promo codes', () => {
-    for (const name of [
-      'email',
-      'phone',
-      'bankAccount',
-      'accountOwner',
-      'organizationNumber',
-      'internalNote',
-    ]) {
-      byName(name)
-    }
-  })
+  for (const a of AGREEMENTS) {
+    describe(a.label, () => {
+      const checkbox = byName(a.checkbox)
+      const percent = byName(a.percent)
+      const validate = (value: unknown, data: Record<string, unknown>) => percent.validate!(value, { data })
 
-  it('labels every data field in Norwegian (no English fallbacks)', () => {
-    for (const field of fields) {
-      assert.equal(typeof field.label, 'string', `${field.name} must have an explicit label`)
-    }
-  })
-})
-
-/* ------------------------------ Phase 1 boundary ------------------------------ */
-
-describe('Partners — boundary', () => {
-  it('stores no promo-code commission rate — the promo code stays authoritative', () => {
-    const stored = fields.filter((f) => f.type !== 'join').map((f) => f.name ?? '')
-    assert.equal(stored.includes('commissionRate'), false)
-    assert.equal(stored.includes('commissionBase'), false)
-    assert.equal(
-      stored.some((n) => /promo|commissionRate/i.test(n)),
-      false,
-      'no stored promo-code field of any kind on the partner',
-    )
-  })
-
-  it('stores no link itself: only virtual join fields, no relationship or upload columns', () => {
-    for (const field of fields) {
-      assert.ok(
-        !['relationship', 'upload'].includes(field.type),
-        `${field.name} must not be a stored link — the links live on promo codes and payouts`,
-      )
-    }
-  })
-
-  it('lists the linked promo codes and payouts through join fields', () => {
-    const codes = byName('promoCodes') as AnyField & { collection?: string; on?: string }
-    assert.equal(codes.type, 'join')
-    assert.equal(codes.collection, 'promo-codes')
-    assert.equal(codes.on, 'partner')
-    assert.equal(codes.label, 'Rabattkoder')
-
-    const payouts = byName('payouts') as AnyField & { collection?: string; on?: string }
-    assert.equal(payouts.type, 'join')
-    assert.equal(payouts.collection, 'partner-payouts')
-    assert.equal(payouts.on, 'partner')
-    assert.equal(payouts.label, 'Utbetalinger')
-  })
-
-  it('registers only the link-integrity hooks, and no endpoints', () => {
-    assert.equal(Partners.hooks?.beforeChange?.length, 1)
-    assert.equal(Partners.hooks?.beforeDelete?.length, 1)
-    assert.equal(Partners.hooks?.afterChange?.length, 1)
-    assert.equal(Partners.hooks?.beforeValidate, undefined)
-    assert.equal(Partners.endpoints, undefined)
-  })
-})
-
-/* ------------------------------ agreed terms ------------------------------ */
-
-describe('Partners — agreed rates and discounts', () => {
-  for (const [name, type] of Object.entries(PERCENT_FIELDS)) {
-    describe(name, () => {
-      const field = byName(name)
-      const validate = (value: unknown, partnershipTypes: unknown) =>
-        field.validate!(value, { data: { partnershipTypes } })
-
-      it(`defaults to the programme term (${PARTNERSHIP_DEFAULT_PERCENT[type]} %)`, () => {
-        assert.equal(field.defaultValue, PARTNERSHIP_DEFAULT_PERCENT[type])
+      it('is an independent checkbox, off by default', () => {
+        assert.equal(checkbox.type, 'checkbox')
+        assert.equal(checkbox.label, a.label)
+        assert.equal(checkbox.defaultValue, false)
+        assert.notEqual(checkbox.required, true)
       })
 
-      it('is shown only while its model is selected', () => {
-        const condition = field.admin!.condition!
-        assert.equal(condition({ partnershipTypes: [type] }, {}, {}), true)
-        assert.equal(condition({ partnershipTypes: ['promoCode', type] }, {}, {}), true)
-        assert.equal(condition({ partnershipTypes: [] }, {}, {}), false)
+      it(`has a discount field defaulting to ${a.def} %`, () => {
+        assert.equal(percent.type, 'number')
+        assert.equal(percent.defaultValue, a.def)
+        assert.equal(percent.label, `${a.label} – rabatt (%)`)
+      })
+
+      it('shows the discount only while the agreement is enabled', () => {
+        const condition = percent.admin!.condition!
+        assert.equal(condition({ [a.checkbox]: true }, {}, {}), true)
+        assert.equal(condition({ [a.checkbox]: false }, {}, {}), false)
         assert.equal(condition({}, {}, {}), false)
       })
 
-      it('is required and range-checked only while its model is selected', () => {
-        assert.equal(validate(undefined, []), true)
-        assert.equal(validate(500, ['promoCode']), true)
-        assert.notEqual(validate(undefined, [type]), true)
-        assert.notEqual(validate(101, [type]), true)
-        assert.notEqual(validate(-1, [type]), true)
-        assert.equal(validate(PARTNERSHIP_DEFAULT_PERCENT[type], [type]), true)
+      it('validates the discount only while the agreement is enabled', () => {
+        assert.equal(validate(500, { [a.checkbox]: false }), true)
+        assert.notEqual(validate(undefined, { [a.checkbox]: true }), true)
+        assert.notEqual(validate(101, { [a.checkbox]: true }), true)
+        assert.equal(validate(a.def, { [a.checkbox]: true }), true)
       })
     })
   }
 
-  it('labels Forhandlersalg and Forhandlerinnkjøp differently', () => {
-    const referral = String(byName('retailerReferralCommissionPercent').label)
-    const wholesale = String(byName('wholesaleDiscountPercent').label)
-    assert.match(referral, /^Forhandlersalg/)
-    assert.match(wholesale, /^Forhandlerinnkjøp/)
-    assert.match(referral, /provisjon/)
-    assert.match(wholesale, /rabatt/)
+  it('lets both agreements be enabled together', () => {
+    const data = { dropshippingEnabled: true, wholesaleEnabled: true }
+    for (const a of AGREEMENTS) {
+      assert.equal(byName(a.percent).admin!.condition!(data, {}, {}), true, a.label)
+      assert.equal(byName(a.percent).validate!(a.def, { data }), true, a.label)
+    }
   })
 })
 
-/* ------------------------------ migration ------------------------------ */
+/* ------------------------------ legacy fields ------------------------------ */
 
-describe('Partners — migration 20261016_090000', () => {
-  const source = readFileSync(resolve(process.cwd(), 'src/migrations/20261016_090000.ts'), 'utf8')
-  const up = source.slice(source.indexOf('export async function up'), source.indexOf('export async function down'))
-  const upSql = up.replace(/--.*$/gm, '')
+describe('Partners — first-release fields are kept, hidden and frozen', () => {
+  for (const name of LEGACY) {
+    it(`${name}: still in the schema, hidden, closed to create and update`, () => {
+      const field = byName(name)
+      assert.equal(field.admin?.hidden, true)
+      assert.equal(field.access?.create?.({}), false)
+      assert.equal(field.access?.update?.({}), false)
+      assert.equal(field.validate, undefined, 'no validation can block a save on a legacy value')
+    })
+  }
 
-  const snake = (s: string) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
+  it('puts the stored value back on every update, even when access is overridden', () => {
+    type Hook = (args: { operation: string; originalDoc?: Record<string, unknown>; value?: unknown }) => unknown
+    for (const name of LEGACY) {
+      const hook = ((byName(name) as AnyField & { hooks?: { beforeChange?: Hook[] } }).hooks?.beforeChange ?? [])[0]
+      assert.ok(hook, `${name} needs a freeze hook`)
+      assert.deepEqual(hook({ operation: 'update', originalDoc: { [name]: 'stored' }, value: 'attempt' }), 'stored', name)
+    }
+    const rate = ((byName('businessSaleCommissionPercent') as AnyField & { hooks?: { beforeChange?: Hook[] } }).hooks!.beforeChange!)[0]
+    assert.equal(rate({ operation: 'create', value: 99 }), 25, 'a new partner gets the column default, not the attempt')
+    const types = ((byName('partnershipTypes') as AnyField & { hooks?: { beforeChange?: Hook[] } }).hooks!.beforeChange!)[0]
+    assert.equal(types({ operation: 'create', value: ['businessSale'] }), null)
+  })
 
-  it('creates a column for every scalar field on the collection', () => {
+  it('keeps the legacy multi-select options matching the database enum', () => {
+    const field = byName('partnershipTypes') as AnyField & { options?: { value: string }[] }
+    assert.equal(field.hasMany, true)
+    assert.deepEqual(field.options!.map((o) => o.value), ['promoCode', 'businessSale', 'retailerReferral', 'dropshipping', 'wholesale'])
+  })
+})
+
+/* ------------------------------ identity, links, hooks ------------------------------ */
+
+describe('Partners — identity, contact and links are preserved', () => {
+  it('keeps name, status, contact, payment and note fields', () => {
+    for (const name of ['name', 'status', 'entityType', 'organizationNumber', 'contactPerson', 'email', 'phone', 'bankAccount', 'accountOwner', 'agreementDate', 'internalNote']) {
+      assert.ok(visible.some((f) => f.name === name), name)
+    }
+    assert.equal(byName('name').required, true)
+    assert.equal(byName('status').defaultValue, 'active')
+  })
+
+  it('lists linked promo codes and payouts through join fields', () => {
+    const codes = byName('promoCodes') as AnyField & { collection?: string; on?: string }
+    const payouts = byName('payouts') as AnyField & { collection?: string; on?: string }
+    assert.deepEqual([codes.type, codes.collection, codes.on], ['join', 'promo-codes', 'partner'])
+    assert.deepEqual([payouts.type, payouts.collection, payouts.on], ['join', 'partner-payouts', 'partner'])
+  })
+
+  it('stores no link itself', () => {
+    for (const field of fields) assert.ok(!['relationship', 'upload'].includes(field.type), String(field.name))
+  })
+
+  it('keeps only the delete guard and the name sync — no model-removal guard any more', () => {
+    assert.equal(Partners.hooks?.beforeChange, undefined)
+    assert.equal(Partners.hooks?.beforeDelete?.length, 1)
+    assert.equal(Partners.hooks?.afterChange?.length, 1)
+    assert.equal(Partners.endpoints, undefined)
+  })
+
+  it('lists the agreements, not the legacy selector, as columns', () => {
+    const columns = Partners.admin?.defaultColumns ?? []
+    assert.ok(columns.includes('dropshippingEnabled') && columns.includes('wholesaleEnabled'))
+    assert.equal(columns.includes('partnershipTypes'), false)
+  })
+})
+
+/* ------------------------------ migrations ------------------------------ */
+
+const read = (file: string) => readFileSync(resolve(process.cwd(), 'src/migrations', file), 'utf8')
+const upOf = (source: string) =>
+  source.slice(source.indexOf('export async function up'), source.indexOf('export async function down')).replace(/--.*$/gm, '')
+const snake = (s: string) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
+
+describe('Partners — migrations', () => {
+  const phase1 = upOf(read('20261016_090000.ts'))
+  const correction = upOf(read('20261018_090000.ts'))
+
+  it('has a column for every scalar field across 20261016 and 20261018', () => {
     for (const field of fields) {
-      // `ui` and `join` fields are virtual; a hasMany select gets its own table.
       if (!field.name || field.type === 'ui' || field.type === 'join' || field.hasMany) continue
-      assert.match(upSql, new RegExp(`"${snake(field.name)}"`), `${field.name} needs a column`)
+      assert.match(phase1 + correction, new RegExp(`"${snake(field.name)}"`), `${field.name} needs a column`)
     }
-    assert.match(upSql, /CREATE TABLE IF NOT EXISTS "partners_partnership_types"/)
+    assert.match(phase1, /CREATE TABLE IF NOT EXISTS "partners_partnership_types"/)
   })
 
-  it('writes the programme terms as the column defaults', () => {
-    for (const [name, type] of Object.entries(PERCENT_FIELDS)) {
-      assert.match(
-        upSql,
-        new RegExp(`"${snake(name)}" numeric DEFAULT ${PARTNERSHIP_DEFAULT_PERCENT[type]}\\b`),
-      )
-    }
+  it('20261018 drops, deletes and truncates nothing', () => {
+    assert.doesNotMatch(correction, /\b(DROP|DELETE|TRUNCATE)\b/i)
   })
 
-  it('is purely additive: no DROP, DELETE, TRUNCATE or UPDATE in up()', () => {
-    // Foreign-key referential actions (`ON DELETE cascade ON UPDATE no action`) are clauses,
-    // not statements, so they are removed before looking for destructive statements.
-    const statements = upSql.replace(/ON (DELETE|UPDATE) (cascade|restrict|set null|no action)/gi, '')
-    assert.doesNotMatch(statements, /\b(DROP|DELETE|TRUNCATE|UPDATE)\b/i)
+  it('20261018 writes only the two new columns', () => {
+    const sets = [...correction.matchAll(/SET\s+"([a-z_]+)"\s*=/g)].map((m) => m[1])
+    assert.deepEqual(sets, ['dropshipping_enabled', 'wholesale_enabled'])
+    const updated = [...correction.matchAll(/UPDATE\s+"([a-z_]+)"/g)].map((m) => m[1])
+    assert.deepEqual(updated, ['partners', 'partners'])
   })
 
-  it('touches no existing table other than the admin lock relation', () => {
-    const altered = [...upSql.matchAll(/ALTER TABLE "([a-z_]+)"/g)].map((m) => m[1])
-    for (const table of altered) {
-      assert.ok(
-        ['partners', 'partners_partnership_types', 'payload_locked_documents_rels'].includes(table),
-        `${table} must not be altered`,
-      )
-    }
-    for (const existing of ['promo_codes', 'promo_code_usages', 'partner_payouts', 'orders']) {
-      assert.doesNotMatch(upSql, new RegExp(`"${existing}"`), `${existing} must be untouched`)
-    }
+  it('20261018 copies the legacy Dropshipping/Forhandlerinnkjøp selections, only into unmigrated rows', () => {
+    assert.match(correction, /t\."value" = 'dropshipping'/)
+    assert.match(correction, /t\."value" = 'wholesale'/)
+    assert.equal((correction.match(/IS NULL;/g) ?? []).length, 2, 'never overwrites a checkbox an admin set')
   })
 
-  it('is idempotent', () => {
-    assert.doesNotMatch(upSql, /CREATE TABLE (?!IF NOT EXISTS)/)
-    assert.doesNotMatch(upSql, /CREATE INDEX (?!IF NOT EXISTS)/)
-    assert.doesNotMatch(upSql, /ADD COLUMN (?!IF NOT EXISTS)/)
+  it('20261018 adds the columns before filling them and sets the default last', () => {
+    const add = correction.indexOf('ADD COLUMN IF NOT EXISTS "dropshipping_enabled" boolean;')
+    const fill = correction.indexOf('SET "dropshipping_enabled"')
+    const def = correction.indexOf('ALTER COLUMN "dropshipping_enabled" SET DEFAULT false')
+    assert.ok(add >= 0 && fill > add && def > fill)
   })
 
-  it('is registered in the migration index', () => {
+  it('registers the three partner migrations in order', () => {
     const index = readFileSync(resolve(process.cwd(), 'src/migrations/index.ts'), 'utf8')
-    assert.match(index, /name: '20261016_090000'/)
+    const at = (n: string) => index.indexOf(`name: '${n}'`)
+    assert.ok(at('20261016_090000') >= 0)
+    assert.ok(at('20261017_090000') > at('20261016_090000'))
+    assert.ok(at('20261018_090000') > at('20261017_090000'))
   })
 })

@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { PARTNER_COMMISSION_PERCENT, PARTNER_DISCOUNT_PERCENT } from '@/lib/partnerProgram/calculator'
 import {
   BUSINESS_SALE_COMMISSION_PERCENT,
   RETAILER_COMMISSION_PERCENT,
@@ -7,143 +8,139 @@ import {
 } from '@/lib/partnerProgram/methodCalculator'
 import {
   DROPSHIPPING_DISCOUNT_PERCENT,
-  PARTNERSHIP_DEFAULT_PERCENT,
-  PARTNERSHIP_KIND,
-  PARTNERSHIP_TYPES,
-  PARTNERSHIP_TYPE_OPTIONS,
+  LEGACY_PARTNERSHIP_TYPE_OPTIONS,
+  OPTIONAL_AGREEMENTS,
+  PROMO_LINK_ELIGIBLE_STATUS,
   PURCHASE_DISCOUNTS_STACK,
+  STANDARD_EARNING_METHODS,
   WHOLESALE_DISCOUNT_PERCENT,
-  hasPartnershipType,
-  selectedPartnershipTypes,
-  validatePartnershipPercent,
+  isAgreementEnabled,
+  validateAgreementPercent,
 } from './partnerships'
 
 /**
- * The partnership vocabulary: five models, their Norwegian labels, and the programme terms
- * they default to. These tests pin the business terms the user approved, so a changed number
- * or a merged label fails loudly instead of quietly changing what a partner is offered.
+ * The partner programme vocabulary: one programme, three standard earning methods every partner
+ * has, two optional agreements. These tests pin the established business terms so a changed
+ * number, a merged label or a fourth "programme" fails loudly.
  */
 
-const labelOf = (value: string) => PARTNERSHIP_TYPE_OPTIONS.find((o) => o.value === value)?.label
+const method = (id: string) => STANDARD_EARNING_METHODS.find((m) => m.id === id)!
+const agreement = (id: string) => OPTIONAL_AGREEMENTS.find((a) => a.id === id)!
 
-describe('partnerships — the five models', () => {
-  it('has exactly the three existing and two new models', () => {
+describe('partnerships — three standard earning methods', () => {
+  it('has exactly Promokode, Bedriftssalg and Forhandlersalg, in that order', () => {
     assert.deepEqual(
-      [...PARTNERSHIP_TYPES],
-      ['promoCode', 'businessSale', 'retailerReferral', 'dropshipping', 'wholesale'],
+      STANDARD_EARNING_METHODS.map((m) => [m.id, m.label]),
+      [
+        ['promoCode', 'Promokode'],
+        ['businessSale', 'Bedriftssalg'],
+        ['retailerReferral', 'Forhandlersalg'],
+      ],
     )
   })
 
-  it('labels every model in Norwegian, one option per model', () => {
-    assert.deepEqual(
-      PARTNERSHIP_TYPE_OPTIONS.map((o) => o.value),
-      [...PARTNERSHIP_TYPES],
-    )
-    assert.equal(labelOf('promoCode'), 'Promokode')
-    assert.equal(labelOf('businessSale'), 'Bedriftssalg')
-    assert.equal(labelOf('retailerReferral'), 'Forhandlersalg')
-    assert.equal(labelOf('dropshipping'), 'Dropshipping')
-    assert.equal(labelOf('wholesale'), 'Forhandlerinnkjøp')
+  it('shows the /bli-partner programme rates: 15 %, 25 %, 15 %', () => {
+    assert.equal(method('promoCode').commissionPercent, PARTNER_COMMISSION_PERCENT)
+    assert.equal(method('businessSale').commissionPercent, BUSINESS_SALE_COMMISSION_PERCENT)
+    assert.equal(method('retailerReferral').commissionPercent, RETAILER_COMMISSION_PERCENT)
+    assert.deepEqual(STANDARD_EARNING_METHODS.map((m) => m.commissionPercent), [15, 25, 15])
   })
 
-  it('keeps Forhandlersalg (referral) and Forhandlerinnkjøp (purchase) distinct', () => {
-    assert.notEqual(labelOf('retailerReferral'), labelOf('wholesale'))
-    assert.equal(PARTNERSHIP_KIND.retailerReferral, 'commission')
-    assert.equal(PARTNERSHIP_KIND.wholesale, 'discount')
+  it('says the Promokode rate and base are set on each promo code', () => {
+    assert.match(method('promoCode').description, /settes på hver enkelt rabattkode/)
+    assert.match(method('promoCode').description, new RegExp(`${PARTNER_DISCOUNT_PERCENT} % rabatt`))
   })
 
-  it('classifies the three existing models as commission and the two new as discount', () => {
-    assert.equal(PARTNERSHIP_KIND.promoCode, 'commission')
-    assert.equal(PARTNERSHIP_KIND.businessSale, 'commission')
-    assert.equal(PARTNERSHIP_KIND.retailerReferral, 'commission')
-    assert.equal(PARTNERSHIP_KIND.dropshipping, 'discount')
-    assert.equal(PARTNERSHIP_KIND.wholesale, 'discount')
+  it('uses the agreed Bedriftssalg wording, with no customer discount', () => {
+    assert.equal(method('businessSale').description, 'Partneren får 25 % provisjon av endelig betalt ordrebeløp.')
+  })
+
+  it('never lets a purchasing retailer earn Forhandlersalg on its own purchases', () => {
+    assert.match(method('retailerReferral').description, /ingen provisjon på egne innkjøp/)
   })
 })
 
-describe('partnerships — programme terms', () => {
-  it('defaults the existing referral models to the /bli-partner rates', () => {
-    assert.equal(PARTNERSHIP_DEFAULT_PERCENT.businessSale, BUSINESS_SALE_COMMISSION_PERCENT)
-    assert.equal(PARTNERSHIP_DEFAULT_PERCENT.retailerReferral, RETAILER_COMMISSION_PERCENT)
-    assert.equal(PARTNERSHIP_DEFAULT_PERCENT.businessSale, 25)
-    assert.equal(PARTNERSHIP_DEFAULT_PERCENT.retailerReferral, 15)
+describe('partnerships — two optional agreements', () => {
+  it('has exactly Dropshipping and Forhandlerinnkjøp', () => {
+    assert.deepEqual(
+      OPTIONAL_AGREEMENTS.map((a) => [a.id, a.label]),
+      [
+        ['dropshipping', 'Dropshipping'],
+        ['wholesale', 'Forhandlerinnkjøp'],
+      ],
+    )
   })
 
   it('defaults Dropshipping to 20 % and Forhandlerinnkjøp to 35 %', () => {
     assert.equal(DROPSHIPPING_DISCOUNT_PERCENT, 20)
-    assert.equal(PARTNERSHIP_DEFAULT_PERCENT.dropshipping, 20)
+    assert.equal(agreement('dropshipping').defaultDiscountPercent, 20)
     assert.equal(WHOLESALE_DISCOUNT_PERCENT, 35)
-    assert.equal(PARTNERSHIP_DEFAULT_PERCENT.wholesale, 35)
-    // Same retailer price rule as the public page — one constant, not two copies.
-    assert.equal(WHOLESALE_DISCOUNT_PERCENT, RETAILER_DISCOUNT_PERCENT)
+    assert.equal(agreement('wholesale').defaultDiscountPercent, 35)
+    assert.equal(WHOLESALE_DISCOUNT_PERCENT, RETAILER_DISCOUNT_PERCENT, 'same retailer price rule as the public page')
   })
 
-  it('stores no promo-code rate: the rate on each promo code stays authoritative', () => {
-    assert.equal('promoCode' in PARTNERSHIP_DEFAULT_PERCENT, false)
+  it('maps each agreement to its own checkbox and discount field', () => {
+    assert.deepEqual(
+      OPTIONAL_AGREEMENTS.map((a) => [a.enabledField, a.percentField]),
+      [
+        ['dropshippingEnabled', 'dropshippingDiscountPercent'],
+        ['wholesaleEnabled', 'wholesaleDiscountPercent'],
+      ],
+    )
+  })
+
+  it('states no extra commission on dropshipping sales or own wholesale purchases', () => {
+    assert.match(agreement('dropshipping').description, /Ingen ekstra partnerprovisjon/)
+    assert.match(agreement('wholesale').description, /Ingen provisjon til forhandleren på egne innkjøp/)
   })
 
   it('declares that purchase discounts never stack', () => {
     assert.equal(PURCHASE_DISCOUNTS_STACK, false)
   })
-})
 
-describe('partnerships — validatePartnershipPercent', () => {
-  const selected = { selected: true, label: 'Dropshipping – rabatt' }
-  const unselected = { selected: false, label: 'Dropshipping – rabatt' }
-
-  it('ignores the value entirely while the model is not selected', () => {
-    for (const value of [undefined, null, '', -5, 500, 'abc', Number.NaN]) {
-      assert.equal(validatePartnershipPercent(value, unselected), true)
+  it('reads an agreement as enabled only for an explicit true', () => {
+    const dropshipping = agreement('dropshipping')
+    assert.equal(isAgreementEnabled({ dropshippingEnabled: true }, dropshipping), true)
+    for (const data of [{ dropshippingEnabled: false }, { dropshippingEnabled: null }, {}, null, undefined, { dropshippingEnabled: 'true' }]) {
+      assert.equal(isAgreementEnabled(data, dropshipping), false, JSON.stringify(data))
     }
   })
 
-  it('requires a value once the model is selected', () => {
-    assert.match(String(validatePartnershipPercent(undefined, selected)), /må fylles ut/)
-    assert.match(String(validatePartnershipPercent(null, selected)), /må fylles ut/)
-    assert.match(String(validatePartnershipPercent('', selected)), /må fylles ut/)
-  })
-
-  it('refuses non-numbers and values outside 0–100', () => {
-    assert.match(String(validatePartnershipPercent('20', selected)), /må være et tall/)
-    assert.match(String(validatePartnershipPercent(Number.NaN, selected)), /må være et tall/)
-    assert.match(String(validatePartnershipPercent(-0.01, selected)), /negativ/)
-    assert.match(String(validatePartnershipPercent(100.01, selected)), /høyere enn 100/)
-  })
-
-  it('accepts the bounds and ordinary rates', () => {
-    for (const value of [0, 12.5, 20, 35, 100]) {
-      assert.equal(validatePartnershipPercent(value, selected), true)
-    }
-  })
-
-  it('names the field in its message', () => {
-    assert.match(String(validatePartnershipPercent(undefined, selected)), /^Dropshipping – rabatt/)
+  it('treats the two agreements independently', () => {
+    const data = { dropshippingEnabled: false, wholesaleEnabled: true }
+    assert.equal(isAgreementEnabled(data, agreement('dropshipping')), false)
+    assert.equal(isAgreementEnabled(data, agreement('wholesale')), true)
   })
 })
 
-describe('partnerships — reading the selection', () => {
-  it('returns the known models a document has selected', () => {
-    assert.deepEqual(selectedPartnershipTypes({ partnershipTypes: ['wholesale', 'promoCode'] }), [
-      'wholesale',
-      'promoCode',
-    ])
+describe('partnerships — validateAgreementPercent', () => {
+  const enabled = { enabled: true, label: 'Dropshipping – rabatt' }
+  const disabled = { enabled: false, label: 'Dropshipping – rabatt' }
+
+  it('ignores the value while the agreement is disabled', () => {
+    for (const value of [undefined, null, '', -5, 500, 'abc']) {
+      assert.equal(validateAgreementPercent(value, disabled), true)
+    }
   })
 
-  it('supports several models at once', () => {
-    const data = { partnershipTypes: ['promoCode', 'retailerReferral', 'wholesale'] }
-    assert.equal(hasPartnershipType(data, 'promoCode'), true)
-    assert.equal(hasPartnershipType(data, 'retailerReferral'), true)
-    assert.equal(hasPartnershipType(data, 'wholesale'), true)
-    assert.equal(hasPartnershipType(data, 'dropshipping'), false)
+  it('requires a number within 0–100 once enabled', () => {
+    assert.match(String(validateAgreementPercent(undefined, enabled)), /må fylles ut/)
+    assert.match(String(validateAgreementPercent('20', enabled)), /må være et tall/)
+    assert.match(String(validateAgreementPercent(-0.01, enabled)), /negativ/)
+    assert.match(String(validateAgreementPercent(100.01, enabled)), /høyere enn 100/)
+    for (const value of [0, 20, 35, 100]) assert.equal(validateAgreementPercent(value, enabled), true)
+  })
+})
+
+describe('partnerships — eligibility and legacy values', () => {
+  it('allows new promo-code links only to active partners', () => {
+    assert.equal(PROMO_LINK_ELIGIBLE_STATUS, 'active')
   })
 
-  it('tolerates missing, malformed and unknown values', () => {
-    assert.deepEqual(selectedPartnershipTypes(undefined), [])
-    assert.deepEqual(selectedPartnershipTypes(null), [])
-    assert.deepEqual(selectedPartnershipTypes({}), [])
-    assert.deepEqual(selectedPartnershipTypes({ partnershipTypes: 'promoCode' }), [])
-    assert.deepEqual(selectedPartnershipTypes({ partnershipTypes: ['nope', 7, 'dropshipping'] }), [
-      'dropshipping',
-    ])
+  it('keeps the legacy enum values exactly as the database created them', () => {
+    assert.deepEqual(
+      LEGACY_PARTNERSHIP_TYPE_OPTIONS.map((o) => o.value),
+      ['promoCode', 'businessSale', 'retailerReferral', 'dropshipping', 'wholesale'],
+    )
   })
 })

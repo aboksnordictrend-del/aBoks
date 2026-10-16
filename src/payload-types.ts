@@ -587,7 +587,7 @@ export interface PromoCode {
    */
   isPartnerCode?: boolean | null;
   /**
-   * Velg partneren koden tilhører. Bare partnere med samarbeidsformen «Promokode» kan velges. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.
+   * Velg partneren koden tilhører. Bare partnere med status «Aktiv» kan velges; en eksisterende kobling består selv om partneren senere settes på pause eller avsluttes. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.
    */
   partner?: (number | null) | Partner;
   /**
@@ -624,7 +624,7 @@ export interface PromoCode {
   createdAt: string;
 }
 /**
- * Samarbeidspartnere og avtalte vilkår. Provisjon på promokoder settes fortsatt på hver rabattkode.
+ * Partnere i partnerprogrammet. Provisjon på promokoder settes på hver rabattkode.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "partners".
@@ -640,9 +640,21 @@ export interface Partner {
    */
   status: 'active' | 'paused' | 'ended';
   /**
-   * Velg alle samarbeidsformene partneren deltar i. «Forhandlersalg» er provisjon for å introdusere en forhandler; «Forhandlerinnkjøp» er når partneren selv kjøper inn som forhandler.
+   * Kunden handler og betaler i forhandlerens nettbutikk. Forhandleren betaler ABOKS AS for varene med rabatt og for frakten separat, og ABOKS AS sender direkte til sluttkunden. Ingen ekstra partnerprovisjon på det samme salget.
    */
-  partnershipTypes?: ('promoCode' | 'businessSale' | 'retailerReferral' | 'dropshipping' | 'wholesale')[] | null;
+  dropshippingEnabled?: boolean | null;
+  /**
+   * Standard 20 %. Gis av ordinær katalogpris og kombineres aldri med kampanjepris, mengderabatt, rabattkode eller partnerprovisjon. Foreløpig kun en avtalt sats – den brukes ikke automatisk på noen ordre.
+   */
+  dropshippingDiscountPercent?: number | null;
+  /**
+   * Forhandleren kjøper varer på lager og står selv for videresalg og levering. Ingen provisjon til forhandleren på egne innkjøp. En annen partner som introduserte forhandleren kan ha krav på Forhandlersalg-provisjon etter avtalen.
+   */
+  wholesaleEnabled?: boolean | null;
+  /**
+   * Standard 35 %. Gis av ordinær katalogpris og kombineres aldri med kampanjepris, mengderabatt, rabattkode eller partnerprovisjon. Foreløpig kun en avtalt sats – den brukes ikke automatisk på noen ordre.
+   */
+  wholesaleDiscountPercent?: number | null;
   entityType?: ('person' | 'company') | null;
   /**
    * Valgfritt. Lagres slik det skrives.
@@ -659,22 +671,6 @@ export interface Partner {
    * Dersom kontoeieren er en annen enn partneren.
    */
   accountOwner?: string | null;
-  /**
-   * Partneren finner og forhandler frem en bedriftsordre, og får provisjon av den endelige betalte vareverdien. Kunden får gjeldende mengderabatt. Avtalt provisjonssats. Foreløpig kun registrert her – ingen ordre spores eller krediteres automatisk.
-   */
-  businessSaleCommissionPercent?: number | null;
-  /**
-   * Partneren introduserer en forhandler og får provisjon av forhandlerens betalte innkjøp. Partneren er ikke selv forhandleren – se «Forhandlerinnkjøp» for det. Avtalt provisjonssats. Foreløpig kun registrert her – ingen ordre spores eller krediteres automatisk.
-   */
-  retailerReferralCommissionPercent?: number | null;
-  /**
-   * Partneren selger videre og ABOKS AS sender direkte til sluttkunden. Gis av ordinær katalogpris og kombineres aldri med kampanjepris, mengderabatt, rabattkode eller partnerprovisjon. Foreløpig kun en avtalt sats – den brukes ikke automatisk på noen ordre.
-   */
-  dropshippingDiscountPercent?: number | null;
-  /**
-   * Partneren er selv forhandler og kjøper varer for videresalg. Ikke det samme som «Forhandlersalg». Gis av ordinær katalogpris og kombineres aldri med kampanjepris, mengderabatt, rabattkode eller partnerprovisjon. Foreløpig kun en avtalt sats – den brukes ikke automatisk på noen ordre.
-   */
-  wholesaleDiscountPercent?: number | null;
   /**
    * Når partneravtalen ble inngått.
    */
@@ -699,6 +695,9 @@ export interface Partner {
     hasNextPage?: boolean;
     totalDocs?: number;
   };
+  partnershipTypes?: ('promoCode' | 'businessSale' | 'retailerReferral' | 'dropshipping' | 'wholesale')[] | null;
+  businessSaleCommissionPercent?: number | null;
+  retailerReferralCommissionPercent?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1397,7 +1396,10 @@ export interface PartnerPayoutsSelect<T extends boolean = true> {
 export interface PartnersSelect<T extends boolean = true> {
   name?: T;
   status?: T;
-  partnershipTypes?: T;
+  dropshippingEnabled?: T;
+  dropshippingDiscountPercent?: T;
+  wholesaleEnabled?: T;
+  wholesaleDiscountPercent?: T;
   entityType?: T;
   organizationNumber?: T;
   contactPerson?: T;
@@ -1405,14 +1407,13 @@ export interface PartnersSelect<T extends boolean = true> {
   phone?: T;
   bankAccount?: T;
   accountOwner?: T;
-  businessSaleCommissionPercent?: T;
-  retailerReferralCommissionPercent?: T;
-  dropshippingDiscountPercent?: T;
-  wholesaleDiscountPercent?: T;
   agreementDate?: T;
   internalNote?: T;
   promoCodes?: T;
   payouts?: T;
+  partnershipTypes?: T;
+  businessSaleCommissionPercent?: T;
+  retailerReferralCommissionPercent?: T;
   updatedAt?: T;
   createdAt?: T;
 }

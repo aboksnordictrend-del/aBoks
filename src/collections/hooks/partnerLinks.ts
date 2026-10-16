@@ -1,11 +1,4 @@
-import {
-  APIError,
-  ValidationError,
-  type CollectionAfterChangeHook,
-  type CollectionBeforeChangeHook,
-  type CollectionBeforeDeleteHook,
-} from 'payload'
-import { hasPartnershipType } from '@/lib/partner/partnerships'
+import { APIError, type CollectionAfterChangeHook, type CollectionBeforeDeleteHook } from 'payload'
 
 /**
  * Integrity of the links INTO a partner: promo codes (`promo-codes.partner`) and payouts
@@ -13,47 +6,8 @@ import { hasPartnershipType } from '@/lib/partner/partnerships'
  * hooks only keep the links meaningful.
  */
 
-export const PROMO_MODEL_IN_USE_MESSAGE =
-  'Samarbeidsformen «Promokode» kan ikke fjernes mens rabattkoder er knyttet til partneren. Fjern eller flytt rabattkodene først.'
-
 export const PARTNER_IN_USE_MESSAGE =
   'Partneren kan ikke slettes fordi rabattkoder eller utbetalinger er knyttet til den. Sett status til «Avsluttet» i stedet.'
-
-/**
- * Refuses to drop the Promokode model from a partner that still has promo codes.
- *
- * A promo code may only point at a partner with that model (its `filterOptions`, which Payload
- * re-checks on every save). Dropping the model under linked codes would make each of those codes
- * fail validation on its next save — even a save that only deactivates the code.
- */
-export const guardPromoModelRemoval: CollectionBeforeChangeHook = async ({
-  operation,
-  data,
-  originalDoc,
-  req,
-}) => {
-  if (operation !== 'update' || !originalDoc || !data || !('partnershipTypes' in data)) return data
-  if (!hasPartnershipType(originalDoc, 'promoCode') || hasPartnershipType(data, 'promoCode')) {
-    return data
-  }
-
-  const { totalDocs } = await req.payload.count({
-    collection: 'promo-codes',
-    where: { partner: { equals: originalDoc.id } },
-    overrideAccess: true,
-    req,
-  })
-
-  if (totalDocs > 0) {
-    throw new ValidationError({
-      collection: 'partners',
-      id: originalDoc.id,
-      errors: [{ path: 'partnershipTypes', message: PROMO_MODEL_IN_USE_MESSAGE }],
-      req,
-    })
-  }
-  return data
-}
 
 /**
  * Refuses to delete a partner that anchors promo codes or payouts.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { ValidationError } from 'payload'
 import {
   PARTNER_LOCKED_MESSAGE,
-  PARTNER_WITHOUT_PROMO_MODEL_MESSAGE,
+  PARTNER_NOT_ACTIVE_MESSAGE,
   guardPartnerChange,
   relationshipId,
   syncPartnerName,
@@ -208,43 +208,79 @@ describe('guardPartnerChange — a used code keeps its partner', () => {
 
 /* ------------------------------ validatePartnerLink ------------------------------ */
 
-
-describe('validatePartnerLink — Payload’s relationship validation, in Norwegian', () => {
+describe('validatePartnerLink — new links need an active partner, existing links survive', () => {
   const EN_INVALID = 'This field has the following invalid selections:'
-  /** A request whose partner lookup returns only the given (Promokode) partner ids. */
-  const options = (allowedIds: number[], extra: Record<string, unknown> = {}) =>
-    ({
+  /**
+   * A request whose filtered partner lookup returns only `activeIds`, and whose stored promo
+   * code (id 42) is linked to `storedPartner`.
+   */
+  const options = (activeIds: number[], extra: Record<string, unknown> = {}, storedPartner: unknown = null) => {
+    const lookups: string[] = []
+    const opts = {
+      id: 42,
       relationTo: 'partners',
-      filterOptions: () => ({ partnershipTypes: { in: ['promoCode'] } }),
+      filterOptions: () => ({ status: { equals: 'active' } }),
       data: {},
       siblingData: {},
       req: {
         t: (key: string) => (key === 'validation:invalidSelections' ? EN_INVALID : key),
         user: { id: 1 },
-        payload: { collections: {}, db: { defaultIDType: 'number' } },
-        payloadDataLoader: { find: async () => ({ docs: allowedIds.map((id) => ({ id })) }) },
+        payload: {
+          collections: {},
+          db: { defaultIDType: 'number' },
+          findByID: async ({ collection, id }: { collection: string; id: unknown }) => {
+            lookups.push(`${collection}:${String(id)}`)
+            return collection === 'promo-codes' && id === 42 ? { id: 42, partner: storedPartner } : null
+          },
+        },
+        payloadDataLoader: { find: async () => ({ docs: activeIds.map((id) => ({ id })) }) },
       },
       ...extra,
-    }) as unknown as Parameters<typeof validatePartnerLink>[1]
+    } as unknown as Parameters<typeof validatePartnerLink>[1]
+    return { opts, lookups }
+  }
 
-  it('accepts a partner with the Promokode model', async () => {
-    assert.equal(await validatePartnerLink(5, options([5])), true)
+  it('accepts a new link to an active partner', async () => {
+    assert.equal(await validatePartnerLink(5, options([5]).opts), true)
   })
 
-  it('accepts an empty link — the field is optional', async () => {
-    assert.equal(await validatePartnerLink(null, options([])), true)
-    assert.equal(await validatePartnerLink(undefined, options([])), true)
-  })
-
-  it('replaces Payload’s English refusal with a Norwegian explanation', async () => {
-    const result = await validatePartnerLink(7, options([5]))
-    assert.equal(result, PARTNER_WITHOUT_PROMO_MODEL_MESSAGE)
-    assert.match(String(result), /«Promokode»/)
+  it('refuses a new link to a paused or ended partner, in Norwegian', async () => {
+    const result = await validatePartnerLink(7, options([5]).opts)
+    assert.equal(result, PARTNER_NOT_ACTIVE_MESSAGE)
+    assert.match(String(result), /«Aktiv»/)
     assert.doesNotMatch(String(result), /invalid selections/)
   })
 
+  it('keeps an unchanged link valid after the partner is paused (previousValue supplied)', async () => {
+    const { opts, lookups } = options([], { previousValue: 7 })
+    assert.equal(await validatePartnerLink(7, opts), true)
+    assert.equal(lookups.length, 0, 'no lookup needed when Payload supplies the previous value')
+  })
+
+  it('accepts a populated previous value as the same link', async () => {
+    const populated = { id: 7 } as unknown as number // Payload may hand over the populated document
+    assert.equal(await validatePartnerLink(populated, options([], { previousValue: { id: 7, name: 'x' } }).opts), true)
+  })
+
+  it('keeps an unchanged link valid when only the stored document tells it (admin form pass)', async () => {
+    const { opts, lookups } = options([], {}, 7)
+    assert.equal(await validatePartnerLink(7, opts), true)
+    assert.deepEqual(lookups, ['promo-codes:42'])
+  })
+
+  it('still refuses switching to another inactive partner', async () => {
+    assert.equal(await validatePartnerLink(8, options([], { previousValue: 7 }, 7).opts), PARTNER_NOT_ACTIVE_MESSAGE)
+  })
+
+  it('refuses an inactive partner on a brand-new code (no id, nothing stored)', async () => {
+    assert.equal(await validatePartnerLink(7, options([], { id: undefined }).opts), PARTNER_NOT_ACTIVE_MESSAGE)
+  })
+
+  it('accepts an empty link — the field is optional', async () => {
+    assert.equal(await validatePartnerLink(null, options([]).opts), true)
+  })
+
   it('passes any other validation result through unchanged', async () => {
-    const result = await validatePartnerLink(null, options([], { required: true }))
-    assert.equal(result, 'validation:required')
+    assert.equal(await validatePartnerLink(null, options([], { required: true }).opts), 'validation:required')
   })
 })

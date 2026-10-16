@@ -1,32 +1,36 @@
 import type {
+  CheckboxField,
   CollectionConfig,
+  Field,
+  FieldAccess,
   NumberField,
   NumberFieldSingleValidation,
   TextFieldSingleValidation,
 } from 'payload'
 import {
-  MAX_PARTNERSHIP_PERCENT,
-  MIN_PARTNERSHIP_PERCENT,
+  LEGACY_PARTNERSHIP_TYPE_OPTIONS,
+  MAX_AGREEMENT_PERCENT,
+  MIN_AGREEMENT_PERCENT,
   NO_STACKING_DESCRIPTION,
-  PARTNERSHIP_DEFAULT_PERCENT,
-  PARTNERSHIP_DESCRIPTIONS,
-  PARTNERSHIP_TYPE_OPTIONS,
+  OPTIONAL_AGREEMENTS,
   PARTNER_ENTITY_TYPE_OPTIONS,
   PARTNER_STATUS_OPTIONS,
-  REFERRAL_RATE_DESCRIPTION,
-  hasPartnershipType,
-  validatePartnershipPercent,
-  type ConfigurablePartnershipType,
+  isAgreementEnabled,
+  validateAgreementPercent,
+  type OptionalAgreement,
 } from '@/lib/partner/partnerships'
-import {
-  guardPartnerDelete,
-  guardPromoModelRemoval,
-  propagatePartnerName,
-} from './hooks/partnerLinks'
+import { guardPartnerDelete, propagatePartnerName } from './hooks/partnerLinks'
 
 /**
- * Partners (`Partnere`) — one document per person or company ABOKS AS has a partner agreement
- * with, whichever partnership models (`Samarbeidsformer`) that agreement covers.
+ * Partners (`Partnere`) — one document per person or company in ABOKS AS's partner programme.
+ *
+ * ── One programme ──
+ *
+ * Every partner has the three standard earning methods — Promokode, Bedriftssalg and
+ * Forhandlersalg — automatically, under the one partner agreement. They are shown as information
+ * («Standard partnerfordeler»), never selected. On top of that, two optional commercial agreements
+ * can be enabled per partner, independently: Dropshipping and Forhandlerinnkjøp
+ * («Ekstra samarbeidsavtaler»). See `@/lib/partner/partnerships` for the terms.
  *
  * ── What links here, and what does not change ──
  *
@@ -36,39 +40,71 @@ import {
  *     the one rate the commission engine uses — a partner stores no promo-code rate at all.
  *   • Payouts record the partner the code belonged to (`partner-payouts.partner`). The balance is
  *     still calculated per promo code; nothing here sums money across codes.
- *   • No order is priced or credited from the rates and discounts below.
+ *   • No order is priced or credited from the discounts below.
  *
- * See `@/lib/partner/partnerships` for the five models and why Forhandlersalg and
- * Forhandlerinnkjøp are kept apart, and `./hooks/partnerLinks` for the integrity rules.
+ * ── Legacy fields ──
  *
- * ── Why the models are one multi-select, not five checkboxes ──
- *
- * `partnershipTypes` is the single answer to "which models is this partner in". Each model's
- * percentage sits in its own field that is shown, and required, only while that model is
- * selected. A per-model "enabled" flag next to the select would be a second answer that could
- * disagree with the first.
+ * The first release had a five-option selector and editable per-partner Bedriftssalg and
+ * Forhandlersalg rates. Those three fields stay in the config — hidden, and closed to writes —
+ * purely so their columns and table keep matching the database and their stored values survive.
+ * Nothing reads them. See `legacyField` below.
  */
 
-/** The percentage field for one configurable model. */
-function partnershipPercentField(
-  name: string,
-  type: ConfigurablePartnershipType,
-  label: string,
-  description: string,
-): NumberField {
+/** Frozen: kept readable for history, never written again through Payload. */
+const frozen: FieldAccess = () => false
+
+/**
+ * Hides a superseded field and freezes it. Its column and stored values are kept.
+ *
+ * Two layers, because they cover different callers: field access closes the admin and the REST
+ * API, and the `beforeChange` hook — which runs even for local-API calls with `overrideAccess`
+ * — puts the stored value back on every update. A new partner gets the field's default, exactly
+ * as the database column would.
+ */
+function legacyField<T extends Field>(field: T): T {
+  const name = (field as { name: string }).name
+  const fallback = (field as { defaultValue?: unknown }).defaultValue ?? null
+  return {
+    ...field,
+    access: { create: frozen, update: frozen },
+    hooks: {
+      beforeChange: [
+        ({ operation, originalDoc }: { operation?: string; originalDoc?: Record<string, unknown> }) =>
+          operation === 'update' ? (originalDoc?.[name] ?? null) : fallback,
+      ],
+    },
+    admin: { ...(field as { admin?: object }).admin, hidden: true },
+  } as T
+}
+
+/** The checkbox that enables one optional agreement. */
+function agreementCheckbox(agreement: OptionalAgreement): CheckboxField {
+  return {
+    name: agreement.enabledField,
+    type: 'checkbox',
+    label: agreement.label,
+    defaultValue: false,
+    index: true,
+    admin: { description: agreement.description },
+  }
+}
+
+/** The discount field for one optional agreement: shown, and required, only while it is enabled. */
+function agreementPercentField(agreement: OptionalAgreement): NumberField {
+  const label = `${agreement.label} – rabatt`
   const validate: NumberFieldSingleValidation = (value, { data }) =>
-    validatePartnershipPercent(value, { selected: hasPartnershipType(data, type), label })
+    validateAgreementPercent(value, { enabled: isAgreementEnabled(data, agreement), label })
 
   return {
-    name,
+    name: agreement.percentField,
     type: 'number',
     label: `${label} (%)`,
-    defaultValue: PARTNERSHIP_DEFAULT_PERCENT[type],
-    min: MIN_PARTNERSHIP_PERCENT,
-    max: MAX_PARTNERSHIP_PERCENT,
+    defaultValue: agreement.defaultDiscountPercent,
+    min: MIN_AGREEMENT_PERCENT,
+    max: MAX_AGREEMENT_PERCENT,
     admin: {
-      condition: (data) => hasPartnershipType(data, type),
-      description,
+      condition: (data) => isAgreementEnabled(data, agreement),
+      description: `Standard ${agreement.defaultDiscountPercent} %. ${NO_STACKING_DESCRIPTION}`,
     },
     validate,
   }
@@ -87,10 +123,10 @@ export const Partners: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     group: 'Partnere',
-    defaultColumns: ['name', 'partnershipTypes', 'status', 'email', 'phone', 'updatedAt'],
+    defaultColumns: ['name', 'status', 'dropshippingEnabled', 'wholesaleEnabled', 'email', 'phone'],
     listSearchableFields: ['name', 'email', 'organizationNumber', 'contactPerson'],
     description:
-      'Samarbeidspartnere og avtalte vilkår. Provisjon på promokoder settes fortsatt på hver rabattkode.',
+      'Partnere i partnerprogrammet. Provisjon på promokoder settes på hver rabattkode.',
   },
   access: {
     // Contact and bank details: admin-only in every direction, like the rest of the partner data.
@@ -138,15 +174,26 @@ export const Partners: CollectionConfig = {
       ],
     },
     {
-      name: 'partnershipTypes',
-      type: 'select',
-      label: 'Samarbeidsformer',
-      hasMany: true,
-      options: PARTNERSHIP_TYPE_OPTIONS,
+      // Information, not a setting: every partner has these three methods automatically.
+      name: 'standardBenefits',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '@/components/admin/partner/StandardPartnerBenefits#default',
+        },
+      },
+    },
+    {
+      type: 'collapsible',
+      label: 'Ekstra samarbeidsavtaler',
       admin: {
         description:
-          'Velg alle samarbeidsformene partneren deltar i. «Forhandlersalg» er provisjon for å introdusere en forhandler; «Forhandlerinnkjøp» er når partneren selv kjøper inn som forhandler.',
+          'Valgfrie kommersielle avtaler i tillegg til de tre standard opptjeningsmåtene. Kan aktiveres hver for seg eller sammen.',
       },
+      fields: OPTIONAL_AGREEMENTS.flatMap((agreement) => [
+        agreementCheckbox(agreement),
+        agreementPercentField(agreement),
+      ]),
     },
     {
       type: 'collapsible',
@@ -229,51 +276,6 @@ export const Partners: CollectionConfig = {
       ],
     },
     {
-      type: 'collapsible',
-      label: 'Avtalte vilkår',
-      admin: {
-        // Promokode has no field here on purpose: its rate is set on each promo code, and a
-        // second rate on the partner would compete with it. The description says where it is.
-        description: `Vises for samarbeidsformene som er valgt over. Ingen av satsene brukes automatisk i kassen eller på ordre ennå. Promokode: ${PARTNERSHIP_DESCRIPTIONS.promoCode}`,
-      },
-      fields: [
-        {
-          type: 'row',
-          fields: [
-            partnershipPercentField(
-              'businessSaleCommissionPercent',
-              'businessSale',
-              'Bedriftssalg – provisjon',
-              `${PARTNERSHIP_DESCRIPTIONS.businessSale} ${REFERRAL_RATE_DESCRIPTION}`,
-            ),
-            partnershipPercentField(
-              'retailerReferralCommissionPercent',
-              'retailerReferral',
-              'Forhandlersalg – provisjon',
-              `${PARTNERSHIP_DESCRIPTIONS.retailerReferral} ${REFERRAL_RATE_DESCRIPTION}`,
-            ),
-          ],
-        },
-        {
-          type: 'row',
-          fields: [
-            partnershipPercentField(
-              'dropshippingDiscountPercent',
-              'dropshipping',
-              'Dropshipping – rabatt',
-              `${PARTNERSHIP_DESCRIPTIONS.dropshipping} ${NO_STACKING_DESCRIPTION}`,
-            ),
-            partnershipPercentField(
-              'wholesaleDiscountPercent',
-              'wholesale',
-              'Forhandlerinnkjøp – rabatt',
-              `${PARTNERSHIP_DESCRIPTIONS.wholesale} ${NO_STACKING_DESCRIPTION}`,
-            ),
-          ],
-        },
-      ],
-    },
-    {
       name: 'agreementDate',
       type: 'date',
       label: 'Avtaledato',
@@ -320,9 +322,32 @@ export const Partners: CollectionConfig = {
           'Registrerte utbetalinger til partneren. Eldre utbetalinger registrert før partneren ble opprettet vises på rabattkoden.',
       },
     },
+    // ── Legacy (hidden, frozen) ──
+    //
+    // Superseded by «Standard partnerfordeler» and «Ekstra samarbeidsavtaler». Kept so the
+    // `partners_partnership_types` table and the two rate columns stay in step with the schema and
+    // their historical values are preserved. Never shown, never written, never read.
+    legacyField({
+      name: 'partnershipTypes',
+      type: 'select',
+      label: 'Samarbeidsformer (utgått)',
+      hasMany: true,
+      options: [...LEGACY_PARTNERSHIP_TYPE_OPTIONS],
+    }),
+    legacyField({
+      name: 'businessSaleCommissionPercent',
+      type: 'number',
+      label: 'Bedriftssalg – provisjon (utgått)',
+      defaultValue: 25,
+    }),
+    legacyField({
+      name: 'retailerReferralCommissionPercent',
+      type: 'number',
+      label: 'Forhandlersalg – provisjon (utgått)',
+      defaultValue: 15,
+    }),
   ],
   hooks: {
-    beforeChange: [guardPromoModelRemoval],
     beforeDelete: [guardPartnerDelete],
     afterChange: [propagatePartnerName],
   },

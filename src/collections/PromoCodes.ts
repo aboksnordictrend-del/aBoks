@@ -26,6 +26,7 @@ import {
   guardPartnerChange,
   relationshipId,
   syncPartnerName,
+  ELIGIBLE_PARTNER_FILTER,
   validatePartnerLink,
 } from './hooks/promoCodePartner'
 
@@ -417,21 +418,21 @@ export const PromoCodes: CollectionConfig = {
           // Many codes may point at one partner. Optional at the schema level so every existing
           // partner code stays valid unlinked; `partnerName` below covers that case.
           //
-          // `filterOptions` is enforced on the server too — Payload's relationship validation
-          // re-runs it on save — so a partner without the Promokode model cannot be linked
-          // through the API either. The partner collection refuses to drop that model while
-          // codes are still linked, so an existing link cannot quietly become invalid.
+          // Every partner has Promokode as a standard earning method, so eligibility is only the
+          // partner's status: a NEW link needs an «Aktiv» partner. `filterOptions` limits the
+          // dropdown and is re-checked on the server by `validatePartnerLink`, which also keeps
+          // an existing link valid after the partner is paused or ended.
           name: 'partner',
           type: 'relationship',
           relationTo: 'partners',
           label: 'Partner',
           index: true,
-          filterOptions: () => ({ partnershipTypes: { in: ['promoCode'] } }),
+          filterOptions: () => ELIGIBLE_PARTNER_FILTER,
           validate: validatePartnerLink,
           admin: {
             condition: isPartnerCode,
             description:
-              'Velg partneren koden tilhører. Bare partnere med samarbeidsformen «Promokode» kan velges. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.',
+              'Velg partneren koden tilhører. Bare partnere med status «Aktiv» kan velges; en eksisterende kobling består selv om partneren senere settes på pause eller avsluttes. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.',
           },
         },
         {
