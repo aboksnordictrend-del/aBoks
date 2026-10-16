@@ -52,6 +52,9 @@ function harness(
     bodyThrows?: boolean
     /** Simulates an SMTP failure on the partner confirmation e-mail. */
     sendEmailThrows?: boolean
+    /** The `partners` record the promo code links to, looked up by id. */
+    partner?: Record<string, unknown> | null
+    partnerThrows?: boolean
   } = {},
 ): Harness {
   const payouts = [...(opts.payouts ?? [])]
@@ -60,7 +63,11 @@ function harness(
   const orders = opts.orders ?? [{ id: 1, status: 'delivered' }]
 
   const payload = {
-    findByID: async ({ collection }: { collection: string }) => {
+    findByID: async ({ collection, id }: { collection: string; id: unknown }) => {
+      if (collection === 'partners') {
+        if (opts.partnerThrows) throw new Error('connection terminated')
+        return opts.partner && String(opts.partner.id) === String(id) ? opts.partner : null
+      }
       if (collection !== 'promo-codes') return null
       return opts.promo === undefined ? PARTNER_PROMO : opts.promo
     },
@@ -684,5 +691,92 @@ describe('Stage 6 — the partner confirmation e-mail', () => {
 
     assert.ok(typeof emails[0].text === 'string' && (emails[0].text as string).length > 50)
     assert.ok(String(emails[0].text).includes('Takk for samarbeidet!'))
+  })
+})
+
+/* ------------------------------ partner record link ------------------------------ */
+
+describe('registerPartnerPayout — the partner record linked to the code', () => {
+  const PARTNER = {
+    id: 5,
+    name: 'Ola Nordmann AS',
+    email: 'ola@partner.no',
+    bankAccount: '1234.56.78901',
+  }
+  const LINKED_PROMO = { ...PARTNER_PROMO, partner: 5, partnerEmail: 'gammel@example.no' }
+
+  it('records the linked partner on the payout', async () => {
+    const { res, payouts } = await call({ body: VALID_BODY, promo: LINKED_PROMO, partner: PARTNER })
+    assert.equal(res.status, 200)
+    assert.equal(payouts[0].partner, 5)
+  })
+
+  it('takes the name snapshot from the partner record', async () => {
+    const { payouts } = await call({ body: VALID_BODY, promo: LINKED_PROMO, partner: PARTNER })
+    assert.equal(payouts[0].partnerNameSnapshot, 'Ola Nordmann AS')
+  })
+
+  it('accepts a populated partner on the code', async () => {
+    const { payouts } = await call({
+      body: VALID_BODY,
+      promo: { ...LINKED_PROMO, partner: { id: 5 } },
+      partner: PARTNER,
+    })
+    assert.equal(payouts[0].partner, 5)
+  })
+
+  it('e-mails the partner record’s address in preference to the code’s', async () => {
+    const { emails } = await call({ body: VALID_BODY, promo: LINKED_PROMO, partner: PARTNER })
+    assert.equal(emails.length, 1)
+    assert.equal(emails[0].to, 'ola@partner.no')
+  })
+
+  it('falls back to the code’s address when the partner record has none', async () => {
+    const { emails } = await call({
+      body: VALID_BODY,
+      promo: LINKED_PROMO,
+      partner: { ...PARTNER, email: null },
+    })
+    assert.equal(emails[0].to, 'gammel@example.no')
+  })
+
+  it('pays an unlinked code exactly as before, with no partner on the payout', async () => {
+    const { res, payouts } = await call({ body: VALID_BODY })
+    assert.equal(res.status, 200)
+    assert.equal(payouts[0].partner, null)
+    assert.equal(payouts[0].partnerNameSnapshot, 'Ola Nordmann')
+  })
+
+  it('never reads a partner id from the request body', async () => {
+    const { payouts } = await call({ body: { ...VALID_BODY, partner: 9, partnerId: 9 } })
+    assert.equal(payouts[0].partner, null)
+  })
+
+  it('keeps the per-code balance: the same rules refuse an overpayment on a linked code', async () => {
+    const { body, payouts } = await call({
+      body: { ...VALID_BODY, amount: 101 },
+      promo: LINKED_PROMO,
+      partner: PARTNER,
+    })
+    assert.equal(body.code, 'amount_exceeds_balance')
+    assert.equal(payouts.length, 0)
+  })
+
+  it('refuses rather than guesses when the partner lookup fails', async () => {
+    const { res, body, payouts, emails } = await call({
+      body: VALID_BODY,
+      promo: LINKED_PROMO,
+      partnerThrows: true,
+    })
+    assert.equal(res.status, 503)
+    assert.equal(body.code, 'partner_lookup_failed')
+    assert.equal(payouts.length, 0)
+    assert.equal(emails.length, 0)
+  })
+
+  it('does not leak the partner’s bank details in the response', async () => {
+    const { body } = await call({ body: VALID_BODY, promo: LINKED_PROMO, partner: PARTNER })
+    assert.equal(JSON.stringify(body).includes('1234.56.78901'), false)
+    assert.equal(JSON.stringify(body).includes('partner.no'), false)
   })
 })

@@ -22,6 +22,12 @@ import {
   MIN_COMMISSION_RATE,
 } from '@/lib/partner/constants'
 import { validateCommissionRate } from '@/lib/partner/commission'
+import {
+  guardPartnerChange,
+  relationshipId,
+  syncPartnerName,
+  validatePartnerLink,
+} from './hooks/promoCodePartner'
 
 /**
  * Promo / discount codes (`Promokoder`).
@@ -44,6 +50,7 @@ type PromoSiblingData = {
   maxUses?: number | null
   startsAt?: string | null
   isPartnerCode?: boolean | null
+  partner?: unknown
 }
 
 /**
@@ -56,6 +63,18 @@ type PromoSiblingData = {
  */
 const isPartnerCode = (data: unknown): boolean =>
   (data as PromoSiblingData | undefined)?.isPartnerCode === true
+
+/** True when the code is linked to a record in `partners`. */
+const hasLinkedPartner = (data: unknown): boolean =>
+  relationshipId((data as PromoSiblingData | undefined)?.partner) !== null
+
+/**
+ * The legacy per-code partner details (name, contact, bank). Shown while a partner code is NOT
+ * linked to a partner record; once it is, the partner record holds them and the copies here
+ * are hidden — never cleared, so the stored values stay exactly as they were.
+ */
+const isUnlinkedPartnerCode = (data: unknown): boolean =>
+  isPartnerCode(data) && !hasLinkedPartner(data)
 
 /**
  * Non-empty after normalisation, and not already taken by another document.
@@ -146,6 +165,10 @@ const validateUsageMode: SelectFieldSingleValidation = (value, { siblingData }) 
  */
 const validatePartnerName: TextFieldSingleValidation = (value, { siblingData }) => {
   if (!isPartnerCode(siblingData)) return true
+  // A linked partner supplies the name: `syncPartnerName` copies it in before the server-side
+  // validation. The admin's form-state pass runs no hooks, so the value can legitimately still
+  // be empty there.
+  if (hasLinkedPartner(siblingData)) return true
   if (typeof value !== 'string' || value.trim() === '') {
     return 'Partner / eier må fylles ut for en partnerkode.'
   }
@@ -391,12 +414,36 @@ export const PromoCodes: CollectionConfig = {
           },
         },
         {
+          // Many codes may point at one partner. Optional at the schema level so every existing
+          // partner code stays valid unlinked; `partnerName` below covers that case.
+          //
+          // `filterOptions` is enforced on the server too — Payload's relationship validation
+          // re-runs it on save — so a partner without the Promokode model cannot be linked
+          // through the API either. The partner collection refuses to drop that model while
+          // codes are still linked, so an existing link cannot quietly become invalid.
+          name: 'partner',
+          type: 'relationship',
+          relationTo: 'partners',
+          label: 'Partner',
+          index: true,
+          filterOptions: () => ({ partnershipTypes: { in: ['promoCode'] } }),
+          validate: validatePartnerLink,
+          admin: {
+            condition: isPartnerCode,
+            description:
+              'Velg partneren koden tilhører. Bare partnere med samarbeidsformen «Promokode» kan velges. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.',
+          },
+        },
+        {
+          // Filled automatically from the linked partner (see `syncPartnerName`), and typed by
+          // hand only on a code that is not linked. Every existing reader keeps using it.
           name: 'partnerName',
           type: 'text',
           label: 'Partner / eier',
           admin: {
-            condition: isPartnerCode,
-            description: 'Navnet provisjonen føres på. Vises kun i admin.',
+            condition: isUnlinkedPartnerCode,
+            description:
+              'Navnet provisjonen føres på. Vises kun i admin. Fylles automatisk når en partner er valgt over.',
             placeholder: 'Ola Nordmann',
           },
           validate: validatePartnerName,
@@ -408,27 +455,29 @@ export const PromoCodes: CollectionConfig = {
               name: 'partnerEmail',
               type: 'email',
               label: 'E-post',
-              admin: { width: '50%', condition: isPartnerCode },
+              admin: { width: '50%', condition: isUnlinkedPartnerCode },
             },
             {
               name: 'partnerPhone',
               type: 'text',
               label: 'Telefon',
-              admin: { width: '50%', condition: isPartnerCode },
+              admin: { width: '50%', condition: isUnlinkedPartnerCode },
             },
           ],
         },
         // Payment details for the manual transfer, recorded for the administrator's
         // convenience. Reference only: nothing here is read by the commission calculation,
-        // the statistics, the payout endpoint, the payout snapshot or the partner e-mail.
-        // Stored exactly as typed — no validation, formatting, masking or normalisation, so
-        // a foreign account number or an unusual format is never mangled.
+        // the statistics, the payout endpoint or the payout snapshot. The payout dialog shows
+        // them only for a code that is not linked to a partner record; a linked code shows the
+        // partner's own details instead. Stored exactly as typed — no validation, formatting,
+        // masking or normalisation, so a foreign account number or an unusual format is never
+        // mangled.
         {
           name: 'partnerBankAccount',
           type: 'text',
           label: 'Kontonummer',
           admin: {
-            condition: isPartnerCode,
+            condition: isUnlinkedPartnerCode,
             description: 'Partnerens kontonummer for manuelle utbetalinger.',
           },
         },
@@ -441,7 +490,7 @@ export const PromoCodes: CollectionConfig = {
               label: 'Kontoeier',
               admin: {
                 width: '50%',
-                condition: isPartnerCode,
+                condition: isUnlinkedPartnerCode,
                 description: 'Navnet på kontoeieren dersom det avviker fra partnernavnet.',
               },
             },
@@ -451,7 +500,7 @@ export const PromoCodes: CollectionConfig = {
               label: 'Organisasjonsnummer',
               admin: {
                 width: '50%',
-                condition: isPartnerCode,
+                condition: isUnlinkedPartnerCode,
                 description: 'Valgfritt organisasjonsnummer dersom partneren er et firma.',
               },
             },
@@ -526,5 +575,10 @@ export const PromoCodes: CollectionConfig = {
       },
     },
   ],
+  hooks: {
+    // Partner link only. Neither hook reads or writes a discount or commission field.
+    beforeValidate: [syncPartnerName],
+    beforeChange: [guardPartnerChange],
+  },
   timestamps: true,
 }

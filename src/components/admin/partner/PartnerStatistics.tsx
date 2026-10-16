@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import type { UIFieldServerComponent } from 'payload'
+import type { Payload, PayloadRequest, UIFieldServerComponent } from 'payload'
 import { formatInt, formatNOK } from '@/lib/analytics/money'
 import { formatDateNo } from '@/lib/receiptPdf'
 import { loadPartnerStatistics } from '@/lib/partner/statistics'
@@ -30,12 +30,62 @@ import styles from './partner.module.css'
  * payout button, form or edit control in this stage.
  */
 
+type PromoPaymentSource = {
+  partner?: unknown
+  partnerBankAccount?: unknown
+  partnerAccountOwner?: unknown
+}
+
+type PaymentDetails = { bankAccount?: string; accountOwner?: string }
+
+const text = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim() ? value.trim() : undefined
+
+/**
+ * Where a payout for this code should be sent, for display in the payout dialog.
+ *
+ * The linked partner record's details when the code is linked, the code's own legacy fields
+ * otherwise. Display only, so a failed partner lookup degrades to "not shown" rather than taking
+ * the statistics down with it.
+ */
+async function loadPaymentDetails(
+  payload: Payload,
+  req: PayloadRequest,
+  source: PromoPaymentSource | null | undefined,
+): Promise<PaymentDetails> {
+  const link = source?.partner
+  const partnerId =
+    link && typeof link === 'object' ? (link as { id?: unknown }).id : link
+  if (typeof partnerId === 'number' || (typeof partnerId === 'string' && partnerId !== '')) {
+    try {
+      const partner = await payload.findByID({
+        collection: 'partners',
+        id: partnerId,
+        depth: 0,
+        overrideAccess: true,
+        disableErrors: true,
+        req,
+      })
+      if (partner) {
+        return { bankAccount: text(partner.bankAccount), accountOwner: text(partner.accountOwner) }
+      }
+    } catch {
+      return {}
+    }
+  }
+  return {
+    bankAccount: text(source?.partnerBankAccount),
+    accountOwner: text(source?.partnerAccountOwner),
+  }
+}
+
 const PartnerStatistics: UIFieldServerComponent = async ({ id, data, payload, req }) => {
   // Nothing to show before the document exists, or on an ordinary promo code — a code with
   // no partner has no commission, and an empty financial dashboard would only be confusing.
   if (!id) return null
 
   let stats
+  let payment: PaymentDetails = {}
   try {
     // Payload renders field server components from a server action once the document view
     // mounts, and `data` is not guaranteed to be populated in every render context. So the
@@ -43,6 +93,7 @@ const PartnerStatistics: UIFieldServerComponent = async ({ id, data, payload, re
     // is not — the panel must not depend on which of the two Payload happens to supply.
     const fromData = (data as { isPartnerCode?: unknown })?.isPartnerCode
     let isPartner = fromData === true
+    let source: PromoPaymentSource | null | undefined = data as PromoPaymentSource
 
     if (fromData === undefined || fromData === null) {
       const doc = await payload.findByID({
@@ -54,6 +105,7 @@ const PartnerStatistics: UIFieldServerComponent = async ({ id, data, payload, re
         req,
       })
       isPartner = doc?.isPartnerCode === true
+      source = doc as PromoPaymentSource | null
     }
 
     // An ordinary promo code has no commission, and an empty financial dashboard on it would
@@ -61,6 +113,7 @@ const PartnerStatistics: UIFieldServerComponent = async ({ id, data, payload, re
     if (!isPartner) return null
 
     stats = await loadPartnerStatistics(payload, id, { req })
+    payment = await loadPaymentDetails(payload, req, source)
   } catch (err) {
     // A statistics panel must never take the edit page down with it.
     console.error(
@@ -129,6 +182,8 @@ const PartnerStatistics: UIFieldServerComponent = async ({ id, data, payload, re
         revenueAfterDiscount={stats.revenue}
         earnedCommission={stats.balance.earnedCommission}
         availableToPay={stats.balance.availableToPay}
+        bankAccount={payment.bankAccount}
+        accountOwner={payment.accountOwner}
       />
       <PartnerPayoutTable rows={stats.payouts} />
       {lastPayout && (

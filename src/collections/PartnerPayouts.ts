@@ -32,6 +32,7 @@ import { registerPartnerPayout } from './endpoints/registerPartnerPayout'
 /** Frozen after creation. Everything that defines what was paid, to whom, when and how. */
 const IMMUTABLE_FIELDS = [
   'promoCode',
+  'partner',
   'partnerNameSnapshot',
   'amount',
   'payoutDate',
@@ -73,6 +74,7 @@ const textValue = (value: unknown): string | null =>
 function normalize(field: ImmutableField, value: unknown): unknown {
   switch (field) {
     case 'promoCode':
+    case 'partner':
     case 'createdBy':
       return relationshipId(value)
     case 'payoutDate':
@@ -160,6 +162,28 @@ export const PartnerPayouts: CollectionConfig = {
       admin: {
         readOnly: true,
         description: 'Låst etter registrering.',
+        components: {
+          // Shows the code in the partner's «Utbetalinger» join list too, where the row arrives
+          // with this relationship populated — see the component's header.
+          Cell: '@/components/admin/partner/PromoCodeCell#default',
+        },
+      },
+    },
+    {
+      // The partner record the code was linked to when the payout was registered. Set by the
+      // endpoint from the promo code — never from the request — and frozen with everything
+      // else. NULL on payouts registered before partner records existed, and on payouts for a
+      // code that is not linked; those keep identifying the payee through `promoCode` and
+      // `partnerNameSnapshot`, exactly as before. The balance never reads this field: it is
+      // still calculated per promo code.
+      name: 'partner',
+      type: 'relationship',
+      relationTo: 'partners',
+      label: 'Partner',
+      index: true,
+      admin: {
+        readOnly: true,
+        description: 'Partneren rabattkoden var knyttet til. Tom for eldre utbetalinger. Låst etter registrering.',
       },
     },
     {

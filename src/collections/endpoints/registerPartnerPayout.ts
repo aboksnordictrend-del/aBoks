@@ -45,6 +45,7 @@ type ErrorCode =
   | 'promo_not_found'
   | 'not_partner_code'
   | 'partner_name_missing'
+  | 'partner_lookup_failed'
   | 'invalid_amount'
   | 'invalid_payout_date'
   | 'invalid_payment_method'
@@ -109,9 +110,29 @@ type PartnerPromo = {
   id: number | string
   code?: string | null
   isPartnerCode?: boolean | null
+  partner?: unknown
   partnerName?: string | null
   partnerEmail?: string | null
 }
+
+/** The parts of the linked partner record this endpoint reads. */
+type LinkedPartner = {
+  id: number | string
+  name?: string | null
+  email?: string | null
+}
+
+/** Relationship value (raw id or populated document) → id, or null. */
+const relationshipId = (value: unknown): number | string | null => {
+  if (value == null || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return typeof id === 'number' || typeof id === 'string' ? id : null
+  }
+  return typeof value === 'number' || typeof value === 'string' ? value : null
+}
+
+const trimmed = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
 
 /**
  * A deliberately conservative address check: exactly one @, something either side, a dot in
@@ -173,8 +194,33 @@ export const registerPartnerPayout: Endpoint = {
       )
     }
 
-    const partnerNameSnapshot =
-      typeof promo.partnerName === 'string' ? promo.partnerName.trim() : ''
+    // ── The partner record the code is linked to, if any ──
+    //
+    // Read on the server from the code's own link; a partner id in the body is never read.
+    // An unlinked code — every code from before partner records existed — pays out exactly as
+    // before, with `partner` left NULL. A failed lookup is refused rather than guessed: the
+    // payout would otherwise be frozen without the partner it belongs to.
+    let partner: LinkedPartner | null = null
+    const linkedPartnerId = relationshipId(promo.partner)
+    if (linkedPartnerId != null) {
+      try {
+        partner = (await payload.findByID({
+          collection: 'partners',
+          id: linkedPartnerId,
+          depth: 0,
+          overrideAccess: true,
+          disableErrors: true,
+          req,
+        })) as LinkedPartner | null
+      } catch (err) {
+        log({ event: 'partner-lookup-failed', promoCodeId: String(promo.id), error: String(err) })
+        return fail('partner_lookup_failed', 'Kunne ikke hente partneren akkurat nå. Prøv igjen.', 503)
+      }
+    }
+
+    // The linked partner's name is the source; `partnerName` on the code is its copy and the
+    // fallback for an unlinked code.
+    const partnerNameSnapshot = trimmed(partner?.name) || trimmed(promo.partnerName)
     if (!partnerNameSnapshot) {
       return fail(
         'partner_name_missing',
@@ -255,6 +301,8 @@ export const registerPartnerPayout: Endpoint = {
         collection: 'partner-payouts',
         data: {
           promoCode: Number(promo.id),
+          // Server-derived from the code's link; NULL for an unlinked code.
+          partner: partner ? Number(partner.id) : null,
           // Server-copied. A client-submitted name is never read.
           partnerNameSnapshot,
           amount: oereToKr(amountOere),
@@ -278,8 +326,9 @@ export const registerPartnerPayout: Endpoint = {
     // Strictly after the ledger row exists, so an e-mail can never announce a payout that was
     // not registered. The row is authoritative: a failed send is reported and logged, never
     // rolled back, never retried automatically, and never deletes the payout.
-    const partnerEmail =
-      typeof promo.partnerEmail === 'string' ? promo.partnerEmail.trim() : ''
+    // The partner record's address first; the code's own legacy field for an unlinked code, or
+    // a partner record with no address yet.
+    const partnerEmail = trimmed(partner?.email) || trimmed(promo.partnerEmail)
     let emailStatus: PayoutEmailStatus = 'skipped_no_address'
 
     if (partnerEmail && EMAIL_RE.test(partnerEmail)) {

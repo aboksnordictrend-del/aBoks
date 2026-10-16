@@ -21,6 +21,13 @@ export interface PayoutSummary {
   revenueAfterDiscount: number
   earnedCommission: number
   availableToPay: number
+  /**
+   * Where to send the money, for the human making the transfer. Read from the linked partner
+   * record, or from the code's own legacy fields when it is not linked. Display only: never
+   * sent to the endpoint and never part of the payout row.
+   */
+  bankAccount?: string
+  accountOwner?: string
 }
 
 /** A balance is payable only when there is something to pay. */
@@ -83,6 +90,8 @@ export default function PayoutModalBody({
 
   const rows: { label: string; value: string }[] = [
     { label: 'Partner', value: summary.partnerName || '—' },
+    ...(summary.bankAccount ? [{ label: 'Kontonummer', value: summary.bankAccount }] : []),
+    ...(summary.accountOwner ? [{ label: 'Kontoeier', value: summary.accountOwner }] : []),
     { label: 'Rabattkode', value: summary.promoCode || '—' },
     { label: 'Gyldige kjøp', value: formatInt(summary.validUsageCount) },
     { label: 'Omsetning etter rabatt', value: formatNOK(summary.revenueAfterDiscount, 2) },

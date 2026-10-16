@@ -15,6 +15,7 @@ import { Orders } from './src/collections/Orders'
 import { PromoCodes } from './src/collections/PromoCodes'
 import { PromoCodeUsages } from './src/collections/PromoCodeUsages'
 import { PartnerPayouts } from './src/collections/PartnerPayouts'
+import { Partners } from './src/collections/Partners'
 import { Customers } from './src/collections/Customers'
 import { MarketingExpenses } from './src/collections/MarketingExpenses'
 import { Reviews } from './src/collections/Reviews'
@@ -130,6 +131,7 @@ export default buildConfig({
     PromoCodes,
     PromoCodeUsages,
     PartnerPayouts,
+    Partners,
     Customers,
     MarketingExpenses,
     Reviews,

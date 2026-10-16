@@ -242,3 +242,27 @@ describe('PayoutModalBody — formatting', () => {
     assert.ok(html.includes('0,00 kr'))
   })
 })
+
+/* ------------------------------ payment details ------------------------------ */
+
+describe('PayoutModalBody — where to send the money', () => {
+  it('shows the account number and owner when known', () => {
+    const html = text(
+      body({ summary: summary({ bankAccount: '1234.56.78901', accountOwner: 'Ola Nordmann AS' }) }),
+    )
+    assert.ok(html.includes('Kontonummer 1234.56.78901'))
+    assert.ok(html.includes('Kontoeier Ola Nordmann AS'))
+  })
+
+  it('omits both rows when nothing is recorded', () => {
+    const html = text(body())
+    assert.equal(html.includes('Kontonummer'), false)
+    assert.equal(html.includes('Kontoeier'), false)
+  })
+
+  it('shows the account number alone when there is no separate owner', () => {
+    const html = text(body({ summary: summary({ bankAccount: '1234.56.78901' }) }))
+    assert.ok(html.includes('Kontonummer'))
+    assert.equal(html.includes('Kontoeier'), false)
+  })
+})

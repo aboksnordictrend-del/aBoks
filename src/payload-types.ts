@@ -75,6 +75,7 @@ export interface Config {
     'promo-codes': PromoCode;
     'promo-code-usages': PromoCodeUsage;
     'partner-payouts': PartnerPayout;
+    partners: Partner;
     customers: Customer;
     'marketing-expenses': MarketingExpense;
     reviews: Review;
@@ -85,7 +86,12 @@ export interface Config {
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
   };
-  collectionsJoins: {};
+  collectionsJoins: {
+    partners: {
+      promoCodes: 'promo-codes';
+      payouts: 'partner-payouts';
+    };
+  };
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
@@ -95,6 +101,7 @@ export interface Config {
     'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
     'promo-code-usages': PromoCodeUsagesSelect<false> | PromoCodeUsagesSelect<true>;
     'partner-payouts': PartnerPayoutsSelect<false> | PartnerPayoutsSelect<true>;
+    partners: PartnersSelect<false> | PartnersSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
     'marketing-expenses': MarketingExpensesSelect<false> | MarketingExpensesSelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
@@ -580,7 +587,11 @@ export interface PromoCode {
    */
   isPartnerCode?: boolean | null;
   /**
-   * Navnet provisjonen føres på. Vises kun i admin.
+   * Velg partneren koden tilhører. Bare partnere med samarbeidsformen «Promokode» kan velges. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.
+   */
+  partner?: (number | null) | Partner;
+  /**
+   * Navnet provisjonen føres på. Vises kun i admin. Fylles automatisk når en partner er valgt over.
    */
   partnerName?: string | null;
   partnerEmail?: string | null;
@@ -609,6 +620,126 @@ export interface PromoCode {
    * Avtalevilkår, kontaktinfo o.l. Vises aldri for kunden.
    */
   partnerNote?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Samarbeidspartnere og avtalte vilkår. Provisjon på promokoder settes fortsatt på hver rabattkode.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "partners".
+ */
+export interface Partner {
+  id: number;
+  /**
+   * Navnet på personen eller firmaet avtalen er inngått med.
+   */
+  name: string;
+  /**
+   * Sett til «Avsluttet» når avtalen opphører, i stedet for å slette partneren.
+   */
+  status: 'active' | 'paused' | 'ended';
+  /**
+   * Velg alle samarbeidsformene partneren deltar i. «Forhandlersalg» er provisjon for å introdusere en forhandler; «Forhandlerinnkjøp» er når partneren selv kjøper inn som forhandler.
+   */
+  partnershipTypes?: ('promoCode' | 'businessSale' | 'retailerReferral' | 'dropshipping' | 'wholesale')[] | null;
+  entityType?: ('person' | 'company') | null;
+  /**
+   * Valgfritt. Lagres slik det skrives.
+   */
+  organizationNumber?: string | null;
+  /**
+   * Dersom partneren er et firma.
+   */
+  contactPerson?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  bankAccount?: string | null;
+  /**
+   * Dersom kontoeieren er en annen enn partneren.
+   */
+  accountOwner?: string | null;
+  /**
+   * Partneren finner og forhandler frem en bedriftsordre, og får provisjon av den endelige betalte vareverdien. Kunden får gjeldende mengderabatt. Avtalt provisjonssats. Foreløpig kun registrert her – ingen ordre spores eller krediteres automatisk.
+   */
+  businessSaleCommissionPercent?: number | null;
+  /**
+   * Partneren introduserer en forhandler og får provisjon av forhandlerens betalte innkjøp. Partneren er ikke selv forhandleren – se «Forhandlerinnkjøp» for det. Avtalt provisjonssats. Foreløpig kun registrert her – ingen ordre spores eller krediteres automatisk.
+   */
+  retailerReferralCommissionPercent?: number | null;
+  /**
+   * Partneren selger videre og ABOKS AS sender direkte til sluttkunden. Gis av ordinær katalogpris og kombineres aldri med kampanjepris, mengderabatt, rabattkode eller partnerprovisjon. Foreløpig kun en avtalt sats – den brukes ikke automatisk på noen ordre.
+   */
+  dropshippingDiscountPercent?: number | null;
+  /**
+   * Partneren er selv forhandler og kjøper varer for videresalg. Ikke det samme som «Forhandlersalg». Gis av ordinær katalogpris og kombineres aldri med kampanjepris, mengderabatt, rabattkode eller partnerprovisjon. Foreløpig kun en avtalt sats – den brukes ikke automatisk på noen ordre.
+   */
+  wholesaleDiscountPercent?: number | null;
+  /**
+   * Når partneravtalen ble inngått.
+   */
+  agreementDate?: string | null;
+  /**
+   * Avtalevilkår, historikk o.l. Vises aldri for partneren.
+   */
+  internalNote?: string | null;
+  /**
+   * Rabattkodene som tilhører partneren. Provisjonssats, statistikk og utbetaling håndteres på hver rabattkode.
+   */
+  promoCodes?: {
+    docs?: (number | PromoCode)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Registrerte utbetalinger til partneren. Eldre utbetalinger registrert før partneren ble opprettet vises på rabattkoden.
+   */
+  payouts?: {
+    docs?: (number | PartnerPayout)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Registrer en utbetaling som allerede er utført via bank, Vipps eller annen betalingsmåte. Systemet sender aldri penger selv.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "partner-payouts".
+ */
+export interface PartnerPayout {
+  id: number;
+  /**
+   * Låst etter registrering.
+   */
+  promoCode: number | PromoCode;
+  /**
+   * Partneren rabattkoden var knyttet til. Tom for eldre utbetalinger. Låst etter registrering.
+   */
+  partner?: (number | null) | Partner;
+  /**
+   * Kopiert fra rabattkoden da utbetalingen ble registrert.
+   */
+  partnerNameSnapshot: string;
+  /**
+   * Utbetalt beløp i kroner. Låst etter registrering.
+   */
+  amount: number;
+  payoutDate: string;
+  paymentMethod: 'bankTransfer' | 'vipps' | 'other';
+  /**
+   * Bankreferanse, Vipps-id e.l. Kan endres senere.
+   */
+  reference?: string | null;
+  /**
+   * Internt notat. Kan endres senere.
+   */
+  note?: string | null;
+  /**
+   * Settes automatisk fra den innloggede brukeren.
+   */
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -665,43 +796,6 @@ export interface PromoCodeUsage {
   kustomOrderId?: string | null;
   orderKey?: string | null;
   uniquenessKey?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Registrer en utbetaling som allerede er utført via bank, Vipps eller annen betalingsmåte. Systemet sender aldri penger selv.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "partner-payouts".
- */
-export interface PartnerPayout {
-  id: number;
-  /**
-   * Låst etter registrering.
-   */
-  promoCode: number | PromoCode;
-  /**
-   * Kopiert fra rabattkoden da utbetalingen ble registrert.
-   */
-  partnerNameSnapshot: string;
-  /**
-   * Utbetalt beløp i kroner. Låst etter registrering.
-   */
-  amount: number;
-  payoutDate: string;
-  paymentMethod: 'bankTransfer' | 'vipps' | 'other';
-  /**
-   * Bankreferanse, Vipps-id e.l. Kan endres senere.
-   */
-  reference?: string | null;
-  /**
-   * Internt notat. Kan endres senere.
-   */
-  note?: string | null;
-  /**
-   * Settes automatisk fra den innloggede brukeren.
-   */
-  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -910,6 +1004,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'partner-payouts';
         value: number | PartnerPayout;
+      } | null)
+    | ({
+        relationTo: 'partners';
+        value: number | Partner;
       } | null)
     | ({
         relationTo: 'customers';
@@ -1236,6 +1334,7 @@ export interface PromoCodesSelect<T extends boolean = true> {
   minimumOrderAmount?: T;
   applicableProducts?: T;
   isPartnerCode?: T;
+  partner?: T;
   partnerName?: T;
   partnerEmail?: T;
   partnerPhone?: T;
@@ -1280,6 +1379,7 @@ export interface PromoCodeUsagesSelect<T extends boolean = true> {
  */
 export interface PartnerPayoutsSelect<T extends boolean = true> {
   promoCode?: T;
+  partner?: T;
   partnerNameSnapshot?: T;
   amount?: T;
   payoutDate?: T;
@@ -1287,6 +1387,32 @@ export interface PartnerPayoutsSelect<T extends boolean = true> {
   reference?: T;
   note?: T;
   createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "partners_select".
+ */
+export interface PartnersSelect<T extends boolean = true> {
+  name?: T;
+  status?: T;
+  partnershipTypes?: T;
+  entityType?: T;
+  organizationNumber?: T;
+  contactPerson?: T;
+  email?: T;
+  phone?: T;
+  bankAccount?: T;
+  accountOwner?: T;
+  businessSaleCommissionPercent?: T;
+  retailerReferralCommissionPercent?: T;
+  dropshippingDiscountPercent?: T;
+  wholesaleDiscountPercent?: T;
+  agreementDate?: T;
+  internalNote?: T;
+  promoCodes?: T;
+  payouts?: T;
   updatedAt?: T;
   createdAt?: T;
 }

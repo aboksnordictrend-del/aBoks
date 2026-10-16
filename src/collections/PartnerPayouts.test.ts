@@ -208,3 +208,44 @@ describe('PartnerPayouts — collection configuration', () => {
     assert.equal(endpoint.method, 'post')
   })
 })
+
+/* ------------------------------ partner link ------------------------------ */
+
+describe('PartnerPayouts — partner link', () => {
+  const field = (PartnerPayouts.fields as { name?: string }[]).find((f) => f.name === 'partner') as
+    | { type: string; relationTo?: unknown; required?: unknown; admin?: { readOnly?: unknown } }
+    | undefined
+
+  it('adds an optional, read-only relationship to partners', () => {
+    assert.ok(field, 'partner field must exist')
+    assert.equal(field.type, 'relationship')
+    assert.equal(field.relationTo, 'partners')
+    assert.notEqual(field.required, true, 'historical payouts stay valid without a partner')
+    assert.equal(field.admin?.readOnly, true)
+  })
+
+  it('refuses a changed partner after registration', () => {
+    assert.throws(() => update({ ...ORIGINAL, partner: 9 }, { ...ORIGINAL, partner: 5 }), /partner/)
+  })
+
+  it('refuses attaching a partner to a historical payout through the API', () => {
+    assert.throws(() => update({ ...ORIGINAL, partner: 9 }, { ...ORIGINAL, partner: null }), /partner/)
+  })
+
+  it('accepts a resubmission with the same partner, raw or populated', () => {
+    assert.doesNotThrow(() => update({ ...ORIGINAL, partner: { id: 5 }, note: 'ny' }, { ...ORIGINAL, partner: 5 }))
+  })
+
+  it('leaves a historical payout without a partner editable', () => {
+    assert.doesNotThrow(() => update({ ...ORIGINAL, note: 'ny' }, { ...ORIGINAL, partner: null }))
+  })
+})
+
+describe('PartnerPayouts — promo code list cell', () => {
+  it('renders promoCode through the cell that understands populated join rows', () => {
+    const field = (PartnerPayouts.fields as { name?: string; admin?: { components?: { Cell?: unknown } } }[]).find(
+      (f) => f.name === 'promoCode',
+    )
+    assert.equal(field?.admin?.components?.Cell, '@/components/admin/partner/PromoCodeCell#default')
+  })
+})

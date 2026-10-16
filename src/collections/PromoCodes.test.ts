@@ -370,3 +370,95 @@ describe('PromoCodes — partner payment details', () => {
     }
   })
 })
+
+/* ------------------------------ partner record link ------------------------------ */
+
+/**
+ * The link to `partners`. The point of these tests is the boundary: the link adds a partner
+ * pointer and a name copy, and leaves the discount and commission fields exactly where they were.
+ */
+describe('PromoCodes — link to a partner record', () => {
+  const LINKED = { isPartnerCode: true, partner: 5 }
+  const LEGACY_DETAIL_FIELDS = [
+    'partnerName',
+    'partnerEmail',
+    'partnerPhone',
+    'partnerBankAccount',
+    'partnerAccountOwner',
+    'partnerOrganizationNumber',
+  ] as const
+
+  it('adds an optional, indexed relationship to partners inside «Partner og provisjon»', () => {
+    const field = fieldNamed('partner') as {
+      type: string
+      relationTo?: unknown
+      hasMany?: unknown
+      required?: unknown
+      index?: unknown
+      label?: unknown
+    }
+    assert.equal(field.type, 'relationship')
+    assert.equal(field.relationTo, 'partners')
+    assert.notEqual(field.hasMany, true, 'one partner per code; many codes per partner')
+    assert.notEqual(field.required, true, 'existing partner codes stay valid unlinked')
+    assert.equal(field.index, true)
+    assert.equal(field.label, 'Partner')
+
+    const section = (PromoCodes.fields as Field[]).find(
+      (f) => f.type === 'collapsible' && f.label === 'Partner og provisjon',
+    ) as { fields: Field[] }
+    const names = flatten(section.fields).map((f) => ('name' in f ? f.name : ''))
+    assert.ok(names.indexOf('partner') > names.indexOf('isPartnerCode'))
+    assert.ok(names.indexOf('partner') < names.indexOf('partnerName'))
+  })
+
+  it('offers only partners with the Promokode model', () => {
+    const field = fieldNamed('partner') as { filterOptions?: unknown }
+    assert.equal(typeof field.filterOptions, 'function')
+    const where = (field.filterOptions as (args: unknown) => unknown)({})
+    assert.deepEqual(where, { partnershipTypes: { in: ['promoCode'] } })
+  })
+
+  it('shows the partner selector on a partner code only', () => {
+    assert.equal(conditionFor('partner')(PARTNER, PARTNER, {}), true)
+    assert.equal(conditionFor('partner')(ORDINARY, ORDINARY, {}), false)
+  })
+
+  it('hides — never clears — the legacy name, contact and bank fields once linked', () => {
+    for (const name of LEGACY_DETAIL_FIELDS) {
+      assert.equal(conditionFor(name)(LINKED, LINKED, {}), false, `${name} hidden when linked`)
+      assert.equal(conditionFor(name)(PARTNER, PARTNER, {}), true, `${name} shown when unlinked`)
+    }
+  })
+
+  it('keeps the commission fields and the internal note visible on a linked code', () => {
+    for (const name of ['commissionRate', 'commissionBase', 'partnerNote']) {
+      assert.equal(conditionFor(name)(LINKED, LINKED, {}), true, name)
+    }
+  })
+
+  it('lets a linked code save before the hook has copied the name in', () => {
+    const validate = validatorFor('partnerName')
+    assert.equal(validate(undefined, { siblingData: LINKED }), true)
+    assert.equal(validate('', { siblingData: { isPartnerCode: true, partner: { id: 5 } } }), true)
+    assert.equal(typeof validate('', { siblingData: PARTNER }), 'string', 'unlinked still requires it')
+  })
+
+  it('still requires a commission rate on a linked code — the code stays authoritative', () => {
+    assert.equal(typeof validatorFor('commissionRate')(undefined, { siblingData: LINKED }), 'string')
+  })
+
+  it('registers exactly the two partner-link hooks', () => {
+    assert.equal(PromoCodes.hooks?.beforeValidate?.length, 1)
+    assert.equal(PromoCodes.hooks?.beforeChange?.length, 1)
+    assert.equal(PromoCodes.hooks?.afterChange, undefined)
+    assert.equal(PromoCodes.hooks?.beforeDelete, undefined)
+  })
+})
+
+describe('PromoCodes — partner link validation', () => {
+  it('validates the link with the Norwegian wrapper around Payload’s own check', async () => {
+    const { validatePartnerLink } = await import('./hooks/promoCodePartner')
+    assert.equal((fieldNamed('partner') as { validate?: unknown }).validate, validatePartnerLink)
+  })
+})
