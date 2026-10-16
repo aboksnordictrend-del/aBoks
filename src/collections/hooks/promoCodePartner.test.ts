@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { ValidationError } from 'payload'
 import {
   PARTNER_LOCKED_MESSAGE,
-  PARTNER_NOT_ACTIVE_MESSAGE,
+  PARTNER_NOT_ELIGIBLE_MESSAGE,
   guardPartnerChange,
   relationshipId,
   syncPartnerName,
@@ -208,7 +208,7 @@ describe('guardPartnerChange — a used code keeps its partner', () => {
 
 /* ------------------------------ validatePartnerLink ------------------------------ */
 
-describe('validatePartnerLink — new links need an active partner, existing links survive', () => {
+describe('validatePartnerLink — new links need an active regular partner, existing links survive', () => {
   const EN_INVALID = 'This field has the following invalid selections:'
   /**
    * A request whose filtered partner lookup returns only `activeIds`, and whose stored promo
@@ -219,7 +219,7 @@ describe('validatePartnerLink — new links need an active partner, existing lin
     const opts = {
       id: 42,
       relationTo: 'partners',
-      filterOptions: () => ({ status: { equals: 'active' } }),
+      filterOptions: () => ({ and: [{ status: { equals: 'active' } }, { partnerType: { equals: 'regular' } }] }),
       data: {},
       siblingData: {},
       req: {
@@ -240,18 +240,19 @@ describe('validatePartnerLink — new links need an active partner, existing lin
     return { opts, lookups }
   }
 
-  it('accepts a new link to an active partner', async () => {
+  it('accepts a new link to an active regular partner', async () => {
     assert.equal(await validatePartnerLink(5, options([5]).opts), true)
   })
 
-  it('refuses a new link to a paused or ended partner, in Norwegian', async () => {
+  it('refuses a new link to a partner outside the filter (paused, ended, retailer, unclassified), in Norwegian', async () => {
     const result = await validatePartnerLink(7, options([5]).opts)
-    assert.equal(result, PARTNER_NOT_ACTIVE_MESSAGE)
-    assert.match(String(result), /«Aktiv»/)
+    assert.equal(result, PARTNER_NOT_ELIGIBLE_MESSAGE)
+    assert.match(String(result), /aktive vanlige partnere/)
+    assert.match(String(result), /Nettbutikker \/ forhandlere/)
     assert.doesNotMatch(String(result), /invalid selections/)
   })
 
-  it('keeps an unchanged link valid after the partner is paused (previousValue supplied)', async () => {
+  it('keeps an unchanged link valid after the partner is paused, or predates the types (previousValue supplied)', async () => {
     const { opts, lookups } = options([], { previousValue: 7 })
     assert.equal(await validatePartnerLink(7, opts), true)
     assert.equal(lookups.length, 0, 'no lookup needed when Payload supplies the previous value')
@@ -268,12 +269,12 @@ describe('validatePartnerLink — new links need an active partner, existing lin
     assert.deepEqual(lookups, ['promo-codes:42'])
   })
 
-  it('still refuses switching to another inactive partner', async () => {
-    assert.equal(await validatePartnerLink(8, options([], { previousValue: 7 }, 7).opts), PARTNER_NOT_ACTIVE_MESSAGE)
+  it('still refuses switching to another ineligible partner', async () => {
+    assert.equal(await validatePartnerLink(8, options([], { previousValue: 7 }, 7).opts), PARTNER_NOT_ELIGIBLE_MESSAGE)
   })
 
-  it('refuses an inactive partner on a brand-new code (no id, nothing stored)', async () => {
-    assert.equal(await validatePartnerLink(7, options([], { id: undefined }).opts), PARTNER_NOT_ACTIVE_MESSAGE)
+  it('refuses an ineligible partner on a brand-new code (no id, nothing stored)', async () => {
+    assert.equal(await validatePartnerLink(7, options([], { id: undefined }).opts), PARTNER_NOT_ELIGIBLE_MESSAGE)
   })
 
   it('accepts an empty link — the field is optional', async () => {

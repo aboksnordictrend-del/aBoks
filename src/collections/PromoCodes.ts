@@ -418,10 +418,10 @@ export const PromoCodes: CollectionConfig = {
           // Many codes may point at one partner. Optional at the schema level so every existing
           // partner code stays valid unlinked; `partnerName` below covers that case.
           //
-          // Every partner has Promokode as a standard earning method, so eligibility is only the
-          // partner's status: a NEW link needs an «Aktiv» partner. `filterOptions` limits the
-          // dropdown and is re-checked on the server by `validatePartnerLink`, which also keeps
-          // an existing link valid after the partner is paused or ended.
+          // Promokode is a standard benefit of every REGULAR partner, so a NEW link needs an
+          // «Aktiv» partner of type «Vanlig partner». `filterOptions` limits the dropdown and is
+          // re-checked on the server by `validatePartnerLink`, which also keeps an existing link
+          // valid after the partner is paused or ended, or if it predates the partner types.
           name: 'partner',
           type: 'relationship',
           relationTo: 'partners',
@@ -432,7 +432,7 @@ export const PromoCodes: CollectionConfig = {
           admin: {
             condition: isPartnerCode,
             description:
-              'Velg partneren koden tilhører. Bare partnere med status «Aktiv» kan velges; en eksisterende kobling består selv om partneren senere settes på pause eller avsluttes. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.',
+              'Velg partneren koden tilhører. Bare aktive vanlige partnere kan velges – ikke nettbutikker / forhandlere. En eksisterende kobling består selv om partneren senere settes på pause eller avsluttes. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.',
           },
         },
         {

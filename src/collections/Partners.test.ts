@@ -104,12 +104,114 @@ describe('Partners — standard earning methods are information, not settings', 
   })
 })
 
+/* ------------------------------ partner type ------------------------------ */
+
+describe('Partners — partnerType', () => {
+  const field = byName('partnerType') as AnyField & {
+    options?: { label: string; value: string }[]
+    access?: { update?: (args: unknown) => unknown }
+  }
+
+  it('offers exactly «Vanlig partner» and «Nettbutikk / Forhandler»', () => {
+    assert.deepEqual(field.options!.map((o) => [o.value, o.label]), [
+      ['regular', 'Vanlig partner'],
+      ['retailer', 'Nettbutikk / Forhandler'],
+    ])
+    assert.equal(field.label, 'Partnertype')
+  })
+
+  it('has no default — the administrator must choose', () => {
+    assert.equal(field.defaultValue, undefined)
+  })
+
+  it('is required on every save, with a Norwegian message, but nullable in the database', () => {
+    assert.notEqual(field.required, true, 'requiredness in the validator keeps unclassified rows valid')
+    for (const value of [undefined, null, '', 'reseller']) {
+      assert.match(String(field.validate!(value, {})), /Velg partnertype/, String(value))
+    }
+    assert.equal(field.validate!('regular', {}), true)
+    assert.equal(field.validate!('retailer', {}), true)
+  })
+
+  it('uses no field access (which would drop a change silently) — the hook refuses it instead', () => {
+    assert.equal(field.access, undefined)
+    assert.equal(Partners.hooks?.beforeChange?.length, 1)
+  })
+
+  it('renders through PartnerTypeField, read-only once saved', () => {
+    assert.equal(field.admin?.components?.Field, '@/components/admin/partner/PartnerTypeField#default')
+  })
+
+  it('sits right after Partnernavn and Status', () => {
+    const order = (Partners.fields as AnyField[]).map((f) => f.name ?? String(f.label ?? f.type))
+    assert.equal(order.indexOf('partnerType'), 1, JSON.stringify(order.slice(0, 4)))
+  })
+
+  it('shows «Standard partnerfordeler» only for a regular partner', () => {
+    const condition = byName('standardBenefits').admin!.condition!
+    assert.equal(condition({ partnerType: 'regular' }, {}, {}), true)
+    assert.equal(condition({ partnerType: 'retailer' }, {}, {}), false)
+    assert.equal(condition({}, {}, {}), false)
+  })
+
+  it('relabels entityType as legal form, distinct from the partner type', () => {
+    assert.equal(byName('entityType').label, 'Privatperson / bedrift')
+  })
+})
+
+/* ------------------------------ address ------------------------------ */
+
+describe('Partners — address (both partner types)', () => {
+  const ADDRESS = [
+    ['addressLine1', 'Adresse'],
+    ['addressLine2', 'Adresselinje 2'],
+    ['postalCode', 'Postnummer'],
+    ['city', 'Poststed'],
+    ['country', 'Land'],
+  ] as const
+
+  it('has five optional, Norwegian-labelled text fields in an «Adresse» section', () => {
+    const section = (Partners.fields as AnyField[]).find((f) => f.type === 'collapsible' && f.label === 'Adresse')
+    assert.ok(section)
+    assert.deepEqual(dataFields(section.fields!).map((f) => f.name), ADDRESS.map(([n]) => n))
+    for (const [name, label] of ADDRESS) {
+      const f = byName(name)
+      assert.equal(f.type, 'text', name)
+      assert.equal(f.label, label, name)
+      assert.notEqual(f.required, true, name)
+      assert.equal(f.admin?.condition, undefined, `${name} is shown for both partner types`)
+    }
+  })
+
+  it('pre-fills «Norge» as the country of a new partner', () => {
+    assert.equal(byName('country').defaultValue, 'Norge')
+  })
+
+  it('validates a Norwegian postal code against the partner country', () => {
+    const v = (value: unknown, country: unknown) => byName('postalCode').validate!(value, { data: { country } })
+    assert.equal(v('0150', 'Norge'), true)
+    assert.match(String(v('150', 'Norge')), /fire siffer/)
+    assert.match(String(v('015A', undefined)), /fire siffer/)
+    assert.equal(v('SW1A 1AA', 'Storbritannia'), true)
+    assert.equal(v(undefined, 'Norge'), true)
+  })
+
+  it('caps the free-text fields with Norwegian messages', () => {
+    assert.match(String(byName('addressLine1').validate!('x'.repeat(201), {})), /Adresse kan ikke være lengre enn 200 tegn/)
+    assert.equal(byName('addressLine1').validate!('Storgata 1', {}), true)
+  })
+})
+
 /* ------------------------------ optional agreements ------------------------------ */
 
-describe('Partners — «Ekstra samarbeidsavtaler»', () => {
-  it('groups the two optional agreements under one collapsible', () => {
-    const section = (Partners.fields as AnyField[]).find((f) => f.type === 'collapsible' && f.label === 'Ekstra samarbeidsavtaler')
+describe('Partners — «Samarbeidsavtaler» (online retailers only)', () => {
+  it('groups the two retailer agreements under one collapsible, shown only for retailers', () => {
+    const section = (Partners.fields as AnyField[]).find((f) => f.type === 'collapsible' && f.label === 'Samarbeidsavtaler')
     assert.ok(section)
+    const condition = section.admin!.condition!
+    assert.equal(condition({ partnerType: 'retailer' }, {}, {}), true)
+    assert.equal(condition({ partnerType: 'regular' }, {}, {}), false)
+    assert.equal(condition({}, {}, {}), false, 'unclassified shows neither section')
     assert.deepEqual(
       dataFields(section.fields!).map((f) => f.name),
       ['dropshippingEnabled', 'dropshippingDiscountPercent', 'wholesaleEnabled', 'wholesaleDiscountPercent'],
@@ -122,7 +224,9 @@ describe('Partners — «Ekstra samarbeidsavtaler»', () => {
       const percent = byName(a.percent)
       const validate = (value: unknown, data: Record<string, unknown>) => percent.validate!(value, { data })
 
-      it('is an independent checkbox, off by default', () => {
+      it('is an independent checkbox, off by default, shown only for retailers', () => {
+        assert.equal(checkbox.admin!.condition!({ partnerType: 'retailer' }, {}, {}), true)
+        assert.equal(checkbox.admin!.condition!({ partnerType: 'regular' }, {}, {}), false)
         assert.equal(checkbox.type, 'checkbox')
         assert.equal(checkbox.label, a.label)
         assert.equal(checkbox.defaultValue, false)
@@ -137,22 +241,41 @@ describe('Partners — «Ekstra samarbeidsavtaler»', () => {
 
       it('shows the discount only while the agreement is enabled', () => {
         const condition = percent.admin!.condition!
-        assert.equal(condition({ [a.checkbox]: true }, {}, {}), true)
-        assert.equal(condition({ [a.checkbox]: false }, {}, {}), false)
+        assert.equal(condition({ partnerType: 'retailer', [a.checkbox]: true }, {}, {}), true)
+        assert.equal(condition({ partnerType: 'retailer', [a.checkbox]: false }, {}, {}), false)
+        assert.equal(condition({ partnerType: 'regular', [a.checkbox]: true }, {}, {}), false, 'never for a regular partner')
         assert.equal(condition({}, {}, {}), false)
       })
 
       it('validates the discount only while the agreement is enabled', () => {
-        assert.equal(validate(500, { [a.checkbox]: false }), true)
-        assert.notEqual(validate(undefined, { [a.checkbox]: true }), true)
-        assert.notEqual(validate(101, { [a.checkbox]: true }), true)
-        assert.equal(validate(a.def, { [a.checkbox]: true }), true)
+        const on = { partnerType: 'retailer', [a.checkbox]: true }
+        assert.equal(validate(500, { partnerType: 'retailer', [a.checkbox]: false }), true)
+        assert.notEqual(validate(undefined, on), true)
+        assert.notEqual(validate(101, on), true)
+        assert.equal(validate(a.def, on), true)
       })
     })
   }
 
+  it('keeps a ticked agreement visible on a regular or unclassified partner, so it can be unticked', () => {
+    const section = (Partners.fields as AnyField[]).find((f) => f.type === 'collapsible' && f.label === 'Samarbeidsavtaler')!
+    for (const a of AGREEMENTS) {
+      const ticked = { partnerType: 'regular', [a.checkbox]: true }
+      assert.equal(section.admin!.condition!(ticked, {}, {}), true, a.label)
+      assert.equal(byName(a.checkbox).admin!.condition!(ticked, {}, {}), true, a.label)
+      assert.equal(byName(a.checkbox).admin!.condition!({ [a.checkbox]: true }, {}, {}), true, `${a.label} (unclassified)`)
+      assert.equal(byName(a.percent).admin!.condition!(ticked, {}, {}), false, 'no discount editing for a regular partner')
+    }
+    assert.equal(section.admin!.condition!({ partnerType: 'regular', dropshippingEnabled: false, wholesaleEnabled: false }, {}, {}), false)
+  })
+
+  it('tells the administrator to untick agreements before choosing «Vanlig partner»', () => {
+    const section = (Partners.fields as AnyField[]).find((f) => f.type === 'collapsible' && f.label === 'Samarbeidsavtaler')!
+    assert.match(String((section.admin as { description?: unknown }).description), /fjern eventuelle avkrysninger/)
+  })
+
   it('lets both agreements be enabled together', () => {
-    const data = { dropshippingEnabled: true, wholesaleEnabled: true }
+    const data = { partnerType: 'retailer', dropshippingEnabled: true, wholesaleEnabled: true }
     for (const a of AGREEMENTS) {
       assert.equal(byName(a.percent).admin!.condition!(data, {}, {}), true, a.label)
       assert.equal(byName(a.percent).validate!(a.def, { data }), true, a.label)
@@ -215,8 +338,8 @@ describe('Partners — identity, contact and links are preserved', () => {
     for (const field of fields) assert.ok(!['relationship', 'upload'].includes(field.type), String(field.name))
   })
 
-  it('keeps only the delete guard and the name sync — no model-removal guard any more', () => {
-    assert.equal(Partners.hooks?.beforeChange, undefined)
+  it('keeps the delete guard and the name sync, plus the partner-type rules', () => {
+    assert.equal(Partners.hooks?.beforeChange?.length, 1)
     assert.equal(Partners.hooks?.beforeDelete?.length, 1)
     assert.equal(Partners.hooks?.afterChange?.length, 1)
     assert.equal(Partners.endpoints, undefined)
@@ -239,11 +362,13 @@ const snake = (s: string) => s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
 describe('Partners — migrations', () => {
   const phase1 = upOf(read('20261016_090000.ts'))
   const correction = upOf(read('20261018_090000.ts'))
+  const typeMigration = upOf(read('20261019_090000.ts'))
+  const addressMigration = upOf(read('20261020_090000.ts'))
 
-  it('has a column for every scalar field across 20261016 and 20261018', () => {
+  it('has a column for every scalar field across 20261016, 20261018, 20261019 and 20261020', () => {
     for (const field of fields) {
       if (!field.name || field.type === 'ui' || field.type === 'join' || field.hasMany) continue
-      assert.match(phase1 + correction, new RegExp(`"${snake(field.name)}"`), `${field.name} needs a column`)
+      assert.match(phase1 + correction + typeMigration + addressMigration, new RegExp(`"${snake(field.name)}"`), `${field.name} needs a column`)
     }
     assert.match(phase1, /CREATE TABLE IF NOT EXISTS "partners_partnership_types"/)
   })
@@ -272,11 +397,33 @@ describe('Partners — migrations', () => {
     assert.ok(add >= 0 && fill > add && def > fill)
   })
 
-  it('registers the three partner migrations in order', () => {
+  it('20261019 adds a nullable, default-free partner_type and classifies nobody', () => {
+    assert.match(typeMigration, /CREATE TYPE "public"\."enum_partners_partner_type" AS ENUM\('regular', 'retailer'\)/)
+    assert.match(typeMigration, /ADD COLUMN IF NOT EXISTS "partner_type" "enum_partners_partner_type";/)
+    assert.doesNotMatch(typeMigration, /NOT NULL|DEFAULT/i, 'no default — nothing is classified automatically')
+    assert.doesNotMatch(typeMigration, /\b(UPDATE|DROP|DELETE|TRUNCATE|INSERT)\b/i, 'no existing row is touched')
+    assert.doesNotMatch(typeMigration, /ALTER TABLE "(?!partners")/, 'no other table is altered')
+  })
+
+  it('20261020 adds five nullable address columns and gives existing rows no country', () => {
+    for (const col of ['address_line1', 'address_line2', 'postal_code', 'city', 'country']) {
+      assert.match(addressMigration, new RegExp(`ADD COLUMN IF NOT EXISTS "${col}" varchar;`), col)
+    }
+    assert.doesNotMatch(addressMigration, /ADD COLUMN[^;]*DEFAULT/, 'no column is added WITH a default')
+    const add = addressMigration.indexOf('ADD COLUMN IF NOT EXISTS "country"')
+    const def = addressMigration.indexOf(`ALTER COLUMN "country" SET DEFAULT 'Norge'`)
+    assert.ok(add >= 0 && def > add, 'the default is set only after the column exists')
+    assert.doesNotMatch(addressMigration, /\b(UPDATE|DROP|DELETE|TRUNCATE|INSERT)\b/i)
+    assert.doesNotMatch(addressMigration, /ALTER TABLE "(?!partners")/)
+  })
+
+  it('registers the five partner migrations in order', () => {
     const index = readFileSync(resolve(process.cwd(), 'src/migrations/index.ts'), 'utf8')
     const at = (n: string) => index.indexOf(`name: '${n}'`)
     assert.ok(at('20261016_090000') >= 0)
     assert.ok(at('20261017_090000') > at('20261016_090000'))
     assert.ok(at('20261018_090000') > at('20261017_090000'))
+    assert.ok(at('20261019_090000') > at('20261018_090000'))
+    assert.ok(at('20261020_090000') > at('20261019_090000'))
   })
 })

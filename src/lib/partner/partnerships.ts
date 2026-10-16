@@ -6,8 +6,13 @@ import {
 } from '@/lib/partnerProgram/methodCalculator'
 
 /**
- * The partner programme as the admin presents it: ONE programme, three standard earning methods
- * every partner has, and two optional commercial agreements enabled per partner.
+ * The partner programme as the admin presents it. A partner is one of TWO types, chosen once and
+ * permanent (`partnerType`):
+ *
+ *   • regular  — «Vanlig partner»: the referral programme. Always has the three standard earning
+ *                methods below; never has a retailer agreement.
+ *   • retailer — «Nettbutikk / Forhandler»: an online store with a direct commercial relationship.
+ *                Only the two optional agreements below; no referral earnings of its own.
  *
  * The public `/bli-partner` programme is the authoritative reference; every percentage below is
  * one of its constants, re-exported rather than restated.
@@ -19,13 +24,14 @@ import {
  *                       (`promo-codes.commissionRate` / `commissionBase`) and nowhere else.
  *   • Bedriftssalg    — commission on the final paid order amount of a business customer the
  *                       partner introduced.
- *   • Forhandlersalg  — commission on the paid orders of a retailer the partner introduced. The
- *                       referring partner and the purchasing retailer are different roles.
+ *   • Forhandlersalg  — commission on the paid purchases of a PHYSICAL retail store the partner
+ *                       introduced. Never for introducing an online store. The referring partner
+ *                       and the purchasing store are different records.
  *
  * Bedriftssalg and Forhandlersalg are not tracked or credited automatically yet. The percentages
  * here are the programme terms shown to the administrator, not inputs to any calculation.
  *
- * ── Optional agreements — enabled per partner, independently ──
+ * ── Retailer agreements — online retailers only, enabled independently ──
  *
  *   • Dropshipping      — 20 % off the regular catalogue price by default.
  *   • Forhandlerinnkjøp — 35 % off the regular catalogue price by default (the same retailer price
@@ -73,12 +79,12 @@ export const STANDARD_EARNING_METHODS: readonly StandardEarningMethod[] = [
     id: 'retailerReferral',
     label: 'Forhandlersalg',
     commissionPercent: RETAILER_COMMISSION_PERCENT,
-    description: `Partneren introduserer en forhandler og får ${pct(RETAILER_COMMISSION_PERCENT)} provisjon av forhandlerens betalte ordre, også senere ordre direkte hos ABOKS AS, så lenge henvisningsavtalen gjelder. Forhandleren får selv ingen provisjon på egne innkjøp.`,
+    description: `Partneren introduserer en fysisk butikk og får ${pct(RETAILER_COMMISSION_PERCENT)} provisjon av butikkens betalte innkjøp, også senere innkjøp direkte hos ABOKS AS, så lenge henvisningsavtalen gjelder. Gjelder bare fysiske butikker – ikke nettbutikker. Butikken får selv ingen provisjon på egne innkjøp.`,
   },
 ]
 
 export const STANDARD_METHODS_NOTE =
-  'Alle partnere har disse tre opptjeningsmåtene automatisk. Bedriftssalg og Forhandlersalg registreres og beregnes foreløpig manuelt.'
+  'Alle vanlige partnere har disse tre opptjeningsmåtene automatisk. Bedriftssalg og Forhandlersalg registreres og beregnes foreløpig manuelt.'
 
 /* ------------------------------ optional agreements ------------------------------ */
 
@@ -115,7 +121,7 @@ export const OPTIONAL_AGREEMENTS: readonly OptionalAgreement[] = [
     percentField: 'dropshippingDiscountPercent',
     defaultDiscountPercent: DROPSHIPPING_DISCOUNT_PERCENT,
     description:
-      'Kunden handler og betaler i forhandlerens nettbutikk. Forhandleren betaler ABOKS AS for varene med rabatt og for frakten separat, og ABOKS AS sender direkte til sluttkunden. Ingen ekstra partnerprovisjon på det samme salget.',
+      'Nettbutikken selger varene på egne nettsider, og sluttkunden betaler nettbutikken. Nettbutikken betaler ABOKS AS for varene med rabatt og for frakten separat, og ABOKS AS sender direkte til sluttkunden. Ingen provisjon på nettbutikkens egne salg.',
   },
   {
     id: 'wholesale',
@@ -124,7 +130,7 @@ export const OPTIONAL_AGREEMENTS: readonly OptionalAgreement[] = [
     percentField: 'wholesaleDiscountPercent',
     defaultDiscountPercent: WHOLESALE_DISCOUNT_PERCENT,
     description:
-      'Forhandleren kjøper varer på lager og står selv for videresalg og levering. Ingen provisjon til forhandleren på egne innkjøp. En annen partner som introduserte forhandleren kan ha krav på Forhandlersalg-provisjon etter avtalen.',
+      'Nettbutikken kjøper varer fra ABOKS AS og står selv for lager, videresalg og levering. Ingen provisjon på egne innkjøp.',
   },
 ]
 
@@ -134,9 +140,14 @@ export const PURCHASE_DISCOUNTS_STACK = false
 export const MIN_AGREEMENT_PERCENT = 0
 export const MAX_AGREEMENT_PERCENT = 100
 
-/** True when the optional agreement's checkbox is ticked on the document. */
-export const isAgreementEnabled = (data: unknown, agreement: Pick<OptionalAgreement, 'enabledField'>): boolean =>
-  (data as Record<string, unknown> | null | undefined)?.[agreement.enabledField] === true
+/**
+ * True when a retailer agreement is in force on the document: the partner is an online retailer
+ * AND the agreement's checkbox is ticked. A regular partner never has one, whatever is stored.
+ */
+export const isAgreementEnabled = (data: unknown, agreement: Pick<OptionalAgreement, 'enabledField'>): boolean => {
+  const d = data as Record<string, unknown> | null | undefined
+  return d?.partnerType === 'retailer' && d?.[agreement.enabledField] === true
+}
 
 /**
  * Validates an optional agreement's discount. Required — and within 0–100 — only while the
@@ -160,6 +171,41 @@ export function validateAgreementPercent(
   return true
 }
 
+/* ------------------------------ partner type ------------------------------ */
+
+export const PARTNER_TYPES = ['regular', 'retailer'] as const
+export type PartnerType = (typeof PARTNER_TYPES)[number]
+
+export const PARTNER_TYPE_OPTIONS: { label: string; value: PartnerType }[] = [
+  { label: 'Vanlig partner', value: 'regular' },
+  { label: 'Nettbutikk / Forhandler', value: 'retailer' },
+]
+
+export const isPartnerType = (value: unknown): value is PartnerType =>
+  typeof value === 'string' && (PARTNER_TYPES as readonly string[]).includes(value)
+
+export const PARTNER_TYPE_DESCRIPTION =
+  'Velges én gang og kan ikke endres etter lagring. «Vanlig partner» har de tre standard partnerfordelene. «Nettbutikk / Forhandler» har bare samarbeidsavtalene Dropshipping og Forhandlerinnkjøp.'
+
+export const PARTNER_TYPE_REQUIRED_MESSAGE =
+  'Velg partnertype: «Vanlig partner» eller «Nettbutikk / Forhandler».'
+
+/** Refusal when a «Vanlig partner» would keep a retailer agreement ticked. */
+export const regularPartnerAgreementMessage = (agreementLabel: string): string =>
+  `En vanlig partner kan ikke ha avtalen «${agreementLabel}». Fjern avkrysningen for «${agreementLabel}» før partneren lagres som «Vanlig partner».`
+
+/**
+ * True when the document still has a retailer agreement ticked, whatever its type. Used to keep the
+ * checkboxes visible so such an agreement can be switched off explicitly.
+ */
+export const hasTickedAgreement = (data: unknown): boolean => {
+  const d = data as Record<string, unknown> | null | undefined
+  return OPTIONAL_AGREEMENTS.some((agreement) => d?.[agreement.enabledField] === true)
+}
+
+export const PARTNER_TYPE_LOCKED_MESSAGE =
+  'Partnertypen kan ikke endres etter at den er lagret. Opprett en ny partner dersom samarbeidet er av en annen type.'
+
 /* ------------------------------ partner status ------------------------------ */
 
 export const PARTNER_STATUSES = ['active', 'paused', 'ended'] as const
@@ -171,8 +217,9 @@ export const PARTNER_STATUS_OPTIONS: { label: string; value: PartnerStatus }[] =
   { label: 'Avsluttet', value: 'ended' },
 ]
 
-/** Only an active partner may be linked to a promo code for the first time (or anew). */
+/** A NEW promo-code link needs an active, regular partner (Promokode is a regular-partner benefit). */
 export const PROMO_LINK_ELIGIBLE_STATUS: PartnerStatus = 'active'
+export const PROMO_LINK_ELIGIBLE_TYPE: PartnerType = 'regular'
 
 export const PARTNER_ENTITY_TYPES = ['person', 'company'] as const
 export type PartnerEntityType = (typeof PARTNER_ENTITY_TYPES)[number]

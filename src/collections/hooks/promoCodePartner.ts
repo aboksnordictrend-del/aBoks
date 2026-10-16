@@ -3,28 +3,38 @@ import {
   type CollectionBeforeChangeHook,
   type CollectionBeforeValidateHook,
   type RelationshipFieldSingleValidation,
+  type Where,
 } from 'payload'
 import { relationship as defaultRelationshipValidation } from 'payload/shared'
-import { PROMO_LINK_ELIGIBLE_STATUS } from '@/lib/partner/partnerships'
+import { PROMO_LINK_ELIGIBLE_STATUS, PROMO_LINK_ELIGIBLE_TYPE } from '@/lib/partner/partnerships'
 
-export const PARTNER_NOT_ACTIVE_MESSAGE =
-  'Bare partnere med status «Aktiv» kan knyttes til en rabattkode. Sett partneren til «Aktiv» først, eller velg en annen partner.'
+export const PARTNER_NOT_ELIGIBLE_MESSAGE =
+  'Bare aktive vanlige partnere kan knyttes til en ny rabattkode. Nettbutikker / forhandlere, partnere uten partnertype og partnere som ikke har status «Aktiv» kan ikke velges.'
 
-/** The `partners` filter for a NEW link — also what the admin dropdown offers. */
-export const ELIGIBLE_PARTNER_FILTER = { status: { equals: PROMO_LINK_ELIGIBLE_STATUS } } as const
+/**
+ * The `partners` filter for a NEW link — also what the admin dropdown offers. Promokode is a
+ * regular-partner benefit, so online retailers and unclassified partners are never offered.
+ */
+export const ELIGIBLE_PARTNER_FILTER: Where = {
+  and: [
+    { status: { equals: PROMO_LINK_ELIGIBLE_STATUS } },
+    { partnerType: { equals: PROMO_LINK_ELIGIBLE_TYPE } },
+  ],
+}
 
 /**
  * Validation for `promo-codes.partner`.
  *
- * ── New links: active partners only ──
+ * ── New links: active regular partners only ──
  *
  * Payload's own relationship validation is kept — it re-runs the field's `filterOptions`
- * (`status = active`) on the server and checks the id exists. Its refusal is an English
+ * (`status = active` and `partnerType = regular`) on the server and checks the id exists. Its refusal is an English
  * «This field has the following invalid selections: 7», replaced here with a Norwegian message.
  *
  * ── Existing links are never invalidated ──
  *
- * A code already linked to a partner who has since been set to «Pause» or «Avsluttet» must keep
+ * A code already linked to a partner who has since been set to «Pause» or «Avsluttet» — or who is
+ * unclassified, or an online retailer, from before the types existed — must keep
  * saving — deactivating the code, editing its note — without touching the link. So an UNCHANGED
  * link is accepted as it is. "Unchanged" is read from Payload's `previousValue` when it is
  * supplied, and otherwise from the stored promo code itself: the admin's form-state pass does not
@@ -56,7 +66,7 @@ export const validatePartnerLink: RelationshipFieldSingleValidation = async (val
     })) as { partner?: unknown } | null
     if (relationshipId(stored?.partner) === next) return true
   }
-  return PARTNER_NOT_ACTIVE_MESSAGE
+  return PARTNER_NOT_ELIGIBLE_MESSAGE
 }
 
 /**

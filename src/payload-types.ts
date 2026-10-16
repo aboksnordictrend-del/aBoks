@@ -587,7 +587,7 @@ export interface PromoCode {
    */
   isPartnerCode?: boolean | null;
   /**
-   * Velg partneren koden tilhører. Bare partnere med status «Aktiv» kan velges; en eksisterende kobling består selv om partneren senere settes på pause eller avsluttes. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.
+   * Velg partneren koden tilhører. Bare aktive vanlige partnere kan velges – ikke nettbutikker / forhandlere. En eksisterende kobling består selv om partneren senere settes på pause eller avsluttes. Kontakt- og bankinformasjon hentes fra partneren. Kan ikke endres etter at koden er brukt.
    */
   partner?: (number | null) | Partner;
   /**
@@ -640,7 +640,11 @@ export interface Partner {
    */
   status: 'active' | 'paused' | 'ended';
   /**
-   * Kunden handler og betaler i forhandlerens nettbutikk. Forhandleren betaler ABOKS AS for varene med rabatt og for frakten separat, og ABOKS AS sender direkte til sluttkunden. Ingen ekstra partnerprovisjon på det samme salget.
+   * Velges én gang og kan ikke endres etter lagring. «Vanlig partner» har de tre standard partnerfordelene. «Nettbutikk / Forhandler» har bare samarbeidsavtalene Dropshipping og Forhandlerinnkjøp.
+   */
+  partnerType?: ('regular' | 'retailer') | null;
+  /**
+   * Nettbutikken selger varene på egne nettsider, og sluttkunden betaler nettbutikken. Nettbutikken betaler ABOKS AS for varene med rabatt og for frakten separat, og ABOKS AS sender direkte til sluttkunden. Ingen provisjon på nettbutikkens egne salg.
    */
   dropshippingEnabled?: boolean | null;
   /**
@@ -648,7 +652,7 @@ export interface Partner {
    */
   dropshippingDiscountPercent?: number | null;
   /**
-   * Forhandleren kjøper varer på lager og står selv for videresalg og levering. Ingen provisjon til forhandleren på egne innkjøp. En annen partner som introduserte forhandleren kan ha krav på Forhandlersalg-provisjon etter avtalen.
+   * Nettbutikken kjøper varer fra ABOKS AS og står selv for lager, videresalg og levering. Ingen provisjon på egne innkjøp.
    */
   wholesaleEnabled?: boolean | null;
   /**
@@ -666,6 +670,11 @@ export interface Partner {
   contactPerson?: string | null;
   email?: string | null;
   phone?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  country?: string | null;
   bankAccount?: string | null;
   /**
    * Dersom kontoeieren er en annen enn partneren.
@@ -1396,6 +1405,7 @@ export interface PartnerPayoutsSelect<T extends boolean = true> {
 export interface PartnersSelect<T extends boolean = true> {
   name?: T;
   status?: T;
+  partnerType?: T;
   dropshippingEnabled?: T;
   dropshippingDiscountPercent?: T;
   wholesaleEnabled?: T;
@@ -1405,6 +1415,11 @@ export interface PartnersSelect<T extends boolean = true> {
   contactPerson?: T;
   email?: T;
   phone?: T;
+  addressLine1?: T;
+  addressLine2?: T;
+  postalCode?: T;
+  city?: T;
+  country?: T;
   bankAccount?: T;
   accountOwner?: T;
   agreementDate?: T;

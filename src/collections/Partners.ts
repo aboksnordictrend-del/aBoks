@@ -15,22 +15,43 @@ import {
   OPTIONAL_AGREEMENTS,
   PARTNER_ENTITY_TYPE_OPTIONS,
   PARTNER_STATUS_OPTIONS,
+  PARTNER_TYPE_DESCRIPTION,
+  PARTNER_TYPE_OPTIONS,
+  PARTNER_TYPE_REQUIRED_MESSAGE,
+  hasTickedAgreement,
+  isPartnerType,
   isAgreementEnabled,
   validateAgreementPercent,
   type OptionalAgreement,
 } from '@/lib/partner/partnerships'
+import {
+  ADDRESS_LINE_MAX,
+  CITY_MAX,
+  COUNTRY_MAX,
+  DEFAULT_PARTNER_COUNTRY,
+  trimText,
+  validateOptionalText,
+  validatePostalCode,
+} from '@/lib/partner/address'
 import { guardPartnerDelete, propagatePartnerName } from './hooks/partnerLinks'
+import { enforcePartnerType } from './hooks/partnerType'
 
 /**
  * Partners (`Partnere`) — one document per person or company in ABOKS AS's partner programme.
  *
- * ── One programme ──
+ * ── Two partner types, one collection ──
  *
- * Every partner has the three standard earning methods — Promokode, Bedriftssalg and
- * Forhandlersalg — automatically, under the one partner agreement. They are shown as information
- * («Standard partnerfordeler»), never selected. On top of that, two optional commercial agreements
- * can be enabled per partner, independently: Dropshipping and Forhandlerinnkjøp
- * («Ekstra samarbeidsavtaler»). See `@/lib/partner/partnerships` for the terms.
+ * `partnerType` is chosen once and is permanent (see `./hooks/partnerType`):
+ *
+ *   • «Vanlig partner» (`regular`) — the referral programme. Has the three standard earning methods
+ *     — Promokode, Bedriftssalg and Forhandlersalg — automatically, shown as information
+ *     («Standard partnerfordeler»), never selected. Never has a retailer agreement.
+ *   • «Nettbutikk / Forhandler» (`retailer`) — an online store dealing directly with ABOKS AS.
+ *     Only «Samarbeidsavtaler»: Dropshipping and Forhandlerinnkjøp, enabled independently.
+ *
+ * Partners created before the type existed are unclassified (NULL) until an administrator picks a
+ * type, once. Shared fields — identity, contact, payment, notes, linked history — are the same for
+ * both. See `@/lib/partner/partnerships` for the terms.
  *
  * ── What links here, and what does not change ──
  *
@@ -77,7 +98,18 @@ function legacyField<T extends Field>(field: T): T {
   } as T
 }
 
-/** The checkbox that enables one optional agreement. */
+/** Admin conditions: which type-specific section a partner shows. Unclassified shows neither. */
+const isRegular = (data: unknown) => (data as { partnerType?: unknown } | undefined)?.partnerType === 'regular'
+const isRetailer = (data: unknown) => (data as { partnerType?: unknown } | undefined)?.partnerType === 'retailer'
+
+/**
+ * The retailer agreements are shown for an online retailer — and, whatever the type, for as long as
+ * an agreement is still ticked. A regular partner cannot keep one (`enforcePartnerType` refuses the
+ * save), so the ticked checkbox has to stay visible for the administrator to switch it off.
+ */
+const showsAgreements = (data: unknown) => isRetailer(data) || hasTickedAgreement(data)
+
+/** The checkbox that enables one retailer agreement. Online retailers only. */
 function agreementCheckbox(agreement: OptionalAgreement): CheckboxField {
   return {
     name: agreement.enabledField,
@@ -85,7 +117,7 @@ function agreementCheckbox(agreement: OptionalAgreement): CheckboxField {
     label: agreement.label,
     defaultValue: false,
     index: true,
-    admin: { description: agreement.description },
+    admin: { condition: showsAgreements, description: agreement.description },
   }
 }
 
@@ -123,7 +155,7 @@ export const Partners: CollectionConfig = {
   admin: {
     useAsTitle: 'name',
     group: 'Partnere',
-    defaultColumns: ['name', 'status', 'dropshippingEnabled', 'wholesaleEnabled', 'email', 'phone'],
+    defaultColumns: ['name', 'partnerType', 'status', 'dropshippingEnabled', 'wholesaleEnabled', 'email'],
     listSearchableFields: ['name', 'email', 'organizationNumber', 'contactPerson'],
     description:
       'Partnere i partnerprogrammet. Provisjon på promokoder settes på hver rabattkode.',
@@ -174,10 +206,29 @@ export const Partners: CollectionConfig = {
       ],
     },
     {
-      // Information, not a setting: every partner has these three methods automatically.
+      // Required on every save, but enforced here rather than as a database NOT NULL: partners
+      // created before this field existed stay valid and readable as unclassified (NULL) until an
+      // administrator chooses — nothing is classified automatically.
+      name: 'partnerType',
+      type: 'radio',
+      label: 'Partnertype',
+      options: PARTNER_TYPE_OPTIONS,
+      index: true,
+      // Permanent once saved: `enforcePartnerType` refuses a change with a validation error on every
+      // path; `PartnerTypeField` only renders it read-only in the admin.
+      admin: {
+        layout: 'horizontal',
+        description: PARTNER_TYPE_DESCRIPTION,
+        components: { Field: '@/components/admin/partner/PartnerTypeField#default' },
+      },
+      validate: (value: unknown) => (isPartnerType(value) ? true : PARTNER_TYPE_REQUIRED_MESSAGE),
+    },
+    {
+      // Information, not a setting: every regular partner has these three methods automatically.
       name: 'standardBenefits',
       type: 'ui',
       admin: {
+        condition: isRegular,
         components: {
           Field: '@/components/admin/partner/StandardPartnerBenefits#default',
         },
@@ -185,10 +236,11 @@ export const Partners: CollectionConfig = {
     },
     {
       type: 'collapsible',
-      label: 'Ekstra samarbeidsavtaler',
+      label: 'Samarbeidsavtaler',
       admin: {
+        condition: showsAgreements,
         description:
-          'Valgfrie kommersielle avtaler i tillegg til de tre standard opptjeningsmåtene. Kan aktiveres hver for seg eller sammen.',
+          'Direkte samarbeidsavtaler for nettbutikker. Kan aktiveres hver for seg eller sammen. Nettbutikker har ikke Promokode, Bedriftssalg eller Forhandlersalg. En vanlig partner kan ikke ha disse avtalene – fjern eventuelle avkrysninger før partneren lagres som «Vanlig partner».',
       },
       fields: OPTIONAL_AGREEMENTS.flatMap((agreement) => [
         agreementCheckbox(agreement),
@@ -205,7 +257,8 @@ export const Partners: CollectionConfig = {
             {
               name: 'entityType',
               type: 'select',
-              label: 'Partnertype',
+              // Legal form only — the business role is `partnerType` above.
+              label: 'Privatperson / bedrift',
               options: PARTNER_ENTITY_TYPE_OPTIONS,
               admin: { width: '50%' },
             },
@@ -243,6 +296,58 @@ export const Partners: CollectionConfig = {
               admin: { width: '50%' },
             },
           ],
+        },
+      ],
+    },
+    {
+      // Optional, for both partner types. `country` is pre-filled with «Norge» on a NEW partner
+      // only; partners created before these fields existed keep every address field empty.
+      type: 'collapsible',
+      label: 'Adresse',
+      fields: [
+        {
+          name: 'addressLine1',
+          type: 'text',
+          label: 'Adresse',
+          hooks: { beforeValidate: [({ value }) => trimText(value)] },
+          validate: (value: unknown) => validateOptionalText(value, 'Adresse', ADDRESS_LINE_MAX),
+        },
+        {
+          name: 'addressLine2',
+          type: 'text',
+          label: 'Adresselinje 2',
+          hooks: { beforeValidate: [({ value }) => trimText(value)] },
+          validate: (value: unknown) => validateOptionalText(value, 'Adresselinje 2', ADDRESS_LINE_MAX),
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'postalCode',
+              type: 'text',
+              label: 'Postnummer',
+              admin: { width: '33%' },
+              hooks: { beforeValidate: [({ value }) => trimText(value)] },
+              validate: (value: unknown, { data }: { data?: unknown }) =>
+                validatePostalCode(value, (data as { country?: unknown } | undefined)?.country),
+            },
+            {
+              name: 'city',
+              type: 'text',
+              label: 'Poststed',
+              admin: { width: '67%' },
+              hooks: { beforeValidate: [({ value }) => trimText(value)] },
+              validate: (value: unknown) => validateOptionalText(value, 'Poststed', CITY_MAX),
+            },
+          ],
+        },
+        {
+          name: 'country',
+          type: 'text',
+          label: 'Land',
+          defaultValue: DEFAULT_PARTNER_COUNTRY,
+          hooks: { beforeValidate: [({ value }) => trimText(value)] },
+          validate: (value: unknown) => validateOptionalText(value, 'Land', COUNTRY_MAX),
         },
       ],
     },
@@ -324,7 +429,7 @@ export const Partners: CollectionConfig = {
     },
     // ── Legacy (hidden, frozen) ──
     //
-    // Superseded by «Standard partnerfordeler» and «Ekstra samarbeidsavtaler». Kept so the
+    // Superseded by «Standard partnerfordeler» and «Samarbeidsavtaler». Kept so the
     // `partners_partnership_types` table and the two rate columns stay in step with the schema and
     // their historical values are preserved. Never shown, never written, never read.
     legacyField({
@@ -348,6 +453,7 @@ export const Partners: CollectionConfig = {
     }),
   ],
   hooks: {
+    beforeChange: [enforcePartnerType],
     beforeDelete: [guardPartnerDelete],
     afterChange: [propagatePartnerName],
   },
