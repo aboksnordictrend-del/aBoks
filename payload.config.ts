@@ -16,6 +16,9 @@ import { PromoCodes } from './src/collections/PromoCodes'
 import { PromoCodeUsages } from './src/collections/PromoCodeUsages'
 import { PartnerPayouts } from './src/collections/PartnerPayouts'
 import { Partners } from './src/collections/Partners'
+import { ReferredCustomers } from './src/collections/ReferredCustomers'
+import { ReferralSales } from './src/collections/ReferralSales'
+import { ReferralCommissionAdjustments } from './src/collections/ReferralCommissionAdjustments'
 import { Customers } from './src/collections/Customers'
 import { MarketingExpenses } from './src/collections/MarketingExpenses'
 import { Reviews } from './src/collections/Reviews'
@@ -132,6 +135,9 @@ export default buildConfig({
     PromoCodeUsages,
     PartnerPayouts,
     Partners,
+    ReferredCustomers,
+    ReferralSales,
+    ReferralCommissionAdjustments,
     Customers,
     MarketingExpenses,
     Reviews,

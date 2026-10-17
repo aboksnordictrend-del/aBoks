@@ -27,3 +27,22 @@ describe('PromoCodeCell — promoCodeIdOf', () => {
     }
   })
 })
+
+describe('PromoCodeCell — a referral payout has no promo code', () => {
+  it('renders a dash instead of «<No Rabattkode>»', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const { default: PromoCodeCell } = await import('./PromoCodeCell')
+    const html = renderToStaticMarkup(<PromoCodeCell {...({ cellData: null } as unknown as Parameters<typeof PromoCodeCell>[0])} />)
+    assert.equal(html, '<span>—</span>')
+  })
+})
+
+describe('PayoutSourceCell', () => {
+  it('labels legacy NULL rows as Promokode and referral rows as Henvisningsprovisjon', async () => {
+    const { payoutSourceLabel } = await import('./PayoutSourceCell')
+    assert.equal(payoutSourceLabel(null), 'Promokode')
+    assert.equal(payoutSourceLabel(undefined), 'Promokode')
+    assert.equal(payoutSourceLabel('promoCode'), 'Promokode')
+    assert.equal(payoutSourceLabel('referral'), 'Henvisningsprovisjon')
+  })
+})

@@ -1,6 +1,12 @@
 import { APIError, type CollectionBeforeChangeHook, type CollectionConfig } from 'payload'
-import { PAYOUT_METHOD_OPTIONS, PAYOUT_REGISTER_DESCRIPTION } from '@/lib/partner/constants'
+import {
+  PAYOUT_METHOD_OPTIONS,
+  PAYOUT_REGISTER_DESCRIPTION,
+  PAYOUT_SOURCE_OPTIONS,
+} from '@/lib/partner/constants'
 import { registerPartnerPayout } from './endpoints/registerPartnerPayout'
+import { registerReferralPayout } from './endpoints/registerReferralPayout'
+import { assignPayoutSource, reverseReferralPayoutOnDelete } from './hooks/referralPayout'
 
 /**
  * Registered partner payouts (`Partnerutbetalinger`) — an accounting ledger.
@@ -27,6 +33,22 @@ import { registerPartnerPayout } from './endpoints/registerPartnerPayout'
  * Deletion exists for the one case immutability cannot cover: a payout registered by mistake
  * or twice. It is restricted to `role === 'admin'`, and the balance simply recomputes from the
  * rows that remain. No soft delete, no reversal record.
+ *
+ * ── Two sources, one ledger ──
+ *
+ *   • `promoCode` (and every row written before referral payouts existed, where `source` is
+ *     NULL) — paid against ONE promo code's balance by `POST /api/partner-payouts/register`.
+ *     That endpoint, the balance and the statistics all select payouts by `promoCode`, so they
+ *     never see a referral payout. Unchanged.
+ *   • `referral` — Bedriftssalg / Forhandlersalg commission, written only by
+ *     `POST /api/partner-payouts/register-referral`. It has no promo code; it names the sales it
+ *     paid (`referralSales`) and the negative adjustments it deducted (`referralAdjustments`).
+ *     `amount` is what was transferred: gross commission minus deductions.
+ *
+ * Deleting a referral payout puts its sales and adjustments back as unpaid / outstanding in the
+ * same transaction (`reverseReferralPayoutOnDelete`), and is refused once a sale it paid has
+ * since been refunded — that clawback would otherwise stand against a payout that no longer
+ * exists.
  */
 
 /** Frozen after creation. Everything that defines what was paid, to whom, when and how. */
@@ -38,6 +60,11 @@ const IMMUTABLE_FIELDS = [
   'payoutDate',
   'paymentMethod',
   'createdBy',
+  'source',
+  'referralSales',
+  'referralAdjustments',
+  'referralGrossAmount',
+  'referralDeductedAmount',
 ] as const
 
 type ImmutableField = (typeof IMMUTABLE_FIELDS)[number]
@@ -70,6 +97,16 @@ const moneyValue = (value: unknown): number | null =>
 const textValue = (value: unknown): string | null =>
   value == null ? null : typeof value === 'string' ? value : String(value)
 
+/** A hasMany relationship → its ids, sorted and joined, so order and shape never matter. */
+const relationshipIds = (value: unknown): string => {
+  if (!Array.isArray(value)) return ''
+  return value
+    .map(relationshipId)
+    .filter((id): id is string => id != null)
+    .sort()
+    .join(',')
+}
+
 /** The comparable form of each immutable field. */
 function normalize(field: ImmutableField, value: unknown): unknown {
   switch (field) {
@@ -80,7 +117,15 @@ function normalize(field: ImmutableField, value: unknown): unknown {
     case 'payoutDate':
       return dateValue(value)
     case 'amount':
+    case 'referralGrossAmount':
+    case 'referralDeductedAmount':
       return moneyValue(value)
+    case 'referralSales':
+    case 'referralAdjustments':
+      return relationshipIds(value)
+    case 'source':
+      // A row written before sources existed is a promo payout.
+      return value == null || value === '' ? 'promoCode' : textValue(value)
     default:
       return textValue(value)
   }
@@ -126,6 +171,7 @@ export const PartnerPayouts: CollectionConfig = {
     defaultColumns: [
       'payoutDate',
       'partnerNameSnapshot',
+      'source',
       'promoCode',
       'amount',
       'paymentMethod',
@@ -154,20 +200,83 @@ export const PartnerPayouts: CollectionConfig = {
       type: 'relationship',
       relationTo: 'promo-codes',
       label: 'Rabattkode',
-      required: true,
+      // Required for a promo payout; a referral payout has none (see the file header). Enforced
+      // here and by `assignPayoutSource`, which runs first.
+      validate: (value: unknown, { data }: { data?: unknown }) =>
+        (data as { source?: unknown } | undefined)?.source === 'referral' || relationshipId(value) != null
+          ? true
+          : 'Rabattkode mangler.',
       index: true,
       // Convenience only — the endpoint independently verifies the code is a partner code,
       // so the system's correctness never rests on this filter.
       filterOptions: () => ({ isPartnerCode: { equals: true } }),
       admin: {
         readOnly: true,
-        description: 'Låst etter registrering.',
+        description: 'Låst etter registrering. Tom for utbetaling av henvisningsprovisjon.',
+        condition: (data) => (data as { source?: unknown } | undefined)?.source !== 'referral',
         components: {
           // Shows the code in the partner's «Utbetalinger» join list too, where the row arrives
           // with this relationship populated — see the component's header.
           Cell: '@/components/admin/partner/PromoCodeCell#default',
         },
       },
+    },
+    {
+      // NULL on every row written before referral payouts existed: those are promo payouts.
+      name: 'source',
+      type: 'select',
+      label: 'Type',
+      index: true,
+      options: PAYOUT_SOURCE_OPTIONS,
+      admin: {
+        readOnly: true,
+        description: 'Promokode eller henvisningsprovisjon. Låst.',
+        // Labels a legacy NULL as «Promokode» in the list views.
+        components: { Cell: '@/components/admin/partner/PayoutSourceCell#default' },
+      },
+    },
+    {
+      type: 'collapsible',
+      label: 'Henvisningsprovisjon',
+      admin: {
+        condition: (data) => (data as { source?: unknown } | undefined)?.source === 'referral',
+        description: 'Utbetalt beløp = opptjent provisjon på salgene minus trukne justeringer. Låst.',
+      },
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'referralGrossAmount',
+              type: 'number',
+              label: 'Opptjent provisjon (kr)',
+              admin: { readOnly: true, width: '50%' },
+            },
+            {
+              name: 'referralDeductedAmount',
+              type: 'number',
+              label: 'Trukket for justeringer (kr)',
+              admin: { readOnly: true, width: '50%' },
+            },
+          ],
+        },
+        {
+          name: 'referralSales',
+          type: 'relationship',
+          relationTo: 'referral-sales',
+          hasMany: true,
+          label: 'Salg som er utbetalt',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'referralAdjustments',
+          type: 'relationship',
+          relationTo: 'referral-commission-adjustments',
+          hasMany: true,
+          label: 'Justeringer som er trukket',
+          admin: { readOnly: true },
+        },
+      ],
     },
     {
       // The partner record the code was linked to when the payout was registered. Set by the
@@ -265,8 +374,10 @@ export const PartnerPayouts: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [guardImmutableFields],
+    // `guardImmutableFields` stays first; `assignPayoutSource` labels new rows.
+    beforeChange: [guardImmutableFields, assignPayoutSource],
+    beforeDelete: [reverseReferralPayoutOnDelete],
   },
-  endpoints: [registerPartnerPayout],
+  endpoints: [registerPartnerPayout, registerReferralPayout],
   timestamps: true,
 }

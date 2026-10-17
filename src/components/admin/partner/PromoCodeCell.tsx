@@ -28,5 +28,8 @@ export function promoCodeIdOf(value: unknown): number | string | null {
 
 export default function PromoCodeCell(props: DefaultCellComponentProps) {
   const id = promoCodeIdOf(props.cellData)
-  return <DefaultCell {...props} cellData={id ?? undefined} />
+  // A referral payout has no promo code by design; Payload would print «<No Rabattkode>», which
+  // reads like missing data. A dash says "not applicable".
+  if (id == null) return <span>—</span>
+  return <DefaultCell {...props} cellData={id} />
 }

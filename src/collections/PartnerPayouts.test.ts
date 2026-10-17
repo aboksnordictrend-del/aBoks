@@ -187,6 +187,8 @@ describe('PartnerPayouts — collection configuration', () => {
     assert.deepEqual(PartnerPayouts.admin?.defaultColumns, [
       'payoutDate',
       'partnerNameSnapshot',
+      // Stage 4: promo-code or referral payout.
+      'source',
       'promoCode',
       'amount',
       'paymentMethod',

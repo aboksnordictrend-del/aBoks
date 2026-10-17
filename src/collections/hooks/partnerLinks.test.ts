@@ -61,6 +61,10 @@ describe('guardPartnerDelete', () => {
     await refused(del({ 'partner-payouts': 1 }).run)
   })
 
+  it('refuses deleting a partner with referred customers', async () => {
+    await refused(del({ 'referred-customers': 1 }).run)
+  })
+
   it('allows deleting a partner nothing points at', async () => {
     const g = del({})
     await g.run()
@@ -69,6 +73,7 @@ describe('guardPartnerDelete', () => {
       [
         ['promo-codes', { partner: { equals: 5 } }],
         ['partner-payouts', { partner: { equals: 5 } }],
+        ['referred-customers', { partner: { equals: 5 } }],
       ],
     )
   })

@@ -1,23 +1,23 @@
 import { APIError, type CollectionAfterChangeHook, type CollectionBeforeDeleteHook } from 'payload'
 
 /**
- * Integrity of the links INTO a partner: promo codes (`promo-codes.partner`) and payouts
- * (`partner-payouts.partner`). The partner itself never writes commission or money; these
+ * Integrity of the links INTO a partner: promo codes (`promo-codes.partner`), payouts
+ * (`partner-payouts.partner`) and referred customers (`referred-customers.partner`). The partner itself never writes commission or money; these
  * hooks only keep the links meaningful.
  */
 
 export const PARTNER_IN_USE_MESSAGE =
-  'Partneren kan ikke slettes fordi rabattkoder eller utbetalinger er knyttet til den. Sett status til «Avsluttet» i stedet.'
+  'Partneren kan ikke slettes fordi rabattkoder, utbetalinger eller henviste kunder er knyttet til den. Sett status til «Avsluttet» i stedet.'
 
 /**
- * Refuses to delete a partner that anchors promo codes or payouts.
+ * Refuses to delete a partner that anchors promo codes, payouts or referred customers.
  *
  * The database alone would not stop it — both links are ON DELETE SET NULL, as Payload generates
  * them — and that would silently detach accounting history from its partner. An ended agreement
  * is recorded with the status «Avsluttet» instead.
  */
 export const guardPartnerDelete: CollectionBeforeDeleteHook = async ({ id, req }) => {
-  const [codes, payouts] = await Promise.all([
+  const [codes, payouts, referred] = await Promise.all([
     req.payload.count({
       collection: 'promo-codes',
       where: { partner: { equals: id } },
@@ -30,9 +30,15 @@ export const guardPartnerDelete: CollectionBeforeDeleteHook = async ({ id, req }
       overrideAccess: true,
       req,
     }),
+    req.payload.count({
+      collection: 'referred-customers',
+      where: { partner: { equals: id } },
+      overrideAccess: true,
+      req,
+    }),
   ])
 
-  if (codes.totalDocs > 0 || payouts.totalDocs > 0) throw new APIError(PARTNER_IN_USE_MESSAGE, 409)
+  if (codes.totalDocs > 0 || payouts.totalDocs > 0 || referred.totalDocs > 0) throw new APIError(PARTNER_IN_USE_MESSAGE, 409)
 }
 
 /**

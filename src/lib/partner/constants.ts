@@ -81,6 +81,18 @@ export const PAYOUT_METHOD_OPTIONS: { label: string; value: PayoutMethod }[] = [
   { label: 'Annet', value: 'other' },
 ]
 
+/**
+ * What a payout paid: one promo code's balance, or Bedriftssalg / Forhandlersalg commission on
+ * manually registered referral sales. NULL on rows written before sources existed = promo code.
+ */
+export const PAYOUT_SOURCES = ['promoCode', 'referral'] as const
+export type PayoutSource = (typeof PAYOUT_SOURCES)[number]
+
+export const PAYOUT_SOURCE_OPTIONS: { label: string; value: PayoutSource }[] = [
+  { label: 'Promokode', value: 'promoCode' },
+  { label: 'Henvisningsprovisjon', value: 'referral' },
+]
+
 export const PAYOUT_REGISTER_DESCRIPTION =
   'Registrer en utbetaling som allerede er utført via bank, Vipps eller annen betalingsmåte. Systemet sender aldri penger selv.'
 

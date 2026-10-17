@@ -348,3 +348,74 @@
   opacity: 0.7;
   line-height: 1.5;
 }
+
+/* --- Live commission preview (referral sale edit page) --- */
+
+/* A quiet box with a coloured left rule for its tone. Payload's own theme colours, so it reads
+   correctly in light and dark admin themes. */
+.preview {
+  margin: 0.5rem 0 1.5rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--theme-elevation-100);
+  border-left: 4px solid var(--theme-elevation-300);
+  border-radius: 12px;
+  background: var(--theme-elevation-50);
+  max-width: 36rem;
+}
+
+.preview .details {
+  margin: 0.75rem 0 0.5rem;
+  background: var(--theme-elevation-0);
+}
+
+.previewInfo {
+  border-left-color: var(--theme-elevation-300);
+}
+
+.previewOk {
+  border-left-color: var(--theme-success-500);
+}
+
+.previewWarning {
+  border-left-color: var(--theme-warning-500);
+}
+
+.previewError {
+  border-left-color: var(--theme-error-500);
+}
+
+.previewLocked {
+  border-left-color: var(--theme-elevation-500);
+}
+
+.previewTitle {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.previewStrong {
+  font-weight: 700;
+}
+
+.previewNote {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+}
+
+.previewFootnote {
+  margin: 0.6rem 0 0;
+  font-size: 0.74rem;
+  opacity: 0.55;
+}
+
+/* --- Referred-customer overview (partner edit page) --- */
+
+.overviewCards {
+  margin-bottom: 0.5rem;
+}
+
+.tableNote {
+  margin: 0.4rem 0 0;
+  font-size: 0.74rem;
+  opacity: 0.55;
+}

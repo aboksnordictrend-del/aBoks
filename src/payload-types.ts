@@ -76,6 +76,9 @@ export interface Config {
     'promo-code-usages': PromoCodeUsage;
     'partner-payouts': PartnerPayout;
     partners: Partner;
+    'referred-customers': ReferredCustomer;
+    'referral-sales': ReferralSale;
+    'referral-commission-adjustments': ReferralCommissionAdjustment;
     customers: Customer;
     'marketing-expenses': MarketingExpense;
     reviews: Review;
@@ -89,7 +92,11 @@ export interface Config {
   collectionsJoins: {
     partners: {
       promoCodes: 'promo-codes';
+      referredCustomers: 'referred-customers';
       payouts: 'partner-payouts';
+    };
+    'referred-customers': {
+      sales: 'referral-sales';
     };
   };
   collectionsSelect: {
@@ -102,6 +109,9 @@ export interface Config {
     'promo-code-usages': PromoCodeUsagesSelect<false> | PromoCodeUsagesSelect<true>;
     'partner-payouts': PartnerPayoutsSelect<false> | PartnerPayoutsSelect<true>;
     partners: PartnersSelect<false> | PartnersSelect<true>;
+    'referred-customers': ReferredCustomersSelect<false> | ReferredCustomersSelect<true>;
+    'referral-sales': ReferralSalesSelect<false> | ReferralSalesSelect<true>;
+    'referral-commission-adjustments': ReferralCommissionAdjustmentsSelect<false> | ReferralCommissionAdjustmentsSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
     'marketing-expenses': MarketingExpensesSelect<false> | MarketingExpensesSelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
@@ -697,7 +707,15 @@ export interface Partner {
     totalDocs?: number;
   };
   /**
-   * Registrerte utbetalinger til partneren. Eldre utbetalinger registrert før partneren ble opprettet vises på rabattkoden.
+   * Bedrifter (Bedriftssalg) og fysiske butikker (Forhandlersalg) partneren har henvist. Åpne en kunde for å registrere salg.
+   */
+  referredCustomers?: {
+    docs?: (number | ReferredCustomer)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Alle registrerte utbetalinger til partneren – promokode og henvisningsprovisjon. Eldre utbetalinger registrert før partneren ble opprettet vises på rabattkoden.
    */
   payouts?: {
     docs?: (number | PartnerPayout)[];
@@ -711,6 +729,413 @@ export interface Partner {
   createdAt: string;
 }
 /**
+ * Bedrifter og fysiske butikker som en vanlig partner har henvist. Registreres manuelt av ABOKS AS. Nettbutikker registreres som partner, ikke her.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referred-customers".
+ */
+export interface ReferredCustomer {
+  id: number;
+  name: string;
+  /**
+   * Kun godkjente kunder kan få registrert salg. Sett til «Inaktiv» når henvisningsavtalen opphører.
+   */
+  status: 'pending' | 'approved' | 'rejected' | 'inactive';
+  /**
+   * Bedriftssalg: bedrift, institusjon eller annen bedriftskunde. Forhandlersalg: KUN fysisk butikk – aldri nettbutikk. Kan endres til første salg er registrert.
+   */
+  category: 'businessSale' | 'retailStore';
+  /**
+   * Kun aktive vanlige partnere. Kan endres til første salg er registrert.
+   */
+  partner: number | Partner;
+  referralDate: string;
+  /**
+   * Norge gir streng kontroll av organisasjonsnummeret.
+   */
+  country:
+    | 'NO'
+    | 'SE'
+    | 'DK'
+    | 'FI'
+    | 'IS'
+    | 'AF'
+    | 'AL'
+    | 'DZ'
+    | 'AS'
+    | 'AD'
+    | 'AO'
+    | 'AI'
+    | 'AQ'
+    | 'AG'
+    | 'AR'
+    | 'AM'
+    | 'AW'
+    | 'AZ'
+    | 'AU'
+    | 'BS'
+    | 'BH'
+    | 'BD'
+    | 'BB'
+    | 'BY'
+    | 'BE'
+    | 'BZ'
+    | 'BJ'
+    | 'BM'
+    | 'BT'
+    | 'BO'
+    | 'BA'
+    | 'BW'
+    | 'BV'
+    | 'BR'
+    | 'BN'
+    | 'BG'
+    | 'BF'
+    | 'BI'
+    | 'CA'
+    | 'KY'
+    | 'CL'
+    | 'CX'
+    | 'CO'
+    | 'CK'
+    | 'CR'
+    | 'CU'
+    | 'CW'
+    | 'VI'
+    | 'VG'
+    | 'AE'
+    | 'TF'
+    | 'DO'
+    | 'CF'
+    | 'IO'
+    | 'PS'
+    | 'DJ'
+    | 'DM'
+    | 'EC'
+    | 'EG'
+    | 'GQ'
+    | 'SV'
+    | 'CI'
+    | 'ER'
+    | 'EE'
+    | 'SZ'
+    | 'ET'
+    | 'FK'
+    | 'FJ'
+    | 'PH'
+    | 'FR'
+    | 'GF'
+    | 'PF'
+    | 'FO'
+    | 'GA'
+    | 'GM'
+    | 'GE'
+    | 'GH'
+    | 'GI'
+    | 'GD'
+    | 'GL'
+    | 'GP'
+    | 'GU'
+    | 'GT'
+    | 'GG'
+    | 'GN'
+    | 'GW'
+    | 'GY'
+    | 'HT'
+    | 'HM'
+    | 'GR'
+    | 'HN'
+    | 'HK'
+    | 'IN'
+    | 'ID'
+    | 'IQ'
+    | 'IR'
+    | 'IE'
+    | 'IL'
+    | 'IT'
+    | 'JM'
+    | 'JP'
+    | 'YE'
+    | 'JE'
+    | 'JO'
+    | 'KH'
+    | 'CM'
+    | 'CV'
+    | 'BQ'
+    | 'KZ'
+    | 'KE'
+    | 'CN'
+    | 'KG'
+    | 'KI'
+    | 'CC'
+    | 'KM'
+    | 'CD'
+    | 'CG'
+    | 'HR'
+    | 'KW'
+    | 'CY'
+    | 'LA'
+    | 'LV'
+    | 'LS'
+    | 'LB'
+    | 'LR'
+    | 'LY'
+    | 'LI'
+    | 'LT'
+    | 'LU'
+    | 'MO'
+    | 'MG'
+    | 'MW'
+    | 'MY'
+    | 'MV'
+    | 'ML'
+    | 'MT'
+    | 'IM'
+    | 'MA'
+    | 'MH'
+    | 'MQ'
+    | 'MR'
+    | 'MU'
+    | 'YT'
+    | 'MX'
+    | 'FM'
+    | 'MD'
+    | 'MC'
+    | 'MN'
+    | 'ME'
+    | 'MS'
+    | 'MZ'
+    | 'MM'
+    | 'NA'
+    | 'NR'
+    | 'NL'
+    | 'NP'
+    | 'NZ'
+    | 'NI'
+    | 'NE'
+    | 'NG'
+    | 'NU'
+    | 'KP'
+    | 'MK'
+    | 'MP'
+    | 'NF'
+    | 'NC'
+    | 'OM'
+    | 'PK'
+    | 'PW'
+    | 'PA'
+    | 'PG'
+    | 'PY'
+    | 'PE'
+    | 'PN'
+    | 'PL'
+    | 'PT'
+    | 'PR'
+    | 'QA'
+    | 'RE'
+    | 'RO'
+    | 'RU'
+    | 'RW'
+    | 'KN'
+    | 'BL'
+    | 'MF'
+    | 'PM'
+    | 'SB'
+    | 'WS'
+    | 'SM'
+    | 'ST'
+    | 'SA'
+    | 'SN'
+    | 'RS'
+    | 'SC'
+    | 'SL'
+    | 'SG'
+    | 'SX'
+    | 'SK'
+    | 'SI'
+    | 'SO'
+    | 'ES'
+    | 'LK'
+    | 'SH'
+    | 'LC'
+    | 'VC'
+    | 'GB'
+    | 'SD'
+    | 'SR'
+    | 'SJ'
+    | 'CH'
+    | 'SY'
+    | 'ZA'
+    | 'GS'
+    | 'KR'
+    | 'SS'
+    | 'TJ'
+    | 'TW'
+    | 'TZ'
+    | 'TH'
+    | 'TG'
+    | 'TK'
+    | 'TO'
+    | 'TT'
+    | 'TD'
+    | 'CZ'
+    | 'TN'
+    | 'TM'
+    | 'TC'
+    | 'TV'
+    | 'TR'
+    | 'DE'
+    | 'UG'
+    | 'UA'
+    | 'HU'
+    | 'UY'
+    | 'US'
+    | 'UM'
+    | 'UZ'
+    | 'VU'
+    | 'VA'
+    | 'VE'
+    | 'EH'
+    | 'VN'
+    | 'WF'
+    | 'ZM'
+    | 'ZW'
+    | 'TL'
+    | 'AT'
+    | 'AX';
+  /**
+   * Valgfritt, men brukes til å oppdage duplikater. Norsk: 9 sifre. Utenlandsk: slik det er registrert (maks 40 tegn).
+   */
+  organizationNumber?: string | null;
+  contactPerson?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  /**
+   * Kryss av bare når lagringen stoppes fordi en annen kunde har samme navn, og du har kontrollert at det er en annen kunde. Bekreftelsen gjelder dette navnet og registreringsnummeret – endres de, må du bekrefte på nytt.
+   */
+  duplicateConfirmed?: boolean | null;
+  duplicateReason?: string | null;
+  duplicateConfirmedAt?: string | null;
+  duplicateConfirmedBy?: (number | null) | User;
+  /**
+   * Registrerte kjøp. Salg kan bare registreres når kunden er «Godkjent».
+   */
+  sales?: {
+    docs?: (number | ReferralSale)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Avtalevilkår, historikk o.l. Vises aldri for partneren eller kunden.
+   */
+  internalNote?: string | null;
+  registrationKey?: string | null;
+  nameKey?: string | null;
+  duplicateConfirmedFor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Manuelt registrerte salg til henviste bedrifter og fysiske butikker. Provisjonen beregnes automatisk og opptjenes først når salget er betalt.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referral-sales".
+ */
+export interface ReferralSale {
+  id: number;
+  title?: string | null;
+  /**
+   * Kun godkjente kunder.
+   */
+  referredCustomer: number | ReferredCustomer;
+  saleDate: string;
+  /**
+   * Hentes fra den henviste kunden.
+   */
+  partner?: (number | null) | Partner;
+  /**
+   * Hentes fra den henviste kunden.
+   */
+  category?: ('businessSale' | 'retailStore') | null;
+  /**
+   * Valgfritt. Velg ordren dersom salget ble gjort i nettbutikken.
+   */
+  order?: (number | null) | Order;
+  /**
+   * Valgfritt. Fakturanummer eller annen referanse utenfor nettbutikken.
+   */
+  externalReference?: string | null;
+  /**
+   * Totalbeløpet kunden er fakturert / har betalt.
+   */
+  invoicedTotal: number;
+  currency?: string | null;
+  /**
+   * Trekkes fra grunnlaget.
+   */
+  shippingAmount?: number | null;
+  /**
+   * Gebyrer og avgifter fakturert i tillegg. Trekkes fra grunnlaget.
+   */
+  otherExcludedAmount?: number | null;
+  /**
+   * Må velges for hvert salg. MVA inngår aldri i provisjonsgrunnlaget: er salget fakturert med MVA, skal MVA-beløpet føres inn og trekkes fra.
+   */
+  vatTreatment: 'noVat' | 'vatDeducted';
+  /**
+   * MVA-beløpet på fakturaen. Trekkes fra grunnlaget.
+   */
+  vatAmount?: number | null;
+  /**
+   * La feltet stå tomt for standard: Forhandlersalg gir provisjon på hvert betalt kjøp, Bedriftssalg gir provisjon bare når du velger «Gir provisjon» for et avtalt salg.
+   */
+  commissionEligibility?: ('eligible' | 'notEligible') | null;
+  /**
+   * Tom = standard (Bedriftssalg 25 %, Forhandlersalg 15 %). Avvik krever begrunnelse.
+   */
+  commissionRate?: number | null;
+  rateOverrideReason?: string | null;
+  /**
+   * Beregnes ved lagring.
+   */
+  commissionBase?: number | null;
+  /**
+   * Beregnes ved lagring.
+   */
+  commissionAmount?: number | null;
+  /**
+   * Opptjent først når salget er betalt.
+   */
+  commissionStatus?: ('pending' | 'earned' | 'paid' | 'reversed') | null;
+  /**
+   * Sett til «Betalt» når ABOKS AS har mottatt betalingen. Da låses beløpene.
+   */
+  paymentStatus: 'pending' | 'paid' | 'cancelled' | 'refunded';
+  /**
+   * Settes til i dag dersom feltet er tomt.
+   */
+  paidAt?: string | null;
+  closedAt?: string | null;
+  /**
+   * Utbetalingen som dekker provisjonen. Settes automatisk.
+   */
+  payout?: (number | null) | PartnerPayout;
+  promoCommissionOnOrder?: number | null;
+  allowPromoOverlap?: boolean | null;
+  promoOverlapReason?: string | null;
+  /**
+   * Brukes ved korreksjon: sett det opprinnelige salget til «Refundert» eller «Kansellert» først, og velg det her.
+   */
+  correctsSale?: (number | null) | ReferralSale;
+  /**
+   * Kan alltid endres. Vises aldri for partneren eller kunden.
+   */
+  internalNote?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Registrer en utbetaling som allerede er utført via bank, Vipps eller annen betalingsmåte. Systemet sender aldri penger selv.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -719,9 +1144,17 @@ export interface Partner {
 export interface PartnerPayout {
   id: number;
   /**
-   * Låst etter registrering.
+   * Låst etter registrering. Tom for utbetaling av henvisningsprovisjon.
    */
-  promoCode: number | PromoCode;
+  promoCode?: (number | null) | PromoCode;
+  /**
+   * Promokode eller henvisningsprovisjon. Låst.
+   */
+  source?: ('promoCode' | 'referral') | null;
+  referralGrossAmount?: number | null;
+  referralDeductedAmount?: number | null;
+  referralSales?: (number | ReferralSale)[] | null;
+  referralAdjustments?: (number | ReferralCommissionAdjustment)[] | null;
   /**
    * Partneren rabattkoden var knyttet til. Tom for eldre utbetalinger. Låst etter registrering.
    */
@@ -747,6 +1180,40 @@ export interface PartnerPayout {
   /**
    * Settes automatisk fra den innloggede brukeren.
    */
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Opprettes automatisk når et salg refunderes eller kanselleres etter at provisjonen er utbetalt. Trekkes fra neste utbetaling av henvisningsprovisjon.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referral-commission-adjustments".
+ */
+export interface ReferralCommissionAdjustment {
+  id: number;
+  title?: string | null;
+  sale: number | ReferralSale;
+  partner?: (number | null) | Partner;
+  /**
+   * Negativt: trekkes fra neste utbetaling.
+   */
+  amount: number;
+  reason?: ('refundedAfterPayout' | 'cancelledAfterPayout') | null;
+  category?: ('businessSale' | 'retailStore') | null;
+  /**
+   * Utbetalingen som betalte provisjonen. Endres ikke.
+   */
+  originalPayout?: (number | null) | PartnerPayout;
+  /**
+   * Tom = utestående, trekkes fra neste utbetaling.
+   */
+  settledByPayout?: (number | null) | PartnerPayout;
+  settledAt?: string | null;
+  /**
+   * Internt notat. Kan endres.
+   */
+  note?: string | null;
   createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
@@ -1016,6 +1483,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'partners';
         value: number | Partner;
+      } | null)
+    | ({
+        relationTo: 'referred-customers';
+        value: number | ReferredCustomer;
+      } | null)
+    | ({
+        relationTo: 'referral-sales';
+        value: number | ReferralSale;
+      } | null)
+    | ({
+        relationTo: 'referral-commission-adjustments';
+        value: number | ReferralCommissionAdjustment;
       } | null)
     | ({
         relationTo: 'customers';
@@ -1387,6 +1866,11 @@ export interface PromoCodeUsagesSelect<T extends boolean = true> {
  */
 export interface PartnerPayoutsSelect<T extends boolean = true> {
   promoCode?: T;
+  source?: T;
+  referralGrossAmount?: T;
+  referralDeductedAmount?: T;
+  referralSales?: T;
+  referralAdjustments?: T;
   partner?: T;
   partnerNameSnapshot?: T;
   amount?: T;
@@ -1425,10 +1909,94 @@ export interface PartnersSelect<T extends boolean = true> {
   agreementDate?: T;
   internalNote?: T;
   promoCodes?: T;
+  referredCustomers?: T;
   payouts?: T;
   partnershipTypes?: T;
   businessSaleCommissionPercent?: T;
   retailerReferralCommissionPercent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referred-customers_select".
+ */
+export interface ReferredCustomersSelect<T extends boolean = true> {
+  name?: T;
+  status?: T;
+  category?: T;
+  partner?: T;
+  referralDate?: T;
+  country?: T;
+  organizationNumber?: T;
+  contactPerson?: T;
+  email?: T;
+  phone?: T;
+  duplicateConfirmed?: T;
+  duplicateReason?: T;
+  duplicateConfirmedAt?: T;
+  duplicateConfirmedBy?: T;
+  sales?: T;
+  internalNote?: T;
+  registrationKey?: T;
+  nameKey?: T;
+  duplicateConfirmedFor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referral-sales_select".
+ */
+export interface ReferralSalesSelect<T extends boolean = true> {
+  title?: T;
+  referredCustomer?: T;
+  saleDate?: T;
+  partner?: T;
+  category?: T;
+  order?: T;
+  externalReference?: T;
+  invoicedTotal?: T;
+  currency?: T;
+  shippingAmount?: T;
+  otherExcludedAmount?: T;
+  vatTreatment?: T;
+  vatAmount?: T;
+  commissionEligibility?: T;
+  commissionRate?: T;
+  rateOverrideReason?: T;
+  commissionBase?: T;
+  commissionAmount?: T;
+  commissionStatus?: T;
+  paymentStatus?: T;
+  paidAt?: T;
+  closedAt?: T;
+  payout?: T;
+  promoCommissionOnOrder?: T;
+  allowPromoOverlap?: T;
+  promoOverlapReason?: T;
+  correctsSale?: T;
+  internalNote?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "referral-commission-adjustments_select".
+ */
+export interface ReferralCommissionAdjustmentsSelect<T extends boolean = true> {
+  title?: T;
+  sale?: T;
+  partner?: T;
+  amount?: T;
+  reason?: T;
+  category?: T;
+  originalPayout?: T;
+  settledByPayout?: T;
+  settledAt?: T;
+  note?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

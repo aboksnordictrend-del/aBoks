@@ -415,6 +415,42 @@ export const Partners: CollectionConfig = {
       },
     },
     {
+      // Read-only overview: companies and physical stores separately, with sales and commission.
+      name: 'referredCustomersOverview',
+      type: 'ui',
+      admin: {
+        condition: isRegular,
+        components: { Field: '@/components/admin/partner/ReferredCustomersOverview#default' },
+      },
+    },
+    {
+      // Companies and physical stores this partner introduced (Bedriftssalg / Forhandlersalg).
+      // «Legg til» here creates a referred customer with this partner already filled in. Regular
+      // partners only — no other type can be assigned one.
+      name: 'referredCustomers',
+      type: 'join',
+      collection: 'referred-customers',
+      on: 'partner',
+      label: 'Henviste kunder',
+      defaultSort: '-referralDate',
+      admin: {
+        condition: isRegular,
+        defaultColumns: ['name', 'category', 'status', 'referralDate', 'organizationNumber'],
+        description:
+          'Bedrifter (Bedriftssalg) og fysiske butikker (Forhandlersalg) partneren har henvist. Åpne en kunde for å registrere salg.',
+      },
+    },
+    {
+      // Bedriftssalg / Forhandlersalg: payable commission, the payout action, referral payout
+      // history and adjustments. Promo-code commission stays on each promo code.
+      name: 'referralCommission',
+      type: 'ui',
+      admin: {
+        condition: isRegular,
+        components: { Field: '@/components/admin/partner/ReferralCommissionPanel#default' },
+      },
+    },
+    {
       name: 'payouts',
       type: 'join',
       collection: 'partner-payouts',
@@ -422,9 +458,9 @@ export const Partners: CollectionConfig = {
       label: 'Utbetalinger',
       defaultSort: '-payoutDate',
       admin: {
-        defaultColumns: ['payoutDate', 'promoCode', 'amount', 'paymentMethod', 'reference'],
+        defaultColumns: ['payoutDate', 'source', 'promoCode', 'amount', 'paymentMethod', 'reference'],
         description:
-          'Registrerte utbetalinger til partneren. Eldre utbetalinger registrert før partneren ble opprettet vises på rabattkoden.',
+          'Alle registrerte utbetalinger til partneren – promokode og henvisningsprovisjon. Eldre utbetalinger registrert før partneren ble opprettet vises på rabattkoden.',
       },
     },
     // ── Legacy (hidden, frozen) ──
