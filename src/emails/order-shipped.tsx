@@ -61,11 +61,11 @@ export function createOrderShippedEmail(data: OrderShippedData): EmailTemplate {
         </p>`
 
   const body = `
-    <h1 style="margin:0 0 16px;font-size:22px;font-weight:bold;color:#1a1d17;">Bestillingen din er sendt!</h1>
+    <h1 style="margin:0 0 16px;font-size:22px;font-weight:bold;color:#1a1d17;">Bestillingen din er pakket og klar til sending!</h1>
 
     <p style="margin:0 0 16px;font-size:15px;color:#555;line-height:1.6;">Hei ${safeName},</p>
     <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.6;">
-      Gode nyheter! Bestillingen din er sendt, og vi gleder oss til at du skal oppleve hvor mye enklere hverdagen blir med aBoks.
+      Gode nyheter! Bestillingen din er pakket og klar til sending, og vi gleder oss til at du skal oppleve hvor mye enklere hverdagen blir med aBoks.
     </p>
 
     <p style="margin:0 0 4px;font-size:13px;color:#999;text-transform:uppercase;letter-spacing:1px;">Ordrenummer</p>
@@ -105,11 +105,11 @@ export function createOrderShippedEmail(data: OrderShippedData): EmailTemplate {
       ? shipmentTextLines.join('\n')
       : 'Sporingsinformasjon blir tilgjengelig hos fraktselskapet.'
 
-  const text = `Bestillingen din er sendt!
+  const text = `Bestillingen din er pakket og klar til sending!
 
 Hei ${customerName},
 
-Gode nyheter! Bestillingen din er sendt, og vi gleder oss til at du skal oppleve hvor mye enklere hverdagen blir med aBoks.
+Gode nyheter! Bestillingen din er pakket og klar til sending, og vi gleder oss til at du skal oppleve hvor mye enklere hverdagen blir med aBoks.
 
 Ordrenummer: #${orderNumber}
 
@@ -128,7 +128,7 @@ Med vennlig hilsen,
 aBoks`
 
   return {
-    subject: `Bestillingen din er sendt – Ordre #${orderNumber}`,
+    subject: `Bestillingen din er pakket og klar til sending – Ordre #${orderNumber}`,
     html: emailHtml(body),
     text,
   }

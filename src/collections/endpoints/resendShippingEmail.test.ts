@@ -110,7 +110,7 @@ describe('Send sporingsmail på nytt', () => {
     await call(h)
 
     const email = h.emails[0]
-    assert.equal(email.subject, 'Bestillingen din er sendt – Ordre #AB-1001')
+    assert.equal(email.subject, 'Bestillingen din er pakket og klar til sending – Ordre #AB-1001')
     assert.ok(email.html.includes('PostNord'), 'the carrier name')
     assert.ok(email.html.includes('707123456789'), 'the tracking number')
     assert.ok(email.html.includes('https://www.postnord.no/'), 'the tracking URL')

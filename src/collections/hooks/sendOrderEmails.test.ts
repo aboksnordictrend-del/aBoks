@@ -532,7 +532,7 @@ describe('shipment data on the shipped email', () => {
     await h.save({ status: 'shipped' })
 
     const email = h.sent[0] as unknown as { subject: string; html: string; text: string }
-    assert.equal(email.subject, 'Bestillingen din er sendt – Ordre #AB-1001')
+    assert.equal(email.subject, 'Bestillingen din er pakket og klar til sending – Ordre #AB-1001')
     assert.ok(email.html.includes('Helthjem'))
     assert.ok(email.html.includes('707123456789'))
     assert.ok(email.html.includes('https://helthjem.no/sporing'))

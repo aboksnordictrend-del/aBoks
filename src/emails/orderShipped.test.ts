@@ -98,12 +98,12 @@ describe('shipped e-mail — carrier and tracking number', () => {
 
   it('keeps the established subject', () => {
     const email = createOrderShippedEmail({ ...BASE, shippingCarrier: 'posten', trackingNumber: '1' })
-    assert.equal(email.subject, 'Bestillingen din er sendt – Ordre #AB-028412')
+    assert.equal(email.subject, 'Bestillingen din er pakket og klar til sending – Ordre #AB-028412')
   })
 
-  it('opens with «Bestillingen din er sendt!» and greets the customer', () => {
+  it('opens with «Bestillingen din er pakket og klar til sending!» and greets the customer', () => {
     const email = createOrderShippedEmail({ ...BASE, shippingCarrier: 'posten', trackingNumber: '1' })
-    assert.ok(email.html.includes('Bestillingen din er sendt!'))
+    assert.ok(email.html.includes('Bestillingen din er pakket og klar til sending!'))
     assert.ok(email.html.includes('Hei Inge Martin,'))
     assert.ok(email.html.includes('Takk for at du handler hos aBoks!'))
   })
@@ -187,7 +187,7 @@ describe('orders with no shipment data', () => {
   it('still renders every other part of the e-mail', () => {
     const email = createOrderShippedEmail(BASE)
 
-    assert.equal(email.subject, 'Bestillingen din er sendt – Ordre #AB-028412')
+    assert.equal(email.subject, 'Bestillingen din er pakket og klar til sending – Ordre #AB-028412')
     assert.ok(email.html.includes('#AB-028412'))
     assert.ok(email.html.includes('aBoks Vegg – Mørk blå'))
     assert.ok(email.html.includes('kr 518,-'))
