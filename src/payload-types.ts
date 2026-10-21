@@ -1086,6 +1086,30 @@ export interface ReferralSale {
    * MVA-beløpet på fakturaen. Trekkes fra grunnlaget.
    */
   vatAmount?: number | null;
+  items?:
+    | {
+        product: number | Product;
+        /**
+         * Farge / type, der produktet har varianter.
+         */
+        variant?: (number | null) | ProductVariant;
+        quantity: number;
+        /**
+         * Fra produktets «Total kostpris». Tom = kostpris ikke satt opp.
+         */
+        unitCost?: number | null;
+        lineCost?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Σ kostpris × antall. Tom når en varelinje mangler kostpris eller ingen varer er registrert.
+   */
+  productCost?: number | null;
+  /**
+   * Det ABOKS AS faktisk betalte for frakten. La stå tom hvis ukjent – 0 betyr at frakten var gratis for ABOKS AS.
+   */
+  actualShippingCost?: number | null;
   /**
    * La feltet stå tomt for standard: Forhandlersalg gir provisjon på hvert betalt kjøp, Bedriftssalg gir provisjon bare når du velger «Gir provisjon» for et avtalt salg.
    */
@@ -1962,6 +1986,18 @@ export interface ReferralSalesSelect<T extends boolean = true> {
   otherExcludedAmount?: T;
   vatTreatment?: T;
   vatAmount?: T;
+  items?:
+    | T
+    | {
+        product?: T;
+        variant?: T;
+        quantity?: T;
+        unitCost?: T;
+        lineCost?: T;
+        id?: T;
+      };
+  productCost?: T;
+  actualShippingCost?: T;
   commissionEligibility?: T;
   commissionRate?: T;
   rateOverrideReason?: T;

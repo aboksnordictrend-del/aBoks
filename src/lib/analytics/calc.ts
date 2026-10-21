@@ -68,7 +68,7 @@ const variantKeyOf = (line: AnalyticsLine, productKey: string): string =>
 export interface SummaryExtras {
   /** Cancelled orders in the period (fetched separately — never part of the revenue set). */
   cancelledOrders?: number
-  /** Ex-VAT marketing spend allocated to the period (Stage 4). */
+  /** Marketing cost allocated to the period (see `./marketing.ts` for the VAT rule). */
   adSpend?: number
   /** New customers acquired in the period (Stage 4). */
   newCustomers?: number
@@ -92,6 +92,7 @@ export function computeSummary(orders: AnalyticsOrder[], extras: SummaryExtras =
   let extraCosts = 0
   let paidOrders = 0
   let discountTotal = 0
+  let partnerCommission = 0
 
   for (const order of orders) {
     if (PAID_STATUS_SET.has(order.status)) paidOrders += 1
@@ -99,6 +100,9 @@ export function computeSummary(orders: AnalyticsOrder[], extras: SummaryExtras =
     actualShippingCost += order.actualShippingCost
     paymentFees += order.paymentFee
     extraCosts += order.extraCosts
+    // Stored commission (promo code / webshop referral sale), attached once per order by the
+    // aggregation layer. An expense the moment it is earned — a later payout is cash, not cost.
+    partnerCommission += order.partnerCommission ?? 0
     // Reported for the promo section only. It is NOT an expense — the discount has already
     // reduced revenue through lineGross, and subtracting it again would double-count it.
     discountTotal += order.discountAmount ?? 0
@@ -117,9 +121,9 @@ export function computeSummary(orders: AnalyticsOrder[], extras: SummaryExtras =
   const vatAmount = productGross - productNet
   const grossProfit = productNet - productCost
   const marginPercent = productNet > 0 ? (grossProfit / productNet) * 100 : 0
-  const adSpend = adSpendInput // ex-VAT marketing spend allocated to the period (Stage 4)
+  const adSpend = adSpendInput // marketing cost allocated to the period (VAT rule in ./marketing.ts)
   const contributionProfit =
-    revenueNet - productCost - actualShippingCost - paymentFees - adSpend - extraCosts
+    revenueNet - productCost - actualShippingCost - paymentFees - adSpend - extraCosts - partnerCommission
 
   return {
     orderCount,
@@ -142,6 +146,7 @@ export function computeSummary(orders: AnalyticsOrder[], extras: SummaryExtras =
     paymentFees: round2(paymentFees),
     adSpend: round2(adSpend),
     newCustomers,
+    partnerCommission: round2(partnerCommission),
     contributionProfit: round2(contributionProfit),
   }
 }
@@ -407,8 +412,9 @@ export function computeOrderFinancials(order: AnalyticsOrder): OrderFinancialRow
   const revenueGross = productGross + order.shippingCharged
   const revenueNet = productNet + order.shippingCharged
   const grossProfit = productNet - productCost
+  const partnerCommission = order.partnerCommission ?? 0
   const contributionProfit =
-    revenueNet - productCost - order.actualShippingCost - order.paymentFee - order.extraCosts
+    revenueNet - productCost - order.actualShippingCost - order.paymentFee - order.extraCosts - partnerCommission
 
   return {
     orderNumber: order.orderNumber,
@@ -427,6 +433,7 @@ export function computeOrderFinancials(order: AnalyticsOrder): OrderFinancialRow
     actualShippingCost: round2(order.actualShippingCost),
     paymentFee: round2(order.paymentFee),
     extraCosts: round2(order.extraCosts),
+    partnerCommission: round2(partnerCommission),
     grossProfit: round2(grossProfit),
     contributionProfit: round2(contributionProfit),
   }

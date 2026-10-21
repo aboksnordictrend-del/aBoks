@@ -9,7 +9,8 @@ import {
   VAT_TREATMENT_DESCRIPTION,
   VAT_TREATMENT_OPTIONS,
 } from '@/lib/partner/referral'
-import { enforceReferralSaleRules, guardReferralSaleDelete } from './hooks/referralSale'
+import { ACTUAL_SHIPPING_DESCRIPTION, COST_LINES_DESCRIPTION } from '@/lib/partner/referralCost'
+import { enforceReferralSaleRules, guardReferralSaleDelete, relationshipId as relationshipIdOf } from './hooks/referralSale'
 import { createClawbackAdjustment } from './hooks/referralAdjustment'
 
 /**
@@ -207,6 +208,99 @@ export const ReferralSales: CollectionConfig = {
             description: 'MVA-beløpet på fakturaen. Trekkes fra grunnlaget.',
             condition: (data) => (data as { vatTreatment?: unknown } | undefined)?.vatTreatment === 'vatDeducted',
           },
+        },
+      ],
+    },
+    {
+      // Product cost and ABOKS AS's own shipping cost, for the Partnersalg profit. Never part of
+      // the commission. Not used for a sale linked to a webshop order — that order already holds
+      // its lines and costs. See `@/lib/partner/referralCost` and `./hooks/referralSaleCost`.
+      type: 'collapsible',
+      label: 'Varer og kostnader',
+      admin: {
+        description: COST_LINES_DESCRIPTION,
+        condition: (data) => relationshipIdOf((data as { order?: unknown } | undefined)?.order) == null,
+      },
+      fields: [
+        {
+          name: 'items',
+          type: 'array',
+          label: 'Varelinjer',
+          labels: { singular: 'Varelinje', plural: 'Varelinjer' },
+          fields: [
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'product',
+                  type: 'relationship',
+                  relationTo: 'products',
+                  label: 'Produkt',
+                  required: true,
+                  admin: { width: '35%' },
+                },
+                {
+                  name: 'variant',
+                  type: 'relationship',
+                  relationTo: 'product-variants',
+                  label: 'Variant',
+                  // Convenience only — the hook verifies the variant belongs to the product.
+                  filterOptions: ({ siblingData }) => {
+                    const productId = relationshipIdOf((siblingData as { product?: unknown } | undefined)?.product)
+                    return productId == null ? false : { product: { equals: productId } }
+                  },
+                  admin: { width: '35%', description: 'Farge / type, der produktet har varianter.' },
+                },
+                {
+                  name: 'quantity',
+                  type: 'number',
+                  label: 'Antall',
+                  required: true,
+                  min: 1,
+                  admin: { width: '30%', step: 1 },
+                },
+              ],
+            },
+            {
+              type: 'row',
+              fields: [
+                {
+                  name: 'unitCost',
+                  type: 'number',
+                  label: 'Kostpris per enhet (kr)',
+                  admin: { ...derived, width: '50%', description: 'Fra produktets «Total kostpris». Tom = kostpris ikke satt opp.' },
+                },
+                {
+                  name: 'lineCost',
+                  type: 'number',
+                  label: 'Varekostnad (kr)',
+                  admin: { ...derived, width: '50%' },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'productCost',
+              type: 'number',
+              label: 'Varekostnad totalt (kr)',
+              admin: {
+                ...derived,
+                width: '50%',
+                description: 'Σ kostpris × antall. Tom når en varelinje mangler kostpris eller ingen varer er registrert.',
+              },
+            },
+            {
+              name: 'actualShippingCost',
+              type: 'number',
+              label: 'Faktisk fraktkostnad for ABOKS AS (kr)',
+              min: 0,
+              admin: { width: '50%', step: 0.01, description: ACTUAL_SHIPPING_DESCRIPTION },
+            },
+          ],
         },
       ],
     },

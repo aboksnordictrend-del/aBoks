@@ -25,6 +25,19 @@ import {
 import { round2 } from './money'
 import { resolveLineDiscounts, resolveOrderDiscount, type StoredOrderMoney } from './orderFinancials'
 import {
+  EMPTY_PARTNER_CHANNEL,
+  EMPTY_PARTNER_PROGRAM,
+  computeChannelSummary,
+  computeChannelView,
+  computePartnerProgram,
+  type PartnerProgramData,
+  type PartnerProgramResult,
+  type PartnerProgramSummary,
+} from './partnerProgram'
+import { loadPartnerProgramData } from './partnerProgramQuery'
+import { VAT_RATE_PERCENT } from '../tax'
+import { VAT_REGISTRATION_PERIODS, outputVatFor, type VatRegistrationPeriod } from '../vatRegistration'
+import {
   EMPTY_PROMO_PERFORMANCE,
   computePromoPerformance,
   type PromoCodeMeta,
@@ -50,10 +63,9 @@ export const ALL_STATUSES = ['pending', 'confirmed', 'shipped', 'delivered'] as 
 // Cancelled orders are counted (as a KPI) but never fetched into the revenue set.
 export const CANCELLED_STATUSES = ['cancelled'] as const
 
-// Until per-line VAT is snapshotted (Stage 2), no order stores its VAT rate. The
-// company is currently not MVA-registered, so we assume 0 % and surface a warning
-// rather than silently inventing 25 %.
-const ASSUMED_VAT_RATE = 0
+// Output VAT is decided per sale by `@/lib/vatRegistration`: a sale made while ABOKS AS is not
+// VAT-registered carries 0 % whatever its line stores (the stored 25 % is the checkout's nominal
+// default, not evidence of VAT charged); a sale inside a registration period uses its stored rate.
 
 const MAX_ORDERS = 20_000
 const PAGE_SIZE = 250
@@ -67,6 +79,8 @@ export interface AnalyticsQuery {
   now?: Date
   /** Marketing/economy figures are admin-only; false hides them from the response. */
   isAdmin?: boolean
+  /** Override of the VAT registration periods — tests and the impact report only. */
+  vatRegistrationPeriods?: readonly VatRegistrationPeriod[]
 }
 
 /** Stage-2 fields are read optionally so this keeps working before/after the migration. */
@@ -141,8 +155,12 @@ function resolveUnitCost(line: Order['items'][number]): { unitCost: number; esti
   return { unitCost: 0, estimated: true }
 }
 
-function normalizeOrder(order: Order): AnalyticsOrder {
+export function normalizeOrder(
+  order: Order,
+  vatPeriods: readonly VatRegistrationPeriod[] = VAT_REGISTRATION_PERIODS,
+): AnalyticsOrder {
   const extras = order as Order & OrderExtras
+  const saleDate = extras.paidAt ?? order.createdAt
   // Per-line discount shares, read from the order's stored allocation (Stage 7) or, for a
   // legacy order, split deterministically from its stored order-level discount. Resolved
   // once per order, never from the catalogue and never from the promo record.
@@ -151,8 +169,8 @@ function normalizeOrder(order: Order): AnalyticsOrder {
 
   const lines: AnalyticsLine[] = (order.items ?? []).map((line, index) => {
     const { unitCost, estimated } = resolveUnitCost(line)
-    const vat = (line as LineExtras).vatRate
-    const vatStored = typeof vat === 'number'
+    const storedVat = (line as LineExtras).vatRate
+    const vat = outputVatFor({ saleDate, storedRate: storedVat }, vatPeriods)
     const meta = variantMeta(line)
     return {
       productId: productId(line),
@@ -167,8 +185,9 @@ function normalizeOrder(order: Order): AnalyticsOrder {
       discountAllocated: lineDiscounts[index] ?? 0,
       unitCost,
       costEstimated: estimated,
-      vatRate: vatStored ? vat : ASSUMED_VAT_RATE,
-      vatEstimated: !vatStored,
+      vatRate: vat.rate,
+      vatEstimated: vat.treatment === 'assumed',
+      vatNominalIgnored: vat.treatment === 'notRegistered' && typeof storedVat === 'number' && storedVat > 0,
     }
   })
 
@@ -177,7 +196,7 @@ function normalizeOrder(order: Order): AnalyticsOrder {
     orderNumber: order.orderNumber,
     status: order.status,
     customerName: customerName(order),
-    date: extras.paidAt ?? order.createdAt,
+    date: saleDate,
     shippingCharged: order.shipping ?? 0,
     discountAmount,
     promoCode: order.discount?.code?.trim() || undefined,
@@ -259,18 +278,26 @@ export function buildWarnings(
      * see isMissingVariantLink for what that falls back to.
      */
     variantBasedProductIds: ReadonlySet<string> | null
+    /** Partner programme for the period. Null when it was not loaded (editors). */
+    partnerProgram?: PartnerProgramSummary | null
+    /** True when an admin's partner data could not be loaded. */
+    partnerLoadFailed?: boolean
+    /** Manual partner sales in the period without recorded product cost. */
+    partnerCostMissingSales?: number
   },
 ): Warning[] {
   const warnings: Warning[] = []
 
   let missingCostLines = 0
   let vatEstimatedLines = 0
+  let vatNotRegisteredLines = 0
   let noProductLines = 0
   let noVariantLines = 0
   for (const o of orders) {
     for (const l of o.lines) {
       if (l.costEstimated) missingCostLines += 1
       if (l.vatEstimated) vatEstimatedLines += 1
+      if (l.vatNominalIgnored) vatNotRegisteredLines += 1
       if (!l.productId) noProductLines += 1
       if (isMissingVariantLink(l, opts.variantBasedProductIds)) noVariantLines += 1
     }
@@ -288,7 +315,15 @@ export function buildWarnings(
     warnings.push({
       code: 'vat-not-stored',
       count: vatEstimatedLines,
-      message: `${vatEstimatedLines} ordrelinjer mangler lagret MVA-sats — for disse antas 0 % MVA.`,
+      message: `${vatEstimatedLines} ordrelinjer solgt i en periode med MVA-registrering mangler lagret MVA-sats — for disse antas ${VAT_RATE_PERCENT} % MVA.`,
+    })
+  }
+
+  if (vatNotRegisteredLines > 0) {
+    warnings.push({
+      code: 'vat-not-registered',
+      count: vatNotRegisteredLines,
+      message: `${vatNotRegisteredLines} ordrelinjer er solgt mens ABOKS AS ikke var MVA-registrert. Den lagrede MVA-satsen er kassens standardverdi og er ikke trukket fra – hele beløpet kunden betalte regnes som omsetning.`,
     })
   }
 
@@ -358,6 +393,47 @@ export function buildWarnings(
       code: 'expense-bad-period',
       count: badPeriod,
       message: `${badPeriod} markedsføringskostnader har ugyldig periode (periode til før periode fra).`,
+    })
+  }
+
+  // --- Partner programme ---
+  if (opts.partnerLoadFailed) {
+    warnings.push({
+      code: 'partner-data-failed',
+      message:
+        'Partnerdata kunne ikke hentes. Partnerprogrammet vises ikke, og fortjeneste nettbutikk er beregnet uten partnerprovisjon.',
+    })
+  }
+
+  const pq = opts.partnerProgram?.quality
+  if (pq && pq.legacyUsagesInPeriod > 0) {
+    warnings.push({
+      code: 'partner-legacy-usage',
+      count: pq.legacyUsagesInPeriod,
+      message: `${pq.legacyUsagesInPeriod} eldre partnerkode-bruk uten beløpsdata er ikke med i partnersalg eller provisjon.`,
+    })
+  }
+  if (pq && pq.unreadablePayouts > 0) {
+    warnings.push({
+      code: 'partner-payout-unreadable',
+      count: pq.unreadablePayouts,
+      message: `${pq.unreadablePayouts} partnerutbetalinger har et beløp som ikke kan leses. «Til utbetaling» kan være for høyt.`,
+    })
+  }
+  if (pq && pq.unreadableReferralRows > 0) {
+    warnings.push({
+      code: 'partner-referral-unreadable',
+      count: pq.unreadableReferralRows,
+      message: `${pq.unreadableReferralRows} henvisningssalg eller justeringer har beløp eller status som ikke kan leses, og er utelatt fra provisjonstallene.`,
+    })
+  }
+
+  const costMissing = opts.partnerCostMissingSales ?? 0
+  if (costMissing > 0) {
+    warnings.push({
+      code: 'partner-sales-no-cost',
+      count: costMissing,
+      message: `${costMissing} manuelt registrerte partnersalg i perioden mangler varelinjer med kostpris eller faktisk fraktkostnad. Fortjeneste partnersalg og samlet fortjeneste vises derfor ikke – «Samlet – øvre anslag» trekker bare fra kjente kostnader. Legg inn varelinjer og fraktkostnad på salget for å få et nøyaktig tall.`,
     })
   }
 
@@ -552,6 +628,7 @@ async function fetchMarketingExpenses(
     return {
       channel: e.channel,
       amountExVat: exVat,
+      source: e.source ?? null,
       date: e.date,
       periodFrom: e.periodFrom,
       periodTo: e.periodTo,
@@ -730,6 +807,30 @@ async function fetchPromoPerformance(
   }
 }
 
+/**
+ * Partner rows for an admin. Null on failure — the dashboard still renders, without partner
+ * figures, and says so in a warning.
+ */
+async function loadPartnerProgramSafe(payload: Payload): Promise<PartnerProgramData | null> {
+  try {
+    return await loadPartnerProgramData(payload)
+  } catch (err) {
+    payload.logger.warn(
+      `[analytics] partner programme lookup failed: ${err instanceof Error ? err.message : 'unknown'}`,
+    )
+    return null
+  }
+}
+
+/** Attach the stored partner commission charged to each order (kroner). */
+function withPartnerCommission(orders: AnalyticsOrder[], byOrder: Map<string, number> | undefined): AnalyticsOrder[] {
+  if (!byOrder || byOrder.size === 0) return orders
+  return orders.map((order) => {
+    const commission = byOrder.get(order.id)
+    return commission ? { ...order, partnerCommission: commission } : order
+  })
+}
+
 /** Build the marketing summary (ratios, channels) for the current period. */
 function buildMarketing(
   expenses: MarketingExpenseInput[],
@@ -737,6 +838,7 @@ function buildMarketing(
   previousPeriod: Period,
   summary: Summary,
   previousSummary: Summary,
+  vatPeriods: readonly VatRegistrationPeriod[],
 ): MarketingSummary {
   const adSpend = summary.adSpend
   const adSpendPrev = previousSummary.adSpend
@@ -758,7 +860,7 @@ function buildMarketing(
       computeMarketingShare(adSpend, summary.revenueNet),
       computeMarketingShare(adSpendPrev, previousSummary.revenueNet),
     ),
-    channels: computeChannels(expenses, currentPeriod),
+    channels: computeChannels(expenses, currentPeriod, vatPeriods),
     attributionConnected: false,
   }
 }
@@ -784,6 +886,7 @@ export async function runAnalyticsDetailed(
   const grouping: Grouping = query.grouping ?? resolved.suggestedGrouping
   const statuses = query.paidOnly ? PAID_STATUSES : ALL_STATUSES
   const isAdmin = query.isAdmin !== false // default admin unless explicitly told otherwise
+  const vatPeriods = query.vatRegistrationPeriods ?? VAT_REGISTRATION_PERIODS
 
   const currentPeriod = { from: resolved.from, to: resolved.to }
   const previousPeriod = resolved.previous
@@ -799,6 +902,15 @@ export async function runAnalyticsDetailed(
 
   // Marketing + economy figures are admin-only (§12). For editors these stay zero/empty.
   const settings = isAdmin ? await loadEconomySettings(payload) : null
+
+  // Partner commission and partner sales are admin-only financial data, like marketing.
+  const partnerData = isAdmin ? await loadPartnerProgramSafe(payload) : null
+  const partnerResult: PartnerProgramResult | null = partnerData
+    ? computePartnerProgram(partnerData, {
+        current: { period: currentPeriod, orderIds: new Set(currentRaw.map((o) => String(o.id))) },
+        previous: { period: previousPeriod, orderIds: new Set(previousRaw.map((o) => String(o.id))) },
+      })
+    : null
   const [expenses, newCurrent, newPrevious] = isAdmin
     ? await Promise.all([
         fetchMarketingExpenses(payload, previousPeriod.from, currentPeriod.to),
@@ -807,14 +919,20 @@ export async function runAnalyticsDetailed(
       ])
     : [[] as MarketingExpenseInput[], { count: 0, unkeyed: 0 }, { count: 0, unkeyed: 0 }]
 
-  const adSpendCurrent = computeAdSpend(expenses, currentPeriod)
-  const adSpendPrevious = computeAdSpend(expenses, previousPeriod)
+  const adSpendCurrent = computeAdSpend(expenses, currentPeriod, vatPeriods)
+  const adSpendPrevious = computeAdSpend(expenses, previousPeriod, vatPeriods)
 
   // Orders without a stored paidAt (only relevant when filtering on paid orders).
   const paidAtMissing = currentRaw.filter((o) => !(o as Order & OrderExtras).paidAt).length
 
-  const current = currentRaw.map(normalizeOrder)
-  const previous = previousRaw.map(normalizeOrder)
+  const current = withPartnerCommission(
+    currentRaw.map((o) => normalizeOrder(o, vatPeriods)),
+    partnerResult?.onlineCommissionByOrder.current,
+  )
+  const previous = withPartnerCommission(
+    previousRaw.map((o) => normalizeOrder(o, vatPeriods)),
+    partnerResult?.onlineCommissionByOrder.previous,
+  )
 
   const summary = computeSummary(current, {
     cancelledOrders: cancelledCurrent,
@@ -835,8 +953,15 @@ export async function runAnalyticsDetailed(
   const productsWithoutSales = await computeProductsWithoutSales(payload, soldVariantIds)
 
   const marketing = isAdmin
-    ? buildMarketing(expenses, currentPeriod, previousPeriod, summary, previousSummary)
+    ? buildMarketing(expenses, currentPeriod, previousPeriod, summary, previousSummary, vatPeriods)
     : EMPTY_MARKETING
+
+  const partnerChannelCurrent = partnerResult?.partnerChannel.current ?? EMPTY_PARTNER_CHANNEL
+  const channels = computeChannelSummary(
+    computeChannelView(summary, partnerChannelCurrent),
+    computeChannelView(previousSummary, partnerResult?.partnerChannel.previous ?? EMPTY_PARTNER_CHANNEL),
+    partnerChannelCurrent,
+  )
 
   const response: AnalyticsResponse = {
     period: { from: resolved.from, to: resolved.to, preset: resolved.preset, grouping },
@@ -849,6 +974,8 @@ export async function runAnalyticsDetailed(
     productsWithoutSales,
     marketing,
     promo,
+    partnerProgram: partnerResult?.summary ?? EMPTY_PARTNER_PROGRAM,
+    channels,
     recentOrders: computeRecentOrders(current),
     warnings: buildWarnings(current, {
       paidAtMissing,
@@ -857,6 +984,9 @@ export async function runAnalyticsDetailed(
       expenses,
       cacUnkeyed: newCurrent.unkeyed,
       variantBasedProductIds,
+      partnerProgram: partnerResult?.summary ?? null,
+      partnerLoadFailed: isAdmin && partnerData == null,
+      partnerCostMissingSales: channels.partnerCostMissingSales,
     }),
   }
 

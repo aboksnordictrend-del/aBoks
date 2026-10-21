@@ -5,6 +5,7 @@
 // unaffected by future schema changes.
 
 import type { Grouping, PresetKey } from './period'
+import type { ChannelSummary, PartnerProgramSummary } from './partnerProgram'
 import type { PromoPerformance } from './promo'
 
 export type { Period } from './period'
@@ -41,6 +42,11 @@ export interface AnalyticsLine {
   vatRate: number
   /** True when the line had no stored VAT rate and one was assumed. */
   vatEstimated: boolean
+  /**
+   * True when the line stores a VAT rate but was sold while ABOKS AS was not VAT-registered, so
+   * that nominal rate was not deducted (see `@/lib/vatRegistration`).
+   */
+  vatNominalIgnored?: boolean
 }
 
 /** One order, normalized. */
@@ -78,6 +84,13 @@ export interface AnalyticsOrder {
   paymentFee: number
   /** Any extra variable costs booked on the order, in kroner. */
   extraCosts: number
+  /**
+   * Partner commission charged to this order, in kroner: the stored promo-code commission of a
+   * counted partner usage plus the stored commission of a paid referral sale linked to the
+   * order. Never calculated here. Absent/0 when the order earned no commission (and for
+   * editors, who do not see partner data).
+   */
+  partnerCommission?: number
   lines: AnalyticsLine[]
 }
 
@@ -108,13 +121,16 @@ export interface Summary {
   actualShippingCost: number
   shippingResult: number
   paymentFees: number
-  /** Ex-VAT marketing spend allocated to the period (Stage 4). */
+  /** Marketing cost allocated to the period: incl. VAT while not VAT-registered, ex deductible VAT after. */
   adSpend: number
   /** New customers (first-ever paid order) acquired in the period (Stage 4). */
   newCustomers: number
+  /** Partner commission charged to the period's webshop orders (Σ order.partnerCommission). */
+  partnerCommission: number
   /**
-   * revenueNet − productCost − actualShippingCost − paymentFees − adSpend − extraCosts.
-   * Identical to "Markedsføringsresultat" (§9) once ad spend is wired.
+   * revenueNet − productCost − actualShippingCost − paymentFees − adSpend − extraCosts
+   * − partnerCommission. Identical to "Markedsføringsresultat" (§9) and to
+   * «Fortjeneste nettbutikk».
    */
   contributionProfit: number
 }
@@ -126,11 +142,12 @@ export interface MarketingRatioEntry {
   changePercent: number | null
 }
 
-/** Ex-VAT ad spend for one channel (no revenue attribution in Stage 4). */
+/** Marketing cost for one channel, same VAT rule as `Summary.adSpend` (no revenue attribution). */
 export interface ChannelRow {
   channel: string
   label: string
-  amountExVat: number
+  /** Marketing cost allocated to the period (incl. VAT while not VAT-registered). */
+  amount: number
   share: number
 }
 
@@ -270,6 +287,8 @@ export interface OrderFinancialRow {
   actualShippingCost: number
   paymentFee: number
   extraCosts: number
+  /** Partner commission charged to the order, in kroner. */
+  partnerCommission: number
   grossProfit: number
   contributionProfit: number
 }
@@ -286,6 +305,10 @@ export interface AnalyticsResponse {
   marketing: MarketingSummary
   /** Promo-code usage and performance for the period. Empty when no code was used. */
   promo: PromoPerformance
+  /** PARTNERPROGRAM — admin only; `available: false` for editors or on a load failure. */
+  partnerProgram: PartnerProgramSummary
+  /** Nettbutikk / Partnersalg / ABOKS AS totalt, for the SALG and FORTJENESTE groups. */
+  channels: ChannelSummary
   recentOrders: RecentOrder[]
   warnings: Warning[]
 }

@@ -833,7 +833,7 @@ describe('TikTok spend flows through the shared analytics calculations', () => {
     const tiktok = rows.find((r) => r.channel === TIKTOK_ADS_CHANNEL)
     assert.ok(tiktok, 'TikTok has its own channel row')
     assert.equal(tiktok.label, 'TikTok Ads')
-    assert.equal(tiktok.amountExVat, 100)
+    assert.equal(tiktok.amount, 100)
     assert.equal(tiktok.share, 25)
   })
 

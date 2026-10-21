@@ -6,7 +6,8 @@
 
 import { computeOrderFinancials } from './calc'
 import { channelLabel } from '../marketingChannels'
-import type { MarketingExpenseInput } from './marketing'
+import { expenseCost, isApiExpense, type MarketingExpenseInput } from './marketing'
+import { VAT_REGISTRATION_PERIODS, type VatRegistrationPeriod } from '../vatRegistration'
 import type { AnalyticsOrder, ProductRow } from './types'
 
 interface CsvPeriod {
@@ -68,25 +69,48 @@ export function productsCsv(products: ProductRow[], period: CsvPeriod): string {
   return toCsv(headers, rows)
 }
 
+/** How the record's VAT was treated in the analysis, in words, for the CSV. */
+function expenseVatLabel(e: MarketingExpenseInput, cost: number): string {
+  if (isApiExpense(e)) return 'API-beløp brukt som kostnad – ingen MVA-justering'
+  const paid = e.amount ?? e.amountExVat
+  if (toCents(paid) === toCents(e.amountExVat)) return 'Ingen MVA på utgiften'
+  if (toCents(cost) === toCents(paid)) return 'Ikke MVA-registrert – MVA inngår i kostnaden'
+  if (toCents(cost) === toCents(e.amountExVat)) return 'MVA-registrert – fradragsberettiget MVA trukket fra'
+  return 'Delvis – perioden krysser datoen for MVA-registrering'
+}
+
+const toCents = (kr: number): number => Math.round(kr * 100)
+
 /** Marketing expenses touching the period (one row per record, not pro-rated). */
-export function marketingCsv(expenses: MarketingExpenseInput[]): string {
+export function marketingCsv(
+  expenses: MarketingExpenseInput[],
+  vatPeriods: readonly VatRegistrationPeriod[] = VAT_REGISTRATION_PERIODS,
+): string {
+  // Existing columns keep their names and positions; the analysis cost and its VAT treatment are
+  // appended. `Beløp eks. MVA` stays the stored record value, which is not necessarily the cost.
   const headers = [
     'Dato', 'Periode fra', 'Periode til', 'Kanal', 'Beløp inkl. MVA',
     'MVA-sats', 'Beløp eks. MVA', 'Beskrivelse', 'Referanse',
+    'Kostnad i analysen', 'MVA-behandling',
   ]
   const rows = [...expenses]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .map((e) => [
-      e.date.slice(0, 10),
-      e.periodFrom ? e.periodFrom.slice(0, 10) : '',
-      e.periodTo ? e.periodTo.slice(0, 10) : '',
-      channelLabel(e.channel),
-      e.amount ?? 0,
-      e.vatRate ?? 0,
-      e.amountExVat,
-      e.description ?? '',
-      e.externalReference ?? '',
-    ])
+    .map((e) => {
+      const cost = expenseCost(e, vatPeriods)
+      return [
+        e.date.slice(0, 10),
+        e.periodFrom ? e.periodFrom.slice(0, 10) : '',
+        e.periodTo ? e.periodTo.slice(0, 10) : '',
+        channelLabel(e.channel),
+        e.amount ?? 0,
+        e.vatRate ?? 0,
+        e.amountExVat,
+        e.description ?? '',
+        e.externalReference ?? '',
+        cost,
+        expenseVatLabel(e, cost),
+      ]
+    })
   return toCsv(headers, rows)
 }
 
@@ -101,6 +125,8 @@ export function ordersCsv(orders: AnalyticsOrder[]): string {
     'MVA', 'Vareforbruk', 'Frakt betalt', 'Faktisk fraktkostnad', 'Betalingsgebyr',
     'Ekstra kostnader', 'Bruttofortjeneste', 'Dekningsbidrag',
     'Rabattkode', 'Rabatt', 'Omsetning før rabatt', 'Margin %',
+    // Appended last for the same reason. Already deducted in `Dekningsbidrag`.
+    'Partnerprovisjon',
   ]
   const rows = orders
     .map(computeOrderFinancials)
@@ -126,6 +152,7 @@ export function ordersCsv(orders: AnalyticsOrder[]): string {
       r.revenueBeforeDiscount,
       // Margin on the revenue actually received; 0 rather than Infinity/NaN at zero revenue.
       r.revenueNet > 0 ? Math.round((r.grossProfit / r.revenueNet) * 10000) / 100 : 0,
+      r.partnerCommission,
     ])
   return toCsv(headers, rows)
 }

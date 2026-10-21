@@ -18,6 +18,7 @@ import {
   validatePromoOverlap,
 } from '@/lib/partner/referral'
 import { lockSalePayoutLink } from '@/lib/partner/referralLocks'
+import { applyReferralSaleCosts } from './referralSaleCost'
 
 /**
  * The server-side rules of `referral-sales` («Henvisningssalg»).
@@ -243,6 +244,9 @@ export const enforceReferralSaleRules: CollectionBeforeChangeHook = async ({
   } else {
     await applyOpenSaleRules({ doc, original, operation, req, selfId, payment })
   }
+
+  // ── Product cost and shipping cost (profit only — never the commission) ──
+  await applyReferralSaleCosts({ doc, original, req, selfId, locked: Boolean(locked && original) })
 
   // ── Derived status and dates ──
   doc.commissionStatus = deriveCommissionStatus({ paymentStatus: payment, paidOut: payoutWrite ? doc.payout != null : paidOut })
