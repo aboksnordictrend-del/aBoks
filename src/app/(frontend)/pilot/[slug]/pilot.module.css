@@ -1,0 +1,223 @@
+/* Public pilot questionnaire. Same palette, type and card language as the review form
+   (src/app/(frontend)/anmeldelse/[token]): warm white cards, olive accent, Cormorant headings,
+   Manrope body. Mobile-first; touch targets are at least 44px. */
+
+.wrap {
+  --ink: #1a1d17;
+  --body: #4a4e41;
+  --muted: #6b6f63;
+  --line: #e8e0d4;
+  --field: #d9d2c4;
+  --accent: #5e6a48;
+  --accent-ink: #ffffff;
+  --accent-soft: #eef0e8;
+  --error: #b3261e;
+  --error-soft: #fdf3f2;
+  max-width: 720px;
+  margin: 0 auto;
+  /* The mobile header is taller than 96px, so the top padding never drops below 128px. */
+  padding: clamp(128px, 12vw, 140px) clamp(16px, 5vw, 32px) clamp(64px, 8vw, 96px);
+  font-family: var(--font-manrope);
+  color: var(--ink);
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: clamp(22px, 5vw, 40px);
+}
+.center { text-align: center; }
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 10px;
+}
+.title {
+  font-family: var(--font-cormorant);
+  font-weight: 600;
+  font-size: clamp(28px, 6vw, 40px);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0 0 14px;
+}
+.body {
+  font-size: clamp(15px, 1.1vw, 16px);
+  line-height: 1.7;
+  color: var(--body);
+  margin: 0;
+  white-space: pre-line;
+}
+
+.preview {
+  background: #fff7e0;
+  border: 1px solid #e7cf86;
+  color: #5c4a10;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.questions { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+
+.question {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: clamp(18px, 4vw, 28px);
+  margin: 0;
+  min-width: 0;
+}
+.questionInvalid { border-color: var(--error); box-shadow: 0 0 0 1px var(--error); }
+
+.legend {
+  display: block;
+  float: left; /* lets the legend sit inside the fieldset padding on every browser */
+  width: 100%;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+.legend + * { clear: both; }
+.number { color: var(--muted); font-weight: 600; margin-right: 6px; }
+.required { color: var(--error); margin-left: 4px; }
+.optional { color: var(--muted); font-weight: 500; font-size: 13px; margin-left: 6px; }
+.help { font-size: 14px; color: var(--muted); margin: 0 0 4px; line-height: 1.5; }
+.control { margin-top: 14px; }
+
+.input, .textarea, .select {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-manrope);
+  font-size: 16px; /* 16px prevents iOS zoom on focus */
+  color: var(--ink);
+  padding: 12px 14px;
+  border: 1px solid var(--field);
+  border-radius: 10px;
+  background: #fdfcf9;
+  min-height: 48px;
+}
+.textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.input:focus-visible, .textarea:focus-visible, .select:focus-visible {
+  outline: 3px solid rgba(94, 106, 72, 0.35);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+.inputInvalid { border-color: var(--error); background: var(--error-soft); }
+.counter { font-size: 12px; color: var(--muted); text-align: right; margin: 6px 0 0; }
+
+.choices { display: flex; flex-direction: column; gap: 8px; }
+.choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid var(--field);
+  border-radius: 12px;
+  background: #fdfcf9;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.4;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.choice:hover { border-color: var(--accent); }
+.choiceChecked { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.choice input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+.choice:focus-within { outline: 3px solid rgba(94, 106, 72, 0.35); outline-offset: 1px; }
+
+.rating { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.ratingButton {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  border: 1px solid var(--field);
+  border-radius: 12px;
+  background: #fdfcf9;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+.ratingButton:hover { border-color: var(--accent); }
+.ratingButton input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.ratingButton:focus-within { outline: 3px solid rgba(94, 106, 72, 0.35); outline-offset: 1px; }
+.ratingChecked { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.scaleLabels { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+.yesNo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+.error { font-size: 14px; color: var(--error); margin: 10px 0 0; font-weight: 600; }
+.formError {
+  background: var(--error-soft);
+  border: 1px solid var(--error);
+  color: var(--error);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 15px;
+  margin: 16px 0 0;
+}
+
+.submitRow { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.submit {
+  width: 100%;
+  min-height: 54px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-manrope);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.submit:hover:not(:disabled) { background: #4c5639; }
+.submit:focus-visible { outline: 3px solid rgba(94, 106, 72, 0.45); outline-offset: 3px; }
+.submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.privacy { font-size: 13px; color: var(--muted); text-align: center; margin: 0; line-height: 1.5; }
+
+.honeypot {
+  position: absolute !important;
+  left: -10000px !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.check {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+@media (min-width: 640px) {
+  .choices.inline { flex-direction: row; flex-wrap: wrap; }
+  .submit { width: auto; padding: 0 40px; align-self: flex-start; }
+  .privacy { text-align: left; }
+}

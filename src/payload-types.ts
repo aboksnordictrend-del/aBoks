@@ -84,6 +84,8 @@ export interface Config {
     reviews: Review;
     'review-invitations': ReviewInvitation;
     'review-photos': ReviewPhoto;
+    'pilot-projects': PilotProject;
+    'pilot-evaluations': PilotEvaluation;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -117,6 +119,8 @@ export interface Config {
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
     'review-invitations': ReviewInvitationsSelect<false> | ReviewInvitationsSelect<true>;
     'review-photos': ReviewPhotosSelect<false> | ReviewPhotosSelect<true>;
+    'pilot-projects': PilotProjectsSelect<false> | PilotProjectsSelect<true>;
+    'pilot-evaluations': PilotEvaluationsSelect<false> | PilotEvaluationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -1449,6 +1453,170 @@ export interface ReviewInvitation {
   createdAt: string;
 }
 /**
+ * Produkttesting med kommuner, skoler, bedrifter og andre. Hvert prosjekt har sitt eget spørreskjema og sin egen lenke og QR-kode.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pilot-projects".
+ */
+export interface PilotProject {
+  id: number;
+  /**
+   * Vises øverst i spørreskjemaet.
+   */
+  name: string;
+  /**
+   * Offentlig adresse: aboks.no/pilot/[slug]. Lages automatisk fra prosjektnavnet hvis feltet er tomt. Endres den senere, sender den gamle adressen fortsatt videre hit.
+   */
+  slug?: string | null;
+  organization: string;
+  organizationType: 'kommune' | 'skole' | 'bedrift' | 'annet';
+  contactPerson?: string | null;
+  contactEmail?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  /**
+   * Intern. Vises ikke i det offentlige spørreskjemaet.
+   */
+  description?: string | null;
+  /**
+   * Modellene som testes. Brukes som svaralternativer i spørsmålet om modell (kilde «Prosjektets aBoks-modeller»).
+   */
+  models?: (number | Product)[] | null;
+  /**
+   * Vises aldri offentlig.
+   */
+  internalNotes?: string | null;
+  intro?: string | null;
+  /**
+   * Vises etter at evalueringen er sendt inn.
+   */
+  closingMessage?: string | null;
+  questions?:
+    | {
+        label: string;
+        type: 'shortText' | 'longText' | 'singleChoice' | 'multipleChoice' | 'rating' | 'yesNo' | 'dropdown';
+        required?: boolean | null;
+        enabled?: boolean | null;
+        /**
+         * Valgfritt. Knytter spørsmålet til et nøkkeltall i Pilotanalyse.
+         */
+        statKey?:
+          | (
+              | 'location'
+              | 'model'
+              | 'frequency'
+              | 'usability'
+              | 'usefulness'
+              | 'organization'
+              | 'continue'
+              | 'improvements'
+              | 'comments'
+              | 'room'
+            )
+          | null;
+        placeholder?: string | null;
+        /**
+         * Valgfri kort forklaring under spørsmålet.
+         */
+        helpText?: string | null;
+        scaleMinLabel?: string | null;
+        scaleMaxLabel?: string | null;
+        /**
+         * «Prosjektets aBoks-modeller» viser modellene valgt under Prosjekt, etterfulgt av alternativene under (f.eks. «Flere modeller»).
+         */
+        optionsSource?: ('manual' | 'projectModels') | null;
+        options?:
+          | {
+              label: string;
+              /**
+               * Telles i andelen positive svar (f.eks. «Ja»).
+               */
+              isPositive?: boolean | null;
+              /**
+               * F.eks. «Vet ikke». På spørsmålet om bruksfrekvens («Ikke brukt ennå») holdes også svarets produktvurderinger utenfor.
+               */
+              excludeFromAverages?: boolean | null;
+              id?: string | null;
+            }[]
+          | null;
+        /**
+         * Settes automatisk ved lagring og endres aldri. Knytter svar til spørsmålet.
+         */
+        questionId?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Bare aktive prosjekter tar imot svar.
+   */
+  status: 'draft' | 'active' | 'completed' | 'archived';
+  /**
+   * Øker automatisk når spørsmål eller svaralternativer endres.
+   */
+  questionnaireVersion?: number | null;
+  questionnaireFingerprint?: string | null;
+  /**
+   * Gamle adresser videresendes permanent hit, så QR-koder som allerede er skrevet ut fungerer fortsatt.
+   */
+  slugHistory?:
+    | {
+        slug: string;
+        changedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Anonyme innsendte evalueringer. Kan ikke redigeres — spørsmålene lagres slik de var ved innsending. Se Pilotanalyse for statistikk og CSV-eksport.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pilot-evaluations".
+ */
+export interface PilotEvaluation {
+  id: number;
+  project: number | PilotProject;
+  projectName?: string | null;
+  organization?: string | null;
+  model?: (number | null) | Product;
+  modelLabel?: string | null;
+  answers?:
+    | {
+        questionId: string;
+        questionType?: string | null;
+        questionLabel?: string | null;
+        displayValue?: string | null;
+        value?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Uforanderlig kopi av spørsmålene og svaralternativene deltakeren så.
+   */
+  questionnaireSnapshot?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  submittedAt: string;
+  questionnaireVersion?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -1539,6 +1707,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'review-photos';
         value: number | ReviewPhoto;
+      } | null)
+    | ({
+        relationTo: 'pilot-projects';
+        value: number | PilotProject;
+      } | null)
+    | ({
+        relationTo: 'pilot-evaluations';
+        value: number | PilotEvaluation;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -2150,6 +2326,87 @@ export interface ReviewPhotosSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pilot-projects_select".
+ */
+export interface PilotProjectsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  organization?: T;
+  organizationType?: T;
+  contactPerson?: T;
+  contactEmail?: T;
+  startDate?: T;
+  endDate?: T;
+  description?: T;
+  models?: T;
+  internalNotes?: T;
+  intro?: T;
+  closingMessage?: T;
+  questions?:
+    | T
+    | {
+        label?: T;
+        type?: T;
+        required?: T;
+        enabled?: T;
+        statKey?: T;
+        placeholder?: T;
+        helpText?: T;
+        scaleMinLabel?: T;
+        scaleMaxLabel?: T;
+        optionsSource?: T;
+        options?:
+          | T
+          | {
+              label?: T;
+              isPositive?: T;
+              excludeFromAverages?: T;
+              id?: T;
+            };
+        questionId?: T;
+        id?: T;
+      };
+  status?: T;
+  questionnaireVersion?: T;
+  questionnaireFingerprint?: T;
+  slugHistory?:
+    | T
+    | {
+        slug?: T;
+        changedAt?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pilot-evaluations_select".
+ */
+export interface PilotEvaluationsSelect<T extends boolean = true> {
+  project?: T;
+  projectName?: T;
+  organization?: T;
+  model?: T;
+  modelLabel?: T;
+  answers?:
+    | T
+    | {
+        questionId?: T;
+        questionType?: T;
+        questionLabel?: T;
+        displayValue?: T;
+        value?: T;
+        id?: T;
+      };
+  questionnaireSnapshot?: T;
+  submittedAt?: T;
+  questionnaireVersion?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

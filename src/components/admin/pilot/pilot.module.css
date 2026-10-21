@@ -1,0 +1,84 @@
+/* Pilotanalyse. Theme-aware via Payload's --theme-* variables (light and dark admin). */
+
+.root {
+  --card-bg: var(--theme-elevation-50);
+  --card-border: var(--theme-elevation-100);
+  --muted: var(--theme-elevation-500);
+  --bar: #3f8a4f; /* validated: lightness, chroma and 3:1 contrast on light and dark surfaces */
+  --bar-track: var(--theme-elevation-100);
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  padding-bottom: 4rem;
+}
+
+.header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 1rem; }
+.title { margin: 0; font-size: 1.6rem; font-weight: 700; }
+.subtitle { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.85rem; max-width: 70ch; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--muted); }
+.select, .dateInput {
+  background: var(--card-bg);
+  color: var(--theme-text);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  min-height: 34px;
+}
+.btn {
+  background: var(--card-bg);
+  color: var(--theme-text);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+}
+.btn:hover { background: var(--theme-elevation-100); }
+
+.error { color: var(--theme-error-500); }
+.note { color: var(--muted); font-size: 0.8rem; margin: 0; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; }
+.kpi { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 0.9rem 1rem; }
+.kpiLabel { font-size: 0.75rem; color: var(--muted); margin: 0 0 0.35rem; }
+.kpiValue { font-size: 1.6rem; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; }
+.kpiSub { font-size: 0.75rem; color: var(--muted); margin: 0.25rem 0 0; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+.card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 1rem 1.1rem; min-width: 0; }
+.cardTitle { margin: 0 0 0.75rem; font-size: 0.95rem; font-weight: 700; }
+
+.bars { display: flex; flex-direction: column; gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
+.barRow { display: grid; grid-template-columns: minmax(90px, 38%) 1fr auto; gap: 0.6rem; align-items: center; font-size: 0.8rem; }
+.barLabel { overflow-wrap: anywhere; }
+.barTrack { height: 10px; background: var(--bar-track); border-radius: 4px; overflow: hidden; }
+.barFill { height: 100%; background: var(--bar); border-radius: 4px; }
+.barFillMuted { height: 100%; background: var(--theme-elevation-300); border-radius: 4px; }
+.barValue { font-variant-numeric: tabular-nums; color: var(--theme-text); white-space: nowrap; }
+.barValue span { color: var(--muted); }
+
+.table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.table th, .table td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--card-border); vertical-align: top; }
+.table th { color: var(--muted); font-weight: 600; }
+.num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tableWrap { overflow-x: auto; }
+
+.feedback { display: flex; flex-direction: column; gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+.feedbackItem { border-left: 3px solid var(--card-border); padding: 0.2rem 0 0.2rem 0.75rem; }
+.feedbackText { margin: 0; white-space: pre-wrap; font-size: 0.85rem; }
+.feedbackMeta { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.72rem; }
+
+.chart { width: 100%; height: 220px; }
+.tooltip { background: var(--theme-elevation-0); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.78rem; }
+
+.segmented { display: inline-flex; border: 1px solid var(--card-border); border-radius: 6px; overflow: hidden; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.segItem { border: 0; background: transparent; color: var(--theme-text); padding: 0.35rem 0.65rem; font-size: 0.78rem; cursor: pointer; }
+.segItem:not(:last-child) { border-right: 1px solid var(--card-border); }
+.segItemActive { background: var(--theme-elevation-150); font-weight: 600; }

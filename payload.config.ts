@@ -24,10 +24,13 @@ import { MarketingExpenses } from './src/collections/MarketingExpenses'
 import { Reviews } from './src/collections/Reviews'
 import { ReviewInvitations } from './src/collections/ReviewInvitations'
 import { ReviewPhotos } from './src/collections/ReviewPhotos'
+import { PilotProjects } from './src/collections/PilotProjects'
+import { PilotEvaluations } from './src/collections/PilotEvaluations'
 import { EconomySettings } from './src/globals/EconomySettings'
 import { TikTokConnection } from './src/globals/TikTokConnection'
 import { PinterestConnection } from './src/globals/PinterestConnection'
 import { analyticsEndpoint } from './src/endpoints/analytics'
+import { pilotAnalyticsEndpoint } from './src/endpoints/pilotAnalytics'
 import { blobImagesRevalidateEndpoint } from './src/endpoints/revalidateBlobImages'
 import { metaSyncEndpoint } from './src/endpoints/metaSync'
 import { marketingChannelsEndpoint } from './src/endpoints/marketingChannels'
@@ -117,11 +120,18 @@ export default buildConfig({
           Component: '@/components/admin/blobImages/BlobImagesView#default',
           path: '/blob-bilder',
         },
+        // Pilot project results (statistics, comparison, CSV). Data from /api/pilot-analytics,
+        // which is admin-only.
+        pilotAnalyse: {
+          Component: '@/components/admin/pilot/PilotAnalyticsView#default',
+          path: '/pilotanalyse',
+        },
       },
-      // Adds the "Analyse" and "Blob-bildelister" entries to the admin sidebar.
+      // Adds the "Analyse", "Blob-bildelister" and "Pilotanalyse" entries to the admin sidebar.
       afterNavLinks: [
         '@/components/admin/analytics/NavLink#default',
         '@/components/admin/blobImages/NavLink#default',
+        '@/components/admin/pilot/NavLink#default',
       ],
     },
   },
@@ -143,6 +153,8 @@ export default buildConfig({
     Reviews,
     ReviewInvitations,
     ReviewPhotos,
+    PilotProjects,
+    PilotEvaluations,
   ],
   // TikTokConnection and PinterestConnection are admin-only, nav-hidden globals that store the
   // encrypted OAuth credentials for their channel; neither has an editing surface. See
@@ -153,6 +165,8 @@ export default buildConfig({
   // /api/admin/integrations/{meta,google,pinterest,tiktok}/….
   endpoints: [
     analyticsEndpoint,
+    // Admin-only pilot-project statistics and CSV export → /api/pilot-analytics.
+    pilotAnalyticsEndpoint,
     // Admin-only, on-demand purge of the `blob-images` cache tag, so a file added to a Blob
     // folder shows on the storefront immediately instead of within the 24h listing window.
     blobImagesRevalidateEndpoint,
