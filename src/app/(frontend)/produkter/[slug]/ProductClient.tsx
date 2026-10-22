@@ -756,6 +756,17 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                 ))}
               </div>
 
+              {/* The standard model links to the /batteriboks landing page, which compares the range. */}
+              {product.slug === 'aboks' && (
+                <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', lineHeight: 1.6, color: '#3a3f33', margin: '-10px 0 28px' }}>
+                  Usikker på hvilken modell du trenger? Les mer om{' '}
+                  <Link href="/batteriboks" style={{ color: '#39402c', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+                    batteriboks for nye og brukte batterier
+                  </Link>
+                  .
+                </p>
+              )}
+
               {/* Details accordion */}
               {product.details.length > 0 && (
                 <Accordion

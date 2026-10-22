@@ -473,7 +473,8 @@ export default function ArticlePage() {
               leveres til gjenvinning. Du ser på et blikk hva du har igjen, og hva som skal ut av
               huset. Det lille rommet for brukte batterier gjør det enkelt å samle dem trygt frem
               til de leveres inn – i tråd med rådet om å holde brukte celler adskilt og oppbevart
-              forsvarlig.
+              forsvarlig. Du kan lese mer om de ulike modellene på siden om{' '}
+              <Link href="/batteriboks" style={extLink}>batteriboks for nye og brukte batterier</Link>.
             </p>
 
             {/* Produktblokk */}

@@ -12,6 +12,8 @@ const BASE_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
 const STATIC_PAGES: MetadataRoute.Sitemap = [
   { url: BASE_URL, changeFrequency: 'daily', priority: 1 },
   { url: `${BASE_URL}/produkter`, changeFrequency: 'daily', priority: 0.9 },
+  // Landing page for the "batteriboks" search term.
+  { url: `${BASE_URL}/batteriboks`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${BASE_URL}/tilbehor`, changeFrequency: 'weekly', priority: 0.6 },
   // The B2B hub. Its four solution pages are added further down, from the registry.
   { url: `${BASE_URL}/bedrifter`, changeFrequency: 'monthly', priority: 0.8 },

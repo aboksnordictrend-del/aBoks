@@ -296,7 +296,9 @@ export default function ArticlePage() {
               <Link href="/produkter/aboks" style={extLink}>batteriorganisator som aBoks</Link>{' '}
               gjør nettopp dette – den samler nye AA, nye AAA og brukte batterier i hvert
               sitt rom, slik at du alltid har oversikt. Du slipper å kaste gode batterier,
-              og de tomme havner ett sted i påvente av gjenvinning.
+              og de tomme havner ett sted i påvente av gjenvinning. Les mer om hvordan en{' '}
+              <Link href="/batteriboks" style={extLink}>batteriboks</Link> gir nye og brukte
+              batterier hver sin plass.
             </p>
 
             <div style={{ overflowX: 'auto', margin: '8px 0 28px' }}>

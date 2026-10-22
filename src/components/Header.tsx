@@ -373,6 +373,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
                   label: 'Lær mer',
                   links: [
                     { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
+                    { label: 'Batteriboks',        href: '/batteriboks' },
                     { label: 'For bedrifter',      href: '/bedrifter' },
                     { label: 'Partnerskap',        href: '/bli-partner' },
                     { label: 'Historien',          href: '/historien' },

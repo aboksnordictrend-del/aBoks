@@ -512,7 +512,12 @@ export default function ArticlePage() {
               <Link href="/slik-fungerer-det" style={extLink}>
                 slik fungerer aBoks
               </Link>{' '}
-              – fra utpakking til innlevering i fire enkle steg. Og hvis du ønsker konkrete tips
+              – fra utpakking til innlevering i fire enkle steg. Vil du sammenligne modellene, har vi
+              samlet alt om{' '}
+              <Link href="/batteriboks" style={extLink}>
+                batteriboks for AA og AAA
+              </Link>{' '}
+              på én side. Og hvis du ønsker konkrete tips
               til å få bukt med kaoset, gir vår guide til{' '}
               <Link href="/inspirasjon/orden-i-skuffen" style={extLink}>
                 orden i skuffen

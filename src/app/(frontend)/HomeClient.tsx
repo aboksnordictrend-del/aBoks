@@ -399,7 +399,8 @@ export default function HomeClient({
               </p>
               <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', lineHeight: 1.65, color: '#3a3f33', margin: '0 0 32px' }}>
                 Les mer om{' '}
-                <Link href="/slik-fungerer-det" style={homeTextLink}>slik fungerer aBoks</Link>, eller se{' '}
+                <Link href="/slik-fungerer-det" style={homeTextLink}>slik fungerer aBoks</Link>, se hva som skiller en{' '}
+                <Link href="/batteriboks" style={homeTextLink}>batteriboks for nye og brukte batterier</Link>, eller se{' '}
                 <Link href="/produkter" style={homeTextLink}>alle produkter</Link>.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
