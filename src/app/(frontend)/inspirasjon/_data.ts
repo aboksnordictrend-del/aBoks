@@ -288,6 +288,19 @@ const articles: InspirasjonArticle[] = [
     imageHeight: 1086,
     imageAlt: 'Oppbevaring av batterier i et rolig nordisk hjem – en ryddig batteriboks på en eikehylle i myk morgensol',
   },
+  {
+    category: 'Sikkerhet & gjenvinning',
+    title: 'Små batterier, store konsekvenser: derfor øker batteribrannene i avfallet',
+    description:
+      'Hver uke starter det en batteribrann et sted i den norske avfallskjeden. Vi har gått gjennom tallene og de dokumenterte brannene, og samlet de enkle vanene som faktisk gjør en forskjell.',
+    date: 'Oktober 2026',
+    publishedAt: '2026-10-22',
+    slug: '/inspirasjon/batteribrann-i-avfallet',
+    image: 'https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Brann_ved_resirkuleringsanlegget.webp',
+    imageWidth: 1448,
+    imageHeight: 1086,
+    imageAlt: 'Batteribrann i avfallet – brann ved et resirkuleringsanlegg',
+  },
 ]
 
 export function getSortedArticles(): InspirasjonArticle[] {
