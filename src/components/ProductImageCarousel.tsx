@@ -29,6 +29,56 @@ interface Props {
   onIndexChange?: (index: number) => void
   initialIndex?: number
   onZoom?: (index: number) => void
+  /**
+   * Optional message per gallery position: captions[i] is drawn over image i. Positions
+   * without an entry show nothing. Rendered inside each slide layer, so a message is read
+   * from the same index as its image and moves with it during a swipe — it cannot drift.
+   */
+  captions?: readonly string[]
+}
+
+/**
+ * A message laid over the top-left of a slide. Real text (not part of the image), with a soft
+ * top gradient for contrast. pointer-events: none keeps every swipe, arrow and zoom
+ * interaction going to the gallery underneath; the right padding keeps clear of the zoom button.
+ */
+function SlideCaption({ text, decorative }: { text: string; decorative?: boolean }) {
+  return (
+    <div
+      data-gallery-caption=""
+      aria-hidden={decorative || undefined}
+      aria-live={decorative ? undefined : 'polite'}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: 'clamp(12px, 4cqw, 24px) 68px clamp(36px, 9cqw, 56px) clamp(12px, 4cqw, 24px)',
+        background:
+          'linear-gradient(180deg, rgba(26,29,23,.48) 0%, rgba(26,29,23,.22) 58%, rgba(26,29,23,0) 100%)',
+        pointerEvents: 'none',
+        zIndex: 3,
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          textAlign: 'left',
+          fontFamily: 'var(--font-cormorant)',
+          fontWeight: 600,
+          fontSize: 'clamp(19px, 5cqw, 28px)',
+          lineHeight: 1.15,
+          letterSpacing: '-0.01em',
+          color: '#faf6ee',
+          textShadow: '0 1px 14px rgba(20,22,16,.35)',
+          overflowWrap: 'break-word',
+          textWrap: 'pretty',
+        }}
+      >
+        {text}
+      </p>
+    </div>
+  )
 }
 
 const SNAP_OFFSET = 55
@@ -36,7 +86,7 @@ const SNAP_VEL   = 380
 const FLY_DIST   = 440
 
 const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
-  function ProductImageCarousel({ images, onIndexChange, initialIndex = 0, onZoom }, ref) {
+  function ProductImageCarousel({ images, onIndexChange, initialIndex = 0, onZoom, captions }, ref) {
     const n = images.length
     const [current, setCurrent]       = useState(initialIndex)
     const [bgIdx,   setBgIdx]         = useState<number | null>(null)
@@ -170,6 +220,8 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
     if (!n) return null
 
     const bgImage = bgIdx !== null ? images[bgIdx] : null
+    const bgCaption = bgIdx !== null ? captions?.[bgIdx] : undefined
+    const caption = captions?.[current]
 
     // Prev/next images held in DOM (invisible) so Next Image decodes them ahead of time.
     const prevIdx = current > 0 ? current - 1 : null
@@ -191,6 +243,8 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
             boxShadow: '0 18px 44px -20px rgba(42,36,24,.24)',
             userSelect: 'none',
             WebkitUserSelect: 'none',
+            // Lets the slide caption size itself to the gallery (cqw), not the window.
+            containerType: 'inline-size',
           }}
         >
           {/* Invisible preload layer for adjacent images */}
@@ -230,6 +284,7 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
                 style={{ objectFit: 'cover', pointerEvents: 'none' }}
                 draggable={false}
               />
+              {bgCaption && <SlideCaption text={bgCaption} decorative />}
             </motion.div>
           )}
 
@@ -260,6 +315,7 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
               draggable={false}
               priority
             />
+            {caption && <SlideCaption text={caption} />}
           </motion.div>
 
           {/* Dot indicators */}

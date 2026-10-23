@@ -32,6 +32,7 @@ import { cartLineRef } from '@/store/cart'
 import SaleCountdown from '@/components/SaleCountdown'
 import Stars from '@/components/reviews/Stars'
 import { productGuide, type ProductGuide } from '@/lib/productGuides'
+import { galleryReasonsFor } from '@/lib/galleryReasons'
 
 interface Variant {
   id: string
@@ -398,6 +399,10 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
 
   const displayImage = thumbImages[activeImageIdx]?.src ?? thumbImages[0]?.src ?? ''
 
+  // "Reasons to buy" over the gallery — only for products listed in galleryReasons (aBoks).
+  // Messages follow gallery positions, so CMS image changes never re-pair them.
+  const galleryReasons = galleryReasonsFor(product.slug)
+
   const handleAddToCart = () => {
     // A product with colours needs one chosen; one without is buyable as itself.
     if (hasVariants && !selectedVariant) return
@@ -497,12 +502,30 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
             {/* GALLERY
                 Mobile: second (order-2); Desktop: left col, spans both rows */}
             <div className="order-2 md:col-start-1 md:row-start-1 md:row-span-2">
+              {galleryReasons && (
+                <h2
+                  style={{
+                    fontFamily: 'var(--font-cormorant)',
+                    fontWeight: 500,
+                    fontSize: 'clamp(24px,2.72vw,34px)',
+                    letterSpacing: '-0.018em',
+                    lineHeight: 1.08,
+                    color: '#1a1d17',
+                    textAlign: 'center',
+                    textWrap: 'balance',
+                    margin: '0 0 clamp(14px,1.6vw,20px)',
+                  }}
+                >
+                  {galleryReasons.heading}
+                </h2>
+              )}
               <ProductImageCarousel
                 ref={carouselRef}
                 images={thumbImages}
                 initialIndex={0}
                 onIndexChange={setActiveImageIdx}
                 onZoom={setLightboxIndex}
+                captions={galleryReasons?.messages}
               />
             </div>
 
