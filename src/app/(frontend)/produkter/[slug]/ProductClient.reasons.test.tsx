@@ -6,14 +6,14 @@ import ProductImageCarousel from '@/components/ProductImageCarousel'
 import { galleryReasonsFor } from '@/lib/galleryReasons'
 
 /**
- * "Hvorfor trenger du aBoks akkurat nå?!" — the reasons laid over the aBoks gallery.
+ * "Hvorfor trenger du aBoks?" — the reasons laid over the aBoks gallery.
  *
  * Messages belong to gallery positions, never to images: position n shows message n whatever
  * image the CMS puts there, positions beyond the last message show none, and only aBoks gets
  * the feature at all.
  */
 
-const HEADING = 'Hvorfor trenger du aBoks akkurat nå?!'
+const HEADING = 'Hvorfor trenger du aBoks?'
 
 const EXPECTED = [
   'Du vet alltid hvor de nye batteriene er.',

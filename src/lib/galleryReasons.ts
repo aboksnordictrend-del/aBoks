@@ -17,7 +17,7 @@ export interface GalleryReasons {
 
 const GALLERY_REASONS: Readonly<Record<string, GalleryReasons>> = {
   aboks: {
-    heading: 'Hvorfor trenger du aBoks akkurat nå?!',
+    heading: 'Hvorfor trenger du aBoks?',
     messages: [
       'Du vet alltid hvor de nye batteriene er.',
       'Du vet alltid hvor du skal legge brukte batterier.',
