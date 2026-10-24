@@ -75,6 +75,28 @@ interface FaqItem {
   answer: string
 }
 
+// The aBoks FAQ about wall mounting names aBoks Vegg in plain CMS text; that one
+// mention becomes a link to the product. Falls back to plain text if the copy changes.
+const WALL_FAQ = { slug: 'aboks', question: 'Kan jeg montere aBoks på veggen?', name: 'aBoks Vegg', href: '/produkter/aboks-vegg' }
+
+function faqAnswer(slug: string, faq: FaqItem) {
+  if (slug !== WALL_FAQ.slug || faq.question !== WALL_FAQ.question) return faq.answer
+  const at = faq.answer.indexOf(WALL_FAQ.name)
+  if (at === -1) return faq.answer
+  return (
+    <>
+      {faq.answer.slice(0, at)}
+      <Link
+        href={WALL_FAQ.href}
+        style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '3px', textDecorationThickness: '1px' }}
+      >
+        {WALL_FAQ.name}
+      </Link>
+      {faq.answer.slice(at + WALL_FAQ.name.length)}
+    </>
+  )
+}
+
 interface Product {
   id: string
   title: string
@@ -993,7 +1015,7 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                   Ofte stilte spørsmål
                 </h2>
               </div>
-              <Accordion items={product.faqs} defaultOpen={product.faqs[0]?.id} borderColor="#ddd2bb" />
+              <Accordion items={product.faqs.map((f) => ({ ...f, answer: faqAnswer(product.slug, f) }))} defaultOpen={product.faqs[0]?.id} borderColor="#ddd2bb" />
             </div>
           </section>
         )}

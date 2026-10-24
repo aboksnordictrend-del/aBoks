@@ -1,12 +1,12 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 
 interface AccordionItem {
   id: string
   question: string
-  answer: string
+  answer: ReactNode
 }
 
 interface AccordionProps {

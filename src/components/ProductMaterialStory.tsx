@@ -36,7 +36,7 @@ const STEPS = [
   },
   {
     number: '04',
-    title: '3D-printet i Norge',
+    title: 'Laget i Norge',
     description: 'Hver aBoks produseres lokalt i Norge, lag for lag.',
   },
 ]
@@ -77,7 +77,7 @@ export default function ProductMaterialStory() {
               color: '#3a3f33', margin: 0,
             }}
           >
-            3D-printet i Norge av biobasert PLA Matte, laget av plantebaserte råvarer.
+            Produsert i Norge av biobasert PLA Matte, fremstilt av plantebaserte råvarer.
           </p>
         </div>
 
