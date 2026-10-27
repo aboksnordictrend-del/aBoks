@@ -455,10 +455,10 @@ const ProductImageCarousel = forwardRef<ProductImageCarouselHandle, Props>(
           )}
         </div>
 
-        {/* ── Thumbnail strip ───────────────────────────── */}
+        {/* ── Thumbnail strip — desktop only; mobile relies on swipe + dots ── */}
         <div
+          className="hidden md:grid"
           style={{
-            display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
             gap: '12px',
             marginTop: '14px',

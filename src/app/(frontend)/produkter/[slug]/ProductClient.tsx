@@ -490,6 +490,37 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
     }
   }
 
+  // Color selector — omitted entirely for a product that has no variants. Rendered in two
+  // places: straight under the gallery on mobile, below the price on desktop.
+  const colorSelector = hasVariants && (
+    <div style={{ marginBottom: '26px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+        <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1d17' }}>Farge:</span>
+        <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6f63' }}>{selectedVariant?.name}</span>
+      </div>
+      <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+        {variants.map((v) => {
+          const light = isLightColor(v.colorHex)
+          return (
+            <button
+              key={v.id}
+              onClick={() => handleColorSelect(v.id)}
+              aria-label={v.name}
+              style={{
+                width: '44px', height: '44px', borderRadius: '999px', border: 'none',
+                cursor: 'pointer', padding: 0, background: v.colorHex,
+                boxShadow: selectedVariantId === v.id
+                  ? `0 0 0 2px #faf6ee, 0 0 0 4px #39402c${light ? ', inset 0 0 0 1px #c0bdb5' : ''}`
+                  : light ? '0 0 0 1.5px #b0ada5' : '0 0 0 1px rgba(0,0,0,.18)',
+                transition: 'transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease',
+              }}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+
   return (
     <>
       <main style={{ paddingTop: 'clamp(96px,12vh,132px)', background: '#faf6ee' }}>
@@ -499,7 +530,7 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
         </div>
 
         {/* BUY SECTION
-            Mobile order: title+desc → gallery → price+colors+cart
+            Mobile order: title → gallery → colors → price → cart
             Desktop: 2-col grid — gallery left (spans 2 rows), info right
         */}
         <section style={{ padding: 'clamp(28px,4vw,48px) 0 clamp(60px,8vw,96px)' }}>
@@ -554,6 +585,9 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
             {/* INFO BOTTOM: price + colors + cart + trust + accordion
                 Mobile: third (order-3); Desktop: right col, row 2 */}
             <div className="order-3 md:col-start-2 md:row-start-2">
+              {/* Color selector — mobile position, directly under the gallery */}
+              <div className="md:hidden">{colorSelector}</div>
+
               {/* Stars + price */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: saleActive && product.sale?.saleStartDate && product.sale?.saleEndDate ? '14px' : '22px', flexWrap: 'wrap' }}>
                 {saleActive ? (
@@ -597,35 +631,8 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                 </div>
               )}
 
-              {/* Color selector — omitted entirely for a product that has no variants */}
-              {hasVariants && (
-              <div style={{ marginBottom: '26px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.04em', color: '#1a1d17' }}>Farge:</span>
-                  <span style={{ fontFamily: 'var(--font-manrope)', fontSize: '14px', color: '#6b6f63' }}>{selectedVariant?.name}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                  {variants.map((v) => {
-                    const light = isLightColor(v.colorHex)
-                    return (
-                      <button
-                        key={v.id}
-                        onClick={() => handleColorSelect(v.id)}
-                        aria-label={v.name}
-                        style={{
-                          width: '44px', height: '44px', borderRadius: '999px', border: 'none',
-                          cursor: 'pointer', padding: 0, background: v.colorHex,
-                          boxShadow: selectedVariantId === v.id
-                            ? `0 0 0 2px #faf6ee, 0 0 0 4px #39402c${light ? ', inset 0 0 0 1px #c0bdb5' : ''}`
-                            : light ? '0 0 0 1.5px #b0ada5' : '0 0 0 1px rgba(0,0,0,.18)',
-                          transition: 'transform 0.15s ease, filter 0.15s ease, box-shadow 0.2s ease',
-                        }}
-                      />
-                    )
-                  })}
-                </div>
-              </div>
-              )}
+              {/* Color selector — desktop position, below the price */}
+              <div className="hidden md:block">{colorSelector}</div>
 
               {/* Lagerstatus — same three states as before, now fed by the shared stock rule:
                   the chosen variant's inventory, or the product's own stock when it has no
