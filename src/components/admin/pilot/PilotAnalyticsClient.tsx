@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import styles from './pilot.module.css'
+import OverallAssessmentSection from './OverallAssessment'
+import type { OverallAssessment } from '@/lib/pilot/assessment'
 import type { ComparisonRow, Distribution, PilotStats, RatingSummary, WrittenAnswer } from '@/lib/pilot/stats'
 import { PILOT_STATUS_OPTIONS, organizationTypeLabel, statKeyLabel, type StatKey } from '@/lib/pilot/constants'
 
@@ -25,6 +27,7 @@ interface PilotAnalyticsResponse {
   projects: ProjectInfo[]
   modelOptions: { key: string; label: string }[]
   stats: PilotStats
+  assessment: OverallAssessment
   comparison: { projects: ComparisonRow[]; models: ComparisonRow[] }
 }
 
@@ -419,6 +422,8 @@ export default function PilotAnalyticsClient({ initialProject }: { initialProjec
               organisering holdes utenfor gjennomsnitt og andeler. Ubesvarte spørsmål teller aldri med.
             </p>
           )}
+
+          <OverallAssessmentSection assessment={data.assessment} />
 
           <div className={styles.grid}>
             <section className={styles.card}>

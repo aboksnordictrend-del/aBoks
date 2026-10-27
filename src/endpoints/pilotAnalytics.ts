@@ -18,6 +18,7 @@ import {
   modelOptions,
   type EvaluationRecord,
 } from '../lib/pilot/stats'
+import { computeOverallAssessment } from '../lib/pilot/assessment'
 import { evaluationsCsv, type CsvProjectInfo } from '../lib/pilot/csv'
 import type { AnswerValue, StoredAnswer } from '../lib/pilot/answers'
 import type { QuestionnaireSnapshot } from '../lib/pilot/questionnaire'
@@ -192,6 +193,8 @@ export async function handlePilotAnalytics(req: PayloadRequest): Promise<Respons
         })),
         modelOptions: modelOptions(modelScope),
         stats: computePilotStats(selected),
+        // «Samlet vurdering og utvikling»: same selection (project, period, model) as `stats`.
+        assessment: computeOverallAssessment(selected),
         comparison: {
           // Across all projects: respects the period and model filters, not the project filter.
           projects: compareProjects(

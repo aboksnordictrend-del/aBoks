@@ -82,3 +82,10 @@
 .segItem { border: 0; background: transparent; color: var(--theme-text); padding: 0.35rem 0.65rem; font-size: 0.78rem; cursor: pointer; }
 .segItem:not(:last-child) { border-right: 1px solid var(--card-border); }
 .segItemActive { background: var(--theme-elevation-150); font-weight: 600; }
+
+/* «Samlet vurdering og utvikling» */
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 0.15rem; }
+.stack { display: flex; gap: 2px; height: 14px; margin-top: 0.9rem; border-radius: 4px; overflow: hidden; background: var(--bar-track); }
+.stackSeg { display: block; flex-basis: 0; min-width: 4px; }
+.trendBar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem 1rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; margin: 0 0 0.75rem; padding: 0; list-style: none; font-size: 0.78rem; }
