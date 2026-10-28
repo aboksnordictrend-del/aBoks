@@ -523,28 +523,31 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
 
   return (
     <>
-      <main style={{ paddingTop: 'clamp(96px,12vh,132px)', background: '#faf6ee' }}>
+      {/* Below md the top of the page is compacted (main, breadcrumbs, section, title block,
+          row gap) so the gallery sits higher on the first screen; md and up keep the original
+          values. 90px still clears the 80px nav row under the benefits bar. */}
+      <main className="pt-[90px] md:pt-[clamp(96px,12vh,132px)]" style={{ background: '#faf6ee' }}>
         {/* Breadcrumb — trail comes from the server: Hjem → Produkter|Tilbehør → title */}
         <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
-          <Breadcrumbs items={breadcrumbs} />
+          <Breadcrumbs items={breadcrumbs} compactOnMobile />
         </div>
 
         {/* BUY SECTION
             Mobile order: title → gallery → colors → price → cart
             Desktop: 2-col grid — gallery left (spans 2 rows), info right
         */}
-        <section style={{ padding: 'clamp(28px,4vw,48px) 0 clamp(60px,8vw,96px)' }}>
+        <section className="pt-[6px] md:pt-[clamp(28px,4vw,48px)]" style={{ paddingBottom: 'clamp(60px,8vw,96px)' }}>
           <div
-            className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] flex flex-col md:grid md:grid-cols-2 md:items-start"
-            style={{ columnGap: 'clamp(36px,5vw,72px)', rowGap: 'clamp(24px,3vw,36px)' }}
+            className="max-w-container mx-auto px-[clamp(20px,5vw,48px)] flex flex-col md:grid md:grid-cols-2 md:items-start gap-y-4 md:gap-y-[clamp(24px,3vw,36px)]"
+            style={{ columnGap: 'clamp(36px,5vw,72px)' }}
           >
             {/* INFO TOP: title + tagline + description
                 Mobile: first (order-1); Desktop: right col, row 1 */}
             <div className="order-1 md:col-start-2 md:row-start-1">
-              <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(40px,5vw,64px)', letterSpacing: '-0.022em', lineHeight: 1.02, color: '#1a1d17', margin: '0 0 8px' }}>
+              <h1 className="mb-1 md:mb-2" style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 500, fontSize: 'clamp(40px,5vw,64px)', letterSpacing: '-0.022em', lineHeight: 1.02, color: '#1a1d17' }}>
                 {product.title}
               </h1>
-              <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', color: '#6b6f63', margin: '0 0 20px' }}>
+              <p className="mb-1 md:mb-5" style={{ fontFamily: 'var(--font-manrope)', fontSize: '16px', color: '#6b6f63' }}>
                 {product.tagline}
               </p>
               <p className="hidden md:block" style={{ fontFamily: 'var(--font-manrope)', fontSize: '17px', lineHeight: 1.6, color: '#3a3f33', margin: 0 }}>
@@ -555,18 +558,18 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
             {/* GALLERY
                 Mobile: second (order-2); Desktop: left col, spans both rows */}
             <div className="order-2 md:col-start-1 md:row-start-1 md:row-span-2">
+              {/* Mobile only: a touch bolder, with a short centred olive rule beneath it. */}
               {galleryReasons && (
                 <h2
+                  className="mb-3 md:mb-[clamp(14px,1.6vw,20px)] font-semibold md:font-medium after:mx-auto after:mt-[10px] after:block after:h-[2px] after:w-[44px] after:bg-sage after:content-[''] md:after:hidden"
                   style={{
                     fontFamily: 'var(--font-cormorant)',
-                    fontWeight: 500,
                     fontSize: 'clamp(24px,2.72vw,34px)',
                     letterSpacing: '-0.018em',
                     lineHeight: 1.08,
                     color: '#1a1d17',
                     textAlign: 'center',
                     textWrap: 'balance',
-                    margin: '0 0 clamp(14px,1.6vw,20px)',
                   }}
                 >
                   {galleryReasons.heading}

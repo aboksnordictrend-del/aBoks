@@ -7,7 +7,14 @@ export type Crumb = { label: string; href?: string }
  * Visual breadcrumb trail + matching BreadcrumbList JSON-LD.
  * The last crumb is the current page and must not carry an href.
  */
-export default function Breadcrumbs({ items }: { items: Crumb[] }) {
+export default function Breadcrumbs({
+  items,
+  compactOnMobile = false,
+}: {
+  items: Crumb[]
+  /** Tighter spacing below md (product pages); md and up keep the default spacing exactly. */
+  compactOnMobile?: boolean
+}) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -23,6 +30,7 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
     <>
       <nav
         aria-label="Brødsmulesti"
+        className={compactOnMobile ? 'pt-0 mb-[14px] md:pt-[18px] md:mb-[clamp(36px,5vw,56px)]' : undefined}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -30,8 +38,7 @@ export default function Breadcrumbs({ items }: { items: Crumb[] }) {
           fontFamily: 'var(--font-manrope)',
           fontSize: '13px',
           color: '#6b6f63',
-          paddingTop: '18px',
-          marginBottom: 'clamp(36px,5vw,56px)',
+          ...(compactOnMobile ? {} : { paddingTop: '18px', marginBottom: 'clamp(36px,5vw,56px)' }),
         }}
       >
         {items.map((item, i) => (
