@@ -5,7 +5,7 @@
 // doubled. Free text is participant input, so a value that a spreadsheet would read as a formula
 // (=, +, -, @, tab, CR) is prefixed with an apostrophe.
 
-import type { EvaluationRecord } from './stats'
+import { questionKey, type EvaluationRecord } from './stats'
 import { osloDateKey } from '../analytics/period'
 
 const BOM = '﻿'
@@ -37,10 +37,11 @@ export interface CsvProjectInfo {
 }
 
 /**
- * One row per evaluation; one column per question id seen in any of the exported evaluations, in
- * first-seen order and headed by the newest label. Answers are matched by question id, so a
- * question that was renamed keeps a single column, and one that did not exist for an evaluation
- * stays empty for it.
+ * One row per evaluation; one column per question (id + type, as in ./stats) seen in any of the
+ * exported evaluations, in first-seen order and headed by the newest label. Answers are matched by
+ * question id and type, so a question that was renamed keeps a single column, an id reused for a
+ * question of another type gets its own, and a question that did not exist for an evaluation stays
+ * empty for it.
  */
 export function evaluationsCsv(
   records: EvaluationRecord[],
@@ -52,12 +53,13 @@ export function evaluationsCsv(
   const labels = new Map<string, { label: string; at: string }>()
   for (const r of sorted) {
     for (const q of r.snapshot?.questions ?? []) {
-      const seen = labels.get(q.questionId)
+      const key = questionKey(q)
+      const seen = labels.get(key)
       if (!seen) {
-        columns.push(q.questionId)
-        labels.set(q.questionId, { label: q.label, at: r.submittedAt })
+        columns.push(key)
+        labels.set(key, { label: q.label, at: r.submittedAt })
       } else if (r.submittedAt >= seen.at) {
-        labels.set(q.questionId, { label: q.label, at: r.submittedAt })
+        labels.set(key, { label: q.label, at: r.submittedAt })
       }
     }
   }
@@ -76,7 +78,7 @@ export function evaluationsCsv(
   const lines = [headers.map(csvCell).join(DELIM)]
   for (const r of sorted) {
     const project = r.projectId != null ? projects.get(r.projectId) : undefined
-    const byId = new Map(r.answers.map((a) => [a.questionId, a]))
+    const byId = new Map(r.answers.map((a) => [questionKey({ questionId: a.questionId, type: a.questionType }), a]))
     const row: (string | number | null)[] = [
       String(r.id),
       osloTime(r.submittedAt),

@@ -1498,14 +1498,20 @@ export interface PilotProject {
         required?: boolean | null;
         enabled?: boolean | null;
         /**
-         * Valgfritt. Knytter spørsmålet til et nøkkeltall i Pilotanalyse.
+         * Valgfritt. Grupperer spørsmålet i Pilotanalyse — påvirker ikke hvordan svarene beregnes. Flere spørsmål kan ha samme kategori.
          */
         statKey?:
           | (
+              | 'usage'
+              | 'usability'
+              | 'benefit'
+              | 'satisfaction'
+              | 'recommendation'
+              | 'feedback'
+              | 'none'
               | 'location'
               | 'model'
               | 'frequency'
-              | 'usability'
               | 'usefulness'
               | 'organization'
               | 'continue'
@@ -1514,6 +1520,10 @@ export interface PilotProject {
               | 'room'
             )
           | null;
+        /**
+         * Ja telles som positivt og Nei som negativt i «Samlet vurdering og utvikling». Uten avkrysning teller spørsmålet bare i sin egen statistikk.
+         */
+        countInAssessment?: boolean | null;
         placeholder?: string | null;
         /**
          * Valgfri kort forklaring under spørsmålet.
@@ -1533,9 +1543,13 @@ export interface PilotProject {
                */
               isPositive?: boolean | null;
               /**
-               * F.eks. «Vet ikke». På spørsmålet om bruksfrekvens («Ikke brukt ennå») holdes også svarets produktvurderinger utenfor.
+               * F.eks. «Vet ikke».
                */
               excludeFromAverages?: boolean | null;
+              /**
+               * F.eks. «Ikke brukt ennå». Evalueringer med dette svaret lagres og vises, men vurderingene deres (skala 1–5 og vurderende valgspørsmål) holdes utenfor gjennomsnitt, andeler og samlet vurdering. Holdes også utenfor andelene i dette spørsmålet.
+               */
+              noProductExperience?: boolean | null;
               id?: string | null;
             }[]
           | null;
@@ -2353,6 +2367,7 @@ export interface PilotProjectsSelect<T extends boolean = true> {
         required?: T;
         enabled?: T;
         statKey?: T;
+        countInAssessment?: T;
         placeholder?: T;
         helpText?: T;
         scaleMinLabel?: T;
@@ -2364,6 +2379,7 @@ export interface PilotProjectsSelect<T extends boolean = true> {
               label?: T;
               isPositive?: T;
               excludeFromAverages?: T;
+              noProductExperience?: T;
               id?: T;
             };
         questionId?: T;

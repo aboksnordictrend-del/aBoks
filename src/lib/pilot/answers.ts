@@ -145,15 +145,29 @@ export function validateAnswers(questions: PublicQuestion[], raw: RawAnswers): A
 }
 
 /**
- * The aBoks model an evaluation is about, read from the answer to the question in the «aBoks-
- * modell» category. `modelId` is set only when the chosen option is one of the project's models;
+ * The question that asks which aBoks model was used: the first single-answer question whose
+ * options come from the project's models («Prosjektets aBoks-modeller»). Found by that structure,
+ * not by its category. A question still carrying the legacy «aBoks-modell» category counts too, so
+ * a model question with hand-typed options keeps working as before.
+ */
+export function modelQuestion(questions: PublicQuestion[]): PublicQuestion | undefined {
+  const single = (q: PublicQuestion) => q.type === 'singleChoice' || q.type === 'dropdown'
+  return (
+    questions.find((q) => single(q) && q.options.some((o) => o.modelId != null)) ??
+    questions.find((q) => single(q) && q.statKey === 'model')
+  )
+}
+
+/**
+ * The aBoks model an evaluation is about, read from the answer to the model question (see
+ * `modelQuestion`). `modelId` is set only when the chosen option is one of the project's models;
  * an option such as «Flere modeller» gives a label without an id.
  */
 export function modelFromAnswers(
   questions: PublicQuestion[],
   answers: StoredAnswer[],
 ): { modelId: number | null; modelLabel: string | null } {
-  const question = questions.find((q) => q.statKey === 'model')
+  const question = modelQuestion(questions)
   if (!question) return { modelId: null, modelLabel: null }
   const answer = answers.find((a) => a.questionId === question.questionId)
   if (!answer || typeof answer.value !== 'string') return { modelId: null, modelLabel: null }

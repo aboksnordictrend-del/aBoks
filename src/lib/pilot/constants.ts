@@ -91,15 +91,46 @@ export const YES_NO_OPTIONS = [
 
 // ── Analysis category ──
 //
-// Questions are freely editable, so the analytics never identify a question by its text or its
-// position. Each question may instead carry one analysis category; the dashboard's dedicated
-// figures (average usability, model distribution, …) read the question in that category.
+// A category only groups questions in Pilotanalyse. It never decides how an answer is counted:
+// that follows from the question type and the option flags («Positivt svar», «Holdes utenfor …»,
+// «Ingen produkterfaring»). Any question type may carry any category, several questions may share
+// one, and «Ingen kategori» (or no value) is always allowed.
 
-export const STAT_KEYS = [
+export const CATEGORY_KEYS = [
+  'usage',
+  'usability',
+  'benefit',
+  'satisfaction',
+  'recommendation',
+  'feedback',
+] as const
+export type CategoryKey = (typeof CATEGORY_KEYS)[number]
+
+export const CATEGORY_OPTIONS: { label: string; value: CategoryKey }[] = [
+  { label: 'Bruk og erfaring', value: 'usage' },
+  { label: 'Brukervennlighet', value: 'usability' },
+  { label: 'Nytte og effekt', value: 'benefit' },
+  { label: 'Tilfredshet', value: 'satisfaction' },
+  { label: 'Anbefaling og videre bruk', value: 'recommendation' },
+  { label: 'Forbedringer og kommentarer', value: 'feedback' },
+]
+
+/** Explicit «no category». Stored as its own value so the choice is visible in the editor. */
+export const NO_CATEGORY = 'none'
+
+/** Heading in Pilotanalyse for questions without a category. */
+export const UNCATEGORIZED_LABEL = 'Andre spørsmål'
+
+/**
+ * Categories from before the six universal ones. They stay valid values — questionnaires saved
+ * with them, and every evaluation snapshot taken from those questionnaires, keep loading — but the
+ * editor no longer offers them for a question that does not already have one. Each is grouped
+ * under the universal category it belongs to.
+ */
+export const LEGACY_STAT_KEYS = [
   'location',
   'model',
   'frequency',
-  'usability',
   'usefulness',
   'organization',
   'continue',
@@ -107,27 +138,61 @@ export const STAT_KEYS = [
   'comments',
   'room',
 ] as const
+export type LegacyStatKey = (typeof LEGACY_STAT_KEYS)[number]
+
+const LEGACY_CATEGORY: Record<LegacyStatKey, { label: string; category: CategoryKey }> = {
+  location: { label: 'Brukssted', category: 'usage' },
+  model: { label: 'aBoks-modell', category: 'usage' },
+  frequency: { label: 'Bruksfrekvens', category: 'usage' },
+  room: { label: 'Rom / avdeling', category: 'usage' },
+  usefulness: { label: 'Nytteverdi', category: 'benefit' },
+  organization: { label: 'Bedre organisering', category: 'benefit' },
+  continue: { label: 'Ønsker å fortsette', category: 'recommendation' },
+  improvements: { label: 'Forbedringsforslag', category: 'feedback' },
+  comments: { label: 'Andre kommentarer', category: 'feedback' },
+}
+
+/** Every stored value of the «Analysekategori» field (the database enum). */
+export const STAT_KEYS = [...CATEGORY_KEYS, NO_CATEGORY, ...LEGACY_STAT_KEYS] as const
 export type StatKey = (typeof STAT_KEYS)[number]
 
 export const STAT_KEY_OPTIONS: { label: string; value: StatKey }[] = [
-  { label: 'Brukssted', value: 'location' },
-  { label: 'aBoks-modell', value: 'model' },
-  { label: 'Bruksfrekvens', value: 'frequency' },
-  { label: 'Brukervennlighet', value: 'usability' },
-  { label: 'Nytteverdi', value: 'usefulness' },
-  { label: 'Bedre organisering', value: 'organization' },
-  { label: 'Ønsker å fortsette', value: 'continue' },
-  { label: 'Forbedringsforslag', value: 'improvements' },
-  { label: 'Andre kommentarer', value: 'comments' },
-  { label: 'Rom / avdeling', value: 'room' },
+  ...CATEGORY_OPTIONS,
+  { label: 'Ingen kategori', value: NO_CATEGORY },
+  ...LEGACY_STAT_KEYS.map((key) => ({
+    label: `Eldre: ${LEGACY_CATEGORY[key].label} (vises som «${categoryLabel(LEGACY_CATEGORY[key].category)}»)`,
+    value: key,
+  })),
 ]
 
 export function isStatKey(value: unknown): value is StatKey {
   return typeof value === 'string' && (STAT_KEYS as readonly string[]).includes(value)
 }
 
-export function statKeyLabel(value: unknown): string {
-  return STAT_KEY_OPTIONS.find((o) => o.value === value)?.label ?? ''
+export function isLegacyStatKey(value: unknown): value is LegacyStatKey {
+  return typeof value === 'string' && (LEGACY_STAT_KEYS as readonly string[]).includes(value)
+}
+
+/** The universal category a stored value groups under; null for «Ingen kategori» and unknown values. */
+export function categoryOf(value: unknown): CategoryKey | null {
+  if (typeof value !== 'string') return null
+  if ((CATEGORY_KEYS as readonly string[]).includes(value)) return value as CategoryKey
+  if (isLegacyStatKey(value)) return LEGACY_CATEGORY[value].category
+  return null
+}
+
+export function categoryLabel(value: unknown): string {
+  const key = categoryOf(value)
+  return key ? CATEGORY_OPTIONS.find((o) => o.value === key)!.label : UNCATEGORIZED_LABEL
+}
+
+/**
+ * The options the editor offers for one question: the six categories and «Ingen kategori», plus
+ * the question's own legacy value while it still has one (so an existing questionnaire saves
+ * unchanged). Payload validates against this same list.
+ */
+export function statKeyOptionsFor<T extends { value: string }>(options: T[], current: unknown): T[] {
+  return options.filter((o) => !isLegacyStatKey(o.value) || o.value === current)
 }
 
 // ── Option sources ──

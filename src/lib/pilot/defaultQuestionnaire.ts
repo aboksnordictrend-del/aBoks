@@ -11,10 +11,14 @@ import { DEFAULT_CLOSING, DEFAULT_INTRO } from './constants'
 export const DEFAULT_QUESTIONNAIRE_INTRO = DEFAULT_INTRO
 export const DEFAULT_QUESTIONNAIRE_CLOSING = DEFAULT_CLOSING
 
-const opt = (label: string, extra: { excludeFromAverages?: boolean; isPositive?: boolean } = {}) => ({
+const opt = (
+  label: string,
+  extra: { excludeFromAverages?: boolean; isPositive?: boolean; noProductExperience?: boolean } = {},
+) => ({
   label,
   excludeFromAverages: extra.excludeFromAverages ?? false,
   isPositive: extra.isPositive ?? false,
+  noProductExperience: extra.noProductExperience ?? false,
 })
 
 /** A fresh copy each call, so no caller can mutate the template itself. */
@@ -27,7 +31,7 @@ export function defaultQuestions(): QuestionConfig[] {
       placeholder: 'Navn på bedrift, skole eller institusjon...',
       required: true,
       enabled: true,
-      statKey: 'location',
+      statKey: 'usage',
     },
     {
       questionId: 'modell',
@@ -35,7 +39,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Hvilken aBoks-modell har du brukt?',
       required: true,
       enabled: true,
-      statKey: 'model',
+      statKey: 'usage',
       optionsSource: 'projectModels',
       options: [opt('Flere modeller')],
     },
@@ -45,7 +49,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Hvor ofte har du brukt produktet?',
       required: false,
       enabled: true,
-      statKey: 'frequency',
+      statKey: 'usage',
       optionsSource: 'manual',
       options: [
         opt('Daglig'),
@@ -53,7 +57,7 @@ export function defaultQuestions(): QuestionConfig[] {
         opt('Noen få ganger'),
         // A participant who has not used the product yet has no product experience to rate:
         // their ratings are left out of the averages.
-        opt('Ikke brukt ennå', { excludeFromAverages: true }),
+        opt('Ikke brukt ennå', { excludeFromAverages: true, noProductExperience: true }),
       ],
     },
     {
@@ -72,7 +76,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Hvor nyttig er aBoks på arbeidsplassen?',
       required: false,
       enabled: true,
-      statKey: 'usefulness',
+      statKey: 'benefit',
       scaleMinLabel: 'Lite nyttig',
       scaleMaxLabel: 'Svært nyttig',
     },
@@ -82,7 +86,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Har aBoks bidratt til bedre organisering av batterier?',
       required: false,
       enabled: true,
-      statKey: 'organization',
+      statKey: 'benefit',
       optionsSource: 'manual',
       options: [opt('Ja', { isPositive: true }), opt('Delvis'), opt('Nei'), opt('Vet ikke', { excludeFromAverages: true })],
     },
@@ -92,7 +96,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Ønsker du å fortsette å bruke aBoks?',
       required: false,
       enabled: true,
-      statKey: 'continue',
+      statKey: 'recommendation',
       optionsSource: 'manual',
       options: [opt('Ja', { isPositive: true }), opt('Kanskje'), opt('Nei')],
     },
@@ -102,7 +106,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Hva synes du bør forbedres?',
       required: false,
       enabled: true,
-      statKey: 'improvements',
+      statKey: 'feedback',
     },
     {
       questionId: 'kommentarer',
@@ -110,7 +114,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Har du andre kommentarer eller forslag?',
       required: false,
       enabled: true,
-      statKey: 'comments',
+      statKey: 'feedback',
     },
     {
       questionId: 'rom',
@@ -118,7 +122,7 @@ export function defaultQuestions(): QuestionConfig[] {
       label: 'Hvilket rom eller hvilken avdeling har du brukt produktet i?',
       required: false,
       enabled: true,
-      statKey: 'room',
+      statKey: 'usage',
     },
   ]
 }

@@ -10,6 +10,7 @@ import {
   isChoiceType,
   isQuestionType,
   isStatKey,
+  NO_CATEGORY,
   isTextType,
   type OptionSource,
   type QuestionType,
@@ -23,6 +24,7 @@ export interface QuestionOptionConfig {
   label?: string | null
   excludeFromAverages?: boolean | null
   isPositive?: boolean | null
+  noProductExperience?: boolean | null
 }
 
 export interface QuestionConfig {
@@ -36,10 +38,20 @@ export interface QuestionConfig {
   required?: boolean | null
   enabled?: boolean | null
   statKey?: StatKey | string | null
+  /** Ja / Nei only: the question takes part in «Samlet vurdering» (Ja positive, Nei negative). */
+  countInAssessment?: boolean | null
   optionsSource?: OptionSource | string | null
   options?: QuestionOptionConfig[] | null
   scaleMinLabel?: string | null
   scaleMaxLabel?: string | null
+}
+
+/** True when picking the option means «not used the product yet» (single answer types only). */
+function marksNoExperience(q: QuestionConfig, type: QuestionType, o: QuestionOptionConfig): boolean {
+  if (type !== 'singleChoice' && type !== 'dropdown') return false
+  // Legacy: before the option flag existed, a kept-out option of the «Bruksfrekvens» question
+  // carried this meaning. Kept so questionnaires saved with that category behave as before.
+  return o.noProductExperience === true || (q.statKey === 'frequency' && o.excludeFromAverages === true)
 }
 
 /** A participating aBoks model as the public form needs it. */
@@ -56,6 +68,12 @@ export interface PublicOption {
   label: string
   excludeFromAverages: boolean
   isPositive: boolean
+  /**
+   * Picking this option says the participant has not used the product yet: the evaluation's
+   * product ratings are left out (see ./stats `lacksProductExperience`). Absent in snapshots taken
+   * before the flag existed — those rely on the legacy «Bruksfrekvens» category instead.
+   */
+  noProductExperience?: boolean
   /** Set when the option stands for one of the project's aBoks models. */
   modelId?: number
 }
@@ -68,6 +86,8 @@ export interface PublicQuestion {
   helpText: string
   required: boolean
   statKey: StatKey | null
+  /** Ja / Nei marked «Telles i samlet vurdering». Present only when true. */
+  countInAssessment?: true
   options: PublicOption[]
   scaleMinLabel: string
   scaleMaxLabel: string
@@ -144,21 +164,19 @@ export function assignQuestionIds(
   })
 }
 
-// ── Validation ──
-
-/** Which question types each analysis category accepts. */
-const STAT_KEY_TYPES: Record<StatKey, readonly QuestionType[]> = {
-  location: ['shortText', 'longText'],
-  room: ['shortText', 'longText'],
-  improvements: ['shortText', 'longText'],
-  comments: ['shortText', 'longText'],
-  usability: ['rating'],
-  usefulness: ['rating'],
-  model: ['singleChoice', 'dropdown'],
-  frequency: ['singleChoice', 'dropdown'],
-  organization: ['singleChoice', 'dropdown', 'yesNo'],
-  continue: ['singleChoice', 'dropdown', 'yesNo'],
+/**
+ * Drops answer options from questions whose type has none of its own (rating, text, Ja / Nei).
+ * They are left behind when a question's type is changed — hidden in the admin, so they could
+ * never be removed there — and would otherwise linger in the stored questionnaire.
+ * Returns new objects; the input is not mutated.
+ */
+export function dropUnusedOptions(questions: QuestionConfig[]): QuestionConfig[] {
+  return questions.map((q) =>
+    isQuestionType(q.type) && !isChoiceType(q.type) && (q.options?.length ?? 0) > 0 ? { ...q, options: [] } : q,
+  )
 }
+
+// ── Validation ──
 
 export interface ValidateQuestionnaireOptions {
   /** Number of aBoks models selected on the project (for «Prosjektets aBoks-modeller»). */
@@ -180,7 +198,6 @@ export function validateQuestionnaire(
   }
 
   const seenIds = new Set<string>()
-  const statKeyOwner = new Map<string, number>()
 
   questions.forEach((q, index) => {
     const n = index + 1
@@ -236,24 +253,9 @@ export function validateQuestionnaire(
       }
     }
 
-    if (q.statKey != null && (q.statKey as string) !== '') {
-      if (!isStatKey(q.statKey)) {
-        errors.push(`${where}: ugyldig analysekategori.`)
-      } else {
-        if (!STAT_KEY_TYPES[q.statKey].includes(type)) {
-          errors.push(`${where}: analysekategorien passer ikke til spørsmålstypen.`)
-        }
-        if (q.enabled !== false) {
-          const owner = statKeyOwner.get(q.statKey)
-          if (owner !== undefined) {
-            errors.push(
-              `${where}: analysekategorien er allerede brukt av spørsmål ${owner}. Hver kategori kan bare brukes av ett aktivt spørsmål.`,
-            )
-          } else {
-            statKeyOwner.set(q.statKey, n)
-          }
-        }
-      }
+    // The category only groups questions in Pilotanalyse: any type, shared freely, optional.
+    if (q.statKey != null && (q.statKey as string) !== '' && !isStatKey(q.statKey)) {
+      errors.push(`${where}: ugyldig analysekategori.`)
     }
   })
 
@@ -284,11 +286,14 @@ function resolveOptions(q: QuestionConfig, type: QuestionType, models: PilotMode
   }
   for (const o of q.options ?? []) {
     const label = str(o.label)
+    const noExperience = marksNoExperience(q, type, o)
     push({
       value: label,
       label,
-      excludeFromAverages: o.excludeFromAverages === true,
+      // «Not used yet» is never a real answer to the question itself either.
+      excludeFromAverages: o.excludeFromAverages === true || noExperience,
       isPositive: o.isPositive === true,
+      ...(noExperience ? { noProductExperience: true } : {}),
     })
   }
   return out
@@ -317,7 +322,8 @@ export function resolvePublicQuestions(questions: QuestionConfig[], models: Pilo
       placeholder: isTextType(type) || type === 'dropdown' ? str(q.placeholder) : '',
       helpText: str(q.helpText),
       required: q.required === true,
-      statKey: isStatKey(q.statKey) ? q.statKey : null,
+      statKey: isStatKey(q.statKey) && q.statKey !== NO_CATEGORY ? q.statKey : null,
+      ...(type === 'yesNo' && q.countInAssessment === true ? { countInAssessment: true as const } : {}),
       options,
       scaleMinLabel: type === 'rating' ? str(q.scaleMinLabel) : '',
       scaleMaxLabel: type === 'rating' ? str(q.scaleMaxLabel) : '',
@@ -341,12 +347,18 @@ export function questionnaireFingerprint(questions: QuestionConfig[], modelIds: 
     helpText: str(q.helpText),
     required: q.required === true,
     enabled: q.enabled !== false,
-    statKey: q.statKey || null,
+    // «Ingen kategori» and an empty field mean the same.
+    statKey: q.statKey && q.statKey !== NO_CATEGORY ? q.statKey : null,
+    // Only when set, like `noProductExperience` below, so older questionnaires keep their version.
+    ...(q.countInAssessment === true ? { countInAssessment: true } : {}),
     optionsSource: q.optionsSource || 'manual',
     options: (q.options ?? []).map((o) => ({
       label: str(o.label),
       excludeFromAverages: o.excludeFromAverages === true,
       isPositive: o.isPositive === true,
+      // Only when set, so questionnaires saved before the flag existed keep their fingerprint
+      // (and therefore their version).
+      ...(o.noProductExperience === true ? { noProductExperience: true } : {}),
     })),
     scaleMinLabel: str(q.scaleMinLabel),
     scaleMaxLabel: str(q.scaleMaxLabel),

@@ -422,9 +422,16 @@ describe('pilot analytics endpoint', () => {
     assert.equal(store['pilot-evaluations']!.length, 1)
     const json = await handlePilotAnalytics({ payload, user: ADMIN, query: { project: '5' } } as unknown as PayloadRequest)
     assert.equal(json.status, 200)
-    const body = (await json.json()) as { stats: { totalResponses: number; usability: { average: number } } }
+    const body = (await json.json()) as {
+      stats: {
+        totalResponses: number
+        ratings: { average: number }
+        questions: { questionId: string; rating: { average: number } | null }[]
+      }
+    }
     assert.equal(body.stats.totalResponses, 1)
-    assert.equal(body.stats.usability.average, 4)
+    assert.equal(body.stats.ratings.average, 4)
+    assert.equal(body.stats.questions.find((q) => q.questionId === 'brukervennlighet')!.rating!.average, 4)
 
     const csv = await handlePilotAnalytics({ payload, user: ADMIN, query: { format: 'csv' } } as unknown as PayloadRequest)
     assert.equal(csv.headers.get('content-type'), 'text/csv; charset=utf-8')

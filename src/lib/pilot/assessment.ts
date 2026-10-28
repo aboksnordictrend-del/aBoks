@@ -9,14 +9,21 @@
 //
 // ── Which answers are classified ──
 //
-//   Every evaluation is read through its OWN questionnaire snapshot (question type, analysis
-//   category, options and their flags as the participant saw them), so editing a questionnaire
-//   later — or reusing a question id for a different question — never reinterprets an old answer.
+//   Every evaluation is read through its OWN questionnaire snapshot (question type, options and
+//   their flags as the participant saw them), so editing a questionnaire later — or reusing a
+//   question id for a different question — never reinterprets an old answer. The analysis category
+//   plays no part, except that the two legacy evaluating categories keep counting (see below).
 //
-//   • Rating («Vurderingsskala 1–5»), any analysis category: 4–5 positive, 3 neutral, 1–2
+//   • Rating («Vurderingsskala 1–5»), every rating question: 4–5 positive, 3 neutral, 1–2
 //     negative. The scale is assumed to run from worst (1) to best (5), as the form presents it.
-//   • Choice questions in the evaluating categories «Bedre organisering» and «Ønsker å fortsette»
-//     (single choice, dropdown, Ja / Nei):
+//   • Evaluating choice questions (./stats `isEvaluatingChoice`) — a single choice or dropdown on
+//     which the administrator marked at least one option «Positivt svar», or a Ja / Nei question
+//     marked «Telles i samlet vurdering» (Ja positive, Nei negative). That explicit mark is what
+//     says the question evaluates aBoks; without it, a choice question is descriptive (model,
+//     place, frequency, …) and never counts. For compatibility, questions saved with the legacy
+//     categories «Bedre organisering» and «Ønsker å fortsette» (including Ja / Nei) count as
+//     evaluating, as they always did.
+//     Within an evaluating question:
 //       – an option marked «Holdes utenfor gjennomsnitt og andeler» is never classified;
 //       – an option marked «Positivt svar» is positive;
 //       – otherwise the option's whole label must be a known answer word (exact match after
@@ -25,18 +32,19 @@
 //       An option that matches none of them is left out rather than guessed. A positive-looking
 //       label that the questionnaire marked otherwise is not overruled, and a label that contradicts
 //       its own «Positivt svar» mark is left out.
-//   • Nothing else: free text, multiple choice, model, usage location, frequency and choice
-//     questions without an evaluating category never count, whatever their answer text says.
-//   • As in ./stats, an evaluation whose frequency answer says it has no product experience yet
-//     contributes neither ratings nor its «Bedre organisering» answer; its «Ønsker å fortsette»
-//     answer still counts.
+//   • Nothing else: free text, multiple choice, unmarked Ja / Nei and choice questions without a
+//     «Positivt svar» option never count, whatever their answer text says.
+//   • As in ./stats, an evaluation without product experience (an «Ingen produkterfaring» answer)
+//     contributes no evaluating answer at all — no rating, no evaluating choice. Snapshots from
+//     before that flag keep their original rule: ratings and «Bedre organisering» left out,
+//     «Ønsker å fortsette» still counted.
 //   • Unanswered questions, values that are not an option of the snapshot and evaluations without a
 //     snapshot contribute nothing.
 
-import { RATING_MAX, RATING_MIN, type StatKey } from './constants'
+import { RATING_MAX, RATING_MIN } from './constants'
 import type { StoredAnswer } from './answers'
 import type { PublicOption, PublicQuestion } from './questionnaire'
-import { lacksProductExperience, type EvaluationRecord } from './stats'
+import { isEvaluatingChoice, needsProductExperience, noExperienceSource, type EvaluationRecord } from './stats'
 import { bucketFor, enumerateBuckets, type Grouping } from '../analytics/period'
 
 export type Sentiment = 'positive' | 'neutral' | 'negative'
@@ -75,8 +83,7 @@ export interface OverallAssessment extends SentimentSplit {
   timeline: Record<Grouping, AssessmentPoint[]>
 }
 
-/** Choice-question categories that measure an evaluation of aBoks. */
-const EVALUATING_CHOICE_KEYS: readonly StatKey[] = ['organization', 'continue']
+export { isEvaluatingChoice }
 
 /** Exact answer words, normalised (see normalizeLabel). Not substrings. */
 const ANSWER_WORDS: Record<Sentiment, readonly string[]> = {
@@ -119,8 +126,7 @@ export function classifyRating(value: unknown): Sentiment | null {
 export function classifyAnswer(question: PublicQuestion, answer: StoredAnswer | undefined): Sentiment | null {
   if (!answer) return null
   if (question.type === 'rating') return classifyRating(answer.value)
-  if (question.type !== 'singleChoice' && question.type !== 'dropdown' && question.type !== 'yesNo') return null
-  if (!question.statKey || !EVALUATING_CHOICE_KEYS.includes(question.statKey)) return null
+  if (!isEvaluatingChoice(question)) return null
   if (typeof answer.value !== 'string') return null
   const option = question.options.find((o) => o.value === answer.value)
   return option ? classifyOption(option) : null
@@ -129,10 +135,10 @@ export function classifyAnswer(question: PublicQuestion, answer: StoredAnswer | 
 /** Every classified answer of one evaluation, read through its own snapshot. */
 export function classifyEvaluation(record: EvaluationRecord): Sentiment[] {
   if (!record.snapshot) return []
-  const noExperience = lacksProductExperience(record)
+  const noExperience = noExperienceSource(record)
   const out: Sentiment[] = []
   for (const q of record.snapshot.questions) {
-    if (noExperience && (q.type === 'rating' || q.statKey === 'organization')) continue
+    if (noExperience && needsProductExperience(q, noExperience)) continue
     const s = classifyAnswer(
       q,
       record.answers.find((a) => a.questionId === q.questionId),

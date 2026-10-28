@@ -86,7 +86,19 @@ function snapshotOf(questions: QuestionConfig[], version = 8): QuestionnaireSnap
   return { version, intro: '', closingMessage: '', questions: resolvePublicQuestions(questions, MODELS) }
 }
 
-const HITRA = snapshotOf(hitraQuestions())
+/** A snapshot as stored before the «Ingen produkterfaring» flag existed: no flag on any option. */
+function preFlag(snapshot: QuestionnaireSnapshot): QuestionnaireSnapshot {
+  return {
+    ...snapshot,
+    questions: snapshot.questions.map((q) => ({
+      ...q,
+      options: q.options.map(({ noProductExperience: _, ...o }) => o),
+    })),
+  }
+}
+
+/** Hitra v8 exactly as its evaluations stored it (before the flag). */
+const HITRA = preFlag(snapshotOf(hitraQuestions()))
 
 let seq = 0
 /** Builds a record exactly the way the submission path stores one. */
@@ -176,13 +188,124 @@ describe('classification rules', () => {
     assert.equal(classifyAnswer(q, { questionId: 'mc', questionLabel: '', questionType: 'multipleChoice', value: ['Ja'], displayValue: 'Ja' }), null)
   })
 
-  it('no product experience: ratings and organisation are left out, «fortsette» still counts', () => {
+  it('historical snapshot without product experience: ratings and organisation left out, «fortsette» still counts', () => {
     const r = evaluation({ ...full, bruksfrekvens: 'Har ikke brukt produktet ennå', organisering: 'Nei', fortsette: 'Kanskje', rom: '1' })
     assert.deepEqual(classifyEvaluation(r), ['neutral'])
   })
 
+  it('the same legacy questionnaire snapshotted today: every evaluating answer is left out', () => {
+    const today = snapshotOf(hitraQuestions(), 9)
+    assert.equal(today.questions.find((q) => q.questionId === 'bruksfrekvens')!.options[2]!.noProductExperience, true)
+    const r = evaluation(
+      { ...full, bruksfrekvens: 'Har ikke brukt produktet ennå', organisering: 'Nei', fortsette: 'Kanskje', rom: '1' },
+      { snapshot: today },
+    )
+    assert.deepEqual(classifyEvaluation(r), [])
+  })
+
   it('an evaluation without a snapshot contributes nothing', () => {
     assert.deepEqual(classifyEvaluation({ ...evaluation(full), snapshot: null }), [])
+  })
+})
+
+describe('classification without categories (universal categories and «Ingen kategori»)', () => {
+  const choice = (statKey: QuestionConfig['statKey'], options: ReturnType<typeof opt>[], type: 'singleChoice' | 'dropdown' = 'singleChoice') =>
+    snapshotOf([{ questionId: 'c', type, label: 'Spørsmål', enabled: true, statKey, options }]).questions[0]!
+  const ans = (value: string) => ({ questionId: 'c', questionLabel: '', questionType: 'singleChoice' as const, value, displayValue: value })
+  const evaluating = [opt('Ja', { isPositive: true }), opt('Delvis'), opt('Nei'), opt('Vet ikke', { excludeFromAverages: true })]
+
+  it('a choice question with a «Positivt svar» option counts, whatever its category or none', () => {
+    for (const statKey of ['benefit', 'recommendation', 'satisfaction', 'none', null] as const) {
+      const q = choice(statKey, evaluating)
+      assert.deepEqual(
+        ['Ja', 'Delvis', 'Nei', 'Vet ikke'].map((v) => classifyAnswer(q, ans(v))),
+        ['positive', 'neutral', 'negative', null],
+        String(statKey),
+      )
+    }
+    assert.equal(classifyAnswer(choice('usage', evaluating, 'dropdown'), ans('Nei')), 'negative')
+  })
+
+  it('a choice question without a «Positivt svar» option never counts — its labels are not guessed', () => {
+    for (const statKey of ['benefit', 'recommendation', 'none', null] as const) {
+      const q = choice(statKey, [opt('Ja'), opt('Nei')])
+      assert.equal(classifyAnswer(q, ans('Ja')), null, String(statKey))
+      assert.equal(classifyAnswer(q, ans('Nei')), null, String(statKey))
+    }
+  })
+
+  it('options that are not exact answer words stay unclassified even in an evaluating question', () => {
+    const q = choice('benefit', [opt('Daglig', { isPositive: true }), opt('Ukentlig'), opt('Aldri')])
+    assert.equal(classifyAnswer(q, ans('Daglig')), 'positive')
+    assert.equal(classifyAnswer(q, ans('Ukentlig')), null)
+    assert.equal(classifyAnswer(q, ans('Aldri')), null)
+  })
+
+  it('a Ja / Nei question counts when marked «Telles i samlet vurdering» (or with a legacy evaluating category)', () => {
+    const yesNo = (statKey: QuestionConfig['statKey'], countInAssessment?: boolean) =>
+      snapshotOf([{ questionId: 'c', type: 'yesNo', label: 'Spørsmål', enabled: true, statKey, countInAssessment }]).questions[0]!
+    // Unmarked: never, whatever the category.
+    assert.equal(classifyAnswer(yesNo('recommendation'), ans('Ja')), null)
+    assert.equal(classifyAnswer(yesNo('none'), ans('Ja')), null)
+    // Marked: Ja positive, Nei negative, in any category or none.
+    for (const statKey of ['recommendation', 'satisfaction', 'none', null] as const) {
+      assert.equal(classifyAnswer(yesNo(statKey, true), ans('Ja')), 'positive', String(statKey))
+      assert.equal(classifyAnswer(yesNo(statKey, true), ans('Nei')), 'negative', String(statKey))
+    }
+    // Historical snapshots: the legacy evaluating categories still count without the mark.
+    assert.equal(classifyAnswer(yesNo('organization'), ans('Nei')), 'negative')
+    assert.equal(classifyAnswer(yesNo('continue'), ans('Ja')), 'positive')
+  })
+
+  it('the Ja / Nei mark is ignored on other question types', () => {
+    const q = snapshotOf([{ questionId: 'c', type: 'singleChoice', label: 'S', countInAssessment: true, options: [opt('Ja'), opt('Nei')] }]).questions[0]!
+    assert.equal(q.countInAssessment, undefined)
+    assert.equal(classifyAnswer(q, ans('Ja')), null)
+  })
+
+  it('ratings count in every category and without one', () => {
+    const rating = (statKey: QuestionConfig['statKey']) =>
+      snapshotOf([{ questionId: 'r', type: 'rating', label: 'Skala', enabled: true, statKey }]).questions[0]!
+    const r = { questionId: 'r', questionLabel: '', questionType: 'rating' as const, value: 4, displayValue: '4' }
+    for (const statKey of ['usage', 'usability', 'benefit', 'satisfaction', 'recommendation', 'feedback', 'none', null] as const) {
+      assert.equal(classifyAnswer(rating(statKey), r), 'positive', String(statKey))
+    }
+  })
+
+  it('the default questionnaire: same overall split as before the new categories', () => {
+    const answers = { brukssted: 'Rådhuset', modell: 'aBoks', bruksfrekvens: 'Daglig', brukervennlighet: '5', nytte: '3', organisering: 'Delvis', fortsette: 'Nei', forbedringer: 'Ja' }
+    const fresh = evaluation(answers, { snapshot: snapshotOf(defaultQuestions(), 2) })
+    const legacyQuestions = defaultQuestions().map((q) => ({
+      ...q,
+      statKey: ({ brukervennlighet: 'usability', nytte: 'usefulness', organisering: 'organization', fortsette: 'continue', bruksfrekvens: 'frequency', modell: 'model' } as Record<string, string>)[q.questionId!] ?? null,
+      options: q.options?.map(({ noProductExperience: _, ...o }) => o),
+    }))
+    const legacy = evaluation(answers, { snapshot: snapshotOf(legacyQuestions, 1) })
+    assert.deepEqual(classifyEvaluation(fresh), ['positive', 'neutral', 'neutral', 'negative'])
+    assert.deepEqual(classifyEvaluation(legacy), classifyEvaluation(fresh))
+  })
+
+  it('«Ingen produkterfaring»: no rating and no evaluating choice counts; with experience all do', () => {
+    const snap = snapshotOf(defaultQuestions(), 2)
+    const answers = { brukssted: 'Rådhuset', modell: 'aBoks', brukervennlighet: '1', organisering: 'Nei', fortsette: 'Ja' }
+    const without = evaluation({ ...answers, bruksfrekvens: 'Ikke brukt ennå' }, { snapshot: snap })
+    const withExperience = evaluation({ ...answers, bruksfrekvens: 'Daglig' }, { snapshot: snap })
+    assert.deepEqual(classifyEvaluation(without), [])
+    assert.deepEqual(classifyEvaluation(withExperience), ['negative', 'negative', 'positive'])
+    const a = computeOverallAssessment([without, withExperience])
+    assert.equal(a.total, 3)
+    assert.equal(a.evaluations, 1)
+  })
+
+  it('«Ingen produkterfaring» works on any single-answer question, in any category or none', () => {
+    const qs: QuestionConfig[] = [
+      { questionId: 'erfaring', type: 'dropdown', label: 'Har du testet?', statKey: 'none', options: [opt('Ja'), { label: 'Nei, ikke ennå', noProductExperience: true }] },
+      { questionId: 'skala', type: 'rating', label: 'Skala', statKey: 'satisfaction' },
+      { questionId: 'jn', type: 'yesNo', label: 'Anbefale?', countInAssessment: true },
+    ]
+    const snap = snapshotOf(qs, 1)
+    assert.deepEqual(classifyEvaluation(evaluation({ erfaring: 'Nei, ikke ennå', skala: '5', jn: 'Ja' }, { snapshot: snap })), [])
+    assert.deepEqual(classifyEvaluation(evaluation({ erfaring: 'Ja', skala: '5', jn: 'Nei' }, { snapshot: snap })), ['positive', 'negative'])
   })
 })
 

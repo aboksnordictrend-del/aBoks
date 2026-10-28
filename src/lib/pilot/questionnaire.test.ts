@@ -2,12 +2,23 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   assignQuestionIds,
+  dropUnusedOptions,
   questionnaireFingerprint,
   resolvePublicQuestions,
   validateQuestionnaire,
   type QuestionConfig,
 } from './questionnaire'
 import { defaultQuestions } from './defaultQuestionnaire'
+import {
+  CATEGORY_KEYS,
+  CATEGORY_OPTIONS,
+  LEGACY_STAT_KEYS,
+  QUESTION_TYPES,
+  STAT_KEY_OPTIONS,
+  categoryLabel,
+  categoryOf,
+  statKeyOptionsFor,
+} from './constants'
 import { RESERVED_PILOT_SLUGS, slugify, uniqueSlug, validatePilotSlug } from './slug'
 
 describe('slugify / uniqueSlug / validatePilotSlug', () => {
@@ -144,18 +155,96 @@ describe('validateQuestionnaire', () => {
     assert.ok(validateQuestionnaire([q], { modelCount: 0 }).some((e) => /finnes flere ganger/.test(e)))
   })
 
-  it('checks that the analysis category fits the type and is used once among enabled questions', () => {
-    const wrongType = base({ statKey: 'usability' })
-    assert.ok(validateQuestionnaire([wrongType], { modelCount: 0 }).some((e) => /passer ikke/.test(e)))
+  it('accepts each of the six categories on every question type', () => {
+    for (const statKey of CATEGORY_KEYS) {
+      for (const type of QUESTION_TYPES) {
+        const q = base({ type, statKey, options: [{ label: 'A' }] })
+        assert.deepEqual(validateQuestionnaire([q], { modelCount: 0 }), [], `${statKey} on ${type}`)
+      }
+    }
+  })
 
-    const twice = [
+  it('lets several active questions share one category', () => {
+    const shared = [
       base({ type: 'rating', statKey: 'usability' }),
       base({ questionId: 'q2', type: 'rating', statKey: 'usability' }),
+      base({ questionId: 'q3', type: 'longText', statKey: 'usability' }),
     ]
-    assert.ok(validateQuestionnaire(twice, { modelCount: 0 }).some((e) => /allerede brukt/.test(e)))
+    assert.deepEqual(validateQuestionnaire(shared, { modelCount: 0 }), [])
+  })
 
-    const oneDisabled = [twice[0]!, { ...twice[1]!, enabled: false }]
-    assert.deepEqual(validateQuestionnaire(oneDisabled, { modelCount: 0 }), [])
+  it('keeps the category optional: no value, empty and «Ingen kategori» all save', () => {
+    for (const statKey of [undefined, null, '', 'none']) {
+      assert.deepEqual(validateQuestionnaire([base({ statKey })], { modelCount: 0 }), [], String(statKey))
+    }
+  })
+
+  it('still accepts legacy categories, on any type, and rejects unknown values', () => {
+    for (const statKey of LEGACY_STAT_KEYS) {
+      assert.deepEqual(validateQuestionnaire([base({ type: 'rating', statKey })], { modelCount: 0 }), [], statKey)
+    }
+    assert.ok(
+      validateQuestionnaire([base({ statKey: 'tull' })], { modelCount: 0 }).some((e) => /ugyldig analysekategori/.test(e)),
+    )
+  })
+})
+
+describe('analysis categories', () => {
+  it('has exactly the six universal categories, in order, with Norwegian labels', () => {
+    assert.deepEqual(
+      CATEGORY_OPTIONS.map((o) => o.label),
+      [
+        'Bruk og erfaring',
+        'Brukervennlighet',
+        'Nytte og effekt',
+        'Tilfredshet',
+        'Anbefaling og videre bruk',
+        'Forbedringer og kommentarer',
+      ],
+    )
+  })
+
+  it('maps legacy categories onto the universal ones, everything else to «Andre spørsmål»', () => {
+    assert.deepEqual(
+      LEGACY_STAT_KEYS.map((k) => [k, categoryOf(k)]),
+      [
+        ['location', 'usage'],
+        ['model', 'usage'],
+        ['frequency', 'usage'],
+        ['usefulness', 'benefit'],
+        ['organization', 'benefit'],
+        ['continue', 'recommendation'],
+        ['improvements', 'feedback'],
+        ['comments', 'feedback'],
+        ['room', 'usage'],
+      ],
+    )
+    assert.equal(categoryOf('usability'), 'usability')
+    for (const v of ['none', null, undefined, '', 'tull']) assert.equal(categoryOf(v), null)
+    assert.equal(categoryLabel(null), 'Andre spørsmål')
+    assert.equal(categoryLabel('continue'), 'Anbefaling og videre bruk')
+  })
+
+  it('offers the six categories and «Ingen kategori» — a legacy value only where it is already set', () => {
+    assert.deepEqual(
+      statKeyOptionsFor(STAT_KEY_OPTIONS, null).map((o) => o.value),
+      [...CATEGORY_KEYS, 'none'],
+    )
+    assert.deepEqual(
+      statKeyOptionsFor(STAT_KEY_OPTIONS, 'organization').map((o) => o.value),
+      [...CATEGORY_KEYS, 'none', 'organization'],
+    )
+  })
+
+  it('the default questionnaire uses only the universal categories and keeps its wording and ids', () => {
+    const qs = defaultQuestions()
+    assert.ok(qs.every((q) => (CATEGORY_KEYS as readonly string[]).includes(q.statKey as string)))
+    assert.deepEqual(
+      qs.map((q) => q.questionId),
+      ['brukssted', 'modell', 'bruksfrekvens', 'brukervennlighet', 'nytte', 'organisering', 'fortsette', 'forbedringer', 'kommentarer', 'rom'],
+    )
+    assert.equal(qs[3]!.label, 'Hvor enkelt er produktet å bruke?')
+    assert.equal(qs[2]!.options!.find((o) => o.label === 'Ikke brukt ennå')!.noProductExperience, true)
   })
 })
 
@@ -189,6 +278,53 @@ describe('resolvePublicQuestions', () => {
     ])
   })
 
+  it('stores «Ingen kategori» as no category and keeps legacy categories in the snapshot', () => {
+    const pub = resolvePublicQuestions(
+      [
+        { questionId: 'a', type: 'rating', label: 'A', statKey: 'none' },
+        { questionId: 'b', type: 'rating', label: 'B', statKey: 'usefulness' },
+        { questionId: 'c', type: 'rating', label: 'C', statKey: 'benefit' },
+      ],
+      [],
+    )
+    assert.deepEqual(
+      pub.map((q) => q.statKey),
+      [null, 'usefulness', 'benefit'],
+    )
+  })
+
+  it('marks «Ingen produkterfaring» options, and the legacy «Bruksfrekvens» kept-out option', () => {
+    const options = [
+      { label: 'Daglig' },
+      { label: 'Ikke brukt', noProductExperience: true },
+      { label: 'Vet ikke', excludeFromAverages: true },
+    ]
+    const [flagged, legacy, multi] = resolvePublicQuestions(
+      [
+        { questionId: 'f1', type: 'singleChoice', label: 'Hvor ofte?', statKey: 'usage', options },
+        {
+          questionId: 'f2',
+          type: 'singleChoice',
+          label: 'Hvor ofte?',
+          statKey: 'frequency',
+          options: [{ label: 'Ikke brukt', excludeFromAverages: true }],
+        },
+        { questionId: 'f3', type: 'multipleChoice', label: 'Hvor?', options },
+      ],
+      [],
+    )
+    assert.deepEqual(
+      flagged!.options.map((o) => [o.label, o.noProductExperience === true, o.excludeFromAverages]),
+      [
+        ['Daglig', false, false],
+        ['Ikke brukt', true, true],
+        ['Vet ikke', false, true],
+      ],
+    )
+    assert.equal(legacy!.options[0]!.noProductExperience, true)
+    assert.ok(!multi!.options.some((o) => o.noProductExperience), 'single-answer questions only')
+  })
+
   it('omits a choice question that resolves to no options', () => {
     const pub = resolvePublicQuestions(
       [{ questionId: 'm', type: 'singleChoice', label: 'Modell?', optionsSource: 'projectModels', options: [] }],
@@ -213,5 +349,51 @@ describe('questionnaireFingerprint', () => {
     assert.notEqual(questionnaireFingerprint(option, [1, 2]), base)
 
     assert.notEqual(questionnaireFingerprint(qs, [1]), base)
+  })
+
+  it('changes when a Ja / Nei question is marked «Telles i samlet vurdering», not when the mark is off', () => {
+    const q: QuestionConfig = { questionId: 'jn', type: 'yesNo', label: 'Anbefale?' }
+    const off = questionnaireFingerprint([q], [])
+    assert.equal(questionnaireFingerprint([{ ...q, countInAssessment: false }], []), off)
+    assert.notEqual(questionnaireFingerprint([{ ...q, countInAssessment: true }], []), off)
+  })
+
+  it('stays the same for questionnaires saved before the option flag and «Ingen kategori» existed', () => {
+    const legacy: QuestionConfig[] = [
+      { questionId: 'a', type: 'singleChoice', label: 'A', statKey: null, options: [{ label: 'Ja', isPositive: true }] },
+    ]
+    const sameMeaning: QuestionConfig[] = [
+      { ...legacy[0]!, statKey: 'none', options: [{ label: 'Ja', isPositive: true, noProductExperience: false }] },
+    ]
+    assert.equal(questionnaireFingerprint(sameMeaning, []), questionnaireFingerprint(legacy, []))
+    const flagged: QuestionConfig[] = [{ ...legacy[0]!, options: [{ label: 'Ja', isPositive: true, noProductExperience: true }] }]
+    assert.notEqual(questionnaireFingerprint(flagged, []), questionnaireFingerprint(legacy, []))
+  })
+})
+
+describe('dropUnusedOptions', () => {
+  it('removes options left behind on rating, text and Ja / Nei questions, and keeps choice options', () => {
+    const leftovers = [{ label: 'Daglig' }, { label: 'Sjeldnere', excludeFromAverages: true }]
+    const out = dropUnusedOptions([
+      // Hitra v9 shape: a frequency question turned into a total-experience rating.
+      { questionId: 'totalvurdering', type: 'rating', label: 'Hvordan vurderer du totalopplevelsen med aBoks?', scaleMinLabel: 'Svært dårlig', scaleMaxLabel: 'Svært god', options: leftovers },
+      { questionId: 't', type: 'longText', label: 'T', options: leftovers },
+      { questionId: 'jn', type: 'yesNo', label: 'J', options: leftovers },
+      { questionId: 'c', type: 'singleChoice', label: 'C', options: leftovers },
+      { questionId: 'm', type: 'multipleChoice', label: 'M', options: leftovers },
+    ])
+    assert.deepEqual(
+      out.map((q) => q.options?.length ?? 0),
+      [0, 0, 0, 2, 2],
+    )
+    assert.equal(out[0]!.label, 'Hvordan vurderer du totalopplevelsen med aBoks?')
+    assert.equal(out[0]!.scaleMinLabel, 'Svært dårlig')
+    assert.equal(out[0]!.scaleMaxLabel, 'Svært god')
+    assert.equal(leftovers.length, 2, 'input not mutated')
+  })
+
+  it('does not change the public form — leftover options were never shown', () => {
+    const q: QuestionConfig = { questionId: 'r', type: 'rating', label: 'R', options: [{ label: 'Daglig' }] }
+    assert.deepEqual(resolvePublicQuestions([q], []), resolvePublicQuestions(dropUnusedOptions([q]), []))
   })
 })

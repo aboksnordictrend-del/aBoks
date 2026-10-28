@@ -144,7 +144,7 @@ export default function OverallAssessmentSection({ assessment }: { assessment: O
       </h2>
       <p className={styles.note} style={{ marginBottom: '0.9rem' }}>
         Samlet oversikt over positive, nøytrale og negative vurderinger, og hvordan disse utvikler seg over tid.{' '}
-        <span title="Hvert klassifiserte svar på et vurderingsspørsmål teller én gang. Vurderingsskala: 4–5 positiv, 3 nøytral, 1–2 negativ. Ja / Delvis eller Kanskje / Nei på spørsmålene om bedre organisering og om å fortsette. «Vet ikke», alternativer som holdes utenfor andelene, ubesvarte spørsmål, fritekst og beskrivende spørsmål (modell, brukssted, bruksfrekvens) teller ikke.">
+        <span title="Hvert klassifiserte svar på et vurderingsspørsmål teller én gang. Vurderingsskala: 4–5 positiv, 3 nøytral, 1–2 negativ. Valgspørsmål teller bare når et alternativ er merket «Positivt svar»: det merkede er positivt, Delvis / Kanskje nøytralt, Nei negativt. Ja / Nei-spørsmål teller når de er merket «Telles i samlet vurdering». Svar fra respondenter uten produkterfaring teller ikke. «Vet ikke», alternativer som holdes utenfor andelene, ubesvarte spørsmål, fritekst, flervalg og valgspørsmål uten «Positivt svar» (f.eks. modell, brukssted, bruksfrekvens) teller ikke. Kategorien påvirker ikke beregningen.">
           Fordelingen viser andelen positive, nøytrale og negative vurderingssvar, ikke andelen personer.
         </span>
       </p>

@@ -10,6 +10,7 @@ import {
 import { PILOT_EVALUATIONS_SLUG, PILOT_PROJECTS_SLUG } from '@/lib/pilot/constants'
 import {
   assignQuestionIds,
+  dropUnusedOptions,
   questionnaireFingerprint,
   validateQuestionnaire,
   type QuestionConfig,
@@ -102,9 +103,11 @@ export const prepareProject: CollectionBeforeValidateHook = async ({ data, origi
   }
 
   if (Array.isArray(data.questions)) {
-    data.questions = assignQuestionIds(
-      data.questions as QuestionConfig[],
-      (originalDoc?.questions as QuestionConfig[] | undefined) ?? [],
+    data.questions = dropUnusedOptions(
+      assignQuestionIds(
+        data.questions as QuestionConfig[],
+        (originalDoc?.questions as QuestionConfig[] | undefined) ?? [],
+      ),
     )
   }
   return data

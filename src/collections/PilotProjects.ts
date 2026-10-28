@@ -10,6 +10,7 @@ import {
   PILOT_STATUS_OPTIONS,
   QUESTION_TYPE_OPTIONS,
   STAT_KEY_OPTIONS,
+  statKeyOptionsFor,
 } from '@/lib/pilot/constants'
 import { defaultQuestions } from '@/lib/pilot/defaultQuestionnaire'
 import { pilotPath } from '@/lib/pilot/urls'
@@ -42,6 +43,8 @@ const isChoice = (_: unknown, sibling: Sibling) =>
   sibling?.type === 'singleChoice' || sibling?.type === 'multipleChoice' || sibling?.type === 'dropdown'
 
 const isRating = (_: unknown, sibling: Sibling) => sibling?.type === 'rating'
+
+const isSingleAnswerChoice = (sibling: Sibling) => sibling?.type === 'singleChoice' || sibling?.type === 'dropdown'
 
 const questionFields: Field[] = [
   {
@@ -88,12 +91,27 @@ const questionFields: Field[] = [
         type: 'select',
         label: 'Analysekategori',
         options: STAT_KEY_OPTIONS,
+        // Legacy categories stay valid where they are already set, but are not offered anew.
+        filterOptions: ({ options, siblingData }) =>
+          statKeyOptionsFor(options as { value: string }[], (siblingData as Sibling)?.statKey) as typeof options,
         admin: {
           width: '34%',
-          description: 'Valgfritt. Knytter spørsmålet til et nøkkeltall i Pilotanalyse.',
+          description:
+            'Valgfritt. Grupperer spørsmålet i Pilotanalyse — påvirker ikke hvordan svarene beregnes. Flere spørsmål kan ha samme kategori.',
         },
       },
     ],
+  },
+  {
+    name: 'countInAssessment',
+    type: 'checkbox',
+    label: 'Telles i samlet vurdering',
+    defaultValue: false,
+    admin: {
+      condition: (_, sibling) => sibling?.type === 'yesNo',
+      description:
+        'Ja telles som positivt og Nei som negativt i «Samlet vurdering og utvikling». Uten avkrysning teller spørsmålet bare i sin egen statistikk.',
+    },
   },
   {
     name: 'placeholder',
@@ -180,11 +198,27 @@ const questionFields: Field[] = [
             defaultValue: false,
             admin: {
               width: '30%',
-              description:
-                'F.eks. «Vet ikke». På spørsmålet om bruksfrekvens («Ikke brukt ennå») holdes også svarets produktvurderinger utenfor.',
+              description: 'F.eks. «Vet ikke».',
             },
           },
         ],
+      },
+      {
+        name: 'noProductExperience',
+        type: 'checkbox',
+        label: 'Ingen produkterfaring',
+        defaultValue: false,
+        admin: {
+          // Single-answer questions only. The option row's own siblings do not include the question
+          // type, so it is read from the question this row belongs to (path questions.N.options.M.…).
+          condition: (data, _, { path }) => {
+            const index = path[0] === 'questions' ? Number(path[1]) : NaN
+            const questions = (data as { questions?: Sibling[] } | undefined)?.questions
+            return isSingleAnswerChoice(Array.isArray(questions) ? questions[index] : undefined)
+          },
+          description:
+            'F.eks. «Ikke brukt ennå». Evalueringer med dette svaret lagres og vises, men vurderingene deres (skala 1–5 og vurderende valgspørsmål) holdes utenfor gjennomsnitt, andeler og samlet vurdering. Holdes også utenfor andelene i dette spørsmålet.',
+        },
       },
     ],
   },

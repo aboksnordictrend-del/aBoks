@@ -10,14 +10,8 @@ import type { Endpoint, PayloadRequest, Where } from 'payload'
 import type { PilotEvaluation, PilotProject } from '@/payload-types'
 import { PILOT_EVALUATIONS_SLUG, PILOT_PROJECTS_SLUG, isQuestionType } from '../lib/pilot/constants'
 import { osloDateKey, resolvePeriod } from '../lib/analytics/period'
-import {
-  compareModels,
-  compareProjects,
-  computePilotStats,
-  modelKey,
-  modelOptions,
-  type EvaluationRecord,
-} from '../lib/pilot/stats'
+import { computePilotStats, modelKey, modelOptions, type EvaluationRecord } from '../lib/pilot/stats'
+import { compareModels, compareProjects } from '../lib/pilot/comparison'
 import { computeOverallAssessment } from '../lib/pilot/assessment'
 import { evaluationsCsv, type CsvProjectInfo } from '../lib/pilot/csv'
 import type { AnswerValue, StoredAnswer } from '../lib/pilot/answers'

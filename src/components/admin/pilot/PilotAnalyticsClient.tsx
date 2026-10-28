@@ -5,8 +5,17 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import styles from './pilot.module.css'
 import OverallAssessmentSection from './OverallAssessment'
 import type { OverallAssessment } from '@/lib/pilot/assessment'
-import type { ComparisonRow, Distribution, PilotStats, RatingSummary, WrittenAnswer } from '@/lib/pilot/stats'
-import { PILOT_STATUS_OPTIONS, organizationTypeLabel, statKeyLabel, type StatKey } from '@/lib/pilot/constants'
+import type { Comparison } from '@/lib/pilot/comparison'
+import type {
+  Distribution,
+  PilotStats,
+  QuestionGroup,
+  QuestionSummary,
+  RatingSummary,
+  RatingTrendPoint,
+  WrittenAnswer,
+} from '@/lib/pilot/stats'
+import { PILOT_STATUS_OPTIONS, QUESTION_TYPE_OPTIONS, organizationTypeLabel } from '@/lib/pilot/constants'
 
 const API = '/api/pilot-analytics'
 const BAR = '#3f8a4f'
@@ -28,13 +37,15 @@ interface PilotAnalyticsResponse {
   modelOptions: { key: string; label: string }[]
   stats: PilotStats
   assessment: OverallAssessment
-  comparison: { projects: ComparisonRow[]; models: ComparisonRow[] }
+  comparison: { projects: Comparison; models: Comparison }
 }
 
 const nb = new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1, minimumFractionDigits: 1 })
 const int = new Intl.NumberFormat('nb-NO')
 const fmtAvg = (v: number | null) => (v == null ? '–' : nb.format(v))
 const fmtPct = (v: number | null) => (v == null ? '–' : `${Math.round(v * 100)} %`)
+const fmtWholePct = (v: number | null | undefined) => (v == null ? '–' : `${v} %`)
+const typeLabel = (t: string) => QUESTION_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t
 const fmtDate = (iso: string | null) =>
   iso ? new Intl.DateTimeFormat('nb-NO', { timeZone: 'Europe/Oslo', dateStyle: 'medium' }).format(new Date(iso)) : '–'
 const fmtDateTime = (iso: string) =>
@@ -138,7 +149,8 @@ function TimelineChart({ points }: { points: { date: string; count: number }[] }
   )
 }
 
-function ComparisonTable({ rows, first }: { rows: ComparisonRow[]; first: string }) {
+function ComparisonTable({ comparison, first }: { comparison: Comparison; first: string }) {
+  const { columns, rows } = comparison
   if (rows.length === 0) return <p className={styles.note}>Ingen data.</p>
   return (
     <div className={styles.tableWrap}>
@@ -147,10 +159,14 @@ function ComparisonTable({ rows, first }: { rows: ComparisonRow[]; first: string
           <tr>
             <th>{first}</th>
             <th className={styles.num}>Svar</th>
-            <th className={styles.num}>Brukervennlighet</th>
-            <th className={styles.num}>Nytteverdi</th>
-            <th className={styles.num}>Bedre organisering</th>
-            <th className={styles.num}>Vil fortsette</th>
+            <th className={styles.num}>Positive</th>
+            <th className={styles.num}>Nøytrale</th>
+            <th className={styles.num}>Negative</th>
+            {columns.map((c) => (
+              <th key={c.questionId} className={styles.num} title={`Spørsmåls-ID ${c.questionId}`}>
+                {c.label}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -158,10 +174,14 @@ function ComparisonTable({ rows, first }: { rows: ComparisonRow[]; first: string
             <tr key={r.key}>
               <td>{r.label}</td>
               <td className={styles.num}>{int.format(r.responses)}</td>
-              <td className={styles.num}>{fmtAvg(r.usabilityAverage)}</td>
-              <td className={styles.num}>{fmtAvg(r.usefulnessAverage)}</td>
-              <td className={styles.num}>{fmtPct(r.organizationPositiveShare)}</td>
-              <td className={styles.num}>{fmtPct(r.continuePositiveShare)}</td>
+              <td className={styles.num}>{fmtWholePct(r.percents?.positive)}</td>
+              <td className={styles.num}>{fmtWholePct(r.percents?.neutral)}</td>
+              <td className={styles.num}>{fmtWholePct(r.percents?.negative)}</td>
+              {r.ratingAverages.map((avg, i) => (
+                <td key={columns[i]!.questionId} className={styles.num}>
+                  {fmtAvg(avg)}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -170,71 +190,100 @@ function ComparisonTable({ rows, first }: { rows: ComparisonRow[]; first: string
   )
 }
 
-type WrittenFilter = 'feedback' | 'all' | StatKey | 'other'
-// «Tilbakemeldinger» first: the location answers are short place names and would otherwise
-// bury the actual feedback.
-const WRITTEN_FILTERS: { key: WrittenFilter; label: string }[] = [
-  { key: 'feedback', label: 'Tilbakemeldinger' },
-  { key: 'improvements', label: 'Forbedringer' },
-  { key: 'comments', label: 'Kommentarer' },
-  { key: 'location', label: 'Brukssted' },
-  { key: 'room', label: 'Rom / avdeling' },
-  { key: 'other', label: 'Øvrige' },
-  { key: 'all', label: 'Alle' },
-]
-const FEEDBACK_CATEGORIES: (StatKey | null)[] = ['improvements', 'comments', null]
-
-function WrittenFeedback({ items, projectName }: { items: WrittenAnswer[]; projectName: (id: number | null) => string }) {
-  const [filter, setFilter] = useState<WrittenFilter>('feedback')
-  const [limit, setLimit] = useState(30)
-  const shown = items.filter((i) =>
-    filter === 'all'
-      ? true
-      : filter === 'feedback'
-        ? FEEDBACK_CATEGORIES.includes(i.category)
-        : filter === 'other'
-          ? i.category == null
-          : i.category === filter,
-  )
+function WrittenList({ items, projectName }: { items: WrittenAnswer[]; projectName: (id: number | null) => string }) {
+  const [limit, setLimit] = useState(5)
+  if (items.length === 0) return <p className={styles.note}>Ingen skriftlige svar.</p>
   return (
     <>
-      <div className={styles.segmented} role="group" aria-label="Filtrer skriftlige svar">
-        {WRITTEN_FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            className={`${styles.segItem} ${filter === f.key ? styles.segItemActive : ''}`}
-            aria-pressed={filter === f.key}
-            onClick={() => {
-              setFilter(f.key)
-              setLimit(30)
-            }}
-          >
-            {f.label}
-          </button>
+      <ul className={styles.feedback}>
+        {items.slice(0, limit).map((i) => (
+          <li key={`${i.evaluationId}-${i.questionId}`} className={styles.feedbackItem}>
+            <p className={styles.feedbackText}>{i.text}</p>
+            <p className={styles.feedbackMeta}>
+              {projectName(i.projectId)}
+              {i.modelLabel ? ` · ${i.modelLabel}` : ''} · {fmtDateTime(i.submittedAt)}
+            </p>
+          </li>
         ))}
-      </div>
-      {shown.length === 0 ? (
-        <p className={styles.note}>Ingen skriftlige svar.</p>
-      ) : (
-        <ul className={styles.feedback}>
-          {shown.slice(0, limit).map((i) => (
-            <li key={`${i.evaluationId}-${i.questionId}`} className={styles.feedbackItem}>
-              <p className={styles.feedbackText}>{i.text}</p>
-              <p className={styles.feedbackMeta}>
-                {i.questionLabel}
-                {i.category ? ` (${statKeyLabel(i.category)})` : ''} · {projectName(i.projectId)}
-                {i.modelLabel ? ` · ${i.modelLabel}` : ''} · {fmtDateTime(i.submittedAt)}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-      {shown.length > limit && (
-        <button type="button" className={styles.btn} style={{ marginTop: '0.75rem' }} onClick={() => setLimit((l) => l + 50)}>
-          Vis flere ({shown.length - limit} igjen)
+      </ul>
+      {items.length > limit && (
+        <button type="button" className={styles.btn} style={{ marginTop: '0.75rem' }} onClick={() => setLimit((l) => l + 20)}>
+          Vis flere ({items.length - limit} igjen)
         </button>
       )}
+    </>
+  )
+}
+
+function RatingTrend({ points }: { points: RatingTrendPoint[] }) {
+  if (points.length < 2) return null
+  return (
+    <p className={styles.note} style={{ marginTop: '0.4rem' }}>
+      Utvikling per måned:{' '}
+      {points.map((p, i) => (
+        <span key={p.key}>
+          {i > 0 && ' · '}
+          {p.label} {p.average == null ? '–' : `${fmtAvg(p.average)} (${int.format(p.count)})`}
+        </span>
+      ))}
+    </p>
+  )
+}
+
+function QuestionCard({ q, projectName }: { q: QuestionSummary; projectName: (id: number | null) => string }) {
+  const meta = [
+    typeLabel(q.type),
+    `${int.format(q.answered)} besvart`,
+    q.projects > 1 ? `${int.format(q.projects)} prosjekter` : null,
+  ].filter(Boolean)
+  return (
+    <section className={styles.card}>
+      <h3 className={styles.cardTitle}>{q.label}</h3>
+      <p className={styles.note} style={{ marginBottom: '0.6rem' }}>
+        {meta.join(' · ')}
+      </p>
+      {q.rating && (
+        <>
+          <p className={styles.note} style={{ marginBottom: '0.4rem' }}>
+            Snitt <strong>{fmtAvg(q.rating.average)}</strong> av 5 · {int.format(q.rating.count)} vurderinger
+          </p>
+          <RatingChart rating={q.rating} />
+          <RatingTrend points={q.ratingTrend ?? []} />
+        </>
+      )}
+      {q.distribution && (
+        <>
+          <DistributionBars dist={q.distribution} />
+          {q.type === 'multipleChoice' && q.distribution.answered > 0 && (
+            <p className={styles.note}>Flere valg mulig — andelene kan til sammen bli mer enn 100 %.</p>
+          )}
+        </>
+      )}
+      {q.written && <WrittenList items={q.written} projectName={projectName} />}
+      {q.withoutExperience > 0 && (
+        <p className={styles.note} style={{ marginTop: '0.4rem' }}>
+          {int.format(q.withoutExperience)} svar fra respondenter uten produkterfaring holdes utenfor{' '}
+          {q.rating ? 'snittet' : 'andelene'}.
+        </p>
+      )}
+    </section>
+  )
+}
+
+function QuestionGroups({ groups, projectName }: { groups: QuestionGroup[]; projectName: (id: number | null) => string }) {
+  if (groups.length === 0) return <p className={styles.note}>Ingen spørsmål med svar i utvalget.</p>
+  return (
+    <>
+      {groups.map((g) => (
+        <div key={g.category ?? 'none'} style={{ marginTop: '1.25rem' }}>
+          <h2 className={styles.cardTitle}>{g.label}</h2>
+          <div className={styles.grid}>
+            {g.questions.map((q) => (
+              <QuestionCard key={q.key} q={q} projectName={projectName} />
+            ))}
+          </div>
+        </div>
+      ))}
     </>
   )
 }
@@ -396,30 +445,22 @@ export default function PilotAnalyticsClient({ initialProject }: { initialProjec
           <div className={styles.kpis}>
             <Kpi label="Antall svar" value={int.format(s.totalResponses)} sub="Innsendte evalueringer" />
             <Kpi
-              label="Brukervennlighet (snitt 1–5)"
-              value={fmtAvg(s.usability.average)}
-              sub={`${int.format(s.usability.count)} vurderinger`}
+              label="Positive vurderinger"
+              value={fmtWholePct(data.assessment.percents?.positive)}
+              sub={`av ${int.format(data.assessment.total)} klassifiserte svar`}
             />
             <Kpi
-              label="Nytteverdi (snitt 1–5)"
-              value={fmtAvg(s.usefulness.average)}
-              sub={`${int.format(s.usefulness.count)} vurderinger`}
+              label="Snitt alle vurderinger (1–5)"
+              value={fmtAvg(s.ratings.average)}
+              sub={`${int.format(s.ratings.count)} vurderinger på ${int.format(s.ratings.questions)} spørsmål`}
             />
-            <Kpi
-              label="Ønsker å fortsette"
-              value={fmtPct(s.continueUsing.positiveShare)}
-              sub={`av ${int.format(s.continueUsing.base)} som svarte`}
-            />
-            <Kpi
-              label="Bedre organisering"
-              value={fmtPct(s.organization.positiveShare)}
-              sub={`«Ja» av ${int.format(s.organization.base)} som svarte`}
-            />
+            <Kpi label="Skriftlige svar" value={int.format(s.writtenCount)} sub="Fritekstsvar med innhold" />
           </div>
           {s.withoutProductExperience > 0 && (
             <p className={styles.note}>
-              {int.format(s.withoutProductExperience)} svar oppgir at produktet ikke er brukt ennå. Deres vurderinger og svar om
-              organisering holdes utenfor gjennomsnitt og andeler. Ubesvarte spørsmål teller aldri med.
+              {int.format(s.withoutProductExperience)} svar oppgir at produktet ikke er brukt ennå. Svarene deres lagres og
+              vises, men vurderingene (skala 1–5 og vurderende valgspørsmål) holdes utenfor gjennomsnitt, andeler og samlet
+              vurdering. Ubesvarte spørsmål teller aldri med.
             </p>
           )}
 
@@ -434,85 +475,34 @@ export default function PilotAnalyticsClient({ initialProject }: { initialProjec
               <h2 className={styles.cardTitle}>Modellbruk</h2>
               <DistributionBars dist={s.models} />
             </section>
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Bruksfrekvens</h2>
-              <DistributionBars dist={s.frequency} />
-            </section>
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Brukervennlighet</h2>
-              <RatingChart rating={s.usability} />
-              <p className={styles.note}>1 = svært vanskelig · 5 = svært enkelt</p>
-            </section>
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Nytteverdi</h2>
-              <RatingChart rating={s.usefulness} />
-              <p className={styles.note}>1 = lite nyttig · 5 = svært nyttig</p>
-            </section>
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Har aBoks bidratt til bedre organisering?</h2>
-              <DistributionBars dist={s.organization} />
-            </section>
-            <section className={styles.card}>
-              <h2 className={styles.cardTitle}>Ønsker å fortsette å bruke aBoks</h2>
-              <DistributionBars dist={s.continueUsing} />
-            </section>
           </div>
 
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Skriftlige tilbakemeldinger</h2>
-            <WrittenFeedback items={s.written} projectName={projectName} />
-          </section>
-
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Alle spørsmål</h2>
-            <p className={styles.note} style={{ marginBottom: '0.75rem' }}>
-              Per spørsmåls-ID, med teksten fra siste versjon. Endrede spørsmål beholder sin historikk.
+            <h2 className={styles.cardTitle}>Spørsmål etter kategori</h2>
+            <p className={styles.note}>
+              Hvert spørsmål har sin egen statistikk ut fra spørsmålstypen. Kategoriene grupperer bare — svar på ulike
+              spørsmål slås aldri sammen. Spørsmål gjenkjennes på spørsmåls-ID og type, med teksten og kategorien fra siste
+              versjon.
             </p>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Spørsmål</th>
-                    <th className={styles.num}>Besvart</th>
-                    <th>Resultat</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {s.questions.map((q) => (
-                    <tr key={q.questionId}>
-                      <td>{q.label}</td>
-                      <td className={styles.num}>{int.format(q.answered)}</td>
-                      <td>
-                        {q.rating
-                          ? `Snitt ${fmtAvg(q.rating.average)} (${int.format(q.rating.count)} vurderinger)`
-                          : q.distribution
-                            ? q.distribution.entries
-                                .filter((e) => e.count > 0)
-                                .map((e) => `${e.label}: ${e.count}`)
-                                .join(' · ') || '–'
-                            : 'Fritekst'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <QuestionGroups groups={s.groups} projectName={projectName} />
           </section>
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Sammenligning mellom pilotprosjekter</h2>
             <p className={styles.note} style={{ marginBottom: '0.75rem' }}>
-              Alle prosjekter, med valgt periode og modell. Snitt på skala 1–5; andeler av dem som svarte.
+              Alle prosjekter, med valgt periode og modell. Positive / nøytrale / negative som i «Samlet vurdering». Snitt
+              (1–5) vises bare for vurderingsspørsmål med samme spørsmåls-ID i minst to prosjekter.
             </p>
-            <ComparisonTable rows={data.comparison.projects} first="Prosjekt" />
+            <ComparisonTable comparison={data.comparison.projects} first="Prosjekt" />
           </section>
 
           <section className={styles.card}>
             <h2 className={styles.cardTitle}>Sammenligning mellom modeller</h2>
             <p className={styles.note} style={{ marginBottom: '0.75rem' }}>
-              {selected ? 'Valgt prosjekt' : 'Alle prosjekter'}, med valgt periode.
+              {selected ? 'Valgt prosjekt' : 'Alle prosjekter'}, med valgt periode. Snitt (1–5) for vurderingsspørsmål som er
+              besvart for minst to modeller.
             </p>
-            <ComparisonTable rows={data.comparison.models} first="Modell" />
+            <ComparisonTable comparison={data.comparison.models} first="Modell" />
           </section>
         </>
       )}
