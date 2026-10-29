@@ -13,6 +13,8 @@ import {
   BATTERIBOKS_TITLE,
   buildFaqJsonLd,
   buildWebPageJsonLd,
+  comparisonNote,
+  comparisonRow,
 } from '@/lib/batteriboks'
 import { getBatteriboksModels } from '@/lib/batteriboksModels'
 
@@ -171,6 +173,8 @@ const RELATED_ARTICLES = [
 
 export default async function BatteriboksPage() {
   const models = await getBatteriboksModels()
+  const comparisonRows = models.map(comparisonRow)
+  const comparisonText = comparisonNote(comparisonRows)
   const stepFill = STEPS.find((s) => s.number === 2)
   const stepUse = STEPS.find((s) => s.number === 3)
   const stepRecycle = STEPS.find((s) => s.number === 4)
@@ -458,6 +462,63 @@ export default async function BatteriboksPage() {
               })}
             </ul>
           )}
+
+          {/* Comparison: one row per published model in the grid, counts from each product's CMS capacity. */}
+          {comparisonRows.length > 0 && (
+            <div style={{ maxWidth: '760px', margin: 'clamp(48px,6vw,72px) auto 0' }}>
+              <h3
+                id="sammenlign-heading"
+                style={{ fontFamily: SERIF, fontWeight: 500, fontSize: 'clamp(26px,2.6vw,34px)', letterSpacing: '-0.015em', lineHeight: 1.15, color: INK, textAlign: 'center', margin: '0 0 20px' }}
+              >
+                Sammenlign aBoks-modellene
+              </h3>
+              {/* Scrolls on its own if a narrow screen cannot fit it, so the page never scrolls sideways. */}
+              <div
+                role="region"
+                aria-labelledby="sammenlign-heading"
+                tabIndex={0}
+                className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#39402c]"
+                style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: '18px' }}
+              >
+                <table className="w-full min-w-[330px] text-[14px] sm:text-[15px]" style={{ borderCollapse: 'collapse', fontFamily: SANS, color: BODY }}>
+                  <thead>
+                    <tr style={{ background: CREAM_DEEP }}>
+                      {['Modell', 'Nye AA', 'Nye AAA', 'Brukte batterier'].map((label, i) => (
+                        <th
+                          key={label}
+                          scope="col"
+                          className="px-3 py-3 sm:px-5 sm:py-3.5"
+                          style={{ fontWeight: 700, fontSize: '13px', color: INK, textAlign: i === 0 ? 'left' : 'center', verticalAlign: 'bottom' }}
+                        >
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparisonRows.map((row) => (
+                      <tr key={row.slug} style={{ borderTop: `1px solid ${BORDER}` }}>
+                        <th scope="row" className="px-3 py-3 sm:px-5 sm:py-3.5" style={{ fontWeight: 600, color: INK, textAlign: 'left', whiteSpace: 'nowrap' }}>
+                          {row.name}
+                        </th>
+                        {[row.aa, row.aaa, row.used].map((cell, i) => (
+                          <td key={i} className="px-3 py-3 sm:px-5 sm:py-3.5" style={{ textAlign: 'center', lineHeight: 1.4 }}>
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {comparisonText && (
+                <p style={{ fontFamily: SANS, fontSize: '14px', lineHeight: 1.6, color: MUTED, margin: '14px 0 0' }}>
+                  {comparisonText}
+                </p>
+              )}
+            </div>
+          )}
+
           <p style={{ ...body, textAlign: 'center', margin: 'clamp(28px,3vw,40px) auto 0', maxWidth: '640px' }}>
             Skal du ha batterioppbevaring på jobben? Se{' '}
             <Link href="/bedrifter" style={textLink}>løsninger for bedrifter</Link>, med pakker for

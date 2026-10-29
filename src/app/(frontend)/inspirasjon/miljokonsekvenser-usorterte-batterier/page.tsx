@@ -445,8 +445,8 @@ export default function ArticlePage() {
             <Callout label="Der aBoks kommer inn i bildet">
               Det som ofte avgjør om et batteri faktisk blir levert til gjenvinning, er
               ikke kunnskapen om at man bør gjøre det – det er hvor enkelt det er i
-              praksis. <strong>aBoks</strong> er designet nettopp for dette: en
-              batteriboks med tre adskilte rom, hvor ett rom er dedikert til brukte
+              praksis. <strong>aBoks</strong> er designet nettopp for dette: en{' '}
+              <Link href="/batteriboks" style={extLink}>batteriboks med tre adskilte rom</Link>, hvor ett rom er dedikert til brukte
               batterier som skal videre til gjenvinning. I stedet for at tomme batterier
               blir liggende løst i skuffer, sekker eller garasjehyller, får de en fast
               plass fra dag én – slik at neste tur til butikken eller gjenbruksstasjonen

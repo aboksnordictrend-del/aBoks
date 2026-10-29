@@ -439,7 +439,7 @@ export default function ForlengLevetidenPage() {
 
         <p style={pStyle}>
           Akkurat denne tryggheten er en av grunnene til at en god{' '}
-          <Link href="/produkter" style={linkStyle}>
+          <Link href="/batteriboks" style={linkStyle}>
             batteriboks med eget rom for brukte celler
           </Link>{' '}
           gir mer enn bare orden. Når de tomme batteriene har sin egen, faste plass – adskilt og

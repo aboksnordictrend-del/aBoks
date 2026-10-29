@@ -491,8 +491,8 @@ export default function ArticlePage() {
               </FaqItem>
               <FaqItem question="Hvorfor er en batteriboks en god gave?">
                 Fordi nesten alle hjem har løse batterier liggende, men svært få
-                prioriterer å kjøpe en ordentlig oppbevaringsløsning selv. Det gjør en
-                batteriboks til en gave som er nyttig fra første dag, samtidig som den
+                prioriterer å kjøpe en ordentlig oppbevaringsløsning selv. Det gjør en{' '}
+                <Link href="/batteriboks" style={extLink}>batteriboks</Link> til en gave som er nyttig fra første dag, samtidig som den
                 bidrar til tryggere oppbevaring og enklere gjenvinning.
               </FaqItem>
               <FaqItem question="Hva bør jeg unngå når jeg gir gaver til noen jeg ikke kjenner så godt?">

@@ -18,43 +18,61 @@ export const BATTERIBOKS_TITLE = 'Batteriboks for AA og AAA – Smart oppbevarin
 export const BATTERIBOKS_DESCRIPTION =
   'Oppdag aBoks – en smart batteriboks med egne rom for AA, AAA og brukte batterier. Hold orden på batteriene med praktisk norsk design.'
 
-/** The page's own copy for each model, in the order the grid shows them. */
-export const BATTERIBOKS_MODELS: { slug: string; name: string; copy: string; tag: string }[] = [
+/**
+ * The page's own copy for each model, in the order the grid and the comparison table show
+ * them. The battery counts themselves are not written here: the table reads them from each
+ * product's `capacity` in the CMS. `aaaInAaRoom` marks a model with no AAA room of its own
+ * whose room for new AA also takes AAA (stated on the product's own FAQ).
+ */
+export const BATTERIBOKS_MODELS: {
+  slug: string
+  name: string
+  copy: string
+  tag: string
+  aaaInAaRoom?: boolean
+}[] = [
   {
     slug: 'aboks',
     name: 'aBoks',
     tag: 'AA · AAA · brukte',
-    copy: 'Den komplette løsningen for hjemmet – med oppbevaring for nye AA- og AAA-batterier og et eget rom for brukte batterier.',
+    copy: 'Plass til 20 AA- og 36 AAA-batterier, med et eget rom for brukte. Nye batterier ligger sortert og klare når du trenger dem.',
   },
   {
     slug: 'aboks-mini',
     name: 'aBoks Mini',
-    tag: 'AA',
-    copy: 'En kompakt løsning for deg som hovedsakelig bruker AA-batterier.',
+    tag: 'AA · brukte',
+    copy: 'Plass til opptil 20 AA-batterier og et eget rom for brukte. For deg som bruker mest AA og ikke trenger plass til AAA.',
   },
   {
     slug: 'aboks-nano',
     name: 'aBoks Nano',
-    tag: 'AAA',
-    copy: 'En liten og praktisk modell for AAA-batterier.',
+    tag: 'AAA · brukte',
+    copy: 'Plass til opptil 36 AAA-batterier og et eget rom for brukte. For deg som bruker mest AAA.',
   },
   {
     slug: 'aboks-vegg',
     name: 'aBoks Vegg',
-    tag: 'Veggmontert',
-    copy: 'En veggmontert løsning som hjelper deg med å holde batteriene organisert uten å bruke plass på bord eller hyller.',
+    tag: 'AA · AAA · vegg',
+    copy: 'Plass til 20 AA- og 36 AAA-batterier, pluss et eget rom for brukte. Kan monteres på veggen eller stå på en hylle.',
   },
   {
     slug: 'aboks-office',
     name: 'aBoks Office',
     tag: 'Kontor',
-    copy: 'En multifunksjonell løsning for kontor og hjemmekontor, med batterioppbevaring, plass til kontorutstyr og integrert telefonstøtte.',
+    copy: 'Et rom for nye AA-batterier, der du også kan legge AAA, og et eget rom for brukte. I tillegg har Office plass til småting du vil ha lett tilgjengelig på skrivebordet.',
+    aaaInAaRoom: true,
+  },
+  {
+    slug: 'aboks-spesial',
+    name: 'aBoks Spesial',
+    tag: 'Kun brukte',
+    copy: 'En liten boks kun for brukte batterier. Kan stå på en hylle eller festes på veggen, uten å ta mye plass.',
   },
   {
     slug: 'aboks-xl',
     name: 'aBoks XL',
     tag: 'Arbeidsplass',
-    copy: 'En større veggmontert løsning for innsamling av brukte batterier, utviklet med tanke på arbeidsplasser og fellesområder.',
+    copy: 'En veggmontert boks kun for brukte batterier. Beregnet for fellesområder, kontorer og andre steder der flere bruker samme innsamlingspunkt.',
   },
 ]
 
@@ -69,13 +87,25 @@ export const BATTERIBOKS_FAQS: { id: string; question: string; answer: string }[
     id: 'aa-aaa',
     question: 'Kan jeg oppbevare både AA- og AAA-batterier i aBoks?',
     answer:
-      'Ja. Standardmodellen aBoks har egne rom for nye AA- og AAA-batterier og et separat rom for brukte batterier.',
+      'Ja. Standardmodellen har separate rom for 20 nye AA- og 36 nye AAA-batterier, samt et eget rom for brukte. aBoks Vegg har samme inndeling. I aBoks Office kan AAA legges i rommet for nye AA-batterier.',
+  },
+  {
+    id: 'bare-aa-aaa',
+    question: 'Hvilken batteriboks passer hvis jeg bare bruker AA eller AAA?',
+    answer:
+      'aBoks Mini har plass til opptil 20 nye AA-batterier, mens aBoks Nano har plass til opptil 36 nye AAA-batterier. Begge har et eget rom for brukte batterier.',
   },
   {
     id: 'nye-brukte',
     question: 'Kan nye og brukte batterier oppbevares sammen?',
     answer:
       'Nye og brukte batterier bør holdes adskilt. aBoks har separate rom som gjør dette enkelt.',
+  },
+  {
+    id: 'kun-brukte',
+    question: 'Finnes det en boks bare for brukte batterier?',
+    answer:
+      'Ja. aBoks Spesial er en liten boks for brukte batterier som kan stå på en hylle eller festes på veggen. aBoks XL er en større, veggmontert modell for fellesområder og arbeidsplasser.',
   },
   {
     id: 'litium',
@@ -136,6 +166,57 @@ export interface BatteriboksModel {
   price: number
   sale: SaleInfo
   soldOut: boolean
+  /** The product's own capacity numbers from the CMS; 0 means the model has no such room. */
+  capacity: { aa: number; aaa: number; usedCompartments: number }
+  aaaInAaRoom: boolean
+}
+
+/** One row of the "Sammenlign aBoks-modellene" table, as the cells print it. */
+export interface ComparisonRow {
+  slug: string
+  name: string
+  aa: string
+  aaa: string
+  used: string
+}
+
+export const AAA_IN_AA_ROOM_LABEL = 'Kan legges sammen med AA'
+export const USED_ONLY_LABEL = 'Kun brukte'
+
+/** A model with a used room and no room for new batteries is a used-only box. */
+export function comparisonRow(
+  model: Pick<BatteriboksModel, 'slug' | 'name' | 'capacity' | 'aaaInAaRoom'>,
+): ComparisonRow {
+  const { aa, aaa, usedCompartments } = model.capacity
+  let used = '–'
+  if (usedCompartments > 0) used = aa === 0 && aaa === 0 ? USED_ONLY_LABEL : 'Eget rom'
+  return {
+    slug: model.slug,
+    name: model.name,
+    aa: aa > 0 ? String(aa) : '–',
+    aaa: aaa > 0 ? String(aaa) : model.aaaInAaRoom && aa > 0 ? AAA_IN_AA_ROOM_LABEL : '–',
+    used,
+  }
+}
+
+/**
+ * The note under the table, written only about the models the table actually shows. With
+ * Office, Spesial and XL all published it reads exactly as the approved copy.
+ */
+export function comparisonNote(rows: readonly ComparisonRow[]): string {
+  const sentences = rows
+    .filter((r) => r.aaa === AAA_IN_AA_ROOM_LABEL)
+    .map((r) => `I ${r.name} kan du legge AAA-batterier i rommet for nye AA-batterier, men modellen har ikke et eget AAA-rom.`)
+  // "aBoks Spesial og XL": the brand is written once, on the first name.
+  const usedOnly = rows
+    .filter((r) => r.used === USED_ONLY_LABEL)
+    .map((r, i) => (i === 0 ? r.name : r.name.replace(/^aBoks /, '')))
+  if (usedOnly.length > 0) {
+    const names =
+      usedOnly.length === 1 ? usedOnly[0] : `${usedOnly.slice(0, -1).join(', ')} og ${usedOnly[usedOnly.length - 1]}`
+    sentences.push(`${names} er beregnet kun for brukte batterier.`)
+  }
+  return sentences.join(' ')
 }
 
 /**

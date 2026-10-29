@@ -169,6 +169,18 @@ const TRUST_ABOKS_ONLY = [
 const TRUST = [...TRUST_UNIVERSAL, ...TRUST_ABOKS_ONLY]
 
 /**
+ * The home models whose page links to the /batteriboks comparison, keyed by slug. The
+ * standard model keeps its original wording; the others use a different anchor so the
+ * same link text is not repeated across the range.
+ */
+const COMPARISON_LINK_TEXT: Record<string, { lead: string; anchor: string }> = {
+  aboks: { lead: 'Les mer om ', anchor: 'batteriboks for nye og brukte batterier' },
+  'aboks-mini': { lead: '', anchor: 'Sammenlign aBoks-modellene' },
+  'aboks-nano': { lead: '', anchor: 'Sammenlign aBoks-modellene' },
+  'aboks-vegg': { lead: '', anchor: 'Sammenlign aBoks-modellene' },
+}
+
+/**
  * The heading above the feature cards. The cards themselves are CMS content and are never
  * touched; only the section's own framing changes, because "Hvorfor aBoks" cannot introduce
  * a product that is not an aBoks.
@@ -811,12 +823,12 @@ export default function ProductClient({ product, variants, initialSku, breadcrum
                 ))}
               </div>
 
-              {/* The standard model links to the /batteriboks landing page, which compares the range. */}
-              {product.slug === 'aboks' && (
+              {/* The home models link to the /batteriboks landing page, which compares the range. */}
+              {COMPARISON_LINK_TEXT[product.slug] && (
                 <p style={{ fontFamily: 'var(--font-manrope)', fontSize: '15px', lineHeight: 1.6, color: '#3a3f33', margin: '-10px 0 28px' }}>
-                  Usikker på hvilken modell du trenger? Les mer om{' '}
+                  Usikker på hvilken modell du trenger? {COMPARISON_LINK_TEXT[product.slug].lead}
                   <Link href="/batteriboks" style={{ color: '#39402c', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: '3px' }}>
-                    batteriboks for nye og brukte batterier
+                    {COMPARISON_LINK_TEXT[product.slug].anchor}
                   </Link>
                   .
                 </p>

@@ -108,7 +108,7 @@ const CATALOGUE_COPY: Record<
   'aboks-spesial': {
     subtitle: 'For trygg innsamling av brukte batterier',
     description:
-      'En veggmontert beholder med ekstra kapasitet for brukte batterier. Utviklet for bedrifter og arbeidsplasser der batterier skiftes ofte og det er behov for flere lett tilgjengelige innsamlingspunkter.',
+      'En kompakt beholder for brukte batterier som kan plasseres på en hylle eller monteres på veggen. Utviklet for bedrifter og arbeidsplasser der batterier skiftes ofte og det er behov for flere lett tilgjengelige innsamlingspunkter.',
     suitableFor: ['Produksjon', 'Verksted', 'Lager', 'Kontor', 'Skoler og institusjoner'],
     interestOption: 'aBoks Spesial',
   },

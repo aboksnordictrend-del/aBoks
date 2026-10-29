@@ -544,8 +544,8 @@ export default function ArticlePage() {
               </FaqItem>
               <FaqItem question="Hvordan holder jeg orden på nye og brukte batterier?">
                 Nøkkelen er å gi batteriene en fast plass og å skille nye fra brukte, slik
-                at du aldri setter et tomt batteri tilbake i fjernkontrollen. En egen
-                batteriboks med atskilte rom – som aBoks – gjør nettopp dette: nye AA, nye
+                at du aldri setter et tomt batteri tilbake i fjernkontrollen. En egen{' '}
+                <Link href="/batteriboks" style={extLink}>batteriboks med atskilte rom</Link> – som aBoks – gjør nettopp dette: nye AA, nye
                 AAA og et eget rom for de brukte som skal til gjenvinning. Da har du
                 oversikt både før avspark og lenge etter at VM er over.
               </FaqItem>

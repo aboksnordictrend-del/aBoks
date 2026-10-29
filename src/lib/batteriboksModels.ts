@@ -42,6 +42,12 @@ export async function getBatteriboksModels(): Promise<BatteriboksModel[]> {
             saleEndDate: product.saleEndDate ?? null,
           },
           soldOut: isModelSoldOut(product, variants),
+          capacity: {
+            aa: product.capacity?.aa ?? 0,
+            aaa: product.capacity?.aaa ?? 0,
+            usedCompartments: product.capacity?.usedCompartments ?? 0,
+          },
+          aaaInAaRoom: model.aaaInAaRoom ?? false,
         }
       }),
     )
