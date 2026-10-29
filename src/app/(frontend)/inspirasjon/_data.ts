@@ -4,6 +4,12 @@ export type InspirasjonArticle = {
   description: string
   date: string
   publishedAt: string
+  /**
+   * ISO date of the last substantive content revision. Set it only when the article text
+   * really changed — it becomes the sitemap's lastmod and the Article's dateModified, and
+   * both are left at the publication date / omitted while it is absent.
+   */
+  updatedAt?: string
   slug: string
   image?: string
   imageAlt?: string

@@ -4,6 +4,23 @@ import { absoluteUrl } from '@/lib/site'
 export type Crumb = { label: string; href?: string }
 
 /**
+ * The BreadcrumbList JSON-LD for a trail. Shared with pages that draw their own visual
+ * trail (the /inspirasjon articles) so every page states its position the same way.
+ */
+export function buildBreadcrumbJsonLd(items: Crumb[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.label,
+      ...(item.href ? { item: absoluteUrl(item.href) } : {}),
+    })),
+  }
+}
+
+/**
  * Visual breadcrumb trail + matching BreadcrumbList JSON-LD.
  * The last crumb is the current page and must not carry an href.
  */
@@ -15,16 +32,7 @@ export default function Breadcrumbs({
   /** Tighter spacing below md (product pages); md and up keep the default spacing exactly. */
   compactOnMobile?: boolean
 }) {
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: items.map((item, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      name: item.label,
-      ...(item.href ? { item: absoluteUrl(item.href) } : {}),
-    })),
-  }
+  const jsonLd = buildBreadcrumbJsonLd(items)
 
   return (
     <>

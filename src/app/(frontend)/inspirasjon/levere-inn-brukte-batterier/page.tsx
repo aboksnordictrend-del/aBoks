@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { buildArticleMetadata } from '../_seo'
+import ArticleStructuredData from '../_components/ArticleStructuredData'
 
 export const metadata: Metadata = {
   ...buildArticleMetadata({
@@ -135,6 +136,7 @@ function Tag({ label }: { label: string }) {
 export default function ArticlePage() {
   return (
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
+      <ArticleStructuredData slug="levere-inn-brukte-batterier" />
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
         {/* Breadcrumb */}
@@ -373,7 +375,8 @@ export default function ArticlePage() {
               <a href="https://www.sortere.no/" target="_blank" rel="noopener noreferrer nofollow" style={extLink}>
                 Sortere.no
               </a>{' '}
-              gir deg en oversikt basert på hvor du bor.
+              gir deg en oversikt basert på hvor du bor. Les mer i guiden vår om{' '}
+              <Link href="/inspirasjon/hvor-levere-brukte-batterier" style={extLink}>hvor du kan levere brukte batterier</Link>.
             </p>
 
             <h2 style={h2Style}>Slik kommer du i gang – fire enkle steg</h2>

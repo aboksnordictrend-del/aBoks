@@ -9,6 +9,7 @@ import CartDrawer from '@/components/CartDrawerServer'
 import PromoCodeProvider from '@/components/PromoCodeProvider'
 import Footer from '@/components/Footer'
 import TouchPressManager from '@/components/TouchPressManager'
+import { DEFAULT_OG_IMAGE, SITE_URL } from '@/lib/site'
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -26,7 +27,7 @@ const manrope = Manrope({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SERVER_URL ?? 'https://aboks.no'),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'aBoks – Smart batteriorganisering',
     template: '%s | aBoks',
@@ -43,7 +44,7 @@ export const metadata: Metadata = {
     siteName: 'aBoks',
     title: 'aBoks – Smart batteriorganisering',
     description: 'Én smart boks med tre rom – for AA, AAA og brukte batterier. Designet i Norge.',
-    images: [{ url: '/images/hero-desktop.webp', width: 1200, height: 630, alt: 'aBoks' }],
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

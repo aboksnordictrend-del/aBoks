@@ -7,7 +7,7 @@ export const revalidate = 3600
 export const metadata: Metadata = {
   // absolute bypasses the layout template (%s | aBoks) — the title already carries it
   title: {
-    absolute: 'For bedrifter | aBoks',
+    absolute: 'Batterioppbevaring og batteriinnsamling for bedrifter | aBoks',
   },
   description:
     'Praktiske løsninger for trygg innsamling, oppbevaring og organisering av batterier på kontor, verksted, lager og andre arbeidsplasser.',

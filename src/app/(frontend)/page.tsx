@@ -4,14 +4,15 @@ import { getProductBySlug, getPublishedProductByTitle, getVariantsForProduct } f
 import { listBlobFolderImages } from '@/lib/blobImages'
 import type { AboksVeggSectionData } from '@/components/AboksVeggSection'
 import type { SaleInfo } from '@/lib/pricing'
-import { SITE_URL, SITE_NAME, LOGO_URL } from '@/lib/site'
+import { SITE_URL, SITE_NAME, LOGO_URL, absoluteUrl } from '@/lib/site'
+import { HOME_SHARE_IMAGE, HOME_TITLE } from '@/lib/homeSeo'
 
 export const revalidate = 3600
 
 export const metadata: Metadata = {
   // absolute bypasses the layout template (%s | aBoks) to avoid duplication
   title: {
-    absolute: 'aBoks – elegant oppbevaring for brukte batterier hjemme',
+    absolute: HOME_TITLE,
   },
   description:
     'aBoks gjør det enkelt å samle, sortere og levere brukte batterier til gjenvinning. En praktisk og elegant batteriboks designet i Norge for moderne hjem.',
@@ -21,24 +22,24 @@ export const metadata: Metadata = {
     'sortere batterier', 'norsk design', 'miljøvennlig hjem',
   ],
   alternates: {
-    canonical: 'https://aboks.no/',
+    canonical: absoluteUrl('/'),
   },
   openGraph: {
     type: 'website',
     locale: 'nb_NO',
     siteName: 'aBoks',
-    url: 'https://aboks.no/',
+    url: absoluteUrl('/'),
     title: 'aBoks – elegant batteriboks for hjemmet',
     description:
       'Samle brukte batterier på ett sted og lever dem enklere til gjenvinning. Norskdesignet batteriboks for moderne hjem.',
-    images: [{ url: '/images/hero-desktop.webp', width: 1200, height: 630, alt: 'aBoks batteriboks' }],
+    images: [HOME_SHARE_IMAGE],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'aBoks – elegant batteriboks for hjemmet',
     description:
       'Samle brukte batterier på ett sted og lever dem enklere til gjenvinning. Norskdesignet batteriboks for moderne hjem.',
-    images: ['/images/hero-desktop.webp'],
+    images: [{ url: HOME_SHARE_IMAGE.url, alt: HOME_SHARE_IMAGE.alt }],
   },
 }
 

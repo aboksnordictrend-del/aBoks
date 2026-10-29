@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { buildArticleMetadata } from '../_seo'
+import ArticleStructuredData from '../_components/ArticleStructuredData'
 
 export const metadata: Metadata = {
   ...buildArticleMetadata({
@@ -135,6 +136,7 @@ function Cite({ n }: { n: number }) {
 export default function ArticlePage() {
   return (
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
+      <ArticleStructuredData slug="fotball-vm-2026-heia-norge-heia-miljoet" />
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
         {/* Breadcrumb */}
@@ -440,7 +442,7 @@ export default function ArticlePage() {
               </p>
               <p style={{ ...pStyle, color: '#c8cebb' }}>
                 Det var akkurat dette rotet{' '}
-                <Link href="/produkter/aboks?variant=ABOKS-OLIVE-001" style={{ color: '#dfe6ee', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+                <Link href="/produkter/aboks" style={{ color: '#dfe6ee', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
                   aBoks
                 </Link>{' '}
                 ble laget for å løse. Én boks med tre adskilte rom gir de nye
@@ -462,7 +464,7 @@ export default function ArticlePage() {
                 ))}
               </ul>
               <Link
-                href="/produkter/aboks?variant=ABOKS-OLIVE-001"
+                href="/produkter/aboks"
                 style={{
                   display: 'inline-flex', alignItems: 'center',
                   fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px',

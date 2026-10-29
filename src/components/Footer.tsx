@@ -62,6 +62,7 @@ export default function Footer() {
             <div className={styles.links}>
               {[
                 { label: 'Alle produkter', href: '/produkter' },
+                { label: 'Batteriboks', href: '/batteriboks' },
                 { label: 'Bestill aBoks', href: '/produkter/aboks' },
                 { label: 'Farger', href: '/produkter/aboks#farger' },
                 { label: 'Kampanjer', href: '/kampanje' },
@@ -83,6 +84,7 @@ export default function Footer() {
                 { label: 'Inspirasjon', href: '/inspirasjon' },
                 { label: 'Anmeldelser', href: '/anmeldelser' },
                 { label: 'Historien', href: '/historien' },
+                { label: 'For bedrifter', href: '/bedrifter' },
                 { label: 'Partnerskap', href: '/bli-partner' },
                 { label: 'Vanlige spørsmål', href: '/vanlige-sporsmal' },
               ].map((item) => (

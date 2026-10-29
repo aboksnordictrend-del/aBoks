@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { buildArticleMetadata } from '../_seo'
+import ArticleStructuredData from '../_components/ArticleStructuredData'
 
 export const metadata: Metadata = {
   ...buildArticleMetadata({
@@ -137,6 +138,7 @@ function Cite({ n }: { n: number }) {
 export default function ArticlePage() {
   return (
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
+      <ArticleStructuredData slug="miljokonsekvenser-usorterte-batterier" />
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
         {/* Breadcrumb */}
@@ -525,7 +527,7 @@ export default function ArticlePage() {
                 faktisk finner veien til gjenvinning i stedet for restavfallet.
               </p>
               <Link
-                href="/produkter/aboks?variant=ABOKS-OLIVE-001"
+                href="/produkter/aboks"
                 style={{
                   display: 'inline-flex', alignItems: 'center',
                   fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px',

@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getPayloadClient } from '@/lib/payload'
 import { getEffectivePrice } from '@/lib/pricing'
+import { productBrand } from '@/lib/productIdentity'
+import { SITE_URL } from '@/lib/site'
 import { productStock, variantStock } from '@/lib/stock'
 import type { Media, Product, ProductVariant } from '@/payload-types'
 
 export const dynamic = 'force-dynamic'
 
-const BASE_URL = (process.env.NEXT_PUBLIC_SERVER_URL || 'https://aboks.no').replace(/\/$/, '')
+const BASE_URL = SITE_URL
 
 function escapeXml(str: string): string {
   return str
@@ -110,6 +112,7 @@ function buildItem(fields: {
   additionalImages: string[]
   avail: string
   sale: SaleFields
+  brand: string
   itemGroupId?: string
   color?: string
 }): string {
@@ -130,7 +133,7 @@ function buildItem(fields: {
     ...(sale.saleDateRange
       ? [`      <g:sale_price_effective_date>${sale.saleDateRange}</g:sale_price_effective_date>`]
       : []),
-    `      <g:brand>aBoks</g:brand>`,
+    `      <g:brand>${escapeXml(fields.brand)}</g:brand>`,
     `      <g:condition>new</g:condition>`,
     `      <g:google_product_category>Home &amp; Garden &gt; Household Supplies</g:google_product_category>`,
     `      <g:product_type>Battery organizer / Home organization</g:product_type>`,
@@ -176,6 +179,8 @@ export async function GET() {
 
       const description = truncate(stripHtml(product.description ?? ''), 5000)
       const sale = buildSaleFields(product)
+      // GP batteries are GP's, everything else is aBoks's own — see @/lib/productIdentity.
+      const brand = productBrand(product)
 
       if (variants.length > 0) {
         for (const variant of variants as ProductVariant[]) {
@@ -207,6 +212,7 @@ export async function GET() {
               additionalImages: additional,
               avail: availability(variantStock(variant)),
               sale,
+              brand,
               itemGroupId: product.slug,
               color: variant.name,
             }),
@@ -234,6 +240,7 @@ export async function GET() {
             // are unaffected — they take the branch above, one item per colour.
             avail: availability(productStock(product)),
             sale,
+            brand,
           }),
         )
       }

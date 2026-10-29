@@ -883,10 +883,13 @@ function HeroContent({
       <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 700, fontSize: '12px', letterSpacing: '0.22em', textTransform: 'uppercase', color: '#5e6a48', margin: '0 0 22px', textAlign: 'center' }}>
         Smart batteriorganisering
       </p>
-      <h1 style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 700, fontSize: 'clamp(30px,3.1vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 24px', textAlign: 'center' }}>
+      {/* The page's one <h1> is the mobile hero's (the one Google's smartphone crawler sees).
+          This desktop twin shows the same words, so it is a heading only to assistive tech —
+          every visual property is inline, so the tag change does not alter its look. */}
+      <p role="heading" aria-level={1} style={{ fontFamily: 'var(--font-cormorant)', fontWeight: 700, fontSize: 'clamp(30px,3.1vw,52px)', letterSpacing: '-0.02em', lineHeight: 1.08, color: '#1a1d17', margin: '0 0 24px', textAlign: 'center' }}>
         Samle batteriene på{' '}
         <em style={{ fontStyle: 'italic', color: '#39402c' }}>ett</em> sted.
-      </h1>
+      </p>
       <p style={{ fontFamily: 'var(--font-manrope)', fontWeight: 400, fontSize: 'clamp(16px,1.3vw,18px)', lineHeight: 1.62, color: '#3a3f33', margin: '0 0 36px', textAlign: 'center' }}>
         aBoks organiserer nye, brukte, AA- og AAA-batterier i én smart boks.
       </p>

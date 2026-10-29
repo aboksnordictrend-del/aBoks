@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
+import { absoluteUrl } from '@/lib/site'
 
 /**
  * Campaign landing page (/kampanje/trygg).
@@ -26,13 +27,17 @@ export const metadata: Metadata = {
   description:
     'Løse batterier lekker, blandes og havner i barnehender. aBoks holder nye, brukte og hver type trygt adskilt. Bestill i dag – 100 dagers åpent kjøp.',
   alternates: {
-    canonical: 'https://aboks.no/kampanje/trygg',
+    canonical: absoluteUrl('/kampanje/trygg'),
   },
+  // A paid-campaign landing page: open to every visitor and ad click, kept out of the
+  // search index so it does not compete with /batteriboks and the storage guides. Links
+  // on it are still followed. It is not in the sitemap either.
+  robots: { index: false, follow: true },
   openGraph: {
     type: 'website',
     locale: 'nb_NO',
     siteName: 'aBoks',
-    url: 'https://aboks.no/kampanje/trygg',
+    url: absoluteUrl('/kampanje/trygg'),
     title: 'Trygg batterioppbevaring – slutt med løse batterier | aBoks',
     description:
       'Løse batterier lekker, blandes og havner i barnehender. aBoks holder nye, brukte og hver type trygt adskilt. Bestill i dag – 100 dagers åpent kjøp.',

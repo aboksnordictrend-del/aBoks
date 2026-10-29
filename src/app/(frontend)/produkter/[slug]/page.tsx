@@ -9,7 +9,9 @@ import type { CarouselProduct } from '@/components/ProductCarousel'
 import { getProductReviewSummary } from '@/lib/reviewServer'
 import { withVideoPosters } from '@/lib/videoPosterServer'
 import { productStock } from '@/lib/stock'
-import { SITE_URL } from '@/lib/site'
+import { DEFAULT_OG_IMAGE, SITE_NAME, absoluteUrl } from '@/lib/site'
+import { buildProductJsonLd } from '@/lib/productJsonLd'
+import { productSeoTitle } from '@/lib/productIdentity'
 
 function mediaUrl(val: unknown): string {
   if (typeof val === 'string') return val
@@ -31,18 +33,29 @@ export async function generateMetadata({
     ? mediaUrl((product.images[0] as any).image)
     : ''
 
+  // Organiser, battery or accessory wording — see @/lib/productIdentity.
+  const seoTitle = productSeoTitle({ title: product.title, section: product.section })
+  const description = product.description ?? ''
+
+  // Next.js replaces, never merges, a nested `openGraph` object, so this one has to be
+  // complete on its own: without these fields the page would lose the layout's locale,
+  // site name and fallback image.
   return {
-    title: `${product.title} – Smart batteriorganisator`,
-    description: product.description ?? '',
+    title: seoTitle.document,
+    description,
     alternates: {
       canonical: `/produkter/${slug}`,
     },
     openGraph: {
-      title: `${product.title} – Smart batteriorganisator`,
-      description: product.description ?? '',
-      ...(ogImage && {
-        images: [{ url: ogImage, width: 1200, height: 1200, alt: product.title }],
-      }),
+      type: 'website',
+      locale: 'nb_NO',
+      siteName: SITE_NAME,
+      url: absoluteUrl(`/produkter/${slug}`),
+      title: seoTitle.social,
+      description,
+      images: ogImage
+        ? [{ url: ogImage, width: 1200, height: 1200, alt: product.title }]
+        : [DEFAULT_OG_IMAGE],
     },
   }
 }
@@ -131,39 +144,24 @@ export default async function ProductPage({
 
   // Product structured data with aggregateRating — ONLY when real approved reviews exist
   // (spec §12: never emit a fake aggregateRating). Placed on the product page rather than
-  // the Organization, which is where review/rating schema belongs.
-  const productJsonLd: Record<string, unknown> = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.title,
+  // the Organization, which is where review/rating schema belongs. The offer price follows
+  // the sale window, see @/lib/productJsonLd.
+  const productJsonLd = buildProductJsonLd({
+    title: product.title,
     description: product.description ?? '',
-    url: `${SITE_URL}/produkter/${slug}`,
-    ...(productImages[0]?.src ? { image: productImages[0].src } : {}),
-    offers: {
-      '@type': 'Offer',
-      priceCurrency: 'NOK',
-      price: (product.salePrice ?? product.price ?? 0).toString(),
-      // A product with variants keeps the flat InStock it has always advertised — its
-      // availability is per colour and this Offer describes the product as a whole. A product
-      // with no variants has exactly one stock figure, so it can state the truth.
-      availability:
-        variants.length === 0 && productStock(product) <= 0
-          ? 'https://schema.org/OutOfStock'
-          : 'https://schema.org/InStock',
-      url: `${SITE_URL}/produkter/${slug}`,
+    slug,
+    section: product.section,
+    image: productImages[0]?.src || undefined,
+    price: product.price ?? 0,
+    sale: {
+      salePrice: product.salePrice ?? null,
+      saleStartDate: product.saleStartDate ?? null,
+      saleEndDate: product.saleEndDate ?? null,
     },
-    ...(reviewSummary.count > 0
-      ? {
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: reviewSummary.average.toFixed(1),
-            reviewCount: reviewSummary.count,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }
-      : {}),
-  }
+    hasVariants: variants.length > 0,
+    stock: productStock(product),
+    reviewSummary,
+  })
 
   return (
     <>

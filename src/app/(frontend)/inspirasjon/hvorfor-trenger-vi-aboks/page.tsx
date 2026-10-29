@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { buildArticleMetadata } from '../_seo'
+import ArticleStructuredData from '../_components/ArticleStructuredData'
 
 export const metadata: Metadata = {
   ...buildArticleMetadata({
@@ -175,6 +176,7 @@ const RELATED = [
 export default function ArticlePage() {
   return (
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
+      <ArticleStructuredData slug="hvorfor-trenger-vi-aboks" />
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
         {/* Breadcrumb */}

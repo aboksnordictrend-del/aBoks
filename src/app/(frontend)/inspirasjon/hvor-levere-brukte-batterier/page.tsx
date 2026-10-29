@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { buildArticleMetadata } from '../_seo'
+import ArticleStructuredData from '../_components/ArticleStructuredData'
 
 export const metadata: Metadata = {
   ...buildArticleMetadata({
@@ -120,6 +121,7 @@ function Tag({ label }: { label: string }) {
 export default function ArticlePage() {
   return (
     <main style={{ background: '#faf6ee', minHeight: '100vh', paddingTop: 'clamp(96px,12vh,132px)' }}>
+      <ArticleStructuredData slug="hvor-levere-brukte-batterier" />
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
 
         {/* Breadcrumb */}
@@ -273,7 +275,8 @@ export default function ArticlePage() {
               </a>{' '}
               har de senere årene skjerpet kravene til hvor stor andel av batteriene som skal
               samles inn, fra 30 til 65 prosent av produsentenes samlede import og produksjon,
-              nettopp for å holde flere batterier unna restavfallet og naturen.
+              nettopp for å holde flere batterier unna restavfallet og naturen. Les også{' '}
+              <Link href="/inspirasjon/levere-inn-brukte-batterier" style={extLink}>hvorfor det lønner seg å levere inn brukte batterier</Link>.
             </p>
 
             <blockquote style={{
