@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Kjøpsvilkår',
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
     title: 'Kjøpsvilkår | aBoks',
     description:
       'Les kjøpsvilkårene for aBoks. Informasjon om betaling, levering, angrerett, reklamasjon og dine rettigheter som kunde.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

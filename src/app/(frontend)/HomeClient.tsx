@@ -154,7 +154,7 @@ export default function HomeClient({
         <div className="hidden md:block">
           <Image
             src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-desktop-ny.webp"
-            alt="aBoks i tre farger – olivengrønn, mørk blå og sort"
+            alt="Fire aBoks batteribokser i sort, olivengrønn, mørk blå og kremhvit."
             width={2000}
             height={1200}
             priority
@@ -202,7 +202,7 @@ export default function HomeClient({
         >
           <Image
             src="https://cnmxattx5v3y5fdc.public.blob.vercel-storage.com/Hero-mobile-ny.webp"
-            alt="aBoks i tre farger"
+            alt="Fire aBoks batteribokser i sort, olivengrønn, mørk blå og kremhvit."
             fill
             priority
             style={{ objectFit: 'cover', objectPosition: 'center 30%' }}

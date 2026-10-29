@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Breadcrumbs from '@/components/Breadcrumbs'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: {
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
     title: 'Kontakt aBoks | Vi hjelper deg',
     description:
       'Spørsmål om produkter, bestilling, levering eller retur? Ta kontakt med aBoks – vi hjelper deg.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

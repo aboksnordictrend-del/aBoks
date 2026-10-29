@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import ProductCard, { ProductGrid } from '@/components/ProductCard'
 import { getProducts } from '@/lib/payload'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const revalidate = 3600
 
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
     title: 'aBoks-produkter | Smart oppbevaring av batterier',
     description:
       'Hele aBoks-serien samlet: smarte batteribokser med tre adskilte rom, designet i Norge for et ryddigere hjem.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

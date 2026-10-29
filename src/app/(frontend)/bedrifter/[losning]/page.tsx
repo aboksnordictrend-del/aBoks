@@ -7,6 +7,7 @@ import type { ConfigurableProduct, SolutionPageContent } from '@/lib/solutions/t
 import { getProductBySlug, getVariantsForProduct } from '@/lib/payload'
 import { getBedrifterProducts, selectBedrifterProducts } from '@/lib/bedrifterProducts'
 import { parseQuantityParam } from '@/lib/solutions/quantity'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 import SolutionPageView from '../solution/SolutionPageView'
 import {
   BORDER_WARM,
@@ -144,6 +145,7 @@ export async function generateMetadata({
       url: `/bedrifter/${solution.slug}`,
       title,
       description,
+      images: [DEFAULT_OG_IMAGE],
     },
   }
 }

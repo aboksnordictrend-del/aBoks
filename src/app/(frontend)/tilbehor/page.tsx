@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import ProductCard, { ProductGrid } from '@/components/ProductCard'
 import { getAccessories } from '@/lib/payload'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const revalidate = 3600
 
@@ -23,6 +24,7 @@ export const metadata: Metadata = {
     title: 'Tilbehør til aBoks | Praktiske løsninger',
     description:
       'Oppdag tilbehør til aBoks. Vi utvikler praktiske løsninger som gjør oppbevaring og sortering av batterier enda enklere.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from 'next'
 import Link from 'next/link'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Personvernerklæring',
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
     title: 'Personvernerklæring | aBoks',
     description:
       'Les hvordan aBoks behandler personopplysninger, cookies, betaling, levering og markedsføring.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

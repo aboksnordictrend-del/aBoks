@@ -4,6 +4,7 @@ import Stars from '@/components/reviews/Stars'
 import { getApprovedReviewsData } from '@/lib/reviewServer'
 import { formatRating } from '@/lib/reviews'
 import ReviewsClient from './ReviewsClient'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: { absolute: 'Anmeldelser fra våre kunder | aBoks' },
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
     url: '/anmeldelser',
     title: 'Anmeldelser fra våre kunder | aBoks',
     description: 'Se hvordan kundene våre bruker aBoks for å skape bedre orden hjemme.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

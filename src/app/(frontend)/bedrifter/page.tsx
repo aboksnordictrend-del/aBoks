@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import BedrifterClient from './BedrifterClient'
 import { getBedrifterProducts } from '@/lib/bedrifterProducts'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const revalidate = 3600
 
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
     title: 'For bedrifter | aBoks',
     description:
       'Praktiske løsninger for trygg innsamling, oppbevaring og organisering av batterier på kontor, verksted, lager og andre arbeidsplasser.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

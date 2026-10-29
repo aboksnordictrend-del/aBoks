@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ANGRERETTSKJEMA_URL, RETURSKJEMA_URL } from '@/lib/returDocuments'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Frakt og retur',
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
     title: 'Frakt og retur | aBoks',
     description:
       'Informasjon om levering, frakt, retur, reklamasjon og forhåndsbestilling hos aBoks.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

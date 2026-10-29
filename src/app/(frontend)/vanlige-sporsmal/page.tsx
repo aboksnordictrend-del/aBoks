@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import { FAQS } from '@/lib/content'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: {
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
     title: 'Vanlige spørsmål om aBoks | FAQ',
     description:
       'Alt du lurer på om aBoks – batterityper, kapasitet, materiale, frakt og retur. Samlet på ett sted.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

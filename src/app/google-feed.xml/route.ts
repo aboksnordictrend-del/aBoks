@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getPayloadClient } from '@/lib/payload'
 import { getEffectivePrice } from '@/lib/pricing'
-import { productBrand } from '@/lib/productIdentity'
+import { merchantClassification, productBrand } from '@/lib/productIdentity'
 import { SITE_URL } from '@/lib/site'
 import { productStock, variantStock } from '@/lib/stock'
 import type { Media, Product, ProductVariant } from '@/payload-types'
@@ -112,7 +112,10 @@ function buildItem(fields: {
   additionalImages: string[]
   avail: string
   sale: SaleFields
-  brand: string
+  /** Null when the make is unknown: then no g:brand at all rather than a wrong one. */
+  brand: string | null
+  googleProductCategory: string
+  productType: string
   itemGroupId?: string
   color?: string
 }): string {
@@ -133,10 +136,10 @@ function buildItem(fields: {
     ...(sale.saleDateRange
       ? [`      <g:sale_price_effective_date>${sale.saleDateRange}</g:sale_price_effective_date>`]
       : []),
-    `      <g:brand>${escapeXml(fields.brand)}</g:brand>`,
+    ...(fields.brand ? [`      <g:brand>${escapeXml(fields.brand)}</g:brand>`] : []),
     `      <g:condition>new</g:condition>`,
-    `      <g:google_product_category>Home &amp; Garden &gt; Household Supplies</g:google_product_category>`,
-    `      <g:product_type>Battery organizer / Home organization</g:product_type>`,
+    `      <g:google_product_category>${escapeXml(fields.googleProductCategory)}</g:google_product_category>`,
+    `      <g:product_type>${escapeXml(fields.productType)}</g:product_type>`,
     `      <g:identifier_exists>no</g:identifier_exists>`,
   ]
 
@@ -179,8 +182,11 @@ export async function GET() {
 
       const description = truncate(stripHtml(product.description ?? ''), 5000)
       const sale = buildSaleFields(product)
-      // GP batteries are GP's, everything else is aBoks's own — see @/lib/productIdentity.
+      // Brand and classification: GP batteries are GP's and filed as batteries, aBoks's own
+      // products keep the organiser classification — see @/lib/productIdentity.
       const brand = productBrand(product)
+      if (!brand) console.warn(`[google-feed] no known brand for "${product.title}" — g:brand left out`)
+      const { googleProductCategory, productType } = merchantClassification(product)
 
       if (variants.length > 0) {
         for (const variant of variants as ProductVariant[]) {
@@ -213,6 +219,8 @@ export async function GET() {
               avail: availability(variantStock(variant)),
               sale,
               brand,
+              googleProductCategory,
+              productType,
               itemGroupId: product.slug,
               color: variant.name,
             }),
@@ -241,6 +249,8 @@ export async function GET() {
             avail: availability(productStock(product)),
             sale,
             brand,
+            googleProductCategory,
+            productType,
           }),
         )
       }

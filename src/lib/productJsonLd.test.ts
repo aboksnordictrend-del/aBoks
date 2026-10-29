@@ -83,13 +83,18 @@ describe('buildProductJsonLd — other fields', () => {
   it('states the same brand as the Merchant feed: aBoks for its own products, GP for GP', () => {
     assert.deepEqual(buildProductJsonLd(input()).brand, { '@type': 'Brand', name: 'aBoks' })
     assert.deepEqual(
-      buildProductJsonLd(input({ title: 'AA-Modul', section: 'accessories' })).brand,
+      buildProductJsonLd(input({ title: 'AA-Modul', slug: 'aa-modul', section: 'accessories' })).brand,
       { '@type': 'Brand', name: 'aBoks' },
     )
     assert.deepEqual(
-      buildProductJsonLd(input({ title: 'GP Ultra AA 10 stk.', section: 'accessories' })).brand,
+      buildProductJsonLd(input({ title: 'GP Ultra AA 10 stk.', slug: 'gp-ultra-plus-aa-10-pakk', section: 'accessories' })).brand,
       { '@type': 'Brand', name: 'GP' },
     )
+  })
+
+  it('states no brand for an accessory of unknown make', () => {
+    const jsonLd = buildProductJsonLd(input({ title: 'Varta Longlife AA 4 stk.', slug: 'varta-aa', section: 'accessories' }))
+    assert.equal(jsonLd.brand, undefined)
   })
 
   it('never states a SKU or a rating that does not exist', () => {

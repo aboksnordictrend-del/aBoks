@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import InspirasjonContent from './_components/InspirasjonContent'
 import { getArticlesForPage, getTotalPages } from './_data'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: {
@@ -19,6 +20,7 @@ export const metadata: Metadata = {
     title: 'Inspirasjon | Tips om batterier, oppbevaring og miljø',
     description:
       'Guider og artikler om batterier, oppbevaring, gjenvinning og miljø – fra aBoks.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

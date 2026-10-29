@@ -34,7 +34,7 @@ export async function generateMetadata({
     : ''
 
   // Organiser, battery or accessory wording — see @/lib/productIdentity.
-  const seoTitle = productSeoTitle({ title: product.title, section: product.section })
+  const seoTitle = productSeoTitle({ title: product.title, section: product.section, slug })
   const description = product.description ?? ''
 
   // Next.js replaces, never merges, a nested `openGraph` object, so this one has to be

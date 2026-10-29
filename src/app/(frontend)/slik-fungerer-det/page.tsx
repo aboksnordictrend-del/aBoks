@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import HowItWorksSteps from '@/components/HowItWorksSteps'
 import { COMPARTMENTS, STEP_DETAILS, CAPACITY } from '@/lib/content'
+import { DEFAULT_OG_IMAGE } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: {
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
     title: 'Slik fungerer aBoks | Enkel batterioppbevaring',
     description:
       'Tre rom, fire enkle steg. Se hvordan aBoks gir nye og brukte batterier hver sin faste plass – og hvordan de brukte faktisk når gjenvinningen.',
+    images: [DEFAULT_OG_IMAGE],
   },
 }
 

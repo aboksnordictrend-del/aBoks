@@ -7,7 +7,8 @@
  * never leaks into the structured data.
  *
  * `brand` comes from @/lib/productIdentity — the same mapping the Merchant feed uses, so GP
- * batteries are GP's and everything else aBoks's. No `sku` is stated: SKUs live on the colour variants,
+ * batteries are GP's, aBoks's own products aBoks's, and a product of unknown make gets no
+ * brand rather than a guessed one. No `sku` is stated: SKUs live on the colour variants,
  * and this Offer describes the product as a whole.
  */
 
@@ -33,6 +34,7 @@ export interface ProductJsonLdInput {
 
 export function buildProductJsonLd(input: ProductJsonLdInput): Record<string, unknown> {
   const url = absoluteUrl(`/produkter/${input.slug}`)
+  const brand = productBrand({ title: input.title, section: input.section, slug: input.slug })
 
   return {
     '@context': 'https://schema.org',
@@ -41,7 +43,7 @@ export function buildProductJsonLd(input: ProductJsonLdInput): Record<string, un
     description: input.description,
     url,
     ...(input.image ? { image: input.image } : {}),
-    brand: { '@type': 'Brand', name: productBrand({ title: input.title, section: input.section }) },
+    ...(brand ? { brand: { '@type': 'Brand', name: brand } } : {}),
     offers: {
       '@type': 'Offer',
       priceCurrency: 'NOK',
