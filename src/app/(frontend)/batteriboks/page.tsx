@@ -626,6 +626,19 @@ export default async function BatteriboksPage() {
       </section>
 
       <div className="max-w-container mx-auto px-[clamp(20px,5vw,48px)]">
+        {/* ── Search-term variants ── */}
+        <section aria-labelledby="navn-heading" style={{ marginBottom: sectionGap }}>
+          <div style={{ maxWidth: '720px' }}>
+            <h2 id="navn-heading" style={h2Style}>Batteriboks, batteribox eller batteri boks?</h2>
+            <p style={lead}>
+              Det er ikke alltid lett å vite hva man skal søke etter. Noen skriver batteriboks, andre
+              batteri boks, batteribox eller batteri box. Navnet varierer, men behovet er det samme: et
+              fast sted for batteriene, så du slipper å lete i skuffer og lure på hvilke som er brukt.
+              aBoks har egne rom for nye AA- og AAA-batterier og et separat rom for brukte batterier.
+            </p>
+          </div>
+        </section>
+
         {/* ── F: FAQ ── */}
         <section aria-labelledby="faq-heading" style={{ marginBottom: sectionGap }}>
           <div className="grid gap-[clamp(28px,4vw,64px)] lg:grid-cols-[0.8fr_1.2fr]">
