@@ -1,0 +1,262 @@
+/* The /miljoregistrering demos. The forms, statistics and tables reuse the real QR page's
+   classes (../../miljo/[code]/miljo.module.css) so the demo looks exactly like the product;
+   `.scope` supplies the custom properties that file normally gets from its `.wrap`. */
+
+.scope {
+  --ink: #1a1d17;
+  --body: #4a4e41;
+  --muted: #5f6357;
+  --line: #e8e0d4;
+  --field: #d9d2c4;
+  --accent: #5e6a48;
+  --accent-dark: #4c5639;
+  --accent-ink: #ffffff;
+  --accent-soft: #eef0e8;
+  --warn: #7a5a00;
+  --warn-soft: #fff7e0;
+  --error: #b3261e;
+  --error-soft: #fdf3f2;
+  --delivered: #243153;
+  --delivered-soft: #eef1f7;
+  font-family: var(--font-manrope);
+  color: var(--ink);
+  min-width: 0;
+}
+
+/* ── DEMO marking ── */
+.demoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #d9b77a;
+  background: #fbf2e0;
+  color: #6a4b12;
+  font-family: var(--font-manrope);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+.demoDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9a76a;
+  flex-shrink: 0;
+}
+.demoNote {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+
+/* ── Photo + form layout ── */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: start;
+}
+.photo {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  aspect-ratio: 4 / 5;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #e9e5df;
+  box-shadow: 0 18px 50px -24px rgba(42, 36, 24, 0.35);
+}
+.formCol { min-width: 0; }
+/* next/image `fill` needs a positioned parent that is not sticky. */
+.photoInner { position: absolute; inset: 0; }
+/* The real .select is 15px; iOS zooms into any field under 16px on focus. */
+.scope select { font-size: 16px; }
+.cardTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.roleTag {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.statsLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.statsLink:focus-visible { outline: 3px solid rgba(94, 106, 72, 0.5); outline-offset: 2px; border-radius: 4px; }
+
+.pinHint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--delivered);
+}
+.pinHint strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  background: #ffffff;
+  border: 1px solid #cfd6e6;
+  border-radius: 8px;
+  padding: 3px 8px;
+}
+
+/* ── Statistics ── */
+.statsHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.update {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.statsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+.statsGrid > * + * { margin-top: 0 !important; }
+.notSummed {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* ── Report preview (a sheet of paper) ── */
+.paper {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 24px 60px -30px rgba(42, 36, 24, 0.45), 0 2px 6px rgba(42, 36, 24, 0.06);
+  padding: clamp(22px, 4vw, 40px) clamp(18px, 3.6vw, 36px) clamp(26px, 4vw, 40px);
+  font-family: Helvetica, Arial, sans-serif;
+  color: #1a1c17;
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+}
+.paperBanner {
+  position: absolute;
+  inset: 0 0 auto 0;
+  background: #b3261f;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 5px 8px;
+}
+.watermark {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%) rotate(-32deg);
+  font-size: clamp(22px, 5vw, 38px);
+  font-weight: 800;
+  color: rgba(179, 38, 31, 0.1);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.paperHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 14px;
+}
+.paperLogo { font-weight: 800; font-size: 18px; color: #5e6a48; }
+.paperSmall { font-size: 10px; color: #6b6f63; }
+.paperTitle { font-size: 21px; font-weight: 800; margin: 18px 0 2px; }
+.paperOrg { font-size: 13px; font-weight: 700; color: #5e6a48; margin: 0 0 10px; overflow-wrap: anywhere; }
+.paperKv {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 14px;
+  font-size: 11px;
+  margin: 0 0 12px;
+}
+.paperKv dt { color: #6b6f63; }
+.paperKv dd { margin: 0; }
+.paperNotice {
+  background: #f3f1ea;
+  border: 1px solid #dcd4c4;
+  font-size: 10.5px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  margin: 0 0 14px;
+  color: #4a4f40;
+}
+.paperH { font-size: 12.5px; font-weight: 800; margin: 14px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #dcd4c4; }
+.paperTable { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.paperTable th, .paperTable td { text-align: left; padding: 4px 4px; border-bottom: 1px solid #ece6da; }
+.paperTable th { color: #6b6f63; font-weight: 700; }
+.paperTable .r { text-align: right; }
+
+.exportButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 22px;
+}
+
+@media (min-width: 640px) {
+  .statsGrid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .split { grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); }
+  .splitReverse { grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); }
+  .splitReverse .photo { order: 2; }
+  .photo { position: sticky; top: 110px; max-width: none; }
+  .statsGrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .update { animation: pop 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+}
+@keyframes pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}

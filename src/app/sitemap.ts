@@ -17,6 +17,8 @@ const STATIC_PAGES: MetadataRoute.Sitemap = [
   { url: `${SITE_URL}/tilbehor`, changeFrequency: 'weekly', priority: 0.6 },
   // The B2B hub. Its four solution pages are added further down, from the registry.
   { url: `${SITE_URL}/bedrifter`, changeFrequency: 'monthly', priority: 0.8 },
+  // aBoks Miljøregistrering landing page (the /miljo/[code] app itself is never listed).
+  { url: `${SITE_URL}/miljoregistrering`, changeFrequency: 'monthly', priority: 0.7 },
   { url: `${SITE_URL}/slik-fungerer-det`, changeFrequency: 'monthly', priority: 0.8 },
   { url: `${SITE_URL}/bli-partner`, changeFrequency: 'monthly', priority: 0.6 },
   { url: `${SITE_URL}/historien`, changeFrequency: 'monthly', priority: 0.7 },

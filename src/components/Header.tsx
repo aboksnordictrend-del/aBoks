@@ -16,13 +16,13 @@ import BenefitsBar from './BenefitsBar'
  * gets the solid state from the start. Add a route here when it gains an edge-to-edge hero —
  * nothing else needs to change.
  */
-const HERO_TOP_ROUTES = ['/', '/bedrifter', '/bli-partner']
+const HERO_TOP_ROUTES = ['/', '/bedrifter', '/bli-partner', '/miljoregistrering']
 
 /**
  * The subset of HERO_TOP_ROUTES whose hero is DARK. While the header is transparent over one
  * of these, its nav text and icons switch to cream and the logo is rendered white, so they
  * stay readable; the moment the header turns solid it is the ordinary dark-on-cream header
- * again. Light-hero routes (the homepage, /bedrifter) are unaffected.
+ * again. Light-hero routes (the homepage, /bedrifter, /miljoregistrering) are unaffected.
  */
 const DARK_HERO_TOP_ROUTES = ['/bli-partner']
 
@@ -374,7 +374,11 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
                   links: [
                     { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                     { label: 'Batteriboks',        href: '/batteriboks' },
-                    { label: 'For bedrifter',      href: '/bedrifter' },
+                    {
+                      label: 'For bedrifter',
+                      href: '/bedrifter',
+                      children: [{ label: 'Miljøregistrering', href: '/miljoregistrering' }],
+                    },
                     { label: 'Partnerskap',        href: '/bli-partner' },
                     { label: 'Historien',          href: '/historien' },
                     { label: 'Inspirasjon',        href: '/inspirasjon' },
