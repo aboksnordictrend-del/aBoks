@@ -35,6 +35,7 @@ import {
 } from './theme'
 import { useRevealFactory } from './useReveal'
 import BusinessSolutions from './BusinessSolutions'
+import MiljoregistreringSection from './MiljoregistreringSection'
 import ProductSectionList, { buildProductSections } from './ProductSections'
 import BusinessCalculator from './calculator/BusinessCalculator'
 import type { BusinessSolution } from '@/lib/bedrifterSolutions'
@@ -389,6 +390,10 @@ export default function BedrifterClient({ products }: { products: BedrifterProdu
           </div>
         </div>
       </section>
+
+      {/* ==================== MILJØREGISTRERING ====================
+          Introduced ahead of the packages; links on to the /miljoregistrering info page. */}
+      <MiljoregistreringSection reveal={reveal} />
 
       {/* ==================== COMPLETE SOLUTIONS ====================
           The packages, introduced before the individual models further down. Its content
