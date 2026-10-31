@@ -21,13 +21,18 @@ import { default as default_8c29f34419157efabf769620e16fc639 } from '@/component
 import { default as default_d77d18f7556f5f66388a1d11ffda1faf } from '@/components/admin/pilot/QuestionRowLabel'
 import { default as default_c946148c519a7cdf9a4e4400211eb170 } from '@/components/admin/pilot/PilotLinkPanel'
 import { default as default_68eca0d6218f95e1e177a8c316009ea6 } from '@/components/admin/pilot/AnswerRowLabel'
+import { default as default_ae0b89fcf38feaddd6d206b921e8dc21 } from '@/components/admin/miljo/OrganizationPanel'
+import { default as default_304496d3f0435d753ab7b993399f441c } from '@/components/admin/miljo/RegistrationPanel'
+import { default as default_d89c86b6a841c5acc87f52cff99e03ab } from '@/components/admin/miljo/DeliveryPanel'
 import { default as default_82e162e3a40f323970764102685edf7b } from '@/components/admin/analytics/NavLink'
 import { default as default_96f7826023c671e840efbaace74dd187 } from '@/components/admin/blobImages/NavLink'
 import { default as default_c1bf44ceeaba256b4df3c2a5dc5267bc } from '@/components/admin/pilot/NavLink'
+import { default as default_b06ebee1a89790777c06558bbe506b04 } from '@/components/admin/miljo/NavLink'
 import { VercelBlobClientUploadHandler as VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e } from '@payloadcms/storage-vercel-blob/client'
 import { default as default_42cf22cfe13bf35f39ce536f57dafaca } from '@/components/admin/analytics/DashboardView'
 import { default as default_af2efada18593c15efdbc1bd534539aa } from '@/components/admin/blobImages/BlobImagesView'
 import { default as default_a26a574563d298094a8a3f29e5ee0372 } from '@/components/admin/pilot/PilotAnalyticsView'
+import { default as default_729415e6e57ce797414710c688a14d72 } from '@/components/admin/miljo/MiljoView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -55,12 +60,17 @@ export const importMap = {
   "@/components/admin/pilot/QuestionRowLabel#default": default_d77d18f7556f5f66388a1d11ffda1faf,
   "@/components/admin/pilot/PilotLinkPanel#default": default_c946148c519a7cdf9a4e4400211eb170,
   "@/components/admin/pilot/AnswerRowLabel#default": default_68eca0d6218f95e1e177a8c316009ea6,
+  "@/components/admin/miljo/OrganizationPanel#default": default_ae0b89fcf38feaddd6d206b921e8dc21,
+  "@/components/admin/miljo/RegistrationPanel#default": default_304496d3f0435d753ab7b993399f441c,
+  "@/components/admin/miljo/DeliveryPanel#default": default_d89c86b6a841c5acc87f52cff99e03ab,
   "@/components/admin/analytics/NavLink#default": default_82e162e3a40f323970764102685edf7b,
   "@/components/admin/blobImages/NavLink#default": default_96f7826023c671e840efbaace74dd187,
   "@/components/admin/pilot/NavLink#default": default_c1bf44ceeaba256b4df3c2a5dc5267bc,
+  "@/components/admin/miljo/NavLink#default": default_b06ebee1a89790777c06558bbe506b04,
   "@payloadcms/storage-vercel-blob/client#VercelBlobClientUploadHandler": VercelBlobClientUploadHandler_16c82c5e25f430251a3e3ba57219ff4e,
   "@/components/admin/analytics/DashboardView#default": default_42cf22cfe13bf35f39ce536f57dafaca,
   "@/components/admin/blobImages/BlobImagesView#default": default_af2efada18593c15efdbc1bd534539aa,
   "@/components/admin/pilot/PilotAnalyticsView#default": default_a26a574563d298094a8a3f29e5ee0372,
+  "@/components/admin/miljo/MiljoView#default": default_729415e6e57ce797414710c688a14d72,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

@@ -41,3 +41,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Local uploads outside /public (Miljøregistrering delivery receipts)
+uploads/

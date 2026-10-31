@@ -26,11 +26,17 @@ import { ReviewInvitations } from './src/collections/ReviewInvitations'
 import { ReviewPhotos } from './src/collections/ReviewPhotos'
 import { PilotProjects } from './src/collections/PilotProjects'
 import { PilotEvaluations } from './src/collections/PilotEvaluations'
+import { EnvironmentalOrganizations } from './src/collections/EnvironmentalOrganizations'
+import { BatteryRegistrations } from './src/collections/BatteryRegistrations'
+import { BatteryDeliveries } from './src/collections/BatteryDeliveries'
+import { BatteryDeliveryDocuments } from './src/collections/BatteryDeliveryDocuments'
+import { BatteryDeliveryAudit, BatteryRegistrationAudit } from './src/collections/MiljoAudit'
 import { EconomySettings } from './src/globals/EconomySettings'
 import { TikTokConnection } from './src/globals/TikTokConnection'
 import { PinterestConnection } from './src/globals/PinterestConnection'
 import { analyticsEndpoint } from './src/endpoints/analytics'
 import { pilotAnalyticsEndpoint } from './src/endpoints/pilotAnalytics'
+import { miljoAnalyticsEndpoint } from './src/endpoints/miljoAnalytics'
 import { blobImagesRevalidateEndpoint } from './src/endpoints/revalidateBlobImages'
 import { metaSyncEndpoint } from './src/endpoints/metaSync'
 import { marketingChannelsEndpoint } from './src/endpoints/marketingChannels'
@@ -126,12 +132,19 @@ export default buildConfig({
           Component: '@/components/admin/pilot/PilotAnalyticsView#default',
           path: '/pilotanalyse',
         },
+        // aBoks Miljøregistrering dashboard. Data from /api/miljo-analytics, which is admin-only.
+        miljoregistrering: {
+          Component: '@/components/admin/miljo/MiljoView#default',
+          path: '/miljoregistrering',
+        },
       },
-      // Adds the "Analyse", "Blob-bildelister" and "Pilotanalyse" entries to the admin sidebar.
+      // Adds the "Analyse", "Blob-bildelister", "Pilotanalyse" and "Miljøregistrering" entries to
+      // the admin sidebar.
       afterNavLinks: [
         '@/components/admin/analytics/NavLink#default',
         '@/components/admin/blobImages/NavLink#default',
         '@/components/admin/pilot/NavLink#default',
+        '@/components/admin/miljo/NavLink#default',
       ],
     },
   },
@@ -155,6 +168,13 @@ export default buildConfig({
     ReviewPhotos,
     PilotProjects,
     PilotEvaluations,
+    // aBoks Miljøregistrering — see src/lib/miljo/constants.ts.
+    EnvironmentalOrganizations,
+    BatteryRegistrations,
+    BatteryDeliveries,
+    BatteryDeliveryDocuments,
+    BatteryRegistrationAudit,
+    BatteryDeliveryAudit,
   ],
   // TikTokConnection and PinterestConnection are admin-only, nav-hidden globals that store the
   // encrypted OAuth credentials for their channel; neither has an editing surface. See
@@ -167,6 +187,8 @@ export default buildConfig({
     analyticsEndpoint,
     // Admin-only pilot-project statistics and CSV export → /api/pilot-analytics.
     pilotAnalyticsEndpoint,
+    // Admin-only Miljøregistrering statistics, CSV and PDF export → /api/miljo-analytics.
+    miljoAnalyticsEndpoint,
     // Admin-only, on-demand purge of the `blob-images` cache tag, so a file added to a Blob
     // folder shows on the storefront immediately instead of within the 24h listing window.
     blobImagesRevalidateEndpoint,
@@ -213,6 +235,12 @@ export default buildConfig({
         'review-photos': {
           disablePayloadAccessControl: true,
         },
+        // Delivery receipts keep Payload's access control: files are served only through
+        // /api/battery-delivery-documents/file/… to administrators, never by a public URL.
+        // No `prefix` option: it adds a `prefix` column that exists only when the plugin is
+        // enabled, so the schema (and the migrations) would differ between environments with and
+        // without BLOB_READ_WRITE_TOKEN. File names are random (levering-<hex>.pdf|webp).
+        'battery-delivery-documents': true,
       },
       token: process.env.BLOB_READ_WRITE_TOKEN ?? '',
     }),

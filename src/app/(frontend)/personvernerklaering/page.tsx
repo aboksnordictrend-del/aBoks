@@ -133,7 +133,7 @@ export default function PersonvernerklaerngPage() {
               margin: 0,
             }}
           >
-            Sist oppdatert: juni 2026
+            Sist oppdatert: oktober 2026
           </p>
         </div>
 
@@ -339,7 +339,27 @@ export default function PersonvernerklaerngPage() {
             </p>
           </Section>
 
-          <Section number="13" title="Endringer i personvernerklæringen">
+          <Section number="13" title="aBoks Miljøregistrering">
+            <p style={bodyStyle}>
+              Organisasjoner som bruker aBoks XL, kan få en QR-kode der ansatte registrerer hvor
+              mange brukte batterier de legger i beholderen. Registreringen er anonym: vi lagrer
+              bare batteritype, antall, tidspunkt og hvilken organisasjon QR-koden tilhører — ikke
+              navn, e-post, IP-adresse eller annen informasjon om hvem som registrerte.
+            </p>
+            <p style={bodyStyle}>
+              Organisasjonens ansvarlige kan registrere faktiske leveranser med en PIN-kode. Da
+              lagres dato, mengde, mottak, eventuell referanse og eventuelt vedlegg (for eksempel en
+              kvittering). Bilder som lastes opp, lagres uten metadata som posisjon. Vedlegg er bare
+              tilgjengelige for ABOKS AS. Unngå å laste opp dokumenter med personopplysninger.
+            </p>
+            <p style={bodyStyle}>
+              For å hindre misbruk brukes IP-adressen kortvarig i minnet til å begrense antall
+              forsøk. Den lagres ikke sammen med registreringene. Statistikken på QR-siden viser
+              bare samlede tall for organisasjonen.
+            </p>
+          </Section>
+
+          <Section number="14" title="Endringer i personvernerklæringen">
             <p style={bodyStyle}>
               Vi kan oppdatere denne personvernerklæringen ved behov — for eksempel hvis vi tar i
               bruk nye tjenester eller regelverket endres. Datoen øverst på siden viser når
@@ -347,7 +367,7 @@ export default function PersonvernerklaerngPage() {
             </p>
           </Section>
 
-          <Section number="14" title="Kontaktinformasjon">
+          <Section number="15" title="Kontaktinformasjon">
             <p style={bodyStyle}>
               Har du spørsmål om hvordan vi behandler personopplysningene dine, ta gjerne kontakt:
             </p>

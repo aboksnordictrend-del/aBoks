@@ -86,6 +86,12 @@ export interface Config {
     'review-photos': ReviewPhoto;
     'pilot-projects': PilotProject;
     'pilot-evaluations': PilotEvaluation;
+    'environmental-organizations': EnvironmentalOrganization;
+    'battery-registrations': BatteryRegistration;
+    'battery-deliveries': BatteryDelivery;
+    'battery-delivery-documents': BatteryDeliveryDocument;
+    'battery-registration-audit': BatteryRegistrationAudit;
+    'battery-delivery-audit': BatteryDeliveryAudit;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -121,6 +127,12 @@ export interface Config {
     'review-photos': ReviewPhotosSelect<false> | ReviewPhotosSelect<true>;
     'pilot-projects': PilotProjectsSelect<false> | PilotProjectsSelect<true>;
     'pilot-evaluations': PilotEvaluationsSelect<false> | PilotEvaluationsSelect<true>;
+    'environmental-organizations': EnvironmentalOrganizationsSelect<false> | EnvironmentalOrganizationsSelect<true>;
+    'battery-registrations': BatteryRegistrationsSelect<false> | BatteryRegistrationsSelect<true>;
+    'battery-deliveries': BatteryDeliveriesSelect<false> | BatteryDeliveriesSelect<true>;
+    'battery-delivery-documents': BatteryDeliveryDocumentsSelect<false> | BatteryDeliveryDocumentsSelect<true>;
+    'battery-registration-audit': BatteryRegistrationAuditSelect<false> | BatteryRegistrationAuditSelect<true>;
+    'battery-delivery-audit': BatteryDeliveryAuditSelect<false> | BatteryDeliveryAuditSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -1631,6 +1643,247 @@ export interface PilotEvaluation {
   createdAt: string;
 }
 /**
+ * Organisasjoner med aBoks XL. Hver organisasjon har én permanent QR-kode som deles av alle beholderne. Se Miljøregistrering-oversikten for statistikk.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "environmental-organizations".
+ */
+export interface EnvironmentalOrganization {
+  id: number;
+  /**
+   * Vises på den offentlige siden og i miljørapporten. Endring påvirker ikke QR-koden.
+   */
+  name: string;
+  organizationType?: ('kommune' | 'skole' | 'bedrift' | 'annet') | null;
+  organizationNumber?: string | null;
+  contactPerson?: string | null;
+  contactEmail?: string | null;
+  address?: string | null;
+  /**
+   * Kun til informasjon — alle beholderne bruker samme QR-kode.
+   */
+  containerCount?: number | null;
+  startDate?: string | null;
+  internalNotes?: string | null;
+  /**
+   * aBoks XL tar ikke imot 9V- eller litiumbatterier, og de kan ikke velges. «Andre» vises bare når beskrivelsen under er fylt ut.
+   */
+  allowedCategories: ('aa' | 'aaa' | 'other')[];
+  otherCategoryLabel?: string | null;
+  /**
+   * Påkrevd for «Andre». Beskriv bare typer som beholderens godkjente instruksjoner tillater. Vises for de ansatte.
+   */
+  otherCategoryDescription?: string | null;
+  maxPerCategory?: number | null;
+  maxPerSubmission?: number | null;
+  confirmAbove?: number | null;
+  /**
+   * Totalt per dag før registreringer merkes for gjennomgang.
+   */
+  dailyFlagThreshold?: number | null;
+  /**
+   * Inaktiv: QR-siden tar ikke imot registreringer og viser ingen statistikk.
+   */
+  status: 'active' | 'inactive';
+  /**
+   * Lages automatisk og endres aldri ved navnebytte.
+   */
+  publicCode?: string | null;
+  /**
+   * Utskrevne QR-koder med disse kodene virker ikke lenger.
+   */
+  codeHistory?:
+    | {
+        code: string;
+        retiredAt?: string | null;
+        reason?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  pinHash?: string | null;
+  pinSetAt?: string | null;
+  pinEncrypted?: string | null;
+  pinAttemptCount?: number | null;
+  pinAttemptWindowStart?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Anonyme registreringer fra QR-siden (egenrapportert). Kan ikke redigeres direkte — bruk Korriger / Ugyldiggjør i sidepanelet. Opprinnelige verdier bevares.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-registrations".
+ */
+export interface BatteryRegistration {
+  id: number;
+  organization: number | EnvironmentalOrganization;
+  organizationName?: string | null;
+  /**
+   * Etter eventuelle korrigeringer. Brukes i statistikken.
+   */
+  lines?:
+    | {
+        category: 'aa' | 'aaa' | 'other';
+        quantity: number;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Nøyaktig det som ble sendt inn. Endres aldri.
+   */
+  submittedLines?:
+    | {
+        category: 'aa' | 'aaa' | 'other';
+        quantity: number;
+        id?: string | null;
+      }[]
+    | null;
+  totalQuantity?: number | null;
+  submittedTotal?: number | null;
+  status: 'registered' | 'corrected' | 'invalidated';
+  reviewState?: ('none' | 'pending' | 'reviewed') | null;
+  flags?: ('high-quantity' | 'burst' | 'possible-duplicate')[] | null;
+  registeredAt: string;
+  method?: ('manual' | 'barcode') | null;
+  source?: 'qr-form' | null;
+  submissionKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Faktiske leveranser registrert av organisasjonens ansvarlige med PIN. Kan ikke redigeres direkte — bruk Korriger / Ugyldiggjør i sidepanelet.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-deliveries".
+ */
+export interface BatteryDelivery {
+  id: number;
+  organization: number | EnvironmentalOrganization;
+  organizationName?: string | null;
+  deliveryDate: string;
+  quantity: number;
+  unit: 'kg' | 'stk';
+  operator: string;
+  reference?: string | null;
+  document?: (number | null) | BatteryDeliveryDocument;
+  /**
+   * Verdiene den ansvarlige sendte inn. Endres aldri.
+   */
+  submittedValues?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  documentationStatus: 'reported' | 'documented';
+  status: 'registered' | 'corrected' | 'invalidated';
+  registeredAt: string;
+  source?: 'pin-form' | null;
+  submissionKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-delivery-documents".
+ */
+export interface BatteryDeliveryDocument {
+  id: number;
+  organization?: (number | null) | EnvironmentalOrganization;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+}
+/**
+ * Uforanderlig logg over korrigeringer, ugyldiggjøringer og gjennomganger.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-registration-audit".
+ */
+export interface BatteryRegistrationAudit {
+  id: number;
+  registration: number | BatteryRegistration;
+  organization?: (number | null) | EnvironmentalOrganization;
+  action: 'create' | 'correct' | 'invalidate' | 'restore' | 'review';
+  performedAt: string;
+  performedBy?: (number | null) | User;
+  /**
+   * E-post for administratorer, «Ansvarlig (PIN)» for leveranser fra QR-siden.
+   */
+  performedByLabel?: string | null;
+  reason?: string | null;
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Uforanderlig logg over registrering, korrigering og ugyldiggjøring av leveranser.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-delivery-audit".
+ */
+export interface BatteryDeliveryAudit {
+  id: number;
+  delivery: number | BatteryDelivery;
+  organization?: (number | null) | EnvironmentalOrganization;
+  action: 'create' | 'correct' | 'invalidate' | 'restore' | 'review';
+  performedAt: string;
+  performedBy?: (number | null) | User;
+  /**
+   * E-post for administratorer, «Ansvarlig (PIN)» for leveranser fra QR-siden.
+   */
+  performedByLabel?: string | null;
+  reason?: string | null;
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -1729,6 +1982,30 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pilot-evaluations';
         value: number | PilotEvaluation;
+      } | null)
+    | ({
+        relationTo: 'environmental-organizations';
+        value: number | EnvironmentalOrganization;
+      } | null)
+    | ({
+        relationTo: 'battery-registrations';
+        value: number | BatteryRegistration;
+      } | null)
+    | ({
+        relationTo: 'battery-deliveries';
+        value: number | BatteryDelivery;
+      } | null)
+    | ({
+        relationTo: 'battery-delivery-documents';
+        value: number | BatteryDeliveryDocument;
+      } | null)
+    | ({
+        relationTo: 'battery-registration-audit';
+        value: number | BatteryRegistrationAudit;
+      } | null)
+    | ({
+        relationTo: 'battery-delivery-audit';
+        value: number | BatteryDeliveryAudit;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -2421,6 +2698,152 @@ export interface PilotEvaluationsSelect<T extends boolean = true> {
   questionnaireSnapshot?: T;
   submittedAt?: T;
   questionnaireVersion?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "environmental-organizations_select".
+ */
+export interface EnvironmentalOrganizationsSelect<T extends boolean = true> {
+  name?: T;
+  organizationType?: T;
+  organizationNumber?: T;
+  contactPerson?: T;
+  contactEmail?: T;
+  address?: T;
+  containerCount?: T;
+  startDate?: T;
+  internalNotes?: T;
+  allowedCategories?: T;
+  otherCategoryLabel?: T;
+  otherCategoryDescription?: T;
+  maxPerCategory?: T;
+  maxPerSubmission?: T;
+  confirmAbove?: T;
+  dailyFlagThreshold?: T;
+  status?: T;
+  publicCode?: T;
+  codeHistory?:
+    | T
+    | {
+        code?: T;
+        retiredAt?: T;
+        reason?: T;
+        id?: T;
+      };
+  pinHash?: T;
+  pinSetAt?: T;
+  pinEncrypted?: T;
+  pinAttemptCount?: T;
+  pinAttemptWindowStart?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-registrations_select".
+ */
+export interface BatteryRegistrationsSelect<T extends boolean = true> {
+  organization?: T;
+  organizationName?: T;
+  lines?:
+    | T
+    | {
+        category?: T;
+        quantity?: T;
+        id?: T;
+      };
+  submittedLines?:
+    | T
+    | {
+        category?: T;
+        quantity?: T;
+        id?: T;
+      };
+  totalQuantity?: T;
+  submittedTotal?: T;
+  status?: T;
+  reviewState?: T;
+  flags?: T;
+  registeredAt?: T;
+  method?: T;
+  source?: T;
+  submissionKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-deliveries_select".
+ */
+export interface BatteryDeliveriesSelect<T extends boolean = true> {
+  organization?: T;
+  organizationName?: T;
+  deliveryDate?: T;
+  quantity?: T;
+  unit?: T;
+  operator?: T;
+  reference?: T;
+  document?: T;
+  submittedValues?: T;
+  documentationStatus?: T;
+  status?: T;
+  registeredAt?: T;
+  source?: T;
+  submissionKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-delivery-documents_select".
+ */
+export interface BatteryDeliveryDocumentsSelect<T extends boolean = true> {
+  organization?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-registration-audit_select".
+ */
+export interface BatteryRegistrationAuditSelect<T extends boolean = true> {
+  registration?: T;
+  organization?: T;
+  action?: T;
+  performedAt?: T;
+  performedBy?: T;
+  performedByLabel?: T;
+  reason?: T;
+  before?: T;
+  after?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "battery-delivery-audit_select".
+ */
+export interface BatteryDeliveryAuditSelect<T extends boolean = true> {
+  delivery?: T;
+  organization?: T;
+  action?: T;
+  performedAt?: T;
+  performedBy?: T;
+  performedByLabel?: T;
+  reason?: T;
+  before?: T;
+  after?: T;
   updatedAt?: T;
   createdAt?: T;
 }
