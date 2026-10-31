@@ -1,3 +1,4 @@
+import { CONFIGURATOR_PRODUCT_SLUGS } from './configuratorProducts'
 import type { SolutionPageContent } from './types'
 
 /**
@@ -81,7 +82,7 @@ export const BORETTSLAGSPAKKE: SolutionPageContent = {
     intro:
       'Velg farge og antall for hvert produkt. Sammensetningen er fri – sett antallet til 0 for et produkt dere ikke trenger. Løsningen kan tilpasses alt fra mindre bygg til borettslag med flere oppganger og større rekkehusområder.',
     note: 'Et naturlig utgangspunkt er én aBoks per leilighet som skal omfattes av løsningen. Antall aBoks XL vurderes ut fra antall oppganger, bygg og naturlige fellespunkter.',
-    productSlugs: ['aboks', 'aboks-spesial', 'aboks-office', 'aboks-xl'],
+    productSlugs: CONFIGURATOR_PRODUCT_SLUGS,
     defaultQuantities: { aboks: 0, 'aboks-spesial': 0, 'aboks-office': 0, 'aboks-xl': 0 },
     summaryHeading: 'Din Borettslagspakke',
     quoteHeading: 'Skal løsningen dekke mange boliger?',

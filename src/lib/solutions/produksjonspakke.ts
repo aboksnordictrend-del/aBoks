@@ -1,3 +1,4 @@
+import { CONFIGURATOR_PRODUCT_SLUGS } from './configuratorProducts'
 import type { SolutionPageContent } from './types'
 
 /**
@@ -84,7 +85,7 @@ export const PRODUKSJONSPAKKE: SolutionPageContent = {
     heading: 'Tilpass Produksjonspakken',
     intro:
       'Velg farge og antall for hvert produkt. Sammensetningen er fri – sett antallet til 0 for et produkt dere ikke trenger.',
-    productSlugs: ['aboks', 'aboks-spesial', 'aboks-office', 'aboks-xl'],
+    productSlugs: CONFIGURATOR_PRODUCT_SLUGS,
     defaultQuantities: { aboks: 0, 'aboks-spesial': 0, 'aboks-office': 0, 'aboks-xl': 0 },
     summaryHeading: 'Din Produksjonspakke',
     quoteHeading: 'Trenger dere et større oppsett?',

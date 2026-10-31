@@ -1,3 +1,4 @@
+import { CONFIGURATOR_PRODUCT_SLUGS } from './configuratorProducts'
 import type { SolutionPageContent } from './types'
 
 /**
@@ -61,7 +62,7 @@ export const KONTORPAKKE: SolutionPageContent = {
     heading: 'Tilpass Kontorpakken',
     intro:
       'Velg farge og antall for hvert produkt. Sammensetningen er fri – sett antallet til 0 for et produkt dere ikke trenger.',
-    productSlugs: ['aboks', 'aboks-spesial', 'aboks-office', 'aboks-xl'],
+    productSlugs: CONFIGURATOR_PRODUCT_SLUGS,
     // All start at 0: the page builds a solution for this office, and an opening
     // 1 of each would read as a fixed bundle rather than a starting point.
     defaultQuantities: { aboks: 0, 'aboks-spesial': 0, 'aboks-office': 0, 'aboks-xl': 0 },
