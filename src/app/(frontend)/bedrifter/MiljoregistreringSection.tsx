@@ -204,8 +204,10 @@ export default function MiljoregistreringSection({
               borderTop: '1px solid rgba(26,29,23,0.09)',
             }}
           >
-            aBoks er et hjelpemiddel for miljøarbeid og dokumentasjon, ikke en
-            Miljøfyrtårn-sertifisering. Registrerte mengder er egenrapporterte.
+            aBoks gjør det enklere å registrere og dokumentere innsamling av
+            brukte batterier. Dette kan være en del av virksomhetens systematiske
+            miljøarbeid og bidra til arbeidet med å oppfylle relevante kriterier i
+            Miljøfyrtårn.
           </p>
 
           <div style={{ marginTop: 'clamp(24px,3vw,32px)' }}>
