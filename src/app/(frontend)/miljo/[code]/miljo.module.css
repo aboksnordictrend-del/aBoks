@@ -270,6 +270,13 @@
 }
 .input:focus-visible { outline: 3px solid rgba(94, 106, 72, 0.35); border-color: var(--accent); }
 .inputInvalid { border-color: var(--error); background: var(--error-soft); }
+/* iOS Safari sizes a native date input from its formatted value and ignores width: 100%,
+   so it pushed past the card on narrow phones. */
+.input[type='date'] { min-width: 0; }
+@supports (-webkit-touch-callout: none) {
+  .input[type='date'] { -webkit-appearance: none; appearance: none; }
+  .input[type='date']::-webkit-date-and-time-value { text-align: left; }
+}
 .fieldRow { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
 .units { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .unit {
