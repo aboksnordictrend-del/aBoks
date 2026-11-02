@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { ADJUSTMENT_REASON_OPTIONS, REFERRAL_CATEGORY_OPTIONS } from '@/lib/partner/referral'
 import { guardAdjustmentChanges } from './hooks/referralAdjustment'
+import { staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Commission adjustments (`Provisjonsjusteringer`) — negative amounts owed back to ABOKS AS
@@ -27,11 +28,11 @@ export const ReferralCommissionAdjustments: CollectionConfig = {
       'Opprettes automatisk når et salg refunderes eller kanselleres etter at provisjonen er utbetalt. Trekkes fra neste utbetaling av henvisningsprovisjon.',
   },
   access: {
-    read: ({ req }) => !!req.user,
+    read: staffOnly,
     // System-written only, through the sale's afterChange hook with overrideAccess.
     create: () => false,
     // Allowed, but `guardAdjustmentChanges` narrows it to the note.
-    update: ({ req }) => !!req.user,
+    update: staffOnly,
     // Accounting history. Never deleted.
     delete: () => false,
   },

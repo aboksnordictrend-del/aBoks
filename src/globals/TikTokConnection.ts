@@ -1,4 +1,5 @@
-import type { GlobalConfig, Access, FieldAccess } from 'payload'
+import type { GlobalConfig, FieldAccess } from 'payload'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 // Storage for the TikTok Ads authorization obtained through "Koble til TikTok".
 //
@@ -10,8 +11,6 @@ import type { GlobalConfig, Access, FieldAccess } from 'payload'
 //
 // Everything here except the token is non-secret account metadata (advertiser id, name,
 // currency, reporting time zone) that the status endpoint returns in masked form.
-
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 
 /**
  * The token field is unreadable through *any* API path, including the admin panel: Payload

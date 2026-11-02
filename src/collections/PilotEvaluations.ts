@@ -1,5 +1,6 @@
 import type { Access, CollectionConfig } from 'payload'
 import { PILOT_ADMIN_GROUP, PILOT_EVALUATIONS_SLUG, PILOT_PROJECTS_SLUG } from '@/lib/pilot/constants'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 /**
  * Submitted pilot evaluations («Pilotevalueringer»). One document per anonymous submission.
@@ -24,7 +25,6 @@ import { PILOT_ADMIN_GROUP, PILOT_EVALUATIONS_SLUG, PILOT_PROJECTS_SLUG } from '
  * delete are for administrators.
  */
 
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 const nobody: Access = () => false
 
 export const PilotEvaluations: CollectionConfig = {

@@ -22,8 +22,8 @@ beforeEach(() => {
 type Doc = Record<string, unknown> & { id: number }
 type AccessFn = (args: { req: { user: unknown } }) => unknown
 
-const ADMIN = { id: 1, role: 'admin' }
-const EDITOR = { id: 2, role: 'editor' }
+const ADMIN = { collection: 'users', id: 1, role: 'admin' }
+const EDITOR = { collection: 'users', id: 2, role: 'editor' }
 
 // ── Minimal in-memory Payload: just the queries the pilot code issues ──
 

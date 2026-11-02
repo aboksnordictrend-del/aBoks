@@ -17,6 +17,7 @@ import {
 import { expensesSummary, type ExpenseRow } from '@/lib/marketing/expenseSummary'
 import { getConnectionInfo } from '@/lib/pinterest/oauth/store'
 import { hasStoredToken } from '@/lib/tiktok/tokenStore'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /** Spend summary for a channel from its own imported day records (never manual rows). */
 async function channelSummary(
@@ -95,10 +96,10 @@ export const marketingChannelsEndpoint: Endpoint = {
   path: '/admin/marketing/channels',
   method: 'get',
   handler: async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if ((req.user as { role?: string }).role !== 'admin') {
+    if (!isAdminUser(req.user)) {
       return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
     }
 

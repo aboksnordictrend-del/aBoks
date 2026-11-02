@@ -2,6 +2,7 @@ import type { AdminViewServerProps } from 'payload'
 import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Gutter } from '@payloadcms/ui'
 import BlobImagesClient from './BlobImagesClient'
+import { isStaffUser } from '@/lib/security/staffAccess'
 
 // Custom admin view mounted at /admin/blob-bilder (config key `blobBilder`). Mirrors
 // analytics/DashboardView.tsx: Payload's DefaultTemplate supplies the standard nav and
@@ -17,7 +18,7 @@ export default function BlobImagesView({
 }: AdminViewServerProps) {
   const { req, permissions, visibleEntities, locale } = initPageResult
 
-  if (!req.user) {
+  if (!isStaffUser(req.user)) {
     return (
       <Gutter>
         <h1>Ikke tilgang</h1>

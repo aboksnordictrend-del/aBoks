@@ -15,6 +15,7 @@ import {
   type AdminResult,
 } from '@/lib/miljo/admin'
 import { newUniqueCode, type MiljoContext } from '../hooks/miljo'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /**
  * Administrator endpoints for Miljøregistrering (all POST except status; all admin-only):
@@ -35,8 +36,8 @@ import { newUniqueCode, type MiljoContext } from '../hooks/miljo'
 type Doc = Record<string, unknown>
 
 function deny(req: PayloadRequest): Response | null {
-  if (!req.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  if ((req.user as { role?: string }).role !== 'admin') return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
+  if (!isStaffUser(req.user)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdminUser(req.user)) return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
   return null
 }
 

@@ -7,6 +7,7 @@ import type { Endpoint, PayloadRequest, Where } from 'payload'
 import type { MarketingExpense } from '@/payload-types'
 import { metaExpensesSummary, type MetaExpenseRow } from '@/lib/marketing/metaExpenses'
 import { validateSyncDates, SyncValidationError } from '@/lib/meta/sync'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 function str(query: Record<string, unknown>, key: string): string | undefined {
   const raw = query[key]
@@ -19,10 +20,10 @@ export const metaExpensesEndpoint: Endpoint = {
   path: '/admin/integrations/meta/expenses',
   method: 'get',
   handler: async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if ((req.user as { role?: string }).role !== 'admin') {
+    if (!isAdminUser(req.user)) {
       return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
     }
 

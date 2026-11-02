@@ -2,6 +2,7 @@ import type { Endpoint, PayloadRequest } from 'payload'
 import type { PilotProject } from '@/payload-types'
 import { DEFAULT_CLOSING, DEFAULT_INTRO, PILOT_PROJECTS_SLUG } from '@/lib/pilot/constants'
 import { defaultQuestions } from '@/lib/pilot/defaultQuestionnaire'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /**
  * POST /api/pilot-projects/:id/load-default-questionnaire — «Last inn standard spørreskjema».
@@ -12,8 +13,8 @@ import { defaultQuestions } from '@/lib/pilot/defaultQuestionnaire'
  * unaffected. Administrator-only.
  */
 export async function handleLoadDefaultQuestionnaire(req: PayloadRequest): Promise<Response> {
-  if (!req.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  if ((req.user as { role?: string }).role !== 'admin') {
+  if (!isStaffUser(req.user)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdminUser(req.user)) {
     return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
   }
   const id = req.routeParams?.id as string | undefined

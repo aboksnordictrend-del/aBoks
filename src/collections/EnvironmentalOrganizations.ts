@@ -1,4 +1,4 @@
-import type { Access, CollectionConfig, FieldAccess } from 'payload'
+import type { CollectionConfig, FieldAccess } from 'payload'
 import {
   CATEGORY_OPTIONS,
   DEFAULT_ALLOWED_CATEGORIES,
@@ -11,6 +11,7 @@ import {
 import { ORGANIZATION_TYPE_OPTIONS } from '@/lib/pilot/constants'
 import { enforceOrganizationRules, guardOrganizationDelete } from './hooks/miljo'
 import { miljoOrganizationEndpoints } from './endpoints/miljo'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 /**
  * Organisations in aBoks Miljøregistrering («Organisasjoner»). Each has ONE permanent public code —
@@ -23,7 +24,6 @@ import { miljoOrganizationEndpoints } from './endpoints/miljo'
  * read and write at field level, so even an administrator's REST response does not contain them.
  */
 
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 const never: FieldAccess = () => false
 
 export const EnvironmentalOrganizations: CollectionConfig = {

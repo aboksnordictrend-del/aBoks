@@ -54,8 +54,8 @@ describe('PIN reveal — endpoints and access control', () => {
     else process.env[PIN_KEY_ENV] = saved
   })
 
-  const admin = { id: 1, email: 'admin@aboks.invalid', role: 'admin' }
-  const editor = { id: 2, email: 'editor@aboks.invalid', role: 'editor' }
+  const admin = { collection: 'users', id: 1, email: 'admin@aboks.invalid', role: 'admin' }
+  const editor = { collection: 'users', id: 2, email: 'editor@aboks.invalid', role: 'editor' }
 
   async function setup(user: unknown, extra: Record<string, unknown> = {}) {
     const stub = createStub({ 'environmental-organizations': [{ id: 5, name: 'Demo', publicCode: 'abcdefghjk', status: 'active', allowedCategories: ['aa'], ...extra }] }, user)

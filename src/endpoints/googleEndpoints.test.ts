@@ -85,7 +85,7 @@ describe('google endpoints — admin-only access', () => {
       assert.equal(status, 401)
     })
     it(`${name}: 403 for an authenticated editor`, async () => {
-      const { status } = await call(endpoint, { user: { role: 'editor' } })
+      const { status } = await call(endpoint, { user: { collection: 'users', role: 'editor' } })
       assert.equal(status, 403)
     })
   }
@@ -104,7 +104,7 @@ describe('google/sync — input validation (#9)', () => {
   it('rejects an invalid mode with 400 before touching Google', async () => {
     setConfiguredEnv()
     const { status, json } = await call(googleSyncEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { mode: 'partial' },
     })
     assert.equal(status, 400)
@@ -115,7 +115,7 @@ describe('google/sync — input validation (#9)', () => {
   it('rejects an oversized body with 400', async () => {
     setConfiguredEnv()
     const { status } = await call(googleSyncEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { mode: 'full', padding: 'x'.repeat(3000) },
     })
     assert.equal(status, 400)
@@ -126,7 +126,7 @@ describe('google/sync — missing configuration (#10, #11)', () => {
   it('returns a controlled Norwegian error, never a stack trace or a secret', async () => {
     clearEnv()
     const { status, json } = await call(googleSyncEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { mode: 'incremental' },
     })
     assert.equal(status, 500)
@@ -142,7 +142,7 @@ describe('google/sync — missing configuration (#10, #11)', () => {
 describe('google/status', () => {
   it('reports "not configured" with the missing keys and no secrets (#10, #11)', async () => {
     clearEnv()
-    const { status, json } = await call(googleStatusEndpoint, { user: { role: 'admin' } })
+    const { status, json } = await call(googleStatusEndpoint, { user: { collection: 'users', role: 'admin' } })
     assert.equal(status, 200)
     assert.equal(json.configured, false)
     assert.ok(Array.isArray(json.missingEnv))
@@ -155,7 +155,7 @@ describe('google/status', () => {
   it('reports a configured account with masked ids only (#11)', async () => {
     setConfiguredEnv()
     const { status, json } = await call(googleStatusEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       docs: [
         {
           id: 1,
@@ -182,7 +182,7 @@ describe('google/status', () => {
 
   it('exposes the last-attempt state shape the panel renders', async () => {
     setConfiguredEnv()
-    const { json } = await call(googleStatusEndpoint, { user: { role: 'admin' } })
+    const { json } = await call(googleStatusEndpoint, { user: { collection: 'users', role: 'admin' } })
     const sync = json.sync as Record<string, unknown>
     for (const key of [
       'lastAttemptAt',
@@ -202,21 +202,21 @@ describe('google/status', () => {
 describe('google/expenses — validation', () => {
   it('rejects a single date with 400', async () => {
     const { status } = await call(googleExpensesEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       query: { since: '2026-07-20' },
     })
     assert.equal(status, 400)
   })
 
   it('accepts an admin request with no dates (200)', async () => {
-    const { status, json } = await call(googleExpensesEndpoint, { user: { role: 'admin' } })
+    const { status, json } = await call(googleExpensesEndpoint, { user: { collection: 'users', role: 'admin' } })
     assert.equal(status, 200)
     assert.deepEqual(json.period, { since: null, until: null })
   })
 
   it('summarises imported rows', async () => {
     const { json } = await call(googleExpensesEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       docs: [
         { id: 1, date: '2026-07-20T00:00:00.000Z', amount: 100, amountExVat: 80, source: 'google-ads' },
         { id: 2, date: '2026-07-21T00:00:00.000Z', amount: 200, amountExVat: 160, source: 'google-ads' },

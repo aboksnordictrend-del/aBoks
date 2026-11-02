@@ -1,4 +1,5 @@
 import type { CollectionConfig, FieldHook } from 'payload'
+import { staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Builds the customer's title from "Fornavn Etternavn", trimmed, and falls back to the
@@ -27,11 +28,13 @@ export const Customers: CollectionConfig = {
     defaultColumns: ['displayName', 'email', 'firstName', 'lastName', 'createdAt'],
     description: 'Kunder registrert i systemet.',
   },
+  // Staff only in every direction. The customer sync (`@/lib/customers`, from the Kustom webhook
+  // and the backfill) writes through the Local API with `overrideAccess: true`.
   access: {
-  read: ({ req }) => !!req.user,
-  create: () => true,
-  update: ({ req }) => !!req.user,
-  delete: ({ req }) => !!req.user,
+  read: staffOnly,
+  create: staffOnly,
+  update: staffOnly,
+  delete: staffOnly,
 },
   fields: [
     {

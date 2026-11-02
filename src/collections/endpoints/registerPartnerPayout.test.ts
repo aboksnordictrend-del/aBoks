@@ -96,7 +96,7 @@ function harness(
   }
 
   const req = {
-    user: opts.user === undefined ? { id: 1, role: 'admin' } : opts.user,
+    user: opts.user === undefined ? { collection: 'users', id: 1, role: 'admin' } : opts.user,
     payload,
     json: async () => {
       if (opts.bodyThrows) throw new SyntaxError('bad json')

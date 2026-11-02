@@ -10,6 +10,7 @@ import {
 import { COUNTRY_OPTIONS, DEFAULT_COUNTRY_CODE } from '@/lib/partner/countries'
 import { trimText } from '@/lib/partner/address'
 import { enforceReferredCustomerRules, guardReferredCustomerDelete } from './hooks/referredCustomer'
+import { adminOnly, staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Referred customers (`Henviste kunder`) — a company or a PHYSICAL store that a regular partner
@@ -56,11 +57,11 @@ export const ReferredCustomers: CollectionConfig = {
   },
   access: {
     // Admin-only in every direction, like the partner data it belongs to.
-    read: ({ req }) => !!req.user,
-    create: ({ req }) => !!req.user,
-    update: ({ req }) => !!req.user,
+    read: staffOnly,
+    create: staffOnly,
+    update: staffOnly,
     // Ending a referral is «Inaktiv»; deleting is an admin decision, and refused once sales exist.
-    delete: ({ req }) => req.user?.role === 'admin',
+    delete: adminOnly,
   },
   defaultSort: '-referralDate',
   versions: { drafts: false, maxPerDoc: 100 },

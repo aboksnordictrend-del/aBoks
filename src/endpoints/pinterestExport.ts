@@ -22,6 +22,7 @@ import { PINTEREST_ROW_LIMIT } from '@/lib/pinterest/export/items'
 import { DESCRIPTION_MAX, TITLE_MAX, normalizeText } from '@/lib/pinterest/export/text'
 import { resolveCanonicalBase } from '@/lib/pinterest/export/urls'
 import type { PinterestExportItem, PinterestSourceSelection } from '@/lib/pinterest/export/types'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /** 200 rows of edited copy, with headroom. Anything larger is a malformed or hostile body. */
 const MAX_BODY_BYTES = 500_000
@@ -34,10 +35,10 @@ const ALL_SOURCES: PinterestSourceSelection = {
 }
 
 function requireAdmin(req: PayloadRequest): Response | null {
-  if (!req.user) {
+  if (!isStaffUser(req.user)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  if ((req.user as { role?: string }).role !== 'admin') {
+  if (!isAdminUser(req.user)) {
     return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
   }
   return null

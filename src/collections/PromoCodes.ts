@@ -29,6 +29,7 @@ import {
   ELIGIBLE_PARTNER_FILTER,
   validatePartnerLink,
 } from './hooks/promoCodePartner'
+import { staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Promo / discount codes (`Promokoder`).
@@ -223,10 +224,10 @@ export const PromoCodes: CollectionConfig = {
     // Admin-only in every direction. Nothing here is public: the customer-facing
     // validation endpoint reads a single submitted code with overrideAccess and never
     // exposes the document itself.
-    read: ({ req }) => !!req.user,
-    create: ({ req }) => !!req.user,
-    update: ({ req }) => !!req.user,
-    delete: ({ req }) => !!req.user,
+    read: staffOnly,
+    create: staffOnly,
+    update: staffOnly,
+    delete: staffOnly,
   },
   defaultSort: '-createdAt',
   fields: [

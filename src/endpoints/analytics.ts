@@ -10,6 +10,7 @@ import { runAnalyticsDetailed, type AnalyticsQuery } from '../lib/analytics/aggr
 import { marketingCsv, ordersCsv, productsCsv } from '../lib/analytics/csv'
 import { expenseOverlapsPeriod } from '../lib/analytics/marketing'
 import type { Grouping, PresetKey } from '../lib/analytics/period'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 const PRESETS: PresetKey[] = [
   'today', 'yesterday', 'last7', 'last30', 'thisMonth', 'lastMonth', 'thisYear', 'custom',
@@ -60,7 +61,7 @@ function parseQuery(req: PayloadRequest): AnalyticsQuery {
     customTo,
     paidOnly,
     grouping: groupingRaw as Grouping | undefined,
-    isAdmin: (req.user as { role?: string } | null | undefined)?.role === 'admin',
+    isAdmin: isAdminUser(req.user),
   }
 }
 
@@ -68,7 +69,7 @@ export const analyticsEndpoint: Endpoint = {
   path: '/analytics',
   method: 'get',
   handler: async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

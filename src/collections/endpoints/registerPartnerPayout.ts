@@ -5,6 +5,7 @@ import { loadPartnerBalance } from '@/lib/partner/balanceQuery'
 import { loadPartnerStatistics } from '@/lib/partner/statistics'
 import { createPartnerPayoutEmail } from '@/emails'
 import { oereToKr } from '@/lib/cartPricing'
+import { isStaffUser } from '@/lib/security/staffAccess'
 
 /**
  * Registers a payout that has ALREADY been paid — `POST /api/partner-payouts/register`.
@@ -149,7 +150,7 @@ export const registerPartnerPayout: Endpoint = {
   path: '/register',
   method: 'post',
   handler: async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return fail('unauthorized', 'Du må være innlogget.', 401)
     }
 

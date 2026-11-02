@@ -12,6 +12,7 @@ import {
 import { ACTUAL_SHIPPING_DESCRIPTION, COST_LINES_DESCRIPTION } from '@/lib/partner/referralCost'
 import { enforceReferralSaleRules, guardReferralSaleDelete, relationshipId as relationshipIdOf } from './hooks/referralSale'
 import { createClawbackAdjustment } from './hooks/referralAdjustment'
+import { adminOnly, staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Referral sales (`Henvisningssalg`) — one row per purchase by a referred company or physical
@@ -58,11 +59,11 @@ export const ReferralSales: CollectionConfig = {
       'Manuelt registrerte salg til henviste bedrifter og fysiske butikker. Provisjonen beregnes automatisk og opptjenes først når salget er betalt.',
   },
   access: {
-    read: ({ req }) => !!req.user,
-    create: ({ req }) => !!req.user,
-    update: ({ req }) => !!req.user,
+    read: staffOnly,
+    create: staffOnly,
+    update: staffOnly,
     // Admin only, and `guardReferralSaleDelete` allows it only for a sale still awaiting payment.
-    delete: ({ req }) => req.user?.role === 'admin',
+    delete: adminOnly,
   },
   defaultSort: '-saleDate',
   versions: { drafts: false, maxPerDoc: 100 },

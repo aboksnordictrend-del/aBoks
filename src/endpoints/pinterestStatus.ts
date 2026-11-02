@@ -25,6 +25,7 @@ import {
 import { getConnectionInfo } from '@/lib/pinterest/oauth/store'
 import { expensesSummary, type ExpenseRow } from '@/lib/marketing/expenseSummary'
 import { getSyncState } from '@/lib/marketing/syncState'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /** Currency / API version recorded by the most recent import, if any. */
 interface ImportContext {
@@ -48,10 +49,10 @@ export const pinterestStatusEndpoint: Endpoint = {
   path: '/admin/integrations/pinterest/status',
   method: 'get',
   handler: async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if ((req.user as { role?: string }).role !== 'admin') {
+    if (!isAdminUser(req.user)) {
       return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
     }
 

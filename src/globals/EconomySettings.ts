@@ -1,10 +1,10 @@
-import type { GlobalConfig, Access } from 'payload'
+import type { GlobalConfig } from 'payload'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 // Admin-only economy configuration: payment-provider fee automation and default shipping
 // cost. Read at order-creation time to snapshot paymentFee / actualShippingCost, and by the
 // analytics layer for data-quality warnings. Rounding (2 decimals) and currency (NOK) are
 // fixed constants in code — not user settings — so they are deliberately not exposed here.
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 
 export const EconomySettings: GlobalConfig = {
   slug: 'economy-settings',

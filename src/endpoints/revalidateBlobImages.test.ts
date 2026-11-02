@@ -61,16 +61,16 @@ describe('blob-images revalidation — authorization', () => {
 
   it('403 for an authenticated non-admin', async () => {
     const { fn, tags } = spy()
-    const { status, json } = await call({ role: 'editor' }, fn)
+    const { status, json } = await call({ collection: 'users', role: 'editor' }, fn)
     assert.equal(status, 403)
     assert.equal(json.error, 'Kun for administratorer.')
     assert.deepEqual(tags, [], 'must not revalidate for a non-admin')
   })
 
-  it('403 for a user with no role at all', async () => {
+  it('401 for a user with no staff role at all — not staff, so treated as unauthenticated', async () => {
     const { fn, tags } = spy()
     const { status } = await call({ email: 'x@y.z' }, fn)
-    assert.equal(status, 403)
+    assert.equal(status, 401)
     assert.deepEqual(tags, [])
   })
 
@@ -79,7 +79,7 @@ describe('blob-images revalidation — authorization', () => {
     // return before that is ever resolved, so no cache machinery is touched here.
     for (const [user, expected] of [
       [null, 401],
-      [{ role: 'editor' }, 403],
+      [{ collection: 'users', role: 'editor' }, 403],
     ] as const) {
       const res = await blobImagesRevalidateEndpoint.handler!(makeReq(user))
       assert.equal(res.status, expected)
@@ -95,7 +95,7 @@ describe('blob-images revalidation — authorization', () => {
 describe('blob-images revalidation — behaviour', () => {
   it('purges exactly the tag the storefront cache uses, once', async () => {
     const { fn, tags } = spy()
-    const { status, json } = await call({ role: 'admin' }, fn)
+    const { status, json } = await call({ collection: 'users', role: 'admin' }, fn)
     assert.equal(status, 200)
     assert.equal(json.ok, true)
     assert.deepEqual(tags, [BLOB_IMAGES_TAG])
@@ -104,14 +104,14 @@ describe('blob-images revalidation — behaviour', () => {
 
   it('reports the tag and the folders it covers back to the admin', async () => {
     const { fn } = spy()
-    const { json } = await call({ role: 'admin' }, fn)
+    const { json } = await call({ collection: 'users', role: 'admin' }, fn)
     assert.equal(json.tag, BLOB_IMAGES_TAG)
     assert.deepEqual(json.folders, ['Video/', 'aboks-vegg/'])
   })
 
   it('timestamps the refresh so the UI can confirm it happened', async () => {
     const { fn } = spy()
-    const { json } = await call({ role: 'admin' }, fn)
+    const { json } = await call({ collection: 'users', role: 'admin' }, fn)
     const at = new Date(String(json.revalidatedAt))
     assert.ok(!Number.isNaN(at.getTime()), 'revalidatedAt must be an ISO timestamp')
   })
@@ -121,7 +121,7 @@ describe('blob-images revalidation — behaviour', () => {
     const { fn, tags } = spy(() => {
       throw new Error('static generation store missing')
     })
-    const { status, json } = await call({ role: 'admin' }, fn)
+    const { status, json } = await call({ collection: 'users', role: 'admin' }, fn)
     assert.equal(status, 500)
     assert.equal(json.ok, false)
     assert.equal(json.error, 'Kunne ikke oppdatere bildelistene. Prøv igjen.')
@@ -133,14 +133,14 @@ describe('blob-images revalidation — behaviour', () => {
     const { fn } = spy(() => {
       throw new Error('secret internal detail')
     })
-    const { json } = await call({ role: 'admin' }, fn)
+    const { json } = await call({ collection: 'users', role: 'admin' }, fn)
     assert.doesNotMatch(JSON.stringify(json), /secret internal detail/)
   })
 
   it('is safe to press repeatedly', async () => {
     const { fn, tags } = spy()
     for (let i = 0; i < 3; i++) {
-      const { status } = await call({ role: 'admin' }, fn)
+      const { status } = await call({ collection: 'users', role: 'admin' }, fn)
       assert.equal(status, 200)
     }
     assert.deepEqual(tags, ['blob-images', 'blob-images', 'blob-images'])

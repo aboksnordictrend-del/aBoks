@@ -26,6 +26,7 @@ import {
   type PinterestSyncInput,
 } from '@/lib/pinterest/sync'
 import { recordSyncAttempt, recordSyncFailure, recordSyncSuccess } from '@/lib/marketing/syncState'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 const MAX_BODY_BYTES = 2_000
 
@@ -56,10 +57,10 @@ export const pinterestSyncEndpoint: Endpoint = {
   path: '/admin/integrations/pinterest/sync',
   method: 'post',
   handler: async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
-    if ((req.user as { role?: string }).role !== 'admin') {
+    if (!isAdminUser(req.user)) {
       return Response.json({ success: false, error: 'Kun for administratorer.' }, { status: 403 })
     }
 

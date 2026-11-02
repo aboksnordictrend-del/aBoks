@@ -1,6 +1,7 @@
 import type { CollectionConfig, CollectionBeforeChangeHook } from 'payload'
 import { safeRevalidate } from '@/lib/safeRevalidate'
 import { notifyAdminNewReview } from './hooks/notifyAdminNewReview'
+import { isStaffUser, staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Customer reviews. Content is created ONLY by the server-side review handler (after a
@@ -52,13 +53,13 @@ export const Reviews: CollectionConfig = {
     pagination: { defaultLimit: 25 },
   },
   access: {
-    // Public may read only approved reviews; admins read everything.
-    read: ({ req }) => (req.user ? true : { status: { equals: 'approved' } }),
+    // Public — and any non-staff login — may read only approved reviews; staff read everything.
+    read: ({ req }) => (isStaffUser(req.user) ? true : { status: { equals: 'approved' } }),
     // Never created via the public API — only through the server review handler
     // (overrideAccess). Admins may still create manually if ever needed.
-    create: ({ req }) => !!req.user,
-    update: ({ req }) => !!req.user,
-    delete: ({ req }) => !!req.user,
+    create: staffOnly,
+    update: staffOnly,
+    delete: staffOnly,
   },
   defaultSort: '-submittedAt',
   fields: [

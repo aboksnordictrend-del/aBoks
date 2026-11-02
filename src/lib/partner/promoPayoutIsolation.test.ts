@@ -122,7 +122,7 @@ describe('promo payout isolation — Partnerstatistikk', () => {
 /* ------------------------------ promo payout endpoint ------------------------------ */
 
 async function callPromoEndpoint(payload: Payload, body: Row) {
-  const req = { user: { id: 1, role: 'admin' }, payload, json: async () => body } as unknown as PayloadRequest
+  const req = { user: { collection: 'users', id: 1, role: 'admin' }, payload, json: async () => body } as unknown as PayloadRequest
   const originalError = console.error
   console.error = () => {}
   try {

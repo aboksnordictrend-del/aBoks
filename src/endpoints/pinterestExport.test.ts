@@ -141,18 +141,18 @@ describe('pinterest export — authorization', () => {
     })
 
     it(`${name}: 403 for an authenticated editor`, async () => {
-      const res = await call(endpoint, { user: { role: 'editor' }, ...extra })
+      const res = await call(endpoint, { user: { collection: 'users', role: 'editor' }, ...extra })
       assert.equal(res.status, 403)
     })
 
     it(`${name}: 200 for an admin`, async () => {
-      const res = await call(endpoint, { user: { role: 'admin' }, ...extra })
+      const res = await call(endpoint, { user: { collection: 'users', role: 'admin' }, ...extra })
       assert.equal(res.status, 200)
     })
   }
 
   it('leaks nothing beyond the error string on a rejected request', async () => {
-    const res = await call(pinterestExportPreviewEndpoint, { user: { role: 'editor' } })
+    const res = await call(pinterestExportPreviewEndpoint, { user: { collection: 'users', role: 'editor' } })
     assert.deepEqual(await res.json(), { error: 'Kun for administratorer.' })
   })
 })
@@ -161,7 +161,7 @@ describe('pinterest export — authorization', () => {
 
 describe('pinterest export — preview', () => {
   it('returns items, counts, skips and the row limit', async () => {
-    const res = await call(pinterestExportPreviewEndpoint, { user: { role: 'admin' } })
+    const res = await call(pinterestExportPreviewEndpoint, { user: { collection: 'users', role: 'admin' } })
     const body = (await res.json()) as {
       items: PinterestExportItem[]
       counts: { products: number; variants: number; homepage: number; total: number }
@@ -181,7 +181,7 @@ describe('pinterest export — preview', () => {
   })
 
   it('every previewed row is https on the canonical origin', async () => {
-    const res = await call(pinterestExportPreviewEndpoint, { user: { role: 'admin' } })
+    const res = await call(pinterestExportPreviewEndpoint, { user: { collection: 'users', role: 'admin' } })
     const { items, baseUrl } = (await res.json()) as {
       items: PinterestExportItem[]
       baseUrl: string
@@ -194,7 +194,7 @@ describe('pinterest export — preview', () => {
 
   it('honours the sources query parameter', async () => {
     const res = await call(pinterestExportPreviewEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       query: { sources: 'products' },
     })
     const body = (await res.json()) as { counts: { variants: number; homepage: number } }
@@ -204,7 +204,7 @@ describe('pinterest export — preview', () => {
 
   it('keeps the other sources working when the Blob listing fails', async () => {
     // No BLOB_READ_WRITE_TOKEN in this suite, so the Pinterest folder cannot be read.
-    const res = await call(pinterestExportPreviewEndpoint, { user: { role: 'admin' } })
+    const res = await call(pinterestExportPreviewEndpoint, { user: { collection: 'users', role: 'admin' } })
     const body = (await res.json()) as {
       counts: { products: number; variants: number; homepage: number; blob: number }
       warnings: string[]
@@ -220,7 +220,7 @@ describe('pinterest export — preview', () => {
   })
 
   it('exposes a destination allowlist limited to canonical product URLs', async () => {
-    const res = await call(pinterestExportPreviewEndpoint, { user: { role: 'admin' } })
+    const res = await call(pinterestExportPreviewEndpoint, { user: { collection: 'users', role: 'admin' } })
     const { destinationOptions } = (await res.json()) as {
       destinationOptions: { url: string; label: string }[]
     }
@@ -232,7 +232,7 @@ describe('pinterest export — preview', () => {
 
   it('does not list Blob at all when the source is unticked', async () => {
     const res = await call(pinterestExportPreviewEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       query: { sources: 'products' },
     })
     const body = (await res.json()) as { warnings: string[]; counts: { blob: number } }
@@ -242,7 +242,7 @@ describe('pinterest export — preview', () => {
 
   it('reports an unpublished product as skipped rather than dropping it silently', async () => {
     const res = await call(pinterestExportPreviewEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       query: { sources: 'products' },
       products: [{ ...productDoc, published: false }],
     })
@@ -289,7 +289,7 @@ describe('parseSources', () => {
 describe('pinterest export — CSV generation', () => {
   it('serves a CSV attachment with the official header row', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { board: 'Batterioppbevaring' },
     })
     assert.equal(res.status, 200)
@@ -305,7 +305,7 @@ describe('pinterest export — CSV generation', () => {
 
   it('encodes the body as UTF-8 with Norwegian characters intact', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { board: 'Bærekraft' },
     })
     const bytes = new Uint8Array(await res.arrayBuffer())
@@ -318,7 +318,7 @@ describe('pinterest export — CSV generation', () => {
   it('rejects a missing or invalid board with 400', async () => {
     for (const board of [undefined, '', '   ', '=evil', 'a/b/c']) {
       const res = await call(pinterestExportEndpoint, {
-        user: { role: 'admin' },
+        user: { collection: 'users', role: 'admin' },
         body: { board },
       })
       assert.equal(res.status, 400, `board=${String(board)}`)
@@ -327,7 +327,7 @@ describe('pinterest export — CSV generation', () => {
 
   it('rejects an export with no rows', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: {
         board: 'Tavle',
         sources: { products: false, variants: false, homepage: false },
@@ -338,7 +338,7 @@ describe('pinterest export — CSV generation', () => {
 
   it('exports only the sources requested in the body', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { board: 'Tavle', sources: { products: true, variants: false, homepage: false } },
     })
     // One row per gallery image.
@@ -347,7 +347,7 @@ describe('pinterest export — CSV generation', () => {
 
   it('writes one CSV row per gallery image, all pointing at the same product page', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { board: 'Tavle', sources: { products: true, variants: false, homepage: false } },
     })
     const lines = (await res.text()).trimEnd().split('\r\n')
@@ -477,11 +477,11 @@ describe('applySubmittedRows', () => {
 
 describe('pinterest export — edits reach the file', () => {
   it('writes the edited title and drops disabled rows', async () => {
-    const preview = await call(pinterestExportPreviewEndpoint, { user: { role: 'admin' } })
+    const preview = await call(pinterestExportPreviewEndpoint, { user: { collection: 'users', role: 'admin' } })
     const { items } = (await preview.json()) as { items: PinterestExportItem[] }
 
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: {
         board: 'Tavle',
         rows: items.map((row, i) => ({
@@ -511,7 +511,7 @@ describe('pinterest export — edits reach the file', () => {
         ],
       },
     ]
-    const opts = { user: { role: 'admin' }, products, variants: [] as unknown[] }
+    const opts = { user: { collection: 'users', role: 'admin' }, products, variants: [] as unknown[] }
 
     const preview = await call(pinterestExportPreviewEndpoint, opts)
     const { items } = (await preview.json()) as { items: PinterestExportItem[] }
@@ -550,7 +550,7 @@ describe('pinterest export — edits reach the file', () => {
     ]
 
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: { board: 'Tavle' },
       products,
     })
@@ -564,7 +564,7 @@ describe('pinterest export — edits reach the file', () => {
 
   it('matches an edit to the right gallery image, not to its sibling', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: {
         board: 'Tavle',
         sources: { products: true, variants: false, homepage: false },
@@ -585,7 +585,7 @@ describe('pinterest export — edits reach the file', () => {
 
   it('can disable one gallery image and keep its sibling', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: {
         board: 'Tavle',
         sources: { products: true, variants: false, homepage: false },
@@ -601,7 +601,7 @@ describe('pinterest export — edits reach the file', () => {
 
   it('guards a formula injected through an edited field', async () => {
     const res = await call(pinterestExportEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       body: {
         board: 'Tavle',
         rows: [{ sourceType: 'product', sourceId: PRODUCT_ROW_ID, title: '=HYPERLINK("http://evil")' }],

@@ -16,8 +16,8 @@ type AccessFn = (args: { req: { user: unknown } }) => unknown
 const access = PartnerPayouts.access!
 const guard = (PartnerPayouts.hooks!.beforeChange as CollectionBeforeChangeHook[])[0]
 
-const ADMIN = { id: 1, role: 'admin' }
-const EDITOR = { id: 2, role: 'editor' }
+const ADMIN = { collection: 'users', id: 1, role: 'admin' }
+const EDITOR = { collection: 'users', id: 2, role: 'editor' }
 
 /** The document as it stands in the database. */
 const ORIGINAL = {

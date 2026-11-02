@@ -1,6 +1,7 @@
 import type { CollectionConfig, NumberFieldSingleValidation } from 'payload'
 import { computeProductCostPrice } from './hooks/productCost'
 import { cascadeVariantDisplayNames } from './hooks/cascadeVariantDisplayNames'
+import { isStaffUser, staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Whole units, never negative. `min: 0` already covers the lower bound; this adds the integer
@@ -49,11 +50,16 @@ export const Products: CollectionConfig = {
     description: 'Administrer produkter i butikken.',
     listSearchableFields: ['title', 'slug'],
   },
+  // Public read of PUBLISHED products only; staff see everything; writes are staff only. The
+  // storefront, feed and cart read through the Local API (which overrides access) and filter on
+  // `published` themselves, so this only closes the REST API to unpublished products. (Writes were
+  // opened on 2026-06-15 as a workaround while admin POSTs arrived unauthenticated — fixed since by
+  // `@/lib/csrfOrigins`.)
   access: {
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+    read: ({ req }) => (isStaffUser(req.user) ? true : { published: { equals: true } }),
+    create: staffOnly,
+    update: staffOnly,
+    delete: staffOnly,
   },
   fields: [
     {

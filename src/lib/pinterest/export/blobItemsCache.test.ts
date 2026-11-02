@@ -189,7 +189,7 @@ describe('collectExportPreview — Blob round trips', () => {
     for (let i = 0; i < 3; i++) {
       await collectExportPreview(
         payloadStub,
-        { role: 'admin' } as never,
+        { collection: 'users', role: 'admin' } as never,
         { baseUrl: 'https://aboks.no', sources: selection(true) },
         listBlob,
       )
@@ -203,7 +203,7 @@ describe('collectExportPreview — Blob round trips', () => {
     const time = clock()
     const preview = await collectExportPreview(
       payloadStub,
-      { role: 'admin' } as never,
+      { collection: 'users', role: 'admin' } as never,
       { baseUrl: 'https://aboks.no', sources: selection(false) },
       (prefix: string) => listPinterestBlobObjectsCached(prefix, impl, time.now),
     )

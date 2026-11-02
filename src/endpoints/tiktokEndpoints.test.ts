@@ -20,7 +20,7 @@ const ACCESS_TOKEN = 'ACCESS-TOKEN-should-never-leak'
 const AUTH_CODE = 'AUTH-CODE-should-never-leak'
 const ADVERTISER = '7012345678901234567'
 const OTHER_ADVERTISER = '7099999999999999999'
-const ADMIN = { id: 7, role: 'admin' }
+const ADMIN = { collection: 'users', id: 7, role: 'admin' }
 
 const ENV_KEYS = [
   'TIKTOK_APP_ID',
@@ -86,7 +86,7 @@ describe('tiktok endpoints — admin-only access', () => {
       assert.equal((await call(endpoint, { user: null })).status, 401)
     })
     it(`${name}: 403 for an authenticated editor`, async () => {
-      assert.equal((await call(endpoint, { user: { id: 1, role: 'editor' } })).status, 403)
+      assert.equal((await call(endpoint, { user: { collection: 'users', id: 1, role: 'editor' } })).status, 403)
     })
   }
 })
@@ -162,7 +162,7 @@ function okDeps(over: Partial<TikTokCallbackDeps> = {}) {
     config,
     secret: SECRET,
     // The state names ADMIN.id; by default that user is still an admin in the database.
-    loadUser: async (userId) => (userId === String(ADMIN.id) ? { role: 'admin' } : null),
+    loadUser: async (userId) => (userId === String(ADMIN.id) ? { collection: 'users', role: 'admin' } : null),
     exchange: async () => ({ accessToken: ACCESS_TOKEN }),
     listAdvertisers: async () => [advertiser],
     fetchAdvertiserInfo: async () => info,
@@ -216,7 +216,7 @@ describe('tiktok/callback — authority without a session', () => {
   })
 
   it('still refuses when the state names a user who is no longer an administrator', async () => {
-    const deps = okDeps({ loadUser: async () => ({ role: 'editor' }) })
+    const deps = okDeps({ loadUser: async () => ({ collection: 'users', role: 'editor' }) })
     const res = await callback({ state: validState(), auth_code: AUTH_CODE }, deps, null as never)
 
     assert.equal(res.params.get('reason'), 'unauthorized')
@@ -245,7 +245,7 @@ describe('tiktok/callback — authority without a session', () => {
 
   it('never exchanges the code before the authority check has passed', async () => {
     const deps = okDeps({
-      loadUser: async () => ({ role: 'editor' }),
+      loadUser: async () => ({ collection: 'users', role: 'editor' }),
       exchange: async () => {
         throw new Error('must never be called')
       },
@@ -260,7 +260,7 @@ describe('tiktok/callback — a surviving session is held to the same bar', () =
     const res = await callback(
       { state: validState(), auth_code: AUTH_CODE },
       okDeps(),
-      { id: 1, role: 'editor' } as never,
+      { collection: 'users', id: 1, role: 'editor' } as never,
     )
     assert.equal(res.params.get('reason'), 'unauthorized')
   })
@@ -269,7 +269,7 @@ describe('tiktok/callback — a surviving session is held to the same bar', () =
     const res = await callback(
       { state: validState(), auth_code: AUTH_CODE },
       okDeps(),
-      { id: 999, role: 'admin' } as never,
+      { collection: 'users', id: 999, role: 'admin' } as never,
     )
     assert.equal(res.params.get('reason'), 'state')
   })
@@ -300,7 +300,7 @@ describe('tiktok/callback — security', () => {
   it('rejects a state minted for a different administrator', async () => {
     const otherAdminsState = createOAuthState('999', SECRET)
     // 999 is a genuine admin, so only the session/state mismatch can be what rejects this.
-    const deps = okDeps({ loadUser: async () => ({ role: 'admin' }) })
+    const deps = okDeps({ loadUser: async () => ({ collection: 'users', role: 'admin' }) })
     const res = await callback({ state: otherAdminsState, auth_code: AUTH_CODE }, deps)
     assert.equal(res.params.get('reason'), 'state')
   })

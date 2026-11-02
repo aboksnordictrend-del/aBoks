@@ -1,4 +1,4 @@
-import type { Access, CollectionConfig, Field } from 'payload'
+import type { CollectionConfig, Field } from 'payload'
 import {
   DEFAULT_CLOSING,
   DEFAULT_INTRO,
@@ -21,6 +21,7 @@ import {
   validateSlugField,
 } from './hooks/pilotProject'
 import { loadDefaultQuestionnaireEndpoint } from './endpoints/pilotLoadDefaultQuestionnaire'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 /**
  * Pilot projects («Pilotprosjekter») — product-testing projects with municipalities, schools,
@@ -34,8 +35,6 @@ import { loadDefaultQuestionnaireEndpoint } from './endpoints/pilotLoadDefaultQu
  * Server rules — slug generation and uniqueness, question ids, questionnaire validation,
  * versioning, slug history and the delete guard — live in ./hooks/pilotProject.
  */
-
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 
 type Sibling = Record<string, unknown> | undefined
 

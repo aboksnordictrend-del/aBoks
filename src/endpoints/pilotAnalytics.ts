@@ -17,6 +17,7 @@ import { evaluationsCsv, type CsvProjectInfo } from '../lib/pilot/csv'
 import type { AnswerValue, StoredAnswer } from '../lib/pilot/answers'
 import type { QuestionnaireSnapshot } from '../lib/pilot/questionnaire'
 import { pilotPublicUrl } from '../lib/pilot/urls'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -115,8 +116,8 @@ async function loadEvaluations(req: PayloadRequest, q: PilotAnalyticsQuery): Pro
 }
 
 export async function handlePilotAnalytics(req: PayloadRequest): Promise<Response> {
-  if (!req.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  if ((req.user as { role?: string }).role !== 'admin') {
+  if (!isStaffUser(req.user)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdminUser(req.user)) {
     return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
   }
 

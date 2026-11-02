@@ -140,7 +140,7 @@ function mockGoogle(spend: Array<[string, string]>, opts: { onSearch?: (q: strin
 
 function makeReq(payload: unknown, body: unknown): PayloadRequest {
   return {
-    user: { role: 'admin' },
+    user: { collection: 'users', role: 'admin' },
     query: {},
     json: async () => body,
     payload,

@@ -2,6 +2,7 @@ import type { AdminViewServerProps } from 'payload'
 import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Gutter } from '@payloadcms/ui'
 import PilotAnalyticsClient from './PilotAnalyticsClient'
+import { isAdminUser } from '@/lib/security/staffAccess'
 
 // Custom admin view at /admin/pilotanalyse (config key `pilotAnalyse`). Same shell as the sales
 // analytics view. The security boundary is /api/pilot-analytics, which independently requires an
@@ -9,7 +10,7 @@ import PilotAnalyticsClient from './PilotAnalyticsClient'
 export default function PilotAnalyticsView({ initPageResult, params, searchParams }: AdminViewServerProps) {
   const { req, permissions, visibleEntities, locale } = initPageResult
 
-  if (!req.user || (req.user as { role?: string }).role !== 'admin') {
+  if (!isAdminUser(req.user)) {
     return (
       <Gutter>
         <h1>Ikke tilgang</h1>

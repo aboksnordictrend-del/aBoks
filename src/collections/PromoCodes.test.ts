@@ -257,7 +257,7 @@ describe('PromoCodes — existing ordinary codes are unaffected', () => {
     for (const key of ['read', 'create', 'update', 'delete'] as const) {
       const fn = access[key] as (args: { req: { user: unknown } }) => unknown
       assert.equal(fn({ req: { user: null } }), false, `${key} must stay closed to the public`)
-      assert.equal(fn({ req: { user: { id: 1 } } }), true, `${key} allowed for an admin`)
+      assert.equal(fn({ req: { user: { collection: 'users', id: 1, role: 'admin' } } }), true, `${key} allowed for an admin`)
     }
   })
 

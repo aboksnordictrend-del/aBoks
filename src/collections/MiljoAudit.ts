@@ -9,6 +9,7 @@ import {
   MILJO_ADMIN_GROUP,
 } from '@/lib/miljo/constants'
 import { appendOnly, refuseDelete } from './hooks/miljo'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 /**
  * Append-only change history for registrations and deliveries («Endringslogg»). One row per
@@ -19,7 +20,6 @@ import { appendOnly, refuseDelete } from './hooks/miljo'
  * `before`/`after` are snapshots of the values that changed. Never shown publicly or exported.
  */
 
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 const nobody: Access = () => false
 
 function auditFields(subject: { name: string; relationTo: CollectionSlug; label: string }): Field[] {

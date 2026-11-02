@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { PROMO_CURRENCY } from '@/lib/promo/constants'
 import { COMMISSION_BASE_OPTIONS, COMMISSION_SCOPE_DESCRIPTION } from '@/lib/partner/constants'
+import { staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Successful promo-code uses (`Bruk av promokoder`) — the source of truth for whether a code
@@ -27,12 +28,12 @@ export const PromoCodeUsages: CollectionConfig = {
   },
   access: {
     // Nothing public, in any direction.
-    read: ({ req }) => !!req.user,
+    read: staffOnly,
     // System-written only (see the file header). Server writes use overrideAccess.
     create: () => false,
     update: () => false,
     // An admin may still remove a record — e.g. after refunding an order.
-    delete: ({ req }) => !!req.user,
+    delete: staffOnly,
   },
   defaultSort: '-usedAt',
   fields: [

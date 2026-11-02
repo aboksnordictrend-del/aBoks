@@ -35,6 +35,7 @@ import {
 } from '@/lib/partner/address'
 import { guardPartnerDelete, propagatePartnerName } from './hooks/partnerLinks'
 import { enforcePartnerType } from './hooks/partnerType'
+import { adminOnly, staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Partners (`Partnere`) — one document per person or company in ABOKS AS's partner programme.
@@ -162,13 +163,13 @@ export const Partners: CollectionConfig = {
   },
   access: {
     // Contact and bank details: admin-only in every direction, like the rest of the partner data.
-    read: ({ req }) => !!req.user,
-    create: ({ req }) => !!req.user,
-    update: ({ req }) => !!req.user,
+    read: staffOnly,
+    create: staffOnly,
+    update: staffOnly,
     // A partner will later anchor promo codes and payout history; removing one is an admin
     // decision. An agreement that ends is marked «Avsluttet» instead. `role` is nullable, so
     // anything that is not exactly 'admin' is refused.
-    delete: ({ req }) => req.user?.role === 'admin',
+    delete: adminOnly,
   },
   defaultSort: 'name',
   fields: [

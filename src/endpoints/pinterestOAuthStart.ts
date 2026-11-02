@@ -20,6 +20,7 @@ import {
 } from '@/lib/pinterest/oauth/config'
 import { createPendingState } from '@/lib/pinterest/oauth/state'
 import { savePendingState } from '@/lib/pinterest/oauth/store'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /** Send the admin back to the Pinterest detail page with a machine-readable error code. */
 function backWithError(reason: string): Response {
@@ -31,10 +32,10 @@ function backWithError(reason: string): Response {
 }
 
 export async function handlePinterestOAuthStart(req: PayloadRequest): Promise<Response> {
-  if (!req.user) {
+  if (!isStaffUser(req.user)) {
     return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
-  if ((req.user as { role?: string }).role !== 'admin') {
+  if (!isAdminUser(req.user)) {
     return Response.json({ success: false, error: 'Kun for administratorer.' }, { status: 403 })
   }
 

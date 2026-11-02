@@ -11,6 +11,7 @@ import {
 } from '@/lib/miljo/constants'
 import { enforceRegistrationRules, refuseDelete } from './hooks/miljo'
 import { miljoRegistrationEndpoints } from './endpoints/miljo'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 /**
  * Employee battery registrations («Registrerte batterier»). One document per anonymous QR-page
@@ -40,7 +41,6 @@ import { miljoRegistrationEndpoints } from './endpoints/miljo'
  * reading and a manual count of the same batteries cannot be double-counted.
  */
 
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 const nobody: Access = () => false
 
 const lineFields: Field[] = [

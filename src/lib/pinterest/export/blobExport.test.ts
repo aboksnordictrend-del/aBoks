@@ -436,7 +436,7 @@ function fakePayload(products: Product[], variants: ProductVariant[]) {
 }
 
 describe('collectExportPreview', () => {
-  const user = { id: 1, role: 'admin' } as never
+  const user = { collection: 'users', id: 1, role: 'admin' } as never
 
   it('lists the approved prefix and includes the rows', async () => {
     const seen: string[] = []

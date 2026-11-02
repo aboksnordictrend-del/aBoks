@@ -3,6 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { BATTERY_DELIVERY_DOCUMENTS_SLUG, ENV_ORGANIZATIONS_SLUG, MILJO_ADMIN_GROUP } from '@/lib/miljo/constants'
 import { refuseDelete } from './hooks/miljo'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -18,7 +19,6 @@ const dirname = path.dirname(filename)
  * the site. Locally the files live outside /public.
  */
 
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 const nobody: Access = () => false
 
 export const BatteryDeliveryDocuments: CollectionConfig = {

@@ -36,6 +36,7 @@ import { TikTokAdsError } from '@/lib/tiktok/errors'
 import { verifyOAuthState } from '@/lib/tiktok/oauthState'
 import { saveConnection, type SaveConnectionInput } from '@/lib/tiktok/tokenStore'
 import type { TikTokAdvertiserInfo, TikTokAdvertiserRef } from '@/lib/tiktok/types'
+import { isAdminUser } from '@/lib/security/staffAccess'
 
 /**
  * Machine-readable outcome codes. The client owns the Norwegian wording, so the copy can
@@ -231,7 +232,7 @@ export async function handleTikTokCallback(
 
   if (req.user) {
     // A session did survive the redirect — hold it to the same bar as before.
-    if ((req.user as { role?: string }).role !== 'admin') {
+    if (!isAdminUser(req.user)) {
       log?.error('[tiktok-ads] callback rejected: session user is not an administrator')
       return redirect('unauthorized')
     }

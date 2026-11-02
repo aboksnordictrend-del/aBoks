@@ -1,4 +1,5 @@
-import type { GlobalConfig, Access, FieldAccess } from 'payload'
+import type { GlobalConfig, FieldAccess } from 'payload'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 // Storage for the Pinterest Ads authorization obtained through "Koble til".
 //
@@ -9,8 +10,6 @@ import type { GlobalConfig, Access, FieldAccess } from 'payload'
 //
 // Everything except the two token fields is non-secret operational metadata (expiry instants,
 // granted scope, connection state) that the status endpoint returns as-is.
-
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 
 /**
  * A field whose `read` access is false is stripped by Payload from *every* response — the REST

@@ -13,6 +13,7 @@ import {
   invitationExpiry,
   reviewInvitationUrl,
 } from '@/lib/reviewToken'
+import { isStaffUser } from '@/lib/security/staffAccess'
 
 /**
  * Admin-only action to send a review invitation for a delivered order.
@@ -31,7 +32,7 @@ export const sendReviewInvitation: Endpoint = {
   path: '/:id/send-review-invitation',
   method: 'post',
   handler: async (req: PayloadRequest) => {
-    if (!req.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!isStaffUser(req.user)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     const id = req.routeParams?.id as string | undefined
     if (!id) return Response.json({ error: 'Missing order id' }, { status: 400 })

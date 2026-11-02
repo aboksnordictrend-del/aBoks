@@ -12,6 +12,7 @@ import { planReferralPayout, MAX_SALES_PER_PAYOUT, type PayoutPlanError } from '
 import { lockOutstandingAdjustments, lockSalesForPayout } from '@/lib/partner/referralLocks'
 import { REFERRAL_PAYOUT_CONTEXT } from '../hooks/referralSale'
 import { ADJUSTMENT_SETTLEMENT_CONTEXT } from '../hooks/referralAdjustment'
+import { isStaffUser } from '@/lib/security/staffAccess'
 
 /**
  * Registers a payout of referral commission (Bedriftssalg / Forhandlersalg) that has ALREADY been
@@ -133,7 +134,7 @@ const defaultDeps: ReferralPayoutDeps = {
 
 export function createReferralPayoutHandler(deps: ReferralPayoutDeps = defaultDeps) {
   return async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) return fail('unauthorized', 'Du må være innlogget.', 401)
+    if (!isStaffUser(req.user)) return fail('unauthorized', 'Du må være innlogget.', 401)
 
     const body = await readBody(req)
     if (!body) return fail('invalid_body', 'Ugyldig forespørsel.', 400)

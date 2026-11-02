@@ -49,8 +49,8 @@ const byName = (name: string) => {
 const visible = fields.filter((f) => f.admin?.hidden !== true)
 
 const access = Partners.access!
-const ADMIN = { id: 1, role: 'admin' }
-const EDITOR = { id: 2, role: 'editor' }
+const ADMIN = { collection: 'users', id: 1, role: 'admin' }
+const EDITOR = { collection: 'users', id: 2, role: 'editor' }
 
 const LEGACY = ['partnershipTypes', 'businessSaleCommissionPercent', 'retailerReferralCommissionPercent'] as const
 const AGREEMENTS = [

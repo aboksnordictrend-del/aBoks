@@ -5,8 +5,8 @@ import { handleMiljoAnalytics } from './miljoAnalytics'
 import { miljoDeliveryEndpoints, miljoOrganizationEndpoints, miljoRegistrationEndpoints } from '../collections/endpoints/miljo'
 import { createStub } from '../lib/miljo/testStub'
 
-const admin = { id: 1, email: 'admin@aboks.invalid', role: 'admin' }
-const editor = { id: 2, email: 'editor@aboks.invalid', role: 'editor' }
+const admin = { collection: 'users', id: 1, email: 'admin@aboks.invalid', role: 'admin' }
+const editor = { collection: 'users', id: 2, email: 'editor@aboks.invalid', role: 'editor' }
 
 function req(user: unknown, query: Record<string, string> = {}): PayloadRequest {
   const stub = createStub(

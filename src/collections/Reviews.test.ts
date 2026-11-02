@@ -15,7 +15,7 @@ describe('Reviews access control', () => {
   })
 
   it('lets an authenticated admin read everything', () => {
-    assert.equal(read({ req: { user: { id: 1 } } }), true)
+    assert.equal(read({ req: { user: { collection: 'users', id: 1, role: 'admin' } } }), true)
   })
 
   it('forbids public creation of reviews (only the server handler with overrideAccess)', () => {
@@ -29,7 +29,7 @@ describe('ReviewInvitations access control', () => {
     for (const key of ['read', 'create', 'update', 'delete'] as const) {
       const fn = acc[key] as AccessFn
       assert.equal(fn({ req: { user: null } }), false, `${key} must be closed to public`)
-      assert.equal(fn({ req: { user: { id: 1 } } }), true, `${key} allowed for admin`)
+      assert.equal(fn({ req: { user: { collection: 'users', id: 1, role: 'admin' } } }), true, `${key} allowed for admin`)
     }
   })
 })

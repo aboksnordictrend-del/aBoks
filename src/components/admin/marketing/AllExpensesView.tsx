@@ -5,6 +5,7 @@ import type { MarketingExpense } from '@/payload-types'
 import { MARKETING_ROUTES, channelTitle } from '@/lib/marketing/channels'
 import { formatNOK } from '@/lib/analytics/money'
 import styles from './marketing.module.css'
+import { isStaffUser } from '@/lib/security/staffAccess'
 
 // Custom collection view at /admin/collections/marketing-expenses/all — the full list of
 // ALL marketing expenses (manual + imported). This is the "Vis alle kostnader" destination.
@@ -19,7 +20,7 @@ function formatDay(iso?: string | null): string {
 
 export default async function AllExpensesView({ initPageResult }: AdminViewServerProps) {
   const { req } = initPageResult
-  if (!req.user) {
+  if (!isStaffUser(req.user)) {
     return (
       <Gutter>
         <h1 className={styles.title}>Ikke tilgang</h1>

@@ -25,7 +25,7 @@ async function setup(extra: Record<string, unknown> = {}) {
         { id: 3, name: 'Stengt AS', publicCode: 'xyzxyzxyzx', status: 'inactive', allowedCategories: ['aa'] },
       ],
     },
-    { id: 7, email: 'admin@aboks.invalid', role: 'admin' },
+    { collection: 'users', id: 7, email: 'admin@aboks.invalid', role: 'admin' },
   )
 }
 

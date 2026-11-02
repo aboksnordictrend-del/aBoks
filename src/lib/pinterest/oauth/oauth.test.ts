@@ -111,7 +111,7 @@ function makePayload(initial: Record<string, unknown> = {}) {
       Object.assign(doc, data)
       return { ...doc }
     },
-    findByID: async () => ({ role: 'admin' }),
+    findByID: async () => ({ collection: 'users', role: 'admin' }),
     create: async ({ collection }: { collection: string }) => {
       writes.push({ collection, op: 'create' })
       return {}

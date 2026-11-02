@@ -34,7 +34,7 @@ describe('metaSync endpoint — authorization', () => {
   })
 
   it('rejects an authenticated non-admin (editor) with 403', async () => {
-    const { status, json } = await call({ role: 'editor', email: 'e@x.no' })
+    const { status, json } = await call({ collection: 'users', role: 'editor', email: 'e@x.no' })
     assert.equal(status, 403)
     assert.equal(json.success, false)
     // The role is checked server-side on req.user — never trusted from the client.
@@ -42,7 +42,7 @@ describe('metaSync endpoint — authorization', () => {
   })
 
   it('lets an admin through the auth gate (fails later at config, not on auth)', async () => {
-    const { status } = await call({ role: 'admin', email: 'a@x.no' })
+    const { status } = await call({ collection: 'users', role: 'admin', email: 'a@x.no' })
     // Not 401/403 → auth passed. 500 because META_* env is unset (MetaConfigError).
     assert.notEqual(status, 401)
     assert.notEqual(status, 403)
@@ -51,30 +51,30 @@ describe('metaSync endpoint — authorization', () => {
 
   it('does not trust a client-supplied role field over req.user', async () => {
     // A non-admin user object that also carries a spoofed admin-ish payload must still 403.
-    const { status } = await call({ role: 'editor', isAdmin: true })
+    const { status } = await call({ collection: 'users', role: 'editor', isAdmin: true })
     assert.equal(status, 403)
   })
 
   it('rejects an invalid sync mode with 400', async () => {
-    const { status } = await call({ role: 'admin' }, { mode: 'partial' })
+    const { status } = await call({ collection: 'users', role: 'admin' }, { mode: 'partial' })
     assert.equal(status, 400)
   })
 
   it('accepts the two valid modes (passes validation, stops at config)', async () => {
     for (const mode of ['incremental', 'full']) {
-      const { status } = await call({ role: 'admin' }, { mode })
+      const { status } = await call({ collection: 'users', role: 'admin' }, { mode })
       assert.equal(status, 500, `${mode} reached config, not a validation error`)
     }
   })
 
   it('ignores client-supplied dates — the window is server-resolved', async () => {
     // since/until in the body must not cause a 400 nor influence anything.
-    const { status } = await call({ role: 'admin' }, { since: '2026-01-01', until: '2026-01-02' })
+    const { status } = await call({ collection: 'users', role: 'admin' }, { since: '2026-01-01', until: '2026-01-02' })
     assert.equal(status, 500) // config error, i.e. it got past body parsing
   })
 
   it('never leaks a token or user object in the response body', async () => {
-    const { json } = await call({ role: 'editor', email: 'secret@x.no' })
+    const { json } = await call({ collection: 'users', role: 'editor', email: 'secret@x.no' })
     assert.ok(!JSON.stringify(json).includes('secret@x.no'))
   })
 })

@@ -1,9 +1,7 @@
-import type { CollectionConfig, CollectionBeforeChangeHook, Access } from 'payload'
+import type { CollectionConfig, CollectionBeforeChangeHook } from 'payload'
 import { round2 } from '@/lib/analytics/money'
 import { MARKETING_CHANNELS } from '@/lib/marketingChannels'
-
-// Admin-only: financial records must never be exposed to editors or the public API.
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 /**
  * Derive amountExVat from the entered gross amount + VAT rate on every write.
@@ -67,6 +65,7 @@ export const MarketingExpenses: CollectionConfig = {
       },
     },
   },
+  // Admin-only: financial records must never be exposed to editors or the public API.
   access: {
     read: adminOnly,
     create: adminOnly,

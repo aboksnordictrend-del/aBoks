@@ -2,6 +2,7 @@ import type { AdminViewServerProps } from 'payload'
 import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Gutter } from '@payloadcms/ui'
 import DashboardClient from './DashboardClient'
+import { isStaffUser } from '@/lib/security/staffAccess'
 
 // Custom admin view mounted at /admin/dashboard (config key `analyse`, path `/dashboard`).
 // It reuses Payload's DefaultTemplate so the sidebar/nav and auth-aware chrome are the
@@ -14,7 +15,7 @@ export default function DashboardView({
 }: AdminViewServerProps) {
   const { req, permissions, visibleEntities, locale } = initPageResult
 
-  if (!req.user) {
+  if (!isStaffUser(req.user)) {
     return (
       <Gutter>
         <h1>Ikke tilgang</h1>

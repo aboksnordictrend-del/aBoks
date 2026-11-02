@@ -7,6 +7,7 @@ import {
 import { registerPartnerPayout } from './endpoints/registerPartnerPayout'
 import { registerReferralPayout } from './endpoints/registerReferralPayout'
 import { assignPayoutSource, reverseReferralPayoutOnDelete } from './hooks/referralPayout'
+import { adminOnly, staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * Registered partner payouts (`Partnerutbetalinger`) — an accounting ledger.
@@ -183,15 +184,15 @@ export const PartnerPayouts: CollectionConfig = {
   },
   access: {
     // Private accounting data. Nothing public, in any direction.
-    read: ({ req }) => !!req.user,
+    read: staffOnly,
     // Closed outright: the balance check lives in the endpoint, which writes with
     // overrideAccess. See the file header.
     create: () => false,
     // Allowed, but `guardImmutableFields` narrows it to reference/note.
-    update: ({ req }) => !!req.user,
+    update: staffOnly,
     // Editors must not be able to erase accounting history. `role` is nullable in the schema,
     // so anything that is not exactly 'admin' — including a missing role — is refused.
-    delete: ({ req }) => req.user?.role === 'admin',
+    delete: adminOnly,
   },
   defaultSort: '-payoutDate',
   fields: [

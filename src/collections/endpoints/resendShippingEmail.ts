@@ -11,6 +11,7 @@ import {
   type LogFields,
   type OrderEmailContext,
 } from '@/lib/orderEmails'
+import { isStaffUser } from '@/lib/security/staffAccess'
 
 /**
  * Explicit, admin-only retry for the shipping email. Never reachable from an
@@ -28,7 +29,7 @@ export const resendShippingEmail: Endpoint = {
   path: '/:id/resend-shipping-email',
   method: 'post',
   handler: async (req: PayloadRequest) => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

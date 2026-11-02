@@ -35,6 +35,7 @@ import {
 import { verifyPendingState } from '@/lib/pinterest/oauth/state'
 import { consumePendingState, saveNewConnection } from '@/lib/pinterest/oauth/store'
 import { scopeCovers, type PinterestTokenGrant } from '@/lib/pinterest/oauth/tokens'
+import { isAdminUser } from '@/lib/security/staffAccess'
 
 /**
  * Machine-readable outcome codes. The client owns the Norwegian wording, so the copy can change
@@ -178,7 +179,7 @@ export async function handlePinterestCallback(
 
   if (req.user) {
     // A session did survive the redirect — hold it to the same bar.
-    if ((req.user as { role?: string }).role !== 'admin') {
+    if (!isAdminUser(req.user)) {
       log?.error('[pinterest-oauth] op=callback rejected: session user is not an administrator')
       return redirect('unauthorized')
     }

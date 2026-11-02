@@ -62,16 +62,16 @@ describe('ReferredCustomers — access', () => {
   for (const op of ['read', 'create', 'update'] as const) {
     it(`requires a logged-in user to ${op}`, () => {
       assert.equal((access[op] as AccessFn)({ req: { user: null } }), false)
-      assert.equal((access[op] as AccessFn)({ req: { user: { id: 2, role: 'editor' } } }), true)
+      assert.equal((access[op] as AccessFn)({ req: { user: { collection: 'users', id: 2, role: 'editor' } } }), true)
     })
   }
 
   it('allows delete only for role admin', () => {
     const fn = access.delete as AccessFn
     assert.equal(fn({ req: { user: null } }), false)
-    assert.equal(fn({ req: { user: { id: 2, role: 'editor' } } }), false)
+    assert.equal(fn({ req: { user: { collection: 'users', id: 2, role: 'editor' } } }), false)
     assert.equal(fn({ req: { user: { id: 3 } } }), false)
-    assert.equal(fn({ req: { user: { id: 1, role: 'admin' } } }), true)
+    assert.equal(fn({ req: { user: { collection: 'users', id: 1, role: 'admin' } } }), true)
   })
 })
 

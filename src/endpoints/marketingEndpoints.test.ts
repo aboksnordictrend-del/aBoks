@@ -38,7 +38,7 @@ describe('marketing endpoints — admin-only access (#10)', () => {
       assert.equal(status, 401)
     })
     it(`${name}: 403 for an authenticated editor`, async () => {
-      const { status } = await call(endpoint, { user: { role: 'editor' } })
+      const { status } = await call(endpoint, { user: { collection: 'users', role: 'editor' } })
       assert.equal(status, 403)
     })
   }
@@ -59,7 +59,7 @@ describe('marketing/channels — admin happy path', () => {
 
   it('returns a Meta card, "Ikke konfigurert" when env is missing (#1, #3)', async () => {
     for (const k of KEYS) delete process.env[k]
-    const { status, json } = await call(marketingChannelsEndpoint, { user: { role: 'admin' } })
+    const { status, json } = await call(marketingChannelsEndpoint, { user: { collection: 'users', role: 'admin' } })
     assert.equal(status, 200)
     const channels = json.channels as Array<{ id: string; status: string; href: string | null }>
     const meta = channels.find((c) => c.id === 'meta')!
@@ -72,7 +72,7 @@ describe('marketing/channels — admin happy path', () => {
     process.env.META_ACCESS_TOKEN = 'tok'
     process.env.META_AD_ACCOUNT_ID = 'act_123'
     const { json } = await call(marketingChannelsEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       docs: [
         { id: 1, date: '2026-07-20T00:00:00.000Z', amount: 100, amountExVat: 80, source: 'meta-api', lastSyncedAt: '2026-07-22T10:00:00.000Z' },
         { id: 2, date: '2026-07-21T00:00:00.000Z', amount: 200, amountExVat: 160, source: 'meta-api', lastSyncedAt: '2026-07-22T10:00:00.000Z' },
@@ -102,14 +102,14 @@ describe('marketing/channels — admin happy path', () => {
 describe('meta/expenses — validation', () => {
   it('rejects a single date with 400', async () => {
     const { status } = await call(metaExpensesEndpoint, {
-      user: { role: 'admin' },
+      user: { collection: 'users', role: 'admin' },
       query: { since: '2026-07-20' },
     })
     assert.equal(status, 400)
   })
 
   it('accepts an admin request with no dates (200)', async () => {
-    const { status, json } = await call(metaExpensesEndpoint, { user: { role: 'admin' } })
+    const { status, json } = await call(metaExpensesEndpoint, { user: { collection: 'users', role: 'admin' } })
     assert.equal(status, 200)
     assert.deepEqual(json.period, { since: null, until: null })
   })

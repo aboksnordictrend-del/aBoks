@@ -107,7 +107,7 @@ function setup(w: World, opts: { noTransaction?: boolean; createThrows?: boolean
 async function call(w: World, body: Row, opts: Parameters<typeof setup>[1] & { user?: unknown } = {}) {
   const { deps, payload } = setup(w, opts)
   const req = {
-    user: opts.user === undefined ? { id: 1, role: 'admin' } : opts.user,
+    user: opts.user === undefined ? { collection: 'users', id: 1, role: 'admin' } : opts.user,
     payload,
     json: async () => body,
   } as unknown as PayloadRequest

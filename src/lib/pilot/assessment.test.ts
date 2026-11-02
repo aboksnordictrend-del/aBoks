@@ -483,7 +483,7 @@ function fakeReq(docs: FakeDoc[], query: Record<string, string>) {
     return { docs: out }
   }
   return {
-    user: { role: 'admin' },
+    user: { collection: 'users', role: 'admin' },
     query,
     payload: { find, logger: { error: () => {} } },
   } as unknown as Parameters<typeof handlePilotAnalytics>[0]

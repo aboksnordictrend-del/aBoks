@@ -7,6 +7,7 @@ import { validateShipment } from './hooks/orderShipment'
 import { SHIPPING_CARRIER_OPTIONS } from '@/lib/orders/shipment'
 import { resendShippingEmail } from './endpoints/resendShippingEmail'
 import { sendReviewInvitation } from './endpoints/sendReviewInvitation'
+import { staffOnly, staffOnlyField } from '@/lib/security/staffAccess'
 
 /**
  * The admin's Ordrenummer input is read-only and submits nothing, so an empty value on
@@ -29,11 +30,14 @@ export const Orders: CollectionConfig = {
     defaultColumns: ['orderNumber', 'customer', 'total', 'status', 'createdAt', 'reviewInvitationSentAt'],
     description: 'Alle bestillinger fra nettbutikken.',
   },
+  // Staff only in every direction. The checkout pre-create (`initKustomCheckout`) and the
+  // Kustom webhook write through the Local API, which overrides access, so neither needs the
+  // REST API to accept an anonymous order.
   access: {
-  read: ({ req }) => !!req.user,
-  create: () => true,
-  update: ({ req }) => !!req.user,
-  delete: ({ req }) => !!req.user,
+  read: staffOnly,
+  create: staffOnly,
+  update: staffOnly,
+  delete: staffOnly,
 },
   fields: [
     {
@@ -566,7 +570,7 @@ export const Orders: CollectionConfig = {
       name: 'meta',
       type: 'group',
       admin: { hidden: true },
-      access: { read: ({ req }) => !!req.user },
+      access: { read: staffOnlyField },
       fields: [
         { name: 'fbp', type: 'text' },
         { name: 'fbc', type: 'text' },

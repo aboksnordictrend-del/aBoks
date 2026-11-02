@@ -10,6 +10,7 @@ import {
 } from '@/lib/miljo/constants'
 import { enforceDeliveryRules, refuseDelete } from './hooks/miljo'
 import { miljoDeliveryEndpoints } from './endpoints/miljo'
+import { adminOnly } from '@/lib/security/staffAccess'
 
 /**
  * Actual deliveries to a collection operator («Leverte batterier»), recorded on the public QR page
@@ -26,7 +27,6 @@ import { miljoDeliveryEndpoints } from './endpoints/miljo'
  * no create, update or delete to anyone.
  */
 
-const adminOnly: Access = ({ req }) => req.user?.role === 'admin'
 const nobody: Access = () => false
 
 export const BatteryDeliveries: CollectionConfig = {

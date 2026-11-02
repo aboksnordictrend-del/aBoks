@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { permanentRedirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/payload'
+import { isAdminUser } from '@/lib/security/staffAccess'
 import { resolvePilotPage, type PilotPageState } from '@/lib/pilot/server'
 import { pilotPath } from '@/lib/pilot/urls'
 import { turnstileSiteKey } from '@/lib/turnstile'
@@ -42,7 +43,7 @@ async function isAdminPreview(requested: boolean): Promise<boolean> {
   try {
     const payload = await getPayloadClient()
     const { user } = await payload.auth({ headers: await headers() })
-    return (user as { role?: string } | null)?.role === 'admin'
+    return isAdminUser(user)
   } catch {
     return false
   }

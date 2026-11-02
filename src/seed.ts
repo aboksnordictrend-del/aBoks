@@ -6,22 +6,8 @@ async function seed() {
 
   console.log('🌱 Starting seed...')
 
-  // Check if admin user exists
-  const existingUsers = await payload.find({ collection: 'users', limit: 1 })
-  if (existingUsers.totalDocs === 0) {
-    await payload.create({
-      collection: 'users',
-      data: {
-        name: 'Admin',
-        email: 'admin@aboks.no',
-        password: 'aboks2026!',
-        role: 'admin',
-      },
-    })
-    console.log('✅ Admin user created (admin@aboks.no / aboks2026!)')
-  } else {
-    console.log('⏭️  Admin user already exists')
-  }
+  // No user is created here. The first administrator is created in the admin panel's own
+  // «create first user» screen on an empty database, so no credentials live in the source.
 
   // Check if aBoks product exists
   const existingProducts = await payload.find({
@@ -118,8 +104,6 @@ async function seed() {
 
   console.log('\n✅ Seed complete!')
   console.log('📌 Admin URL: http://localhost:3000/admin')
-  console.log('📌 Email: admin@aboks.no')
-  console.log('📌 Password: aboks2026!')
   process.exit(0)
 }
 

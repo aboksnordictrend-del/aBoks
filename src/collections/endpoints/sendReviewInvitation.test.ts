@@ -25,7 +25,7 @@ beforeEach(() => {
   mock.method(console, 'warn', () => {})
 })
 
-const ADMIN = { id: 1, email: 'post@aboks.no' }
+const ADMIN = { collection: 'users', id: 1, email: 'post@aboks.no', role: 'admin' }
 
 type Invitation = {
   id: number

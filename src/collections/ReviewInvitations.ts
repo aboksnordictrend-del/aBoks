@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { staffOnly } from '@/lib/security/staffAccess'
 
 /**
  * One-time invitation tokens tied to a delivered order. Fully admin-only: the public can
@@ -19,10 +20,10 @@ export const ReviewInvitations: CollectionConfig = {
   },
   access: {
     // Admin-only across the board. Public access is fully closed.
-    read: ({ req }) => !!req.user,
-    create: ({ req }) => !!req.user,
-    update: ({ req }) => !!req.user,
-    delete: ({ req }) => !!req.user,
+    read: staffOnly,
+    create: staffOnly,
+    update: staffOnly,
+    delete: staffOnly,
   },
   fields: [
     {

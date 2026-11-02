@@ -22,6 +22,7 @@ import {
   summarizeDeliveries,
   summarizeRegistrations,
 } from '../lib/miljo/stats'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 type Doc = Record<string, unknown>
 
@@ -33,8 +34,8 @@ function str(query: Record<string, unknown>, key: string): string | undefined {
 }
 
 export async function handleMiljoAnalytics(req: PayloadRequest): Promise<Response> {
-  if (!req.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-  if ((req.user as { role?: string }).role !== 'admin') return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
+  if (!isStaffUser(req.user)) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdminUser(req.user)) return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
 
   const query = (req.query ?? {}) as Record<string, unknown>
   const orgRaw = str(query, 'organization')

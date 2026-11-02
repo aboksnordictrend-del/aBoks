@@ -25,7 +25,7 @@ const ACCESS_TOKEN = 'ACCESS-TOKEN-should-never-leak'
 const REFRESH_TOKEN = 'REFRESH-TOKEN-should-never-leak'
 const AUTH_CODE = 'AUTH-CODE-should-never-leak'
 const SECRET = 'payload-secret-used-only-in-this-test-0123456789'
-const ADMIN = { id: 7, role: 'admin' }
+const ADMIN = { collection: 'users', id: 7, role: 'admin' }
 const ENV = { PAYLOAD_SECRET: SECRET }
 
 // The callback stores the grant through the real store, which derives its encryption key from
@@ -69,7 +69,7 @@ function makeReq({ user, query = {}, global = {}, docs = [] }: MockOpts) {
         Object.assign(doc, data)
         return { ...doc }
       },
-      findByID: async () => ({ role: 'admin' }),
+      findByID: async () => ({ collection: 'users', role: 'admin' }),
       find: async () => ({ docs, totalDocs: docs.length }),
       create: async ({ collection }: { collection: string }) => {
         expenseWrites.push({ collection, op: 'create' })
@@ -125,20 +125,20 @@ describe('pinterest oauth endpoints — admin-only access', () => {
 
   it('start: 403 for an authenticated editor', async () => {
     assert.equal(
-      (await call(pinterestOAuthStartEndpoint, { user: { id: 1, role: 'editor' } })).status,
+      (await call(pinterestOAuthStartEndpoint, { user: { collection: 'users', id: 1, role: 'editor' } })).status,
       403,
     )
   })
 
   it('start: neither rejection creates a pending state', async () => {
-    const denied = await call(pinterestOAuthStartEndpoint, { user: { id: 1, role: 'editor' } })
+    const denied = await call(pinterestOAuthStartEndpoint, { user: { collection: 'users', id: 1, role: 'editor' } })
     assert.equal(denied.doc.pendingStateHash, undefined)
   })
 
   it('status: 401/403 exactly as before', async () => {
     assert.equal((await call(pinterestStatusEndpoint, { user: null })).status, 401)
     assert.equal(
-      (await call(pinterestStatusEndpoint, { user: { id: 1, role: 'editor' } })).status,
+      (await call(pinterestStatusEndpoint, { user: { collection: 'users', id: 1, role: 'editor' } })).status,
       403,
     )
   })
@@ -387,7 +387,7 @@ describe('pinterest oauth callback', () => {
     const { created, req } = await pending()
     const res = await handlePinterestCallback(
       withQuery(req, { state: created.state, code: AUTH_CODE }),
-      { config, exchange: async () => GRANT, loadUser: async () => ({ role: 'editor' }) },
+      { config, exchange: async () => GRANT, loadUser: async () => ({ collection: 'users', role: 'editor' }) },
     )
     assert.equal(reasonOf(res.headers.get('Location')), 'unauthorized')
   })
@@ -406,7 +406,7 @@ describe('pinterest oauth callback', () => {
     const res = await handlePinterestCallback(
       {
         ...req,
-        user: { id: 99, role: 'admin' },
+        user: { collection: 'users', id: 99, role: 'admin' },
         query: { state: created.state, code: AUTH_CODE },
       } as unknown as PayloadRequest,
       { config, exchange: async () => GRANT },

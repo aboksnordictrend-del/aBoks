@@ -16,6 +16,7 @@ import { buildAuthorizationUrl } from '@/lib/tiktok/auth'
 import { getTikTokAdsConfig, TikTokAdsConfigError } from '@/lib/tiktok/config'
 import { createOAuthState } from '@/lib/tiktok/oauthState'
 import { MARKETING_ROUTES } from '@/lib/marketing/channels'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /** Send the admin back to the TikTok detail page with a machine-readable error state. */
 function backWithError(reason: string): Response {
@@ -27,10 +28,10 @@ export const tiktokConnectEndpoint: Endpoint = {
   path: '/admin/integrations/tiktok/connect',
   method: 'get',
   handler: async (req: PayloadRequest): Promise<Response> => {
-    if (!req.user) {
+    if (!isStaffUser(req.user)) {
       return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
-    if ((req.user as { role?: string }).role !== 'admin') {
+    if (!isAdminUser(req.user)) {
       return Response.json({ success: false, error: 'Kun for administratorer.' }, { status: 403 })
     }
 

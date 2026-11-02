@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { computeVariantDisplayName } from './hooks/variantDisplayName'
+import { staffOnly } from '@/lib/security/staffAccess'
 
 export const ProductVariants: CollectionConfig = {
   slug: 'product-variants',
@@ -23,11 +24,13 @@ export const ProductVariants: CollectionConfig = {
     listSearchableFields: ['displayName', 'sku', 'name'],
     description: 'Fargevarianter for produkter.',
   },
+  // Public read for the storefront; writes are staff only (see Products). Stock is decremented
+  // through the Local API (`@/lib/orders/stockDeduction`), which overrides access.
   access: {
   read: () => true,
-  create: () => true,
-  update: () => true,
-  delete: () => true,
+  create: staffOnly,
+  update: staffOnly,
+  delete: staffOnly,
 },
   fields: [
     {

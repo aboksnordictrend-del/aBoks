@@ -2,6 +2,7 @@ import type { AdminViewServerProps } from 'payload'
 import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Gutter } from '@payloadcms/ui'
 import MiljoClient from './MiljoClient'
+import { isAdminUser } from '@/lib/security/staffAccess'
 
 // Custom admin view at /admin/miljoregistrering (config key `miljoregistrering`). Same shell as the
 // sales and pilot analytics views. The security boundary is /api/miljo-analytics, which
@@ -9,7 +10,7 @@ import MiljoClient from './MiljoClient'
 export default function MiljoView({ initPageResult, params, searchParams }: AdminViewServerProps) {
   const { req, permissions, visibleEntities, locale } = initPageResult
 
-  if (!req.user || (req.user as { role?: string }).role !== 'admin') {
+  if (!isAdminUser(req.user)) {
     return (
       <Gutter>
         <h1>Ikke tilgang</h1>

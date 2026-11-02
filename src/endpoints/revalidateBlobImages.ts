@@ -14,6 +14,7 @@
 
 import type { Endpoint, PayloadRequest } from 'payload'
 import { BLOB_IMAGES_FOLDERS, BLOB_IMAGES_TAG } from '@/lib/blobImagesCache'
+import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
 
 /** Injectable so tests never reach into Next's cache internals. */
 export type TagRevalidator = (tag: string) => void | Promise<void>
@@ -42,10 +43,10 @@ export async function handleBlobImagesRevalidate(
   req: PayloadRequest,
   revalidate: TagRevalidator = revalidateWithNext,
 ): Promise<Response> {
-  if (!req.user) {
+  if (!isStaffUser(req.user)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  if ((req.user as { role?: string }).role !== 'admin') {
+  if (!isAdminUser(req.user)) {
     return Response.json({ error: 'Kun for administratorer.' }, { status: 403 })
   }
 

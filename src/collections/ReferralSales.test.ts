@@ -51,10 +51,10 @@ describe('ReferralSales — collection', () => {
     const access = ReferralSales.access!
     for (const op of ['read', 'create', 'update'] as const) {
       assert.equal((access[op] as AccessFn)({ req: { user: null } }), false)
-      assert.equal((access[op] as AccessFn)({ req: { user: { id: 2, role: 'editor' } } }), true)
+      assert.equal((access[op] as AccessFn)({ req: { user: { collection: 'users', id: 2, role: 'editor' } } }), true)
     }
-    assert.equal((access.delete as AccessFn)({ req: { user: { id: 2, role: 'editor' } } }), false)
-    assert.equal((access.delete as AccessFn)({ req: { user: { id: 1, role: 'admin' } } }), true)
+    assert.equal((access.delete as AccessFn)({ req: { user: { collection: 'users', id: 2, role: 'editor' } } }), false)
+    assert.equal((access.delete as AccessFn)({ req: { user: { collection: 'users', id: 1, role: 'admin' } } }), true)
   })
 })
 
