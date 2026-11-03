@@ -75,6 +75,14 @@ before(async () => {
   // D: active, suspended by a test below. E: never activated («Venter»).
   id.bcD = await bc('bedrift-d', ORGNR.d, {})
   id.bcE = await bc('bedrift-e', ORGNR.e, { status: 'pending' })
+  // Access needs at least one linked, valid aBoks order per company (Stage 2.2 rule).
+  const link = (orderId: number, customerId: number) => {
+    rows('orders').find((r) => r.id === orderId)!.businessCustomer = customerId
+  }
+  link(order.confirmedA, id.bcA)
+  link(order.confirmedB, id.bcB)
+  link(order.delivered, id.bcD)
+  link(order.shipped, id.bcE)
   id.accD = await acc('konto-d@aboks.invalid', id.bcD, 'active', verified)
   id.accE = await acc('konto-e@aboks.invalid', id.bcE, 'active', verified)
 

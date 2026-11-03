@@ -24,7 +24,7 @@ import { enforceOrderBusinessCustomer, orderBusinessCustomerField } from './hook
 const PASSWORD = 'Stage21-test-only-1'
 let h: RestHarness
 const t = { admin: '', editor: '', account: '' }
-const bc = { x: 0, y: 0 }
+const bc = { x: 0, y: 0, z: 0 }
 const o = { a: 21, b: 22, pending: 23, cancelled: 24, delivered: 25, shipped: 26, spare: 27 }
 
 const rest: RestHarness['rest'] = (...args) => h.rest(...args)
@@ -59,9 +59,13 @@ before(async () => {
     (await p.create({ collection: 'business-customers', data: { name, organizationNumber, contactEmail: `${name}@aboks.invalid`, status: 'active' } as never })).id as number
   bc.x = await make('bedrift-x', '834012952')
   bc.y = await make('bedrift-y', '923609016')
+  // The Miljø account belongs to its own company, with its own valid order (access needs one), so
+  // the exact order lists of bc.x / bc.y asserted below stay untouched.
+  bc.z = await make('bedrift-z', '974760673')
+  orders().push({ id: 90, orderNumber: 'AB-000090', status: 'confirmed', businessCustomer: bc.z })
   await p.create({
     collection: 'miljo-accounts',
-    data: { email: 'konto-x@aboks.invalid', password: PASSWORD, businessCustomer: bc.x, status: 'active', emailVerifiedAt: new Date().toISOString() } as never,
+    data: { email: 'konto-x@aboks.invalid', password: PASSWORD, businessCustomer: bc.z, status: 'active', emailVerifiedAt: new Date().toISOString() } as never,
     context: { [MILJO_TRUSTED_ACCOUNT_CREATE]: true },
   })
   t.admin = await h.login('users', 'admin@aboks.invalid', PASSWORD)
@@ -201,7 +205,7 @@ describe('unauthorised assignments', () => {
   it('Miljø account: its own business customer never exposes the linked orders', async () => {
     const res = await rest('GET', '/business-customers', { token: t.account })
     const own = (res.json.docs as Record<string, unknown>[])[0]!
-    assert.equal(own.id, bc.x)
+    assert.equal(own.id, bc.z)
     assert.equal(own.orders, undefined)
   })
 })

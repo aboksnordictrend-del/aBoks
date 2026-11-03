@@ -33,6 +33,7 @@ import { BatteryDeliveryDocuments } from './src/collections/BatteryDeliveryDocum
 import { BatteryDeliveryAudit, BatteryRegistrationAudit } from './src/collections/MiljoAudit'
 import { BusinessCustomers } from './src/collections/BusinessCustomers'
 import { MiljoAccounts } from './src/collections/MiljoAccounts'
+import { MiljoRegistrations } from './src/collections/MiljoRegistrations'
 import { EconomySettings } from './src/globals/EconomySettings'
 import { TikTokConnection } from './src/globals/TikTokConnection'
 import { PinterestConnection } from './src/globals/PinterestConnection'
@@ -180,6 +181,7 @@ export default buildConfig({
     // Business customers and their one shared Miljø login (a separate auth collection, never staff).
     BusinessCustomers,
     MiljoAccounts,
+    MiljoRegistrations,
   ],
   // TikTokConnection and PinterestConnection are admin-only, nav-hidden globals that store the
   // encrypted OAuth credentials for their channel; neither has an editing surface. See

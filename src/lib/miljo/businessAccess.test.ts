@@ -14,8 +14,15 @@ const account = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 
-/** A request whose only database is a map of business customers; counts the lookups. */
-function fakeReq(user: unknown, customers: Record<string, { status: string } | undefined>) {
+/**
+ * A request whose only database is a map of business customers and the statuses of each
+ * customer's linked orders (default: one confirmed order); counts the customer lookups.
+ */
+function fakeReq(
+  user: unknown,
+  customers: Record<string, { status: string } | undefined>,
+  linkedOrders: Record<string, string[]> = { 42: ['confirmed'], 43: ['confirmed'] },
+) {
   const calls: unknown[] = []
   const req = {
     user,
@@ -26,10 +33,31 @@ function fakeReq(user: unknown, customers: Record<string, { status: string } | u
         assert.equal(args.overrideAccess, true, 'the status check must not depend on the caller’s access')
         return customers[String(args.id)] ?? null
       },
+      count: async (args: { collection: string; overrideAccess?: boolean; where: { and: [{ businessCustomer: { equals: unknown } }, { status: { in: string[] } }] } }) => {
+        assert.equal(args.collection, 'orders')
+        assert.equal(args.overrideAccess, true)
+        const [byCustomer, byStatus] = args.where.and
+        const statuses = linkedOrders[String(byCustomer.businessCustomer.equals)] ?? []
+        return { totalDocs: statuses.filter((s) => byStatus.status.in.includes(s)).length }
+      },
     },
   } as unknown as PayloadRequest
   return { req, calls }
 }
+
+describe('resolveAuthorizedBusinessCustomerId — a valid purchase is required (Stage 2.2)', () => {
+  it('no linked order, or only cancelled ones → no access; one confirmed/shipped/delivered → access', async () => {
+    assert.equal(await resolveAuthorizedBusinessCustomerId(fakeReq(account(), { 42: { status: 'active' } }, { 42: [] }).req), null)
+    assert.equal(await resolveAuthorizedBusinessCustomerId(fakeReq(account(), { 42: { status: 'active' } }, { 42: ['cancelled', 'pending'] }).req), null)
+    for (const s of ['confirmed', 'shipped', 'delivered']) {
+      assert.equal(await resolveAuthorizedBusinessCustomerId(fakeReq(account(), { 42: { status: 'active' } }, { 42: ['cancelled', s] }).req), 42, s)
+    }
+  })
+
+  it('«Sperret» wins over any number of valid orders', async () => {
+    assert.equal(await resolveAuthorizedBusinessCustomerId(fakeReq(account(), { 42: { status: 'suspended' } }, { 42: ['delivered', 'delivered'] }).req), null)
+  })
+})
 
 describe('resolveAuthorizedBusinessCustomerId', () => {
   it('authorises an active, verified account whose business customer is «Aktiv»', async () => {

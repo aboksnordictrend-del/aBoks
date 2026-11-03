@@ -95,6 +95,7 @@ export interface Config {
     'battery-delivery-audit': BatteryDeliveryAudit;
     'business-customers': BusinessCustomer;
     'miljo-accounts': MiljoAccount;
+    'miljo-registrations': MiljoRegistration;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -142,6 +143,7 @@ export interface Config {
     'battery-delivery-audit': BatteryDeliveryAuditSelect<false> | BatteryDeliveryAuditSelect<true>;
     'business-customers': BusinessCustomersSelect<false> | BusinessCustomersSelect<true>;
     'miljo-accounts': MiljoAccountsSelect<false> | MiljoAccountsSelect<true>;
+    'miljo-registrations': MiljoRegistrationsSelect<false> | MiljoRegistrationsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -2023,6 +2025,35 @@ export interface BatteryDeliveryAudit {
   createdAt: string;
 }
 /**
+ * Registreringer bedrifter har gjort selv. Opprettes og oppdateres bare av registreringsflyten.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "miljo-registrations".
+ */
+export interface MiljoRegistration {
+  id: number;
+  status: 'pending' | 'confirmed' | 'superseded';
+  order: number | Order;
+  orderNumber?: string | null;
+  organizationNumber: string;
+  officialName: string;
+  contactName: string;
+  loginEmail: string;
+  tokenExpiresAt?: string | null;
+  sendCount?: number | null;
+  lastSentAt?: string | null;
+  confirmedAt?: string | null;
+  businessCustomer?: (number | null) | BusinessCustomer;
+  account?: (number | null) | MiljoAccount;
+  environmentalOrganization?: (number | null) | EnvironmentalOrganization;
+  passwordSalt?: string | null;
+  passwordHash?: string | null;
+  tokenHash?: string | null;
+  resendKeyHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -2153,6 +2184,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'miljo-accounts';
         value: number | MiljoAccount;
+      } | null)
+    | ({
+        relationTo: 'miljo-registrations';
+        value: number | MiljoRegistration;
       } | null);
   globalSlug?: string | null;
   user:
@@ -3048,6 +3083,32 @@ export interface MiljoAccountsSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "miljo-registrations_select".
+ */
+export interface MiljoRegistrationsSelect<T extends boolean = true> {
+  status?: T;
+  order?: T;
+  orderNumber?: T;
+  organizationNumber?: T;
+  officialName?: T;
+  contactName?: T;
+  loginEmail?: T;
+  tokenExpiresAt?: T;
+  sendCount?: T;
+  lastSentAt?: T;
+  confirmedAt?: T;
+  businessCustomer?: T;
+  account?: T;
+  environmentalOrganization?: T;
+  passwordSalt?: T;
+  passwordHash?: T;
+  tokenHash?: T;
+  resendKeyHash?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

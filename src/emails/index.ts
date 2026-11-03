@@ -7,6 +7,7 @@ export { createAdminReviewEmail } from './admin-review'
 export { createPartnerPayoutEmail } from './partner-payout'
 export { createBusinessInquiryConfirmationEmail } from './business-inquiry-confirmation'
 export { createAdminBusinessInquiryEmail } from './admin-business-inquiry'
+export { createMiljoRegistrationConfirmationEmail } from './miljo-registration-confirmation'
 export type {
   OrderItem,
   ShippingAddress,

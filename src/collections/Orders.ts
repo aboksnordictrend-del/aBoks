@@ -6,6 +6,7 @@ import { assignOrderNumber } from './hooks/orderNumber'
 import { validateShipment } from './hooks/orderShipment'
 import { enforceOrderBusinessCustomer, orderBusinessCustomerField } from './hooks/orderBusinessCustomer'
 import { normalizeManualOrderPricing } from './hooks/orderManualPricing'
+import { guardOrderDeleteForMiljoRegistration } from './hooks/orderDelete'
 import { SHIPPING_CARRIER_OPTIONS } from '@/lib/orders/shipment'
 import { resendShippingEmail } from './endpoints/resendShippingEmail'
 import { sendReviewInvitation } from './endpoints/sendReviewInvitation'
@@ -621,6 +622,7 @@ export const Orders: CollectionConfig = {
     beforeValidate: [assignOrderNumber, validateShipment],
     beforeChange: [enforceOrderBusinessCustomer, normalizeManualOrderPricing, claimOrderEmails, snapshotOrderCosts],
     afterChange: [sendOrderEmails],
+    beforeDelete: [guardOrderDeleteForMiljoRegistration],
   },
   endpoints: [resendShippingEmail, sendReviewInvitation],
   timestamps: true,
