@@ -14,6 +14,10 @@ import { isAdminUser } from '@/lib/security/staffAccess'
  *     reach `users` create without staff access) — the role as submitted;
  *   • anyone else (an editor): a new user is always an `editor`; an existing user keeps the role
  *     already stored. Nothing an editor sends can produce or change a role.
+ *
+ * Collection access already keeps editors from creating users and limits them to their own
+ * profile; this hook is the second layer for any path that reaches the write with an editor as
+ * `req.user` (e.g. a Local API call that does not override access).
  */
 export const enforceUserRole: CollectionBeforeChangeHook = ({ data, operation, originalDoc, req }) => {
   if (!data || !req.user || isAdminUser(req.user)) return data

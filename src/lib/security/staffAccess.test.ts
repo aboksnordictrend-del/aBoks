@@ -98,8 +98,8 @@ const EXPECTED: [CollectionConfig | GlobalConfig, Ops][] = [
   [Products, { create: 'staff', update: 'staff', delete: 'staff' }],
   [ProductVariants, { read: 'public', create: 'staff', update: 'staff', delete: 'staff' }],
   [Media, { read: 'public', create: 'staff', update: 'staff', delete: 'staff' }],
-  // Users update/delete narrow editors to editor accounts — see Users.test.ts.
-  [Users, { admin: 'staff', read: 'staff', create: 'staff', unlock: 'staff' }],
+  // Users update narrows editors to their own account — see Users.test.ts.
+  [Users, { admin: 'staff', read: 'staff', create: 'admin', delete: 'admin', unlock: 'staff' }],
   // Partner programme
   [Partners, { read: 'staff', create: 'staff', update: 'staff', delete: 'admin' }],
   [PartnerPayouts, { read: 'staff', create: 'closed', update: 'staff', delete: 'admin' }],

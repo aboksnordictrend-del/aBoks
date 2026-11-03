@@ -1,16 +1,19 @@
 import type { Access, CollectionConfig, FieldAccess } from 'payload'
-import { isAdminUser, isStaffUser, staffOnly } from '@/lib/security/staffAccess'
+import { adminOnly, isAdminUser, isStaffUser, staffOnly } from '@/lib/security/staffAccess'
 import { enforceUserRole } from './hooks/userRole'
 
 /**
- * An administrator may change or remove any user. An editor only editor accounts — including
- * their own — so an editor can never take over an administrator by resetting that account's
- * password or e-mail. Everyone else: nothing.
+ * An administrator may change any user. An editor only their own account — so an editor can never
+ * take over an administrator (or another editor) by resetting that account's password or e-mail.
+ * Their own role stays out of reach (field access + `enforceUserRole`), and Payload's internal auth
+ * fields (hash, salt, login attempts, lock, reset token) are closed to writes by Payload itself.
+ * Everyone else: nothing.
  */
-const adminOrEditorTargets: Access = ({ req }) => {
-  if (isAdminUser(req.user)) return true
-  if (isStaffUser(req.user)) return { role: { equals: 'editor' } }
-  return false
+const adminOrSelf: Access = ({ req }) => {
+  if (!isStaffUser(req.user)) return false
+  // Read before `isAdminUser`, whose type guard narrows `req.user` away in its false branch.
+  const { id } = req.user
+  return isAdminUser(req.user) ? true : { id: { equals: id } }
 }
 
 const adminOnlyField: FieldAccess = ({ req }) => isAdminUser(req.user)
@@ -23,14 +26,17 @@ export const Users: CollectionConfig = {
   },
   auth: true,
   // Explicit, because Payload's default is «any logged-in user» — from ANY auth collection.
-  // Staff (admin and editor) keep the access the default gave them, except that an editor cannot
-  // touch an administrator account or any role (see `adminOrEditorTargets` and `enforceUserRole`).
+  //
+  // Only administrators create and delete users; an editor reads the list and edits their own
+  // profile. `create` and `delete` are plain booleans on purpose: Payload hides «Create New» and
+  // «Delete» for a `false`, but grants list-level permission — and shows the buttons — for any
+  // `Where` result, even where the server would then refuse the documents.
   access: {
     admin: ({ req }) => isStaffUser(req.user),
     read: staffOnly,
-    create: staffOnly,
-    update: adminOrEditorTargets,
-    delete: adminOrEditorTargets,
+    create: adminOnly,
+    update: adminOrSelf,
+    delete: adminOnly,
     unlock: staffOnly,
   },
   fields: [
@@ -52,7 +58,7 @@ export const Users: CollectionConfig = {
       // the value, because a stripped field falls back to the default above.
       access: { create: adminOnlyField, update: adminOnlyField },
       admin: {
-        description: 'Bare administratorer kan endre rollen. En bruker som opprettes av en redaktør, blir redaktør.',
+        description: 'Bare administratorer kan endre rollen.',
       },
     },
   ],

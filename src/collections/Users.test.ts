@@ -9,7 +9,8 @@ import { enforceUserRole } from './hooks/userRole'
  *
  *   • only an administrator assigns or changes a role — field access, plus `enforceUserRole`
  *     because a role stripped by field access falls back to the default (`admin`) on create;
- *   • an editor cannot change or delete an administrator account (no password/e-mail takeover);
+ *   • only an administrator creates or deletes users; an editor edits only their own profile, so
+ *     there is no password/e-mail takeover of any other account;
  *   • anonymous visitors and accounts from other auth collections cannot touch `users` at all.
  */
 
@@ -36,8 +37,8 @@ const hook = (args: { data: Record<string, unknown>; operation: 'create' | 'upda
   } as unknown as HookArgs) as Record<string, unknown>
 
 describe('Users — collection access', () => {
-  it('only staff can read, create and unlock users', () => {
-    for (const op of ['read', 'create', 'unlock'] as const) {
+  it('only staff can read and unlock users', () => {
+    for (const op of ['read', 'unlock'] as const) {
       const fn = Users.access![op]
       assert.equal(run(fn, ADMIN), true, op)
       assert.equal(run(fn, EDITOR), true, op)
@@ -45,14 +46,36 @@ describe('Users — collection access', () => {
     }
   })
 
-  for (const op of ['update', 'delete'] as const) {
-    it(`${op}: an admin any user, an editor only editor accounts, nobody else anything`, () => {
+  for (const op of ['create', 'delete'] as const) {
+    it(`${op}: administrators only — no editor, anonymous visitor or foreign account`, () => {
       const fn = Users.access![op]
       assert.equal(run(fn, ADMIN), true)
-      assert.deepEqual(run(fn, EDITOR), { role: { equals: 'editor' } }, 'editor must never match an admin account')
-      for (const user of [null, FOREIGN, NO_ROLE]) assert.equal(run(fn, user), false, JSON.stringify(user))
+      for (const user of [EDITOR, null, FOREIGN, NO_ROLE]) assert.equal(run(fn, user), false, `${op} ${JSON.stringify(user)}`)
+    })
+
+    it(`${op} returns a plain boolean, never a Where — so the admin hides the button from editors`, () => {
+      // Payload grants list-level permission for any Where result, which is what showed bulk «Delete».
+      for (const user of [ADMIN, EDITOR, null, FOREIGN, NO_ROLE]) {
+        assert.equal(typeof run(Users.access![op], user), 'boolean', `${op} ${JSON.stringify(user)}`)
+      }
     })
   }
+
+  it('update: an admin any user; an editor only their own account; nobody else anything', () => {
+    const fn = Users.access!.update
+    assert.equal(run(fn, ADMIN), true)
+    assert.deepEqual(run(fn, EDITOR), { id: { equals: EDITOR.id } }, 'editor must match only their own id')
+    assert.deepEqual(run(fn, { ...EDITOR, id: 42 }), { id: { equals: 42 } })
+    for (const user of [null, FOREIGN, NO_ROLE]) assert.equal(run(fn, user), false, JSON.stringify(user))
+  })
+
+  it('an editor’s update filter can never match an administrator or another editor', () => {
+    // Payload ANDs this filter with the requested id (PATCH /api/users/:id) or the request's
+    // `where` (bulk PATCH), so any other account yields 403 / zero documents.
+    const where = run(Users.access!.update, EDITOR) as { id: { equals: unknown } }
+    assert.deepEqual(Object.keys(where), ['id'])
+    assert.notEqual(where.id.equals, ADMIN.id)
+  })
 
   it('the admin panel itself is staff only', () => {
     assert.equal(run(Users.access!.admin, ADMIN), true)
