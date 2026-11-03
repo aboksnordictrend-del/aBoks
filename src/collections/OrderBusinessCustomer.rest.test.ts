@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createRestHarness, type RestHarness, type Row } from '@/lib/testing/payloadRestHarness'
-import { OrdersStandIn, OrganizationsStandIn } from '@/lib/testing/miljoStandIns'
+import { MILJO_LOGIN, OrdersStandIn, OrganizationsStandIn, miljoLoginOn } from '@/lib/testing/miljoStandIns'
 import { MILJO_TRUSTED_ACCOUNT_CREATE, ORDER_BUSINESS_LINK_CONTEXT, orderGrantsEligibility } from '@/lib/miljo/business'
 import { BusinessCustomers } from './BusinessCustomers'
 import { MiljoAccounts } from './MiljoAccounts'
@@ -70,7 +70,7 @@ before(async () => {
   })
   t.admin = await h.login('users', 'admin@aboks.invalid', PASSWORD)
   t.editor = await h.login('users', 'editor@aboks.invalid', PASSWORD)
-  t.account = await h.login('miljo-accounts', 'konto-x@aboks.invalid', PASSWORD)
+  t.account = await h.login('miljo-accounts', 'konto-x@aboks.invalid', PASSWORD, MILJO_LOGIN)
 })
 
 after(async () => {

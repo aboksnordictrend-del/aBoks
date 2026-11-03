@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { randomBytes } from 'node:crypto'
 import type { CollectionConfig } from 'payload'
 import { createRestHarness, type RestHarness, type Row } from '@/lib/testing/payloadRestHarness'
+import { miljoLoginOn } from '@/lib/testing/miljoStandIns'
 import { memoryRateLimitStore } from '@/lib/security/dbRateLimit'
 import { lookupOrganization } from '@/lib/miljo/registration/brreg'
 import { RESEND_MAX_SENDS } from '@/lib/miljo/registration/constants'
@@ -71,6 +72,7 @@ const REGISTRY: Record<string, string> = {
 const PASSWORD = 'Hemmelig123'
 
 let h: RestHarness
+const miljoLogin = (email: string, password: string) => miljoLoginOn(h, email, password)
 let clockMs = Date.parse('2026-11-03T12:00:00Z')
 const mails: { to: string; text: string }[] = []
 const rate = memoryRateLimitStore(() => clockMs)
@@ -274,9 +276,9 @@ describe('confirmation and automatic activation', () => {
   })
 
   it('the account signs in with the password chosen at registration', async () => {
-    const res = await h.rest('POST', '/miljo-accounts/login', { body: { email: 'innkjop@kystbygg.invalid', password: PASSWORD } })
-    assert.equal(res.status, 200, JSON.stringify(res.json))
-    const wrong = await h.rest('POST', '/miljo-accounts/login', { body: { email: 'innkjop@kystbygg.invalid', password: 'Feil123456' } })
+    const res = await miljoLogin('innkjop@kystbygg.invalid', PASSWORD)
+    assert.equal(res.status, 200, res.message)
+    const wrong = await miljoLogin('innkjop@kystbygg.invalid', 'Feil123456')
     assert.equal(wrong.status, 401)
   })
 

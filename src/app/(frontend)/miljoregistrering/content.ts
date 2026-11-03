@@ -126,7 +126,7 @@ export const FAQ = [
 
 export const FINAL_CTA = {
   title: 'Gjør batteriinnsamling til et dokumenterbart miljøtiltak',
-  text: 'Har organisasjonen kjøpt aBoks? Registrer bedriften med ordrenummeret, så får dere egen QR-kode og konto. Har dere spørsmål, ta kontakt med oss.',
+  text: 'Har organisasjonen kjøpt aBoks? Registrer bedriften med ordrenummeret, så får dere egen QR-kode og konto. Er dere allerede registrert, logger dere inn på Min side.',
   primary: { label: 'Registrer bedriften', href: '/miljoregistrering/registrer' },
-  secondary: { label: 'Kontakt oss', href: '/kontakt' },
+  secondary: { label: 'Logg inn', href: '/miljoregistrering/logg-inn' },
 }

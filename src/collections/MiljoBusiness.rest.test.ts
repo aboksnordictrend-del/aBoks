@@ -1,11 +1,12 @@
 import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { handleEndpoints } from 'payload'
 import { createRestHarness, type RestHarness, type Row } from '@/lib/testing/payloadRestHarness'
 import { BusinessCustomers } from './BusinessCustomers'
 import { MiljoAccounts } from './MiljoAccounts'
 import { Users } from './Users'
 import { MILJO_TRUSTED_ACCOUNT_CREATE } from '@/lib/miljo/business'
-import { OrdersStandIn, OrganizationsStandIn } from '@/lib/testing/miljoStandIns'
+import { MILJO_LOGIN, OrdersStandIn, OrganizationsStandIn, miljoLoginOn } from '@/lib/testing/miljoStandIns'
 
 /**
  * Stage 1 — `business-customers` and `miljo-accounts` through Payload's REAL REST pipeline (login,
@@ -21,6 +22,7 @@ const PASSWORD = 'Stage1-test-only-1'
 const ORGNR = { a: '834012952', b: '923609016', c: '974760673', d: '889640782', e: '971526920', invalidCheckDigit: '834012953' }
 
 let h: RestHarness
+const miljoLogin = (email: string, password: string) => miljoLoginOn(h, email, password)
 const t = { admin: '', editor: '', accA: '', accB: '' }
 const id = { bcA: 0, bcB: 0, bcC: 0, bcD: 0, bcE: 0, accA: 0, accB: 0, accC: 0, accD: 0, accE: 0, orgA: 1, orgB: 2, orgFree: 3 }
 const order = { confirmedA: 11, confirmedB: 12, pending: 13, cancelled: 14, delivered: 15, shipped: 16 }
@@ -88,8 +90,8 @@ before(async () => {
 
   t.admin = await h.login('users', 'admin@aboks.invalid', PASSWORD)
   t.editor = await h.login('users', 'editor@aboks.invalid', PASSWORD)
-  t.accA = await h.login('miljo-accounts', 'konto-a@aboks.invalid', PASSWORD)
-  t.accB = await h.login('miljo-accounts', 'konto-b@aboks.invalid', PASSWORD)
+  t.accA = await h.login('miljo-accounts', 'konto-a@aboks.invalid', PASSWORD, MILJO_LOGIN)
+  t.accB = await h.login('miljo-accounts', 'konto-b@aboks.invalid', PASSWORD, MILJO_LOGIN)
 })
 
 after(async () => {
@@ -156,7 +158,7 @@ describe('first-register on an EMPTY miljo-accounts collection (Payload creates 
     assert.equal(res.status, 403, JSON.stringify(res.json))
     assert.equal((fresh.store['miljo-accounts'] ?? []).length, 0)
     const login = await fresh.rest('POST', '/miljo-accounts/login', { body: { email: 'angriper@aboks.invalid', password: PASSWORD } })
-    assert.equal(login.status, 401)
+    assert.notEqual(login.status, 200)
   })
 
   it('the Local API without an admin or the trusted-create flag is refused too', async () => {
@@ -178,15 +180,33 @@ describe('Miljø account — authentication', () => {
     assert.ok(t.accA.length > 20)
   })
 
+  it('Payload’s own login and refresh endpoints are closed — no token, no payload-token cookie', async () => {
+    const request = (path: string, init: RequestInit) =>
+      handleEndpoints({ config: h.payload.config as never, request: new Request(`http://localhost:3000/api${path}`, init), payloadInstanceCacheKey: 'miljo-business-rest-test' } as never)
+    const login = await request('/miljo-accounts/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'konto-a@aboks.invalid', password: PASSWORD }),
+    })
+    assert.equal(login.status, 403)
+    assert.equal(login.headers.get('set-cookie'), null)
+    assert.equal(((await login.json()) as { token?: unknown }).token, undefined)
+    const refresh = await request('/miljo-accounts/refresh-token', { method: 'POST', headers: { Authorization: `JWT ${t.accA}` } })
+    assert.equal(refresh.status, 403)
+    assert.equal(refresh.headers.get('set-cookie'), null)
+    // Administrators sign in through Payload exactly as before.
+    assert.ok(t.admin.length > 20)
+  })
+
   it('an invited (unverified) account is refused with the same answer as a wrong password', async () => {
-    const inactive = await rest('POST', '/miljo-accounts/login', { body: { email: 'konto-c@aboks.invalid', password: PASSWORD } })
-    const wrong = await rest('POST', '/miljo-accounts/login', { body: { email: 'konto-a@aboks.invalid', password: 'Feil-passord-1' } })
-    const unknown = await rest('POST', '/miljo-accounts/login', { body: { email: 'finnes-ikke@aboks.invalid', password: PASSWORD } })
+    const inactive = await miljoLogin('konto-c@aboks.invalid', PASSWORD)
+    const wrong = await miljoLogin('konto-a@aboks.invalid', 'Feil-passord-1')
+    const unknown = await miljoLogin('finnes-ikke@aboks.invalid', PASSWORD)
     assert.equal(inactive.status, 401)
     assert.equal(wrong.status, 401)
     assert.equal(unknown.status, 401)
-    assert.equal(inactive.json.token, undefined)
-    assert.deepEqual(inactive.json.errors, wrong.json.errors, 'no hint that the account exists or what state it is in')
+    assert.equal(inactive.token, undefined)
+    assert.deepEqual(inactive.message, wrong.message, 'no hint that the account exists or what state it is in')
   })
 
   it('cannot reach the admin panel', () => {
@@ -269,7 +289,7 @@ describe('Miljø account — organisation isolation', () => {
     const after = await rest('GET', '/business-customers', { token: t.accB })
     assert.ok(after.status === 403 || docs(after.json).length === 0, `→ ${after.status}`)
     const refresh = await rest('POST', '/miljo-accounts/refresh-token', { token: t.accB })
-    assert.equal(refresh.status, 401)
+    assert.notEqual(refresh.status, 200)
     assert.equal(refresh.json.refreshedToken, undefined)
   })
 })
@@ -278,11 +298,11 @@ describe('Miljø account — organisation isolation', () => {
 
 describe('business customer status — «Sperret» / «Venter» close every account of the company', () => {
   const sameAsWrongPassword = async (email: string) => {
-    const res = await rest('POST', '/miljo-accounts/login', { body: { email, password: PASSWORD } })
-    const wrong = await rest('POST', '/miljo-accounts/login', { body: { email, password: 'Feil-passord-1' } })
-    assert.equal(res.status, 401, `${email}: ${JSON.stringify(res.json)}`)
-    assert.equal(res.json.token, undefined)
-    assert.deepEqual(res.json.errors, wrong.json.errors, 'no hint about the company’s status')
+    const res = await miljoLogin(email, PASSWORD)
+    const wrong = await miljoLogin(email, 'Feil-passord-1')
+    assert.equal(res.status, 401, `${email}: ${res.message}`)
+    assert.equal(res.token, undefined)
+    assert.deepEqual(res.message, wrong.message, 'no hint about the company’s status')
   }
 
   it('an account of a «Venter» business customer cannot sign in, though the account itself is active', async () => {
@@ -290,7 +310,7 @@ describe('business customer status — «Sperret» / «Venter» close every acco
   })
 
   it('suspending the business customer closes an already signed-in account on its next request', async () => {
-    const token = await h.login('miljo-accounts', 'konto-d@aboks.invalid', PASSWORD)
+    const token = await h.login('miljo-accounts', 'konto-d@aboks.invalid', PASSWORD, MILJO_LOGIN)
     const before = await rest('GET', '/business-customers', { token })
     assert.deepEqual(docs(before.json).map((d) => d.id), [id.bcD])
 
@@ -311,7 +331,7 @@ describe('business customer status — «Sperret» / «Venter» close every acco
 
     // Token refresh and a fresh login are refused:
     const refresh = await rest('POST', '/miljo-accounts/refresh-token', { token })
-    assert.equal(refresh.status, 401)
+    assert.notEqual(refresh.status, 200)
     assert.equal(refresh.json.refreshedToken, undefined)
     await sameAsWrongPassword('konto-d@aboks.invalid')
   })
@@ -319,7 +339,7 @@ describe('business customer status — «Sperret» / «Venter» close every acco
   it('re-activating the business customer restores access — the accounts were never changed', async () => {
     const reactivate = await rest('PATCH', `/business-customers/${id.bcD}`, { token: t.admin, body: { status: 'active' } })
     assert.equal(reactivate.status, 200)
-    const token = await h.login('miljo-accounts', 'konto-d@aboks.invalid', PASSWORD)
+    const token = await h.login('miljo-accounts', 'konto-d@aboks.invalid', PASSWORD, MILJO_LOGIN)
     const res = await rest('GET', '/business-customers', { token })
     assert.deepEqual(docs(res.json).map((d) => d.id), [id.bcD])
   })
@@ -405,7 +425,7 @@ describe('administrator — Miljø accounts', () => {
     const created = rows('miljo-accounts').find((r) => r.email === 'ny@aboks.invalid')!
     assert.equal(created.emailVerifiedAt ?? null, null)
     // Not verified → cannot sign in, even though the status is «Aktiv».
-    const login = await rest('POST', '/miljo-accounts/login', { body: { email: 'ny@aboks.invalid', password: PASSWORD } })
+    const login = await miljoLogin('ny@aboks.invalid', PASSWORD)
     assert.equal(login.status, 401)
   })
 

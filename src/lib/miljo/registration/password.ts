@@ -10,7 +10,7 @@
 // MiljoBusiness tests sign in with a password stored this way, so a change in Payload's format
 // fails the suite instead of locking users out.
 
-import { pbkdf2, randomBytes } from 'node:crypto'
+import { pbkdf2, randomBytes, timingSafeEqual } from 'node:crypto'
 
 export const PASSWORD_MIN_LENGTH = 10
 export const PASSWORD_MAX_LENGTH = 128
@@ -36,11 +36,21 @@ export interface PayloadPasswordHash {
   hash: string
 }
 
+const derive = (password: string, salt: string) =>
+  new Promise<string>((resolve, reject) =>
+    pbkdf2(password, salt, 25000, 512, 'sha256', (err, key) => (err ? reject(err) : resolve(key.toString('hex')))),
+  )
+
 /** Payload-compatible salt + hash for `password`. */
 export async function hashPasswordForPayload(password: string): Promise<PayloadPasswordHash> {
   const salt = randomBytes(32).toString('hex')
-  const hash = await new Promise<string>((resolve, reject) =>
-    pbkdf2(password, salt, 25000, 512, 'sha256', (err, key) => (err ? reject(err) : resolve(key.toString('hex')))),
-  )
-  return { salt, hash }
+  return { salt, hash: await derive(password, salt) }
+}
+
+/** Does `password` match a stored Payload salt + hash? Constant-time comparison. */
+export async function verifyPayloadPassword(password: string, stored: Partial<PayloadPasswordHash>): Promise<boolean> {
+  if (typeof stored.salt !== 'string' || typeof stored.hash !== 'string' || !stored.salt || !stored.hash) return false
+  const candidate = Buffer.from(await derive(password, stored.salt), 'hex')
+  const expected = Buffer.from(stored.hash, 'hex')
+  return candidate.length === expected.length && timingSafeEqual(candidate, expected)
 }

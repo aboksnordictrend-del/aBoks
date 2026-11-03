@@ -1,8 +1,7 @@
 # Miljøregistrering — isolating admin and Miljø account sessions
 
-Status: **decided, not implemented.** Stage 1 (business customers + `miljo-accounts`) leaves
-admin authentication unchanged. This note fixes how the two kinds of login will be kept apart
-when the Miljø login and dashboard are built.
+Status: **implemented in Stage 2.2b** (see «As built» at the end). Admin authentication is
+unchanged. This note fixes how the two kinds of login are kept apart.
 
 ## How it works today (verified in Payload 3.85.1)
 
@@ -74,3 +73,22 @@ exists but refuses every account in practice. No session collision can happen in
 - Payload's own `/api/miljo-accounts/login|refresh-token|logout` set no cookie.
 - Cross-site POSTs to the Miljø routes are refused; lockout and the `beforeLogin` rule still apply.
 - Suspended business customer / deactivated account: next request refused with the Miljø cookie.
+
+## As built (Stage 2.2b)
+
+- Cookie `aboks-miljo-session`: `HttpOnly; SameSite=Lax; Path=/; Max-Age=7200`, `Secure` in
+  production (`src/lib/miljo/account/session.ts`). The token never appears in a response body.
+- Routes `/api/miljo/konto/{logg-inn,logg-ut,glemt-passord,nytt-passord,endre-passord,pin,qr}`.
+  Every POST requires an `Origin` from the CSRF allowlist (absent is refused) and a JSON body.
+- `payload.login` runs with `req.context.miljoAccountAuthRoute = true`
+  (`MILJO_AUTH_CONTEXT`); `guardMiljoAccountOperations` refuses `login` and `refresh` on
+  `miljo-accounts` without it, so `/api/miljo-accounts/login|refresh-token` answer 403 and set
+  no cookie. Payload's `forgot-password` / `reset-password` stay closed.
+- **Deviation from point 4:** no extra Payload auth strategy. Payload never reads the Miljø
+  cookie at all; our routes and pages verify it themselves with Payload's own
+  `JWTAuthentication` (signature, expiry, session id against the account row) and then the
+  per-request access rule. The effect is the same — the REST API and admin panel never see a
+  Miljø session — with no change to Payload's auth configuration.
+- Sign-out revokes that session id; a password change or reset revokes every session.
+- Password reset uses its own one-time token (32 random bytes), stored only as SHA-256 in the
+  account's `reset_password_token` column, valid one hour, consumed by one conditional UPDATE.

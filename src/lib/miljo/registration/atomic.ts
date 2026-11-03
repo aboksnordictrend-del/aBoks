@@ -23,7 +23,7 @@ type Executor = { execute: (query: unknown) => Promise<unknown> }
 
 const isExecutor = (v: unknown): v is Executor => !!v && typeof (v as { execute?: unknown }).execute === 'function'
 
-function executorOf(req: PayloadRequest): Executor | null {
+export function executorOf(req: PayloadRequest): Executor | null {
   const adapter = req.payload.db as unknown as { drizzle?: unknown; sessions?: Record<string, { db?: unknown }> }
   const id = req.transactionID
   if (id && typeof id !== 'object') {
@@ -35,14 +35,14 @@ function executorOf(req: PayloadRequest): Executor | null {
 
 /** In-process serialisation for the no-SQL fallback only (tests): one caller at a time per key. */
 const fallbackLocks = new Map<string, Promise<unknown>>()
-function serialised<T>(key: string, run: () => Promise<T>): Promise<T> {
+export function serialised<T>(key: string, run: () => Promise<T>): Promise<T> {
   const previous = fallbackLocks.get(key) ?? Promise.resolve()
   const next = previous.catch(() => undefined).then(run)
   fallbackLocks.set(key, next)
   return next
 }
 
-function rowCount(result: unknown): number {
+export function rowCount(result: unknown): number {
   if (Array.isArray(result)) return result.length
   const rows = (result as { rows?: unknown[] } | null)?.rows
   return Array.isArray(rows) ? rows.length : 0

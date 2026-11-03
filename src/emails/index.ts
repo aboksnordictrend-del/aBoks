@@ -8,6 +8,7 @@ export { createPartnerPayoutEmail } from './partner-payout'
 export { createBusinessInquiryConfirmationEmail } from './business-inquiry-confirmation'
 export { createAdminBusinessInquiryEmail } from './admin-business-inquiry'
 export { createMiljoRegistrationConfirmationEmail } from './miljo-registration-confirmation'
+export { createMiljoPasswordResetEmail } from './miljo-password-reset'
 export type {
   OrderItem,
   ShippingAddress,

@@ -7,7 +7,7 @@
 // call fails the test instead of silently succeeding. It does NOT enforce unique indexes or foreign
 // keys — those are database rules and are verified against a real (preview) database.
 
-import { buildConfig, getPayload, handleEndpoints, type CollectionConfig, type Payload } from 'payload'
+import { buildConfig, createLocalReq, getPayload, handleEndpoints, type CollectionConfig, type Payload } from 'payload'
 
 export type Row = Record<string, unknown> & { id: number }
 type Where = Record<string, unknown>
@@ -87,7 +87,11 @@ function memoryAdapter(store: MemoryStore) {
     updateOne: async ({ collection, id, where, data }: { collection: string; id?: number; where?: Where; data: Record<string, unknown> }) => {
       const row = table(collection).find((r) => (id != null ? String(r.id) === String(id) : matches(r, where)))
       if (!row) return null
-      Object.assign(row, data)
+      // `{ $inc: n }` — Payload's atomic login-attempt counter (auth/strategies/local/incrementLoginAttempts).
+      for (const [k, v] of Object.entries(data)) {
+        const inc = v && typeof v === 'object' && '$inc' in v ? Number((v as { $inc: unknown }).$inc) : null
+        row[k] = inc == null ? v : Number(row[k] ?? 0) + inc
+      }
       return clone(row)
     },
     deleteOne: async ({ collection, where }: { collection: string; where?: Where }) => {
@@ -119,8 +123,8 @@ export interface RestHarness {
   payload: Payload
   store: MemoryStore
   rest: (method: string, path: string, opts?: { token?: string; body?: unknown }) => Promise<{ status: number; json: Record<string, unknown> }>
-  /** Log in through REST; returns the JWT. */
-  login: (collection: string, email: string, password: string) => Promise<string>
+  /** Log in through REST; returns the JWT. With `context`, through the Local API with that `req.context` instead. */
+  login: (collection: string, email: string, password: string, context?: Record<string, unknown>) => Promise<string>
 }
 
 export async function createRestHarness(key: string, collections: CollectionConfig[]): Promise<RestHarness> {
@@ -153,7 +157,12 @@ export async function createRestHarness(key: string, collections: CollectionConf
     return { status: res.status, json: text ? (JSON.parse(text) as Record<string, unknown>) : {} }
   }
 
-  const login: RestHarness['login'] = async (collection, email, password) => {
+  const login: RestHarness['login'] = async (collection, email, password, context) => {
+    if (context) {
+      const req = await createLocalReq({ context }, payload)
+      const res = await payload.login({ collection: collection as never, data: { email, password } as never, req })
+      return String(res.token)
+    }
     const res = await rest('POST', `/${collection}/login`, { body: { email, password } })
     if (res.status !== 200) throw new Error(`login ${collection} ${email}: ${res.status} ${JSON.stringify(res.json)}`)
     return String(res.json.token)

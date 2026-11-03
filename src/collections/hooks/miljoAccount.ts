@@ -10,6 +10,7 @@ import {
 import {
   BUSINESS_CUSTOMERS_SLUG,
   MILJO_ACCOUNTS_SLUG,
+  MILJO_AUTH_CONTEXT,
   MILJO_TRUSTED_ACCOUNT_CREATE,
   relationshipId,
 } from '@/lib/miljo/business'
@@ -31,8 +32,10 @@ import { isAdminUser } from '@/lib/security/staffAccess'
  *   • Sign-in. Only an «Aktiv» account with a verified e-mail, whose business customer is «Aktiv»,
  *     gets a token — on login and on refresh (see @/lib/miljo/businessAccess). A refusal is Payload's ordinary AuthenticationError, the same answer as a wrong
  *     password, so the response does not reveal whether the account exists or what state it is in.
- *   • Password reset. Closed in Stage 1: the public flow (and its e-mails) does not exist yet, and
- *     Payload would otherwise send a reset e-mail to anyone who knows an account's address.
+ *   • Sign-in routes. Only /api/miljo/konto/* (Stage 2.2b) signs an account in; Payload's own
+ *     login and refresh endpoints for this collection are refused (see guardMiljoAccountOperations).
+ *   • Password reset. Payload's flow stays closed (it stores the reset token in plain text and
+ *     sends its own e-mail); the Miljø routes run their own — see @/lib/miljo/account/service.
  */
 
 export const BUSINESS_CUSTOMER_NOT_FOUND_MESSAGE = 'Fant ikke bedriftskunden.'
@@ -81,14 +84,19 @@ export const refuseInactiveLogin: CollectionBeforeLoginHook = async ({ user, req
 }
 
 /**
- * Creation only by an administrator or explicitly trusted server code (see the file header);
- * refresh needs an active account; password reset is closed in Stage 1.
+ * Creation only by an administrator or explicitly trusted server code (see the file header).
+ * Sign-in and refresh only through the Miljø account routes, which set MILJO_AUTH_CONTEXT —
+ * Payload's own endpoints would put the token in the shared `payload-token` cookie. Payload's
+ * password reset stays closed: the Miljø routes run their own, with hashed one-time tokens.
  */
 export const guardMiljoAccountOperations: CollectionBeforeOperationHook = async ({ args, operation, req }) => {
   if (operation === 'create' && !isAdminUser(req.user) && req.context?.[MILJO_TRUSTED_ACCOUNT_CREATE] !== true) {
     throw new Forbidden(req.t)
   }
   if (operation === 'forgotPassword' || operation === 'resetPassword') {
+    throw new Forbidden(req.t)
+  }
+  if ((operation === 'login' || operation === 'refresh') && req.context?.[MILJO_AUTH_CONTEXT] !== true) {
     throw new Forbidden(req.t)
   }
   if (operation === 'refresh' && (await resolveAuthorizedBusinessCustomerId(req)) == null) {

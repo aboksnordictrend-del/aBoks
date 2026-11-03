@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { INK, MUTED, SANS, secondaryButton } from '../../bedrifter/theme'
+import { INK, MUTED, SANS, primaryButton, secondaryButton } from '../../bedrifter/theme'
+import { MILJO_PATHS } from '@/lib/miljo/account/constants'
 import { Notice, SubmitButton, postJson, type ApiResult } from '../registrer/formParts'
 
 /**
@@ -34,13 +35,18 @@ export default function ConfirmActivation({ token }: { token: string }) {
           <strong>{String(result.organizationName)}</strong> er nå registrert i aBoks Miljøregistrering.
         </p>
         <p style={{ fontFamily: SANS, fontSize: 15, color: MUTED, lineHeight: 1.6, margin: '0 0 24px' }}>
-          Organisasjonen har fått sin egen QR-kode for registrering av brukte batterier. Innlogging på Min side, med PIN for leveranser, blir tilgjengelig i neste versjon.
+          Organisasjonen har fått sin egen QR-kode for registrering av brukte batterier. Logg inn på Min side for å laste ned QR-koden og se PIN for leveranser.
         </p>
-        {code && (
-          <Link href={`/miljo/${code}`} className="w-full px-8 sm:w-auto" style={{ ...secondaryButton }}>
-            Åpne organisasjonens registreringsside
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Link href={MILJO_PATHS.login} className="w-full px-8 sm:w-auto" style={{ ...primaryButton }}>
+            Logg inn
           </Link>
-        )}
+          {code && (
+            <Link href={`/miljo/${code}`} className="w-full px-8 sm:w-auto" style={{ ...secondaryButton }}>
+              Åpne organisasjonens registreringsside
+            </Link>
+          )}
+        </div>
       </div>
     )
   }

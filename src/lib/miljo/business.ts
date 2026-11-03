@@ -61,6 +61,14 @@ export function orderGrantsEligibility(order: unknown, businessCustomerId: numbe
  */
 export const MILJO_TRUSTED_ACCOUNT_CREATE = 'miljoTrustedAccountCreate'
 
+/**
+ * `req.context` flag set only by the Miljø account routes (/api/miljo/konto/*, Stage 2.2b) when
+ * they sign an account in. Payload's own `/api/miljo-accounts/login` and `/refresh-token` are
+ * refused without it, so a Miljø token is never placed in the admin's `payload-token` cookie
+ * (docs/MILJO-SESSION-ISOLATION.md). Never set from a request.
+ */
+export const MILJO_AUTH_CONTEXT = 'miljoAccountAuthRoute'
+
 export const MILJO_ACCOUNT_STATUSES = ['invited', 'active', 'disabled'] as const
 export type MiljoAccountStatus = (typeof MILJO_ACCOUNT_STATUSES)[number]
 
