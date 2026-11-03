@@ -470,7 +470,13 @@ export interface Order {
     displayName?: string | null;
     variantName?: string | null;
     quantity: number;
+    /**
+     * Fylles med standardprisen når produkt og antall velges. Kan overstyres med en individuell pris (avtalepris). Inkl. MVA.
+     */
     unitPrice: number;
+    /**
+     * Beregnes automatisk: enhetspris × antall (før rabatt).
+     */
     lineTotal: number;
     /**
      * Andel av rabattkoden som er fordelt på denne linjen.
@@ -494,8 +500,14 @@ export interface Order {
     lineProfit?: number | null;
     id?: string | null;
   }[];
+  /**
+   * Beregnes automatisk: summen av linjesummene (før rabatt).
+   */
   subtotal: number;
   shipping?: number | null;
+  /**
+   * Beregnes automatisk: delsum + frakt − rabatt.
+   */
   total: number;
   /**
    * Rabattkode brukt på ordren. Tom for ordre uten rabattkode.

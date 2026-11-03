@@ -5,6 +5,7 @@ import { snapshotOrderCosts } from './hooks/orderSnapshot'
 import { assignOrderNumber } from './hooks/orderNumber'
 import { validateShipment } from './hooks/orderShipment'
 import { enforceOrderBusinessCustomer, orderBusinessCustomerField } from './hooks/orderBusinessCustomer'
+import { normalizeManualOrderPricing } from './hooks/orderManualPricing'
 import { SHIPPING_CARRIER_OPTIONS } from '@/lib/orders/shipment'
 import { resendShippingEmail } from './endpoints/resendShippingEmail'
 import { sendReviewInvitation } from './endpoints/sendReviewInvitation'
@@ -71,6 +72,13 @@ export const Orders: CollectionConfig = {
     },
     // aBoks Miljøregistrering: the one authoritative order → business customer link (admin only).
     orderBusinessCustomerField,
+    {
+      // Fills «Kundeinformasjon» from the chosen Kunde / Bedriftskunde, before saving. Form only:
+      // the customer records themselves are never written from an order.
+      name: 'customerAutofill',
+      type: 'ui',
+      admin: { components: { Field: '@/components/admin/orders/OrderCustomerAutofill#default' } },
+    },
     {
       name: 'customerInfo',
       type: 'group',
@@ -162,12 +170,25 @@ export const Orders: CollectionConfig = {
           type: 'number',
           label: 'Enhetspris (kr)',
           required: true,
+          min: 0,
+          admin: {
+            description:
+              'Fylles med standardprisen når produkt og antall velges. Kan overstyres med en individuell pris (avtalepris). Inkl. MVA.',
+          },
         },
         {
           name: 'lineTotal',
           type: 'number',
           label: 'Linjesum (kr)',
           required: true,
+          admin: { readOnly: true, description: 'Beregnes automatisk: enhetspris × antall (før rabatt).' },
+        },
+        {
+          // Live price helper for a manual order line: fills the standard price, keeps an individual
+          // price, recalculates the line. Display and form only — the server recalculates on save.
+          name: 'linePricing',
+          type: 'ui',
+          admin: { components: { Field: '@/components/admin/orders/OrderLinePricing#default' } },
         },
         {
           // This line's share of the order's promo-code discount, in kroner. `unitPrice` and
@@ -233,6 +254,7 @@ export const Orders: CollectionConfig = {
       type: 'number',
       label: 'Delsum (kr)',
       required: true,
+      admin: { readOnly: true, description: 'Beregnes automatisk: summen av linjesummene (før rabatt).' },
     },
     {
       name: 'shipping',
@@ -245,6 +267,13 @@ export const Orders: CollectionConfig = {
       type: 'number',
       label: 'Totalt (kr)',
       required: true,
+      admin: { readOnly: true, description: 'Beregnes automatisk: delsum + frakt − rabatt.' },
+    },
+    {
+      // Live totals for a manual order (Delsum, Totalt). The server recalculates on save.
+      name: 'orderTotals',
+      type: 'ui',
+      admin: { components: { Field: '@/components/admin/orders/OrderTotals#default' } },
     },
     // --- Promo-code snapshot (written server-side when the order is created) ---
     //
@@ -590,7 +619,7 @@ export const Orders: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [assignOrderNumber, validateShipment],
-    beforeChange: [enforceOrderBusinessCustomer, claimOrderEmails, snapshotOrderCosts],
+    beforeChange: [enforceOrderBusinessCustomer, normalizeManualOrderPricing, claimOrderEmails, snapshotOrderCosts],
     afterChange: [sendOrderEmails],
   },
   endpoints: [resendShippingEmail, sendReviewInvitation],
