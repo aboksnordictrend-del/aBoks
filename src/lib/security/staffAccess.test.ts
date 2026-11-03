@@ -28,6 +28,8 @@ import { ReviewInvitations } from '@/collections/ReviewInvitations'
 import { ReviewPhotos } from '@/collections/ReviewPhotos'
 import { Reviews } from '@/collections/Reviews'
 import { Users } from '@/collections/Users'
+import { BusinessCustomers } from '@/collections/BusinessCustomers'
+import { MiljoAccounts } from '@/collections/MiljoAccounts'
 import { EconomySettings } from '@/globals/EconomySettings'
 import { PinterestConnection } from '@/globals/PinterestConnection'
 import { TikTokConnection } from '@/globals/TikTokConnection'
@@ -126,6 +128,10 @@ const EXPECTED: [CollectionConfig | GlobalConfig, Ops][] = [
   [EconomySettings, { read: 'admin', update: 'admin' }],
   [PinterestConnection, { read: 'admin', update: 'admin' }],
   [TikTokConnection, { read: 'admin', update: 'admin' }],
+  // Miljøregistrering business customers and their login (Stage 1). Read is a filter for an
+  // authenticated Miljø account — see below and MiljoBusiness.rest.test.ts.
+  [BusinessCustomers, { create: 'admin', update: 'admin', delete: 'admin' }],
+  [MiljoAccounts, { admin: 'closed', create: 'admin', update: 'admin', delete: 'admin', unlock: 'admin' }],
 ]
 
 const allows = (rule: Rule, who: 'anon' | 'admin' | 'editor' | 'foreign' | 'noRole') => {
@@ -153,6 +159,14 @@ describe('collection and global access — staff boundary', () => {
   it('anonymous visitors cannot create orders or customers through the REST API', () => {
     assert.equal(run(Orders.access!.create, null), false)
     assert.equal(run(Customers.access!.create, null), false)
+  })
+
+  it('business customers and Miljø accounts: admins read all; editors, the public and staff-looking foreigners nothing', async () => {
+    // Async rules: a Miljø account's business customer is checked in the database per request.
+    for (const read of [BusinessCustomers.access!.read, MiljoAccounts.access!.read]) {
+      assert.equal(await run(read, ADMIN), true)
+      for (const user of [EDITOR, null, FOREIGN, NO_ROLE]) assert.equal(await run(read, user), false, JSON.stringify(user))
+    }
   })
 
   it('reviews: staff read everything; the public and a foreign account only approved reviews', () => {

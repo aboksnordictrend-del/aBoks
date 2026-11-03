@@ -64,6 +64,7 @@ export type SupportedTimezones =
 export interface Config {
   auth: {
     users: UserAuthOperations;
+    'miljo-accounts': MiljoAccountAuthOperations;
   };
   blocks: {};
   collections: {
@@ -92,6 +93,8 @@ export interface Config {
     'battery-delivery-documents': BatteryDeliveryDocument;
     'battery-registration-audit': BatteryRegistrationAudit;
     'battery-delivery-audit': BatteryDeliveryAudit;
+    'business-customers': BusinessCustomer;
+    'miljo-accounts': MiljoAccount;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -105,6 +108,9 @@ export interface Config {
     };
     'referred-customers': {
       sales: 'referral-sales';
+    };
+    'business-customers': {
+      accounts: 'miljo-accounts';
     };
   };
   collectionsSelect: {
@@ -133,6 +139,8 @@ export interface Config {
     'battery-delivery-documents': BatteryDeliveryDocumentsSelect<false> | BatteryDeliveryDocumentsSelect<true>;
     'battery-registration-audit': BatteryRegistrationAuditSelect<false> | BatteryRegistrationAuditSelect<true>;
     'battery-delivery-audit': BatteryDeliveryAuditSelect<false> | BatteryDeliveryAuditSelect<true>;
+    'business-customers': BusinessCustomersSelect<false> | BusinessCustomersSelect<true>;
+    'miljo-accounts': MiljoAccountsSelect<false> | MiljoAccountsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -156,13 +164,31 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
-  user: User;
+  user: User | MiljoAccount;
   jobs: {
     tasks: unknown;
     workflows: unknown;
   };
 }
 export interface UserAuthOperations {
+  forgotPassword: {
+    email: string;
+    password: string;
+  };
+  login: {
+    email: string;
+    password: string;
+  };
+  registerFirstUser: {
+    email: string;
+    password: string;
+  };
+  unlock: {
+    email: string;
+    password: string;
+  };
+}
+export interface MiljoAccountAuthOperations {
   forgotPassword: {
     email: string;
     password: string;
@@ -187,6 +213,9 @@ export interface UserAuthOperations {
 export interface User {
   id: number;
   name?: string | null;
+  /**
+   * Bare administratorer kan endre rollen.
+   */
   role?: ('admin' | 'editor') | null;
   updatedAt: string;
   createdAt: string;
@@ -1884,6 +1913,95 @@ export interface BatteryDeliveryAudit {
   createdAt: string;
 }
 /**
+ * Bedrifter som kan bruke aBoks Miljøregistrering. Ett organisasjonsnummer per bedrift, én Miljøkonto per bedrift.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "business-customers".
+ */
+export interface BusinessCustomer {
+  id: number;
+  name: string;
+  /**
+   * Norsk, 9 sifre. Lagres uten mellomrom.
+   */
+  organizationNumber: string;
+  /**
+   * Bare «Aktiv» gir tilgang. «Sperret» (og «Venter») stenger alle bedriftens Miljøkontoer ved neste forespørsel – innlogging, fornyelse og data.
+   */
+  status: 'pending' | 'active' | 'suspended';
+  /**
+   * Settes automatisk første gang status blir «Aktiv».
+   */
+  activatedAt?: string | null;
+  contactName?: string | null;
+  /**
+   * Adressen eierskapet bekreftes mot.
+   */
+  contactEmail: string;
+  /**
+   * Settes av bekreftelsesflyten (kommer senere). Kan ikke endres manuelt.
+   */
+  contactEmailVerifiedAt?: string | null;
+  /**
+   * AB-ordrer som gir tilgang (bekreftet, sendt eller levert). En ordre kan bare knyttes til én bedriftskunde.
+   */
+  eligibleOrders?: (number | Order)[] | null;
+  /**
+   * Organisasjonen (QR-kode og statistikk) bedriften administrerer. Én bedrift per organisasjon.
+   */
+  environmentalOrganization?: (number | null) | EnvironmentalOrganization;
+  accounts?: {
+    docs?: (number | MiljoAccount)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Vises aldri for bedriften.
+   */
+  internalNote?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Felles innlogging for en bedriftskunde i Miljøregistrering. Kan bare logge inn når kontoen er aktiv og e-posten er bekreftet.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "miljo-accounts".
+ */
+export interface MiljoAccount {
+  id: number;
+  /**
+   * Én konto per bedriftskunde. Kan ikke endres etter at kontoen er opprettet.
+   */
+  businessCustomer: number | BusinessCustomer;
+  /**
+   * «Deaktivert» stenger kontoen ved neste forespørsel.
+   */
+  status: 'invited' | 'active' | 'disabled';
+  /**
+   * Settes av bekreftelsesflyten (kommer senere).
+   */
+  emailVerifiedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'miljo-accounts';
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -2006,12 +2124,25 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'battery-delivery-audit';
         value: number | BatteryDeliveryAudit;
+      } | null)
+    | ({
+        relationTo: 'business-customers';
+        value: number | BusinessCustomer;
+      } | null)
+    | ({
+        relationTo: 'miljo-accounts';
+        value: number | MiljoAccount;
       } | null);
   globalSlug?: string | null;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'miljo-accounts';
+        value: number | MiljoAccount;
+      };
   updatedAt: string;
   createdAt: string;
 }
@@ -2021,10 +2152,15 @@ export interface PayloadLockedDocument {
  */
 export interface PayloadPreference {
   id: number;
-  user: {
-    relationTo: 'users';
-    value: number | User;
-  };
+  user:
+    | {
+        relationTo: 'users';
+        value: number | User;
+      }
+    | {
+        relationTo: 'miljo-accounts';
+        value: number | MiljoAccount;
+      };
   key?: string | null;
   value?:
     | {
@@ -2846,6 +2982,50 @@ export interface BatteryDeliveryAuditSelect<T extends boolean = true> {
   after?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "business-customers_select".
+ */
+export interface BusinessCustomersSelect<T extends boolean = true> {
+  name?: T;
+  organizationNumber?: T;
+  status?: T;
+  activatedAt?: T;
+  contactName?: T;
+  contactEmail?: T;
+  contactEmailVerifiedAt?: T;
+  eligibleOrders?: T;
+  environmentalOrganization?: T;
+  accounts?: T;
+  internalNote?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "miljo-accounts_select".
+ */
+export interface MiljoAccountsSelect<T extends boolean = true> {
+  businessCustomer?: T;
+  status?: T;
+  emailVerifiedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  email?: T;
+  resetPasswordToken?: T;
+  resetPasswordExpiration?: T;
+  salt?: T;
+  hash?: T;
+  loginAttempts?: T;
+  lockUntil?: T;
+  sessions?:
+    | T
+    | {
+        id?: T;
+        createdAt?: T;
+        expiresAt?: T;
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -17,8 +17,10 @@ import type { Access, FieldAccess } from 'payload'
  * Miljøregistrering, marketing settings, …). Editors keep exactly what they had: everything
  * previously open to any logged-in user, nothing that required the admin role.
  *
- * Both are type guards, so `if (!isStaffUser(req.user)) return …` narrows `req.user` like the
- * `if (!req.user)` checks they replace.
+ * `isStaffUser` is a type guard, so `if (!isStaffUser(req.user)) return …` narrows `req.user` like the
+ * `if (!req.user)` checks it replaces. `isAdminUser` deliberately is NOT one: «not an admin» does not
+ * mean «no user», and a guard would wrongly narrow an editor (or a Miljø account) to null in its
+ * false branch. Check `isStaffUser` first where the narrowed type is needed.
  */
 
 export const STAFF_COLLECTION = 'users'
@@ -32,7 +34,7 @@ export function isStaffUser<T>(user: T): user is NonNullable<T> {
   return collection === STAFF_COLLECTION && (STAFF_ROLES as readonly unknown[]).includes(role)
 }
 
-export function isAdminUser<T>(user: T): user is NonNullable<T> {
+export function isAdminUser(user: unknown): boolean {
   return isStaffUser(user) && (user as Principal).role === 'admin'
 }
 

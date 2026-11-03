@@ -11,9 +11,7 @@ import { enforceUserRole } from './hooks/userRole'
  */
 const adminOrSelf: Access = ({ req }) => {
   if (!isStaffUser(req.user)) return false
-  // Read before `isAdminUser`, whose type guard narrows `req.user` away in its false branch.
-  const { id } = req.user
-  return isAdminUser(req.user) ? true : { id: { equals: id } }
+  return isAdminUser(req.user) ? true : { id: { equals: req.user.id } }
 }
 
 const adminOnlyField: FieldAccess = ({ req }) => isAdminUser(req.user)
