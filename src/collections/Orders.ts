@@ -4,6 +4,7 @@ import { claimOrderEmails, sendOrderEmails } from './hooks/sendOrderEmails'
 import { snapshotOrderCosts } from './hooks/orderSnapshot'
 import { assignOrderNumber } from './hooks/orderNumber'
 import { validateShipment } from './hooks/orderShipment'
+import { enforceOrderBusinessCustomer, orderBusinessCustomerField } from './hooks/orderBusinessCustomer'
 import { SHIPPING_CARRIER_OPTIONS } from '@/lib/orders/shipment'
 import { resendShippingEmail } from './endpoints/resendShippingEmail'
 import { sendReviewInvitation } from './endpoints/sendReviewInvitation'
@@ -68,6 +69,8 @@ export const Orders: CollectionConfig = {
       relationTo: 'customers',
       label: 'Kunde',
     },
+    // aBoks Miljøregistrering: the one authoritative order → business customer link (admin only).
+    orderBusinessCustomerField,
     {
       name: 'customerInfo',
       type: 'group',
@@ -587,7 +590,7 @@ export const Orders: CollectionConfig = {
   ],
   hooks: {
     beforeValidate: [assignOrderNumber, validateShipment],
-    beforeChange: [claimOrderEmails, snapshotOrderCosts],
+    beforeChange: [enforceOrderBusinessCustomer, claimOrderEmails, snapshotOrderCosts],
     afterChange: [sendOrderEmails],
   },
   endpoints: [resendShippingEmail, sendReviewInvitation],

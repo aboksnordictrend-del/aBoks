@@ -14,6 +14,9 @@ import { enforceBusinessCustomerRules, guardBusinessCustomerDelete } from './hoo
  * permanent internal id that is independent of any single order. Stage 1 foundation: records are
  * created and managed by an administrator; the self-service registration flow comes later.
  *
+ * Its orders are linked on the order (`orders.businessCustomer`, one company per order) and listed
+ * here through a read-only join — one source of truth, see ./hooks/orderBusinessCustomer.
+ *
  * Deliberately separate from `referred-customers` (partner referrals, which require a partner and
  * drive commission) and from `customers` (private webshop buyers). See @/lib/miljo/business.
  *
@@ -146,15 +149,19 @@ export const BusinessCustomers: CollectionConfig = {
       ],
     },
     {
-      name: 'eligibleOrders',
-      type: 'relationship',
-      relationTo: 'orders',
-      hasMany: true,
-      label: 'Kvalifiserende ordrer',
+      // Read-only view of the ONE authoritative link, `orders.businessCustomer` (see
+      // ./hooks/orderBusinessCustomer). Linked and unlinked on the order itself.
+      name: 'orders',
+      type: 'join',
+      collection: 'orders',
+      on: 'businessCustomer',
+      label: 'Ordrer',
+      defaultSort: '-createdAt',
       access: { read: adminOnlyField },
       admin: {
+        defaultColumns: ['orderNumber', 'status', 'total', 'createdAt'],
         description:
-          'AB-ordrer som gir tilgang (bekreftet, sendt eller levert). En ordre kan bare knyttes til én bedriftskunde.',
+          'AB-ordrer knyttet til bedriften. Koble en ordre ved å velge «Bedriftskunde» på ordren. Bare bekreftede, sendte og leverte ordrer gir tilgang til Miljøregistrering.',
       },
     },
     {

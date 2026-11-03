@@ -35,6 +35,24 @@ export function isEligibleOrderStatus(status: unknown): boolean {
   return typeof status === 'string' && (MILJO_ELIGIBLE_ORDER_STATUSES as readonly string[]).includes(status)
 }
 
+/**
+ * `req.context` flag with which trusted server code — and only it — sets or changes
+ * `orders.businessCustomer` without an administrator. Never set from a request.
+ */
+export const ORDER_BUSINESS_LINK_CONTEXT = 'miljoOrderBusinessLink'
+
+/**
+ * Does this order, right now, make `businessCustomerId` eligible for Miljøregistrering? Linked to
+ * that business customer AND currently confirmed, shipped or delivered. A link is kept when an
+ * order is later cancelled (history), so the link alone never decides — the current status does.
+ */
+export function orderGrantsEligibility(order: unknown, businessCustomerId: number | string): boolean {
+  if (!order || typeof order !== 'object') return false
+  const { businessCustomer, status } = order as { businessCustomer?: unknown; status?: unknown }
+  const linked = relationshipId(businessCustomer)
+  return linked != null && String(linked) === String(businessCustomerId) && isEligibleOrderStatus(status)
+}
+
 /* ------------------------------ miljø account ------------------------------ */
 
 /**

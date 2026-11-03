@@ -5,6 +5,7 @@ import {
   accountCanAuthenticate,
   isEligibleOrderStatus,
   isMiljoAccountUser,
+  orderGrantsEligibility,
   relationshipId,
 } from './business'
 import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
@@ -47,6 +48,18 @@ describe('Miljø account principal', () => {
     const sneaky = account({ role: 'admin' })
     assert.equal(isStaffUser(sneaky), false)
     assert.equal(isAdminUser(sneaky), false)
+  })
+})
+
+describe('orderGrantsEligibility', () => {
+  it('only an order linked to THIS business customer and currently eligible counts', () => {
+    assert.equal(orderGrantsEligibility({ businessCustomer: 42, status: 'confirmed' }, 42), true)
+    assert.equal(orderGrantsEligibility({ businessCustomer: { id: 42 }, status: 'delivered' }, '42'), true)
+    assert.equal(orderGrantsEligibility({ businessCustomer: 43, status: 'confirmed' }, 42), false, 'another company')
+    assert.equal(orderGrantsEligibility({ businessCustomer: null, status: 'confirmed' }, 42), false, 'unlinked')
+    assert.equal(orderGrantsEligibility({ businessCustomer: 42, status: 'cancelled' }, 42), false, 'link kept, no longer eligible')
+    assert.equal(orderGrantsEligibility({ businessCustomer: 42, status: 'pending' }, 42), false)
+    assert.equal(orderGrantsEligibility(null, 42), false)
   })
 })
 

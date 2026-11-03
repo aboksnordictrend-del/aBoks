@@ -1,13 +1,11 @@
 import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import type { CollectionConfig } from 'payload'
 import { createRestHarness, type RestHarness, type Row } from '@/lib/testing/payloadRestHarness'
 import { BusinessCustomers } from './BusinessCustomers'
-import { EnvironmentalOrganizations } from './EnvironmentalOrganizations'
 import { MiljoAccounts } from './MiljoAccounts'
-import { Orders } from './Orders'
 import { Users } from './Users'
 import { MILJO_TRUSTED_ACCOUNT_CREATE } from '@/lib/miljo/business'
+import { OrdersStandIn, OrganizationsStandIn } from '@/lib/testing/miljoStandIns'
 
 /**
  * Stage 1 — `business-customers` and `miljo-accounts` through Payload's REAL REST pipeline (login,
@@ -32,29 +30,6 @@ const rows = (slug: string): Row[] => (h.store[slug] ??= [])
 const row = (slug: string, docId: number) => rows(slug).find((r) => r.id === docId)
 const docs = (json: Record<string, unknown>) => (json.docs as Record<string, unknown>[] | undefined) ?? []
 
-/**
- * Orders and environmental organisations as minimal stand-ins: the same slugs and the REAL access
- * rules of the project's collections, without their fields' relationships to the rest of the
- * schema (customers, products, …) that this suite does not need.
- */
-const OrdersStandIn: CollectionConfig = {
-  slug: 'orders',
-  access: Orders.access,
-  fields: [
-    { name: 'orderNumber', type: 'text' },
-    { name: 'status', type: 'text' },
-  ],
-}
-const OrganizationsStandIn: CollectionConfig = {
-  slug: 'environmental-organizations',
-  access: EnvironmentalOrganizations.access,
-  fields: [
-    { name: 'name', type: 'text' },
-    { name: 'publicCode', type: 'text' },
-    { name: 'status', type: 'text' },
-  ],
-}
-
 before(async () => {
   h = await createRestHarness('miljo-business-rest-test', [Users, OrdersStandIn, OrganizationsStandIn, BusinessCustomers, MiljoAccounts])
 
@@ -78,8 +53,8 @@ before(async () => {
 
   const bc = async (name: string, organizationNumber: string, extra: Record<string, unknown>) =>
     (await p.create({ collection: 'business-customers', data: { name, organizationNumber, contactEmail: `${name}@aboks.invalid`, status: 'active', ...extra } as never })).id as number
-  id.bcA = await bc('bedrift-a', ORGNR.a, { eligibleOrders: [order.confirmedA], environmentalOrganization: id.orgA, internalNote: 'intern A' })
-  id.bcB = await bc('bedrift-b', ORGNR.b, { eligibleOrders: [order.confirmedB], environmentalOrganization: id.orgB, internalNote: 'intern B' })
+  id.bcA = await bc('bedrift-a', ORGNR.a, { environmentalOrganization: id.orgA, internalNote: 'intern A' })
+  id.bcB = await bc('bedrift-b', ORGNR.b, { environmentalOrganization: id.orgB, internalNote: 'intern B' })
   id.bcC = await bc('bedrift-c', ORGNR.c, {})
 
   // emailVerifiedAt is system-only: set here through the trusted Local API path, as the
@@ -232,7 +207,7 @@ describe('Miljø account — organisation isolation', () => {
     const own = docs(res.json)[0]!
     assert.equal(own.organizationNumber, ORGNR.a)
     assert.equal(own.internalNote, undefined)
-    assert.equal(own.eligibleOrders, undefined)
+    assert.equal(own.orders, undefined)
   })
 
   it('cannot read another business customer — by id or by a crafted where', async () => {
@@ -373,13 +348,6 @@ describe('administrator — business customers', () => {
     assert.equal((await create({ ...base, organizationNumber: '12345' })).status, 400)
   })
 
-  it('rejects missing, pending, cancelled and already-linked orders', async () => {
-    for (const bad of [9999, order.pending, order.cancelled, order.confirmedA]) {
-      const res = await create({ ...base, organizationNumber: '914778271', eligibleOrders: [bad] })
-      assert.equal(res.status, 400, `order ${bad}: ${JSON.stringify(res.json)}`)
-    }
-  })
-
   it('rejects an environmental organisation that does not exist', async () => {
     const res = await create({ ...base, organizationNumber: '914778271', environmentalOrganization: 9999 })
     assert.equal(res.status, 400)
@@ -389,7 +357,6 @@ describe('administrator — business customers', () => {
     const res = await create({
       ...base,
       organizationNumber: 'NO 914 778 271 MVA',
-      eligibleOrders: [order.delivered, order.shipped],
       environmentalOrganization: id.orgFree,
       activatedAt: '2000-01-01T00:00:00.000Z',
       contactEmailVerifiedAt: '2000-01-01T00:00:00.000Z',

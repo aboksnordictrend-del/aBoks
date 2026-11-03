@@ -110,6 +110,7 @@ export interface Config {
       sales: 'referral-sales';
     };
     'business-customers': {
+      orders: 'orders';
       accounts: 'miljo-accounts';
     };
   };
@@ -447,6 +448,10 @@ export interface Order {
   orderNumber: string;
   kustomOrderId?: string | null;
   customer?: (number | null) | Customer;
+  /**
+   * Valgfritt. Bedriften ordren gjelder, for aBoks Miljøregistrering. Ordren må være bekreftet, sendt eller levert. En ordre kan bare tilhøre én bedrift.
+   */
+  businessCustomer?: (number | null) | BusinessCustomer;
   customerInfo?: {
     email?: string | null;
     firstName?: string | null;
@@ -587,6 +592,165 @@ export interface Customer {
   marketingConsent?: boolean | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * Bedrifter som kan bruke aBoks Miljøregistrering. Ett organisasjonsnummer per bedrift, én Miljøkonto per bedrift.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "business-customers".
+ */
+export interface BusinessCustomer {
+  id: number;
+  name: string;
+  /**
+   * Norsk, 9 sifre. Lagres uten mellomrom.
+   */
+  organizationNumber: string;
+  /**
+   * Bare «Aktiv» gir tilgang. «Sperret» (og «Venter») stenger alle bedriftens Miljøkontoer ved neste forespørsel – innlogging, fornyelse og data.
+   */
+  status: 'pending' | 'active' | 'suspended';
+  /**
+   * Settes automatisk første gang status blir «Aktiv».
+   */
+  activatedAt?: string | null;
+  contactName?: string | null;
+  /**
+   * Adressen eierskapet bekreftes mot.
+   */
+  contactEmail: string;
+  /**
+   * Settes av bekreftelsesflyten (kommer senere). Kan ikke endres manuelt.
+   */
+  contactEmailVerifiedAt?: string | null;
+  /**
+   * AB-ordrer knyttet til bedriften. Koble en ordre ved å velge «Bedriftskunde» på ordren. Bare bekreftede, sendte og leverte ordrer gir tilgang til Miljøregistrering.
+   */
+  orders?: {
+    docs?: (number | Order)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Organisasjonen (QR-kode og statistikk) bedriften administrerer. Én bedrift per organisasjon.
+   */
+  environmentalOrganization?: (number | null) | EnvironmentalOrganization;
+  accounts?: {
+    docs?: (number | MiljoAccount)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * Vises aldri for bedriften.
+   */
+  internalNote?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Organisasjoner med aBoks XL. Hver organisasjon har én permanent QR-kode som deles av alle beholderne. Se Miljøregistrering-oversikten for statistikk.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "environmental-organizations".
+ */
+export interface EnvironmentalOrganization {
+  id: number;
+  /**
+   * Vises på den offentlige siden og i miljørapporten. Endring påvirker ikke QR-koden.
+   */
+  name: string;
+  organizationType?: ('kommune' | 'skole' | 'bedrift' | 'annet') | null;
+  organizationNumber?: string | null;
+  contactPerson?: string | null;
+  contactEmail?: string | null;
+  address?: string | null;
+  /**
+   * Kun til informasjon — alle beholderne bruker samme QR-kode.
+   */
+  containerCount?: number | null;
+  startDate?: string | null;
+  internalNotes?: string | null;
+  /**
+   * aBoks XL tar ikke imot 9V- eller litiumbatterier, og de kan ikke velges. «Andre» vises bare når beskrivelsen under er fylt ut.
+   */
+  allowedCategories: ('aa' | 'aaa' | 'other')[];
+  otherCategoryLabel?: string | null;
+  /**
+   * Påkrevd for «Andre». Beskriv bare typer som beholderens godkjente instruksjoner tillater. Vises for de ansatte.
+   */
+  otherCategoryDescription?: string | null;
+  maxPerCategory?: number | null;
+  maxPerSubmission?: number | null;
+  confirmAbove?: number | null;
+  /**
+   * Totalt per dag før registreringer merkes for gjennomgang.
+   */
+  dailyFlagThreshold?: number | null;
+  /**
+   * Inaktiv: QR-siden tar ikke imot registreringer og viser ingen statistikk.
+   */
+  status: 'active' | 'inactive';
+  /**
+   * Lages automatisk og endres aldri ved navnebytte.
+   */
+  publicCode?: string | null;
+  /**
+   * Utskrevne QR-koder med disse kodene virker ikke lenger.
+   */
+  codeHistory?:
+    | {
+        code: string;
+        retiredAt?: string | null;
+        reason?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  pinHash?: string | null;
+  pinSetAt?: string | null;
+  pinEncrypted?: string | null;
+  pinAttemptCount?: number | null;
+  pinAttemptWindowStart?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Felles innlogging for en bedriftskunde i Miljøregistrering. Kan bare logge inn når kontoen er aktiv og e-posten er bekreftet.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "miljo-accounts".
+ */
+export interface MiljoAccount {
+  id: number;
+  /**
+   * Én konto per bedriftskunde. Kan ikke endres etter at kontoen er opprettet.
+   */
+  businessCustomer: number | BusinessCustomer;
+  /**
+   * «Deaktivert» stenger kontoen ved neste forespørsel.
+   */
+  status: 'invited' | 'active' | 'disabled';
+  /**
+   * Settes av bekreftelsesflyten (kommer senere).
+   */
+  emailVerifiedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'miljo-accounts';
 }
 /**
  * Rabattkoder kunden kan bruke i handlekurven.
@@ -1672,72 +1836,6 @@ export interface PilotEvaluation {
   createdAt: string;
 }
 /**
- * Organisasjoner med aBoks XL. Hver organisasjon har én permanent QR-kode som deles av alle beholderne. Se Miljøregistrering-oversikten for statistikk.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "environmental-organizations".
- */
-export interface EnvironmentalOrganization {
-  id: number;
-  /**
-   * Vises på den offentlige siden og i miljørapporten. Endring påvirker ikke QR-koden.
-   */
-  name: string;
-  organizationType?: ('kommune' | 'skole' | 'bedrift' | 'annet') | null;
-  organizationNumber?: string | null;
-  contactPerson?: string | null;
-  contactEmail?: string | null;
-  address?: string | null;
-  /**
-   * Kun til informasjon — alle beholderne bruker samme QR-kode.
-   */
-  containerCount?: number | null;
-  startDate?: string | null;
-  internalNotes?: string | null;
-  /**
-   * aBoks XL tar ikke imot 9V- eller litiumbatterier, og de kan ikke velges. «Andre» vises bare når beskrivelsen under er fylt ut.
-   */
-  allowedCategories: ('aa' | 'aaa' | 'other')[];
-  otherCategoryLabel?: string | null;
-  /**
-   * Påkrevd for «Andre». Beskriv bare typer som beholderens godkjente instruksjoner tillater. Vises for de ansatte.
-   */
-  otherCategoryDescription?: string | null;
-  maxPerCategory?: number | null;
-  maxPerSubmission?: number | null;
-  confirmAbove?: number | null;
-  /**
-   * Totalt per dag før registreringer merkes for gjennomgang.
-   */
-  dailyFlagThreshold?: number | null;
-  /**
-   * Inaktiv: QR-siden tar ikke imot registreringer og viser ingen statistikk.
-   */
-  status: 'active' | 'inactive';
-  /**
-   * Lages automatisk og endres aldri ved navnebytte.
-   */
-  publicCode?: string | null;
-  /**
-   * Utskrevne QR-koder med disse kodene virker ikke lenger.
-   */
-  codeHistory?:
-    | {
-        code: string;
-        retiredAt?: string | null;
-        reason?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  pinHash?: string | null;
-  pinSetAt?: string | null;
-  pinEncrypted?: string | null;
-  pinAttemptCount?: number | null;
-  pinAttemptWindowStart?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * Anonyme registreringer fra QR-siden (egenrapportert). Kan ikke redigeres direkte — bruk Korriger / Ugyldiggjør i sidepanelet. Opprinnelige verdier bevares.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1911,95 +2009,6 @@ export interface BatteryDeliveryAudit {
     | null;
   updatedAt: string;
   createdAt: string;
-}
-/**
- * Bedrifter som kan bruke aBoks Miljøregistrering. Ett organisasjonsnummer per bedrift, én Miljøkonto per bedrift.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "business-customers".
- */
-export interface BusinessCustomer {
-  id: number;
-  name: string;
-  /**
-   * Norsk, 9 sifre. Lagres uten mellomrom.
-   */
-  organizationNumber: string;
-  /**
-   * Bare «Aktiv» gir tilgang. «Sperret» (og «Venter») stenger alle bedriftens Miljøkontoer ved neste forespørsel – innlogging, fornyelse og data.
-   */
-  status: 'pending' | 'active' | 'suspended';
-  /**
-   * Settes automatisk første gang status blir «Aktiv».
-   */
-  activatedAt?: string | null;
-  contactName?: string | null;
-  /**
-   * Adressen eierskapet bekreftes mot.
-   */
-  contactEmail: string;
-  /**
-   * Settes av bekreftelsesflyten (kommer senere). Kan ikke endres manuelt.
-   */
-  contactEmailVerifiedAt?: string | null;
-  /**
-   * AB-ordrer som gir tilgang (bekreftet, sendt eller levert). En ordre kan bare knyttes til én bedriftskunde.
-   */
-  eligibleOrders?: (number | Order)[] | null;
-  /**
-   * Organisasjonen (QR-kode og statistikk) bedriften administrerer. Én bedrift per organisasjon.
-   */
-  environmentalOrganization?: (number | null) | EnvironmentalOrganization;
-  accounts?: {
-    docs?: (number | MiljoAccount)[];
-    hasNextPage?: boolean;
-    totalDocs?: number;
-  };
-  /**
-   * Vises aldri for bedriften.
-   */
-  internalNote?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * Felles innlogging for en bedriftskunde i Miljøregistrering. Kan bare logge inn når kontoen er aktiv og e-posten er bekreftet.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "miljo-accounts".
- */
-export interface MiljoAccount {
-  id: number;
-  /**
-   * Én konto per bedriftskunde. Kan ikke endres etter at kontoen er opprettet.
-   */
-  businessCustomer: number | BusinessCustomer;
-  /**
-   * «Deaktivert» stenger kontoen ved neste forespørsel.
-   */
-  status: 'invited' | 'active' | 'disabled';
-  /**
-   * Settes av bekreftelsesflyten (kommer senere).
-   */
-  emailVerifiedAt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
-  collection: 'miljo-accounts';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2356,6 +2365,7 @@ export interface OrdersSelect<T extends boolean = true> {
   orderNumber?: T;
   kustomOrderId?: T;
   customer?: T;
+  businessCustomer?: T;
   customerInfo?:
     | T
     | {
@@ -2995,7 +3005,7 @@ export interface BusinessCustomersSelect<T extends boolean = true> {
   contactName?: T;
   contactEmail?: T;
   contactEmailVerifiedAt?: T;
-  eligibleOrders?: T;
+  orders?: T;
   environmentalOrganization?: T;
   accounts?: T;
   internalNote?: T;

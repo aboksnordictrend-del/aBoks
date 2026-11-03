@@ -9,7 +9,6 @@ import { normalizeOrganizationNumber, validateOrganizationNumber } from '@/lib/p
 import {
   BUSINESS_CUSTOMERS_SLUG,
   MILJO_ACCOUNTS_SLUG,
-  isEligibleOrderStatus,
   relationshipId,
 } from '@/lib/miljo/business'
 import { ENV_ORGANIZATIONS_SLUG } from '@/lib/miljo/constants'
@@ -24,11 +23,8 @@ import { ENV_ORGANIZATIONS_SLUG } from '@/lib/miljo/constants'
  *      removed) and must pass Brønnøysund's modulus-11 check; the contact e-mail is lower-cased.
  *      The database's unique index on `organization_number` refuses a second customer for the same
  *      company.
- *   2. Eligible orders. Every order ADDED to the list must exist, be confirmed, shipped or delivered
- *      (an invoice order qualifies once confirmed), and belong to no other business customer — one
- *      order can never make two companies eligible. Orders already on the list are not re-checked,
- *      so a later cancellation does not block unrelated edits. A partial unique index on
- *      `business_customers_rels(orders_id)` backs the last rule against simultaneous saves.
+ *   2. Orders are NOT linked here: the one authoritative link is `orders.businessCustomer`, set on
+ *      the order (see ./orderBusinessCustomer) and shown here through a read-only join.
  *   3. Environmental organisation. Must exist; the unique index on the column keeps it to one
  *      business customer.
  *   4. Activation timestamp. `activatedAt` is set the first time the status becomes «Aktiv» and is
@@ -51,15 +47,11 @@ function fail(req: PayloadRequest, id: unknown, path: string, message: string): 
   })
 }
 
-const ids = (value: unknown): (number | string)[] =>
-  Array.isArray(value) ? value.map(relationshipId).filter((id): id is number | string => id != null) : []
-
-export const ORDER_NOT_FOUND_MESSAGE = 'Fant ikke ordren.'
-export const ORDER_NOT_ELIGIBLE_MESSAGE =
-  'Ordren gir ikke tilgang: den må være bekreftet, sendt eller levert. En ordre som venter på betaling eller er kansellert kan ikke brukes.'
 export const ORGANIZATION_NOT_FOUND_MESSAGE = 'Fant ikke miljøorganisasjonen.'
 export const CUSTOMER_HAS_ACCOUNT_MESSAGE =
   'Bedriftskunden kan ikke slettes fordi den har en Miljøkonto. Sett status til «Sperret» i stedet.'
+export const CUSTOMER_HAS_ORDERS_MESSAGE =
+  'Bedriftskunden kan ikke slettes fordi ordrer er knyttet til den. Fjern koblingen på ordrene, eller sett status til «Sperret».'
 
 export const enforceBusinessCustomerRules: CollectionBeforeChangeHook = async ({ data, originalDoc, operation, req }) => {
   if (!data) return data
@@ -77,49 +69,6 @@ export const enforceBusinessCustomerRules: CollectionBeforeChangeHook = async ({
     doc.organizationNumber = digits
   }
   if (typeof doc.contactEmail === 'string') doc.contactEmail = doc.contactEmail.trim().toLowerCase()
-
-  // ── 2. Eligible orders — only the ones this save adds ──
-  if ('eligibleOrders' in doc) {
-    const incoming = ids(doc.eligibleOrders)
-    const stored = new Set(ids(original?.eligibleOrders).map(String))
-    const added = [...new Set(incoming.map(String))].filter((id) => !stored.has(id))
-    doc.eligibleOrders = [...new Set(incoming.map(String))].map((id) => incoming.find((x) => String(x) === id)!)
-
-    for (const orderId of added) {
-      const order = (await req.payload.findByID({
-        collection: 'orders',
-        id: orderId,
-        depth: 0,
-        overrideAccess: true,
-        disableErrors: true,
-        req,
-      })) as { status?: unknown; orderNumber?: unknown } | null
-      if (!order) fail(req, selfId, 'eligibleOrders', ORDER_NOT_FOUND_MESSAGE)
-      if (!isEligibleOrderStatus(order.status)) {
-        fail(req, selfId, 'eligibleOrders', `${String(order.orderNumber ?? orderId)}: ${ORDER_NOT_ELIGIBLE_MESSAGE}`)
-      }
-      const taken = await req.payload.find({
-        collection: BUSINESS_CUSTOMERS_SLUG,
-        where: {
-          and: [{ eligibleOrders: { in: [orderId] } }, ...(selfId != null ? [{ id: { not_equals: selfId } }] : [])],
-        },
-        depth: 0,
-        limit: 1,
-        pagination: false,
-        overrideAccess: true,
-        req,
-      })
-      if (taken.docs.length > 0) {
-        const other = taken.docs[0] as { name?: unknown }
-        fail(
-          req,
-          selfId,
-          'eligibleOrders',
-          `${String(order.orderNumber ?? orderId)} er allerede knyttet til bedriftskunden «${String(other.name ?? '')}». En ordre kan bare gi tilgang til én bedrift.`,
-        )
-      }
-    }
-  }
 
   // ── 3. Environmental organisation ──
   if ('environmentalOrganization' in doc) {
@@ -148,7 +97,11 @@ export const enforceBusinessCustomerRules: CollectionBeforeChangeHook = async ({
   return data
 }
 
-/** Refuses deleting a business customer that still has its Miljø account. */
+/**
+ * Refuses deleting a business customer that still has its Miljø account or linked orders — the
+ * order links are history and must never disappear as a side effect. (The database backs this with
+ * RESTRICT on `orders.business_customer_id`.)
+ */
 export const guardBusinessCustomerDelete: CollectionBeforeDeleteHook = async ({ id, req }) => {
   const accounts = await req.payload.count({
     collection: MILJO_ACCOUNTS_SLUG,
@@ -157,4 +110,11 @@ export const guardBusinessCustomerDelete: CollectionBeforeDeleteHook = async ({ 
     req,
   })
   if (accounts.totalDocs > 0) throw new APIError(CUSTOMER_HAS_ACCOUNT_MESSAGE, 409)
+  const orders = await req.payload.count({
+    collection: 'orders',
+    where: { businessCustomer: { equals: id } },
+    overrideAccess: true,
+    req,
+  })
+  if (orders.totalDocs > 0) throw new APIError(CUSTOMER_HAS_ORDERS_MESSAGE, 409)
 }
