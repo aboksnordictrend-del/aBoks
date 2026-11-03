@@ -19,6 +19,8 @@ import {
 } from '@/lib/miljo/registration/service'
 import { resolveAuthorizedBusinessCustomerId } from '@/lib/miljo/businessAccess'
 import { PIN_KEY_ENV, openPin, pinVaultKey } from '@/lib/miljo/pinVault'
+import { dashboard, revealPin, signIn, type AccountDeps } from '@/lib/miljo/account/service'
+import { currentSession } from '@/lib/miljo/account/session'
 import { BusinessCustomers } from './BusinessCustomers'
 import { EnvironmentalOrganizations } from './EnvironmentalOrganizations'
 import { MiljoAccounts } from './MiljoAccounts'
@@ -249,6 +251,24 @@ describe('confirmation and automatic activation', () => {
     token = lastToken()
   })
 
+  // Regression (Stage 2.2b on Preview): activation without MILJO_PIN_ENCRYPTION_KEY used to store
+  // the new PIN as a hash only, so «Vis PIN» on Min side could never show it. Now it is refused.
+  it('without the PIN vault key, activation is refused before anything is written; the link stays usable', async () => {
+    const key = process.env[PIN_KEY_ENV]
+    delete process.env[PIN_KEY_ENV]
+    const before = [count('business-customers'), count('miljo-accounts'), count('environmental-organizations')]
+    try {
+      const r = await confirmRegistration(deps(), { token, ip })
+      assert.equal(r.ok, false)
+      assert.equal((r as { code?: string }).code, 'vault-not-configured')
+      assert.equal((r as { message?: string }).message, REGISTRATION_MESSAGES.activationFailed)
+    } finally {
+      process.env[PIN_KEY_ENV] = key
+    }
+    assert.deepEqual([count('business-customers'), count('miljo-accounts'), count('environmental-organizations')], before)
+    assert.equal(rows('miljo-registrations').find((r) => r.tokenHash && r.loginEmail === 'innkjop@kystbygg.invalid')?.status, 'pending')
+  })
+
   it('activates everything in one go: company, order link, organisation + QR code, PIN, account', async () => {
     const r = await confirmRegistration(deps(), { token, ip })
     assert.equal(r.ok, true, JSON.stringify(r))
@@ -280,6 +300,26 @@ describe('confirmation and automatic activation', () => {
     assert.equal(res.status, 200, res.message)
     const wrong = await miljoLogin('innkjop@kystbygg.invalid', 'Feil123456')
     assert.equal(wrong.status, 401)
+  })
+
+  // Regression (Stage 2.2b): the PIN written by activation (2.2a) is the PIN Min side reveals —
+  // through the REAL environmental-organizations collection, whose PIN fields are closed to every API.
+  it('Min side «Vis PIN» shows exactly the PIN created at activation, and viewing changes nothing', async () => {
+    const accountDeps: AccountDeps = { payload: h.payload, rateLimits: rate, sendEmail: async () => {}, siteUrl: 'https://preview.aboks.invalid', now: () => new Date(clockMs) }
+    const signedIn = await signIn(accountDeps, { email: 'innkjop@kystbygg.invalid', password: PASSWORD, ip })
+    assert.equal(signedIn.ok, true, JSON.stringify(signedIn))
+    const session = await currentSession(h.payload, (signedIn as { token: string }).token)
+    assert.ok(session)
+    const customer = rows('business-customers').find((c) => c.organizationNumber === '974760673')!
+    const org = rows('environmental-organizations').find((o) => o.id === customer.environmentalOrganization)!
+    const stored = { pinHash: org.pinHash, pinEncrypted: org.pinEncrypted, pinSetAt: org.pinSetAt }
+    const expected = openPin(String(org.pinEncrypted), Number(org.id), pinVaultKey()!)
+    assert.match(String(expected), /^\d{6}$/)
+
+    const revealed = await revealPin(accountDeps, session)
+    assert.deepEqual(revealed, { ok: true, pin: expected })
+    assert.deepEqual({ pinHash: org.pinHash, pinEncrypted: org.pinEncrypted, pinSetAt: org.pinSetAt }, stored, 'no new PIN')
+    assert.equal((await dashboard(session)).publicUrl, `https://aboks.no/miljo/${String(org.publicCode)}`)
   })
 
   it('opening the link again creates nothing — «already activated»', async () => {

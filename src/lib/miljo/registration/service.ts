@@ -341,11 +341,18 @@ export async function confirmRegistration(deps: RegistrationDeps, input: { token
   if (found.status === 'confirmed') return activatedResult(lookup, found, true)
   const now = clock(deps)
   if (!(new Date(String(found.tokenExpiresAt)).getTime() > now.getTime())) return fail(410, REGISTRATION_MESSAGES.linkExpired, undefined, 'expired')
+  // Without the vault key the new PIN could be stored only as a hash, and Min side could never show
+  // it («Vis PIN»). Refuse before anything is claimed or written; the link stays usable.
+  const vaultKey = pinVaultKey()
+  if (!vaultKey) {
+    deps.payload.logger.error(`[miljo-registration] activation of registration ${String(found.id)} refused: MILJO_PIN_ENCRYPTION_KEY is not configured`)
+    return fail(503, REGISTRATION_MESSAGES.activationFailed, undefined, 'vault-not-configured')
+  }
 
   const req = await createLocalReq({}, deps.payload)
   const shouldCommit = await initTransaction(req)
   try {
-    const result = await activate(req, found, now)
+    const result = await activate(req, found, now, vaultKey)
     if (!result.ok) {
       await killTransaction(req)
       return result
@@ -366,7 +373,7 @@ async function activatedResult(req: PayloadRequest, reg: Doc, alreadyActivated: 
 }
 
 /** Everything inside ONE transaction (`req`). Throws, or returns a refusal, to roll back. */
-async function activate(req: PayloadRequest, reg: Doc, now: Date): Promise<StepResult<ActivationResult>> {
+async function activate(req: PayloadRequest, reg: Doc, now: Date, vaultKey: Buffer): Promise<StepResult<ActivationResult>> {
   // a. Claim the registration — decided by the database (see ./atomic).
   if (!(await claimPendingRegistration(req, reg.id, now))) {
     const current = await findOne(req, MILJO_REGISTRATIONS_SLUG, { id: { equals: reg.id } })
@@ -428,14 +435,13 @@ async function activate(req: PayloadRequest, reg: Doc, now: Date): Promise<StepR
   const org = await findOne(req, ENV_ORGANIZATIONS_SLUG, { id: { equals: orgId } })
   if (!org?.pinHash) {
     const pin = generatePin()
-    const vaultKey = pinVaultKey()
     await req.payload.update({
       collection: ENV_ORGANIZATIONS_SLUG,
       id: orgId,
       data: {
         pinHash: await hashPin(pin),
         pinSetAt: verifiedAt,
-        pinEncrypted: vaultKey ? sealPin(pin, Number(orgId), vaultKey) : null,
+        pinEncrypted: sealPin(pin, Number(orgId), vaultKey),
         pinAttemptCount: 0,
         pinAttemptWindowStart: null,
       } as never,

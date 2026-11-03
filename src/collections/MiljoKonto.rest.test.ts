@@ -352,16 +352,47 @@ describe('Min side — own organisation only', () => {
   it('no PIN to show → a clear refusal, nothing invented', async () => {
     const res = await revealPin(deps(), await session(await login('konto@utenpin.invalid')))
     assert.equal(res.ok, false)
-    assert.equal((res as { code?: string }).code, 'unavailable')
+    assert.equal((res as { code?: string }).code, 'no-pin')
     assert.equal(row('environmental-organizations', id.orgNoPin).pinHash, undefined, 'no PIN created by viewing')
   })
 
-  it('without the vault key the PIN cannot be shown', async () => {
+  // Regression (Stage 2.2b on Preview): a PIN set while MILJO_PIN_ENCRYPTION_KEY was missing is
+  // stored as a hash only. «Vis PIN» must say why — and must never create or change a PIN.
+  it('a hash-only PIN (set without the vault key) → «not-recoverable»; the stored PIN is untouched', async () => {
+    const org = row('environmental-organizations', id.orgNoPin)
+    org.pinHash = await hashPin('615204')
+    const before = { pinHash: org.pinHash, pinEncrypted: org.pinEncrypted }
+    try {
+      const res = await revealPin(deps(), await session(await login('konto@utenpin.invalid')))
+      assert.equal(res.ok, false)
+      assert.equal((res as { code?: string }).code, 'not-recoverable')
+      assert.equal((res as { message?: string }).message, ACCOUNT_MESSAGES.pinUnavailable)
+      assert.deepEqual({ pinHash: org.pinHash, pinEncrypted: org.pinEncrypted }, before)
+    } finally {
+      delete org.pinHash
+    }
+  })
+
+  it('a copy sealed with ANOTHER key (key rotated or differs per environment) → «not-recoverable»', async () => {
+    const org = row('environmental-organizations', id.orgB)
+    const original = org.pinEncrypted
+    const otherKey = pinVaultKey({ [PIN_KEY_ENV]: randomBytes(32).toString('base64') })!
+    org.pinEncrypted = sealPin(PIN.b, id.orgB, otherKey)
+    try {
+      const res = await revealPin(deps(), await session(await login('konto@kystbygg.invalid')))
+      assert.equal((res as { code?: string }).code, 'not-recoverable')
+    } finally {
+      org.pinEncrypted = original
+    }
+  })
+
+  it('without the vault key in the deployment → «vault-not-configured»', async () => {
     const key = process.env[PIN_KEY_ENV]
     delete process.env[PIN_KEY_ENV]
     try {
       const res = await revealPin(deps(), await session(await login('konto@kystbygg.invalid')))
       assert.equal(res.ok, false)
+      assert.equal((res as { code?: string }).code, 'vault-not-configured')
     } finally {
       process.env[PIN_KEY_ENV] = key
     }

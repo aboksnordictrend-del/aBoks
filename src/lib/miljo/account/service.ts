@@ -236,18 +236,39 @@ async function ownOrganization(session: MiljoSession): Promise<{ customer: Doc; 
   return { customer, org }
 }
 
+/**
+ * Why «Vis PIN» cannot work for this organisation, or null when it can:
+ *   • no-organization       the business customer has no environmental organisation
+ *   • no-pin                the organisation has no delivery PIN
+ *   • vault-not-configured  MILJO_PIN_ENCRYPTION_KEY is missing or invalid in this deployment
+ *   • not-recoverable       only the hash is stored (the PIN was set while the key was missing),
+ *                           or the copy was sealed with another key — an administrator must set a new PIN
+ *   • hash-mismatch         the encrypted copy is not the active PIN
+ */
+export async function pinRevealProblem(org: Doc | null): Promise<string | null> {
+  if (!org) return 'no-organization'
+  if (typeof org.pinHash !== 'string' || org.pinHash === '') return 'no-pin'
+  const key = pinVaultKey()
+  if (!key) return 'vault-not-configured'
+  const pin = openPin(org.pinEncrypted as string | null, Number(org.id), key)
+  if (!pin) return 'not-recoverable'
+  if (!(await verifyPin(pin, org.pinHash))) return 'hash-mismatch'
+  return null
+}
+
 export async function revealPin(deps: AccountDeps, session: MiljoSession): Promise<StepResult<{ pin: string }>> {
   const accountId = session.account.id
   if (!(await withinLimits(deps.rateLimits, [{ key: `acct:pin:${String(accountId)}`, ...ACCOUNT_RATE_LIMITS.pinPerAccount }]))) {
     return fail(429, ACCOUNT_MESSAGES.rateLimited)
   }
   const { org } = await ownOrganization(session)
-  const key = pinVaultKey()
-  const pin = org && key ? openPin(org.pinEncrypted as string | null, Number(org.id), key) : null
-  if (!org || !pin || !(await verifyPin(pin, org.pinHash as string | null))) {
-    deps.payload.logger.warn(`[miljo-account] delivery PIN not revealable for account ${String(accountId)}`)
-    return fail(409, ACCOUNT_MESSAGES.pinUnavailable, undefined, 'unavailable')
+  const reason = await pinRevealProblem(org)
+  if (reason || !org) {
+    // The reason names the cause (never the PIN or key) so an operator can tell configuration from data.
+    deps.payload.logger.warn(`[miljo-account] delivery PIN not revealable for account ${String(accountId)}: ${reason}`)
+    return fail(409, ACCOUNT_MESSAGES.pinUnavailable, undefined, reason ?? 'no-organization')
   }
+  const pin = openPin(org.pinEncrypted as string, Number(org.id), pinVaultKey()!)!
   deps.payload.logger.info(`[miljo] delivery PIN revealed for organization ${String(org.id)} by miljo account ${String(accountId)}`)
   return { ok: true, pin }
 }
