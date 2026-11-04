@@ -20,7 +20,8 @@ export const dynamic = 'force-dynamic'
  */
 export default async function MinSidePage() {
   const session = await pageSession()
-  if (!session) redirect(MILJO_PATHS.login)
+  // A temporary password must be replaced first; the session is refused here server-side.
+  if (!session) redirect((await pageSession('password-change')) ? MILJO_PATHS.changeRequired : MILJO_PATHS.login)
   const [data, account] = await Promise.all([dashboard(session), accountOrganization(session)])
   const [overview, deliveries] = account ? await Promise.all([accountOverview(session, account), accountDeliveries(session, account)]) : [null, null]
   return <MinSideView data={data} overview={overview} deliveries={deliveries} otherLabel={account?.org.otherLabel} />

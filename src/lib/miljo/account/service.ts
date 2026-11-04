@@ -61,7 +61,7 @@ async function findById(req: PayloadRequest, collection: string, id: unknown): P
 /* ------------------------------ sign in / out ------------------------------ */
 
 /** Payload's login, allowed only here. Throws on any refusal. */
-async function payloadLogin(payload: Payload, email: string, password: string): Promise<string> {
+export async function payloadLogin(payload: Payload, email: string, password: string): Promise<string> {
   const req = await createLocalReq({ context: { [MILJO_AUTH_CONTEXT]: true } }, payload)
   const result = await payload.login({ collection: MILJO_ACCOUNTS_SLUG, data: { email, password }, depth: 0, req })
   if (!result.token) throw new Error('No token')
@@ -156,14 +156,18 @@ async function consumeResetToken(req: PayloadRequest, tokenHash: string, now: Da
   })
 }
 
-/** New salt + hash, every session revoked, failed attempts cleared — one write. */
-async function storeNewPassword(req: PayloadRequest, accountId: number | string, password: string): Promise<void> {
+/**
+ * New salt + hash, every session revoked, failed attempts cleared — one write. A password the
+ * account holder chose themselves always ends a temporary-password requirement. `extra` lets trusted
+ * callers (the invitation, an administrator's reset) set more columns in the same write.
+ */
+export async function storeNewPassword(req: PayloadRequest, accountId: number | string, password: string, extra: Record<string, unknown> = { mustChangePassword: false }): Promise<void> {
   const { salt, hash } = await hashPasswordForPayload(password)
   const row = (await req.payload.db.findOne({ collection: MILJO_ACCOUNTS_SLUG, where: { id: { equals: accountId } }, req } as never)) as Doc
   await req.payload.db.updateOne({
     collection: MILJO_ACCOUNTS_SLUG,
     id: accountId,
-    data: { ...row, salt, hash, sessions: [], loginAttempts: 0, lockUntil: null, resetPasswordToken: null, resetPasswordExpiration: null },
+    data: { ...row, salt, hash, sessions: [], loginAttempts: 0, lockUntil: null, resetPasswordToken: null, resetPasswordExpiration: null, ...extra },
     req,
     returning: false,
   } as never)

@@ -25,6 +25,20 @@ export const BUSINESS_CUSTOMER_STATUS_OPTIONS: { label: string; value: BusinessC
 ]
 
 /**
+ * What entitles a business customer to Miljøregistrering (Stage 2.5):
+ *   • `purchase`  — a linked, currently valid aBoks order (the self-registration rule);
+ *   • `agreement` — an administrator granted access (municipality, pilot, invoice agreement), so no
+ *     order is needed. Set only by an administrator; «Aktiv» status is still required either way.
+ */
+export const BUSINESS_CUSTOMER_ACCESS_BASES = ['purchase', 'agreement'] as const
+export type BusinessCustomerAccessBasis = (typeof BUSINESS_CUSTOMER_ACCESS_BASES)[number]
+
+export const BUSINESS_CUSTOMER_ACCESS_BASIS_OPTIONS: { label: string; value: BusinessCustomerAccessBasis }[] = [
+  { label: 'Kjøp (gyldig ordre kreves)', value: 'purchase' },
+  { label: 'Avtale med aBoks (ingen ordre kreves)', value: 'agreement' },
+]
+
+/**
  * Order statuses that make an order count as an eligible purchase. Invoice orders qualify once
  * confirmed — payment is not required before activation (approved business decision) — so this is
  * every status except «Venter» (a checkout that was never paid) and «Kansellert».
@@ -77,6 +91,25 @@ export const MILJO_ACCOUNT_STATUS_OPTIONS: { label: string; value: MiljoAccountS
   { label: 'Aktiv', value: 'active' },
   { label: 'Deaktivert', value: 'disabled' },
 ]
+
+/** How an account came to exist (Stage 2.5). Informational; never decides access on its own. */
+export const MILJO_ACCOUNT_PROVISIONING = ['self-registration', 'admin-password', 'admin-invitation'] as const
+export type MiljoAccountProvisioning = (typeof MILJO_ACCOUNT_PROVISIONING)[number]
+
+export const MILJO_ACCOUNT_PROVISIONING_OPTIONS: { label: string; value: MiljoAccountProvisioning }[] = [
+  { label: 'Selvregistrering', value: 'self-registration' },
+  { label: 'Opprettet av aBoks (midlertidig passord)', value: 'admin-password' },
+  { label: 'Opprettet av aBoks (invitasjon)', value: 'admin-invitation' },
+]
+
+/**
+ * True while the account must replace an administrator-issued temporary password. Such an account
+ * can sign in, but its session reaches nothing except the password change — enforced server-side
+ * in @/lib/miljo/account/session, not by redirects.
+ */
+export function mustChangePassword(account: unknown): boolean {
+  return !!account && typeof account === 'object' && (account as { mustChangePassword?: unknown }).mustChangePassword === true
+}
 
 type AccountLike = {
   collection?: unknown

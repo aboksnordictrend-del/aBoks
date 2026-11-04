@@ -9,6 +9,9 @@ export const MILJO_SESSION_SECONDS = 2 * 60 * 60
 /** A password-reset link is valid for one hour and can be used once. */
 export const RESET_TTL_MS = 60 * 60 * 1000
 
+/** An account invitation from aBoks (Stage 2.5) is valid for seven days and can be used once. */
+export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
 export const MILJO_PATHS = {
   landing: '/miljoregistrering',
   register: '/miljoregistrering/registrer',
@@ -16,6 +19,10 @@ export const MILJO_PATHS = {
   dashboard: '/miljoregistrering/min-side',
   forgot: '/miljoregistrering/glemt-passord',
   reset: '/miljoregistrering/nytt-passord',
+  /** Accept an invitation from aBoks and choose a password (Stage 2.5). */
+  activate: '/miljoregistrering/aktiver',
+  /** The only page a session with a temporary password may use (Stage 2.5). */
+  changeRequired: '/miljoregistrering/bytt-passord',
 } as const
 
 /** Fixed windows, database-backed (miljo_rate_limits). Payload's own lockout (5 attempts → 15 min) comes on top. */
@@ -25,6 +32,7 @@ export const ACCOUNT_RATE_LIMITS = {
   forgotPerIp: { limit: 10, windowSeconds: 60 * 60 },
   forgotPerEmail: { limit: 3, windowSeconds: 60 * 60 },
   resetPerIp: { limit: 20, windowSeconds: 60 * 60 },
+  activatePerIp: { limit: 20, windowSeconds: 60 * 60 },
   changePerAccount: { limit: 10, windowSeconds: 60 * 60 },
   pinPerAccount: { limit: 30, windowSeconds: 60 * 60 },
   // Same budgets as the public page's statistics and exports, counted per account.
@@ -47,4 +55,8 @@ export const ACCOUNT_MESSAGES = {
   samePassword: 'Det nye passordet må være forskjellig fra det nåværende.',
   pinUnavailable: 'PIN-koden kan ikke vises akkurat nå. Kontakt aBoks, så hjelper vi dere.',
   failed: 'Noe gikk galt. Prøv igjen om litt.',
+  passwordChangeRequired: 'Du må bytte det midlertidige passordet før du kan bruke Min side.',
+  inviteInvalid: 'Invitasjonslenken er ugyldig eller allerede brukt. Be aBoks om en ny invitasjon.',
+  inviteExpired: 'Invitasjonen er utløpt. Be aBoks om en ny invitasjon.',
+  inviteDone: 'Kontoen er aktivert.',
 } as const

@@ -189,6 +189,20 @@ export const EnvironmentalOrganizations: CollectionConfig = {
             },
           ],
         },
+        {
+          // Stage 2.5: the organisation's Min side logins — «Opprett brukerkonto», list, revoke,
+          // new invitation, new temporary password. Everything goes through the admin-only
+          // /api/environmental-organizations/:id/accounts endpoints; nothing here is stored on the
+          // organisation itself.
+          label: 'Brukerkontoer',
+          fields: [
+            {
+              name: 'accountsPanel',
+              type: 'ui',
+              admin: { components: { Field: '@/components/admin/miljo/AccountsPanel#default' } },
+            },
+          ],
+        },
       ],
     },
     // ── Sidebar ──

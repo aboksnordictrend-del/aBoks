@@ -3,6 +3,7 @@ import { MILJO_ADMIN_GROUP } from '@/lib/miljo/constants'
 import {
   BUSINESS_CUSTOMERS_SLUG,
   MILJO_ACCOUNTS_SLUG,
+  MILJO_ACCOUNT_PROVISIONING_OPTIONS,
   MILJO_ACCOUNT_STATUS_OPTIONS,
 } from '@/lib/miljo/business'
 import { resolveAuthorizedBusinessCustomerId } from '@/lib/miljo/businessAccess'
@@ -10,8 +11,14 @@ import { adminOnly, isAdminUser } from '@/lib/security/staffAccess'
 import { enforceMiljoAccountRules, guardMiljoAccountOperations, refuseInactiveLogin } from './hooks/miljoAccount'
 
 /**
- * Miljø accounts («Miljøkontoer») — the ONE shared login a business customer uses to manage its
+ * Miljø accounts («Miljøkontoer») — the logins a business customer uses to manage its
  * Miljøregistrering. Employees keep using the public QR page; they never need an account.
+ *
+ * Stage 2.5: an administrator can create an account from the organisation (Miljøregistrering →
+ * Organisasjoner → «Opprett brukerkonto», see @/lib/miljo/account/admin) — with a temporary password
+ * that must be changed at first sign-in, or with an e-mailed one-time invitation. Several accounts
+ * may belong to one business customer (the data model allows it; the admin panel still creates one
+ * active responsible person per organisation).
  *
  * A Payload auth collection of its own (e-mail + password, Payload's hashing, login attempts and
  * lockout). It is never staff: every internal rule requires the `users` collection
@@ -37,6 +44,8 @@ const adminOrSelf: Access = async ({ req }) => {
 
 /** System-written (verification flow, or trusted server code with overrideAccess). */
 const systemOnly: FieldAccess = () => false
+/** Secret material: never readable through any API, whoever asks. */
+const never: FieldAccess = () => false
 
 export const MiljoAccounts: CollectionConfig = {
   slug: MILJO_ACCOUNTS_SLUG,
@@ -44,9 +53,9 @@ export const MiljoAccounts: CollectionConfig = {
   admin: {
     useAsTitle: 'email',
     group: MILJO_ADMIN_GROUP,
-    defaultColumns: ['email', 'businessCustomer', 'status', 'emailVerifiedAt'],
+    defaultColumns: ['email', 'fullName', 'businessCustomer', 'status', 'emailVerifiedAt'],
     description:
-      'Felles innlogging for en bedriftskunde i Miljøregistrering. Kan bare logge inn når kontoen er aktiv og e-posten er bekreftet.',
+      'Innlogginger for bedriftskunder i Miljøregistrering. Kan bare logge inn når kontoen er aktiv og e-posten er bekreftet. Opprett nye kontoer fra organisasjonen («Opprett brukerkonto»).',
   },
   auth: {
     tokenExpiration: 2 * 60 * 60,
@@ -74,10 +83,10 @@ export const MiljoAccounts: CollectionConfig = {
       relationTo: BUSINESS_CUSTOMERS_SLUG,
       label: 'Bedriftskunde',
       required: true,
-      unique: true,
       index: true,
-      admin: { description: 'Én konto per bedriftskunde. Kan ikke endres etter at kontoen er opprettet.' },
+      admin: { description: 'Kan ikke endres etter at kontoen er opprettet.' },
     },
+    { name: 'fullName', type: 'text', label: 'Navn', maxLength: 120 },
     {
       type: 'row',
       fields: [
@@ -100,10 +109,60 @@ export const MiljoAccounts: CollectionConfig = {
             width: '50%',
             readOnly: true,
             date: { pickerAppearance: 'dayAndTime' },
-            description: 'Settes av bekreftelsesflyten (kommer senere).',
+            description: 'Settes når e-posten er bekreftet (selvregistrering eller invitasjon) eller når aBoks oppretter kontoen med midlertidig passord.',
           },
         },
       ],
+    },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'provisioning',
+          type: 'select',
+          label: 'Opprettet via',
+          defaultValue: 'self-registration',
+          options: MILJO_ACCOUNT_PROVISIONING_OPTIONS,
+          access: { create: systemOnly, update: systemOnly },
+          admin: { width: '50%', readOnly: true },
+        },
+        {
+          name: 'mustChangePassword',
+          type: 'checkbox',
+          label: 'Må bytte passord ved neste innlogging',
+          defaultValue: false,
+          access: { create: systemOnly, update: systemOnly },
+          admin: { width: '50%', readOnly: true },
+        },
+      ],
+    },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'invitedAt',
+          type: 'date',
+          label: 'Invitasjon sendt',
+          access: { create: systemOnly, update: systemOnly },
+          admin: { width: '50%', readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+        },
+        {
+          name: 'inviteExpiresAt',
+          type: 'date',
+          label: 'Invitasjon gyldig til',
+          access: { create: systemOnly, update: systemOnly },
+          admin: { width: '50%', readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+        },
+      ],
+    },
+    // SHA-256 of the one-time invitation token; the token itself is only ever in the e-mail.
+    {
+      name: 'inviteTokenHash',
+      type: 'text',
+      unique: true,
+      index: true,
+      access: { read: never, create: systemOnly, update: systemOnly },
+      admin: { hidden: true },
     },
   ],
   hooks: {

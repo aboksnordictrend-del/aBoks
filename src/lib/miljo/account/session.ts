@@ -1,5 +1,5 @@
 import { JWTAuthentication, createLocalReq, type Payload, type PayloadRequest } from 'payload'
-import { MILJO_ACCOUNTS_SLUG, relationshipId } from '@/lib/miljo/business'
+import { MILJO_ACCOUNTS_SLUG, mustChangePassword, relationshipId } from '@/lib/miljo/business'
 import { resolveAuthorizedBusinessCustomerId } from '@/lib/miljo/businessAccess'
 import { MILJO_SESSION_COOKIE, MILJO_SESSION_SECONDS } from './constants'
 
@@ -15,6 +15,10 @@ import { MILJO_SESSION_COOKIE, MILJO_SESSION_SECONDS } from './constants'
  *   • Every request verifies the JWT, its session id against the account row (so a revoked session
  *     is dead at once), and then the access rule of @/lib/miljo/businessAccess — account active and
  *     verified, company «Aktiv», a valid linked order — against the database.
+ *   • Temporary password (Stage 2.5). An account created by aBoks with a temporary password signs
+ *     in normally, but until it has chosen its own password its session is refused by every gate
+ *     except `'password-change'` — Min side, statistics, exports, PIN and QR all see «no session».
+ *     Read from the account row on every request, so it cannot be skipped by navigating directly.
  */
 
 type Doc = Record<string, unknown> & { id: number | string }
@@ -25,7 +29,15 @@ export interface MiljoSession {
   businessCustomerId: number | string
   /** A Local API request acting as this account (overrideAccess stays the caller's choice). */
   req: PayloadRequest
+  /** The account still has an administrator-issued temporary password (only with the 'password-change' gate). */
+  passwordChangeRequired: boolean
 }
+
+/**
+ * What a caller lets through: `'full'` (everything on Min side — the default) refuses a session that
+ * must change its password; `'password-change'` (only the password change itself) accepts it.
+ */
+export type SessionGate = 'full' | 'password-change'
 
 const secureCookies = () => process.env.NODE_ENV === 'production'
 
@@ -60,15 +72,20 @@ export async function verifyMiljoToken(payload: Payload, token: string | null | 
   return { account, sid: account._sid }
 }
 
-/** The authorised session behind a token, or null (not signed in, revoked, or no access now). */
-export async function currentSession(payload: Payload, token: string | null | undefined): Promise<MiljoSession | null> {
+/**
+ * The authorised session behind a token, or null (not signed in, revoked, no access now — or, with
+ * the default `'full'` gate, still on a temporary password).
+ */
+export async function currentSession(payload: Payload, token: string | null | undefined, gate: SessionGate = 'full'): Promise<MiljoSession | null> {
   const verified = await verifyMiljoToken(payload, token)
   if (!verified) return null
+  const passwordChangeRequired = mustChangePassword(verified.account)
+  if (passwordChangeRequired && gate !== 'password-change') return null
   const req = await createLocalReq({}, payload)
   req.user = verified.account as never
   const businessCustomerId = await resolveAuthorizedBusinessCustomerId(req, verified.account)
   if (businessCustomerId == null || String(businessCustomerId) !== String(relationshipId(verified.account.businessCustomer))) return null
-  return { account: verified.account, sid: verified.sid, businessCustomerId, req }
+  return { account: verified.account, sid: verified.sid, businessCustomerId, req, passwordChangeRequired }
 }
 
 /**

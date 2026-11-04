@@ -7,7 +7,7 @@ import { dbRateLimitStore } from '@/lib/security/dbRateLimit'
 import type { StepResult } from '@/lib/miljo/registration/service'
 import { ACCOUNT_MESSAGES } from './constants'
 import type { AccountDeps } from './service'
-import { clearedSessionCookieHeader, currentSession, readSessionToken, sessionCookieHeader, type MiljoSession } from './session'
+import { clearedSessionCookieHeader, currentSession, readSessionToken, sessionCookieHeader, type MiljoSession, type SessionGate } from './session'
 
 /**
  * The HTTP edge of the Miljø account area (/api/miljo/konto/*): JSON in, JSON out,
@@ -72,10 +72,18 @@ export async function parsePost(request: Request): Promise<ParsedPost | Response
   return { body, ip: clientIpFromHeaders(request.headers), token: readSessionToken(request.headers.get('cookie')) }
 }
 
-/** The authorised session of the request, or a 401 that also clears a stale cookie. */
-export async function requireSession(deps: AccountDeps, token: string | null): Promise<MiljoSession | Response> {
-  const session = await currentSession(deps.payload, token).catch(() => null)
+/**
+ * The authorised session of the request, or the refusal: 403 `password_change_required` while the
+ * account still has a temporary password (the cookie is kept — it is needed to change it), otherwise
+ * a 401 that also clears a stale cookie. Every Min side route uses the default `'full'` gate; only
+ * the password change passes `'password-change'`.
+ */
+export async function requireSession(deps: AccountDeps, token: string | null, gate: SessionGate = 'full'): Promise<MiljoSession | Response> {
+  const session = await currentSession(deps.payload, token, gate).catch(() => null)
   if (session) return session
+  if (gate === 'full' && token && (await currentSession(deps.payload, token, 'password-change').catch(() => null))) {
+    return json(403, { ok: false, message: ACCOUNT_MESSAGES.passwordChangeRequired, code: 'password_change_required' })
+  }
   return json(401, { ok: false, message: ACCOUNT_MESSAGES.notSignedIn, code: 'signed_out' }, token ? clearedSessionCookieHeader() : undefined)
 }
 

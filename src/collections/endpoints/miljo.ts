@@ -16,6 +16,18 @@ import {
 } from '@/lib/miljo/admin'
 import { newUniqueCode, type MiljoContext } from '../hooks/miljo'
 import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
+import { resolveApplicationOrigin } from '@/lib/appOrigin'
+import { SITE_URL } from '@/lib/site'
+import {
+  createOrganizationAccount,
+  listOrganizationAccounts,
+  reissueInvitation,
+  resetTemporaryPassword,
+  restoreAccount,
+  revokeAccount,
+  type AdminAccountDeps,
+  type AdminResult as AccountAdminResult,
+} from '@/lib/miljo/account/admin'
 
 /**
  * Administrator endpoints for Miljøregistrering (all POST except status; all admin-only):
@@ -25,6 +37,10 @@ import { isAdminUser, isStaffUser } from '@/lib/security/staffAccess'
  *   /api/environmental-organizations/:id/pin-reveal     POST returns the active PIN («Vis PIN»)
  *   /api/environmental-organizations/:id/pin-unlock     POST clears the failed-attempt counter
  *   /api/environmental-organizations/:id/rotate-code    POST { confirmCode, reason } — exceptional
+ *   /api/environmental-organizations/:id/accounts       GET  the organisation's user accounts (Stage 2.5)
+ *   /api/environmental-organizations/:id/accounts       POST { fullName, email, method: 'password' | 'invitation',
+ *                                                            password?, organizationNumber? } — «Opprett brukerkonto»
+ *   /api/environmental-organizations/:id/accounts/:accountId/{revoke,restore,reinvite,reset-password}  POST
  *   /api/battery-registrations/:id/{correct,invalidate,restore,review}
  *   /api/battery-deliveries/:id/{correct,invalidate,restore}
  *
@@ -231,12 +247,87 @@ export async function handleRotateCode(req: PayloadRequest): Promise<Response> {
   return Response.json({ ok: true, publicCode: next })
 }
 
+/* ------------------------------ user accounts (Stage 2.5) ------------------------------ */
+
+const NO_STORE = { 'Cache-Control': 'no-store' }
+
+function accountDeps(req: PayloadRequest): AdminAccountDeps {
+  return {
+    payload: req.payload,
+    sendEmail: async (message) => {
+      await req.payload.sendEmail(message)
+    },
+    siteUrl: resolveApplicationOrigin({ fallback: SITE_URL }),
+  }
+}
+
+function accountReply(result: AccountAdminResult): Response {
+  if (!result.ok) return Response.json({ error: result.message, field: result.field }, { status: result.status, headers: NO_STORE })
+  return Response.json(result, { headers: NO_STORE })
+}
+
+export async function handleListAccounts(req: PayloadRequest): Promise<Response> {
+  const denied = deny(req)
+  if (denied) return denied
+  const id = routeId(req)
+  const list = id == null ? null : await listOrganizationAccounts(req, id)
+  if (!list) return Response.json({ error: 'Fant ikke organisasjonen.' }, { status: 404, headers: NO_STORE })
+  return Response.json(list, { headers: NO_STORE })
+}
+
+export async function handleCreateAccount(req: PayloadRequest): Promise<Response> {
+  const denied = deny(req)
+  if (denied) return denied
+  const id = routeId(req)
+  if (id == null) return Response.json({ error: 'Ugyldig ID.' }, { status: 400 })
+  const data = await body(req)
+  return accountReply(
+    await createOrganizationAccount(accountDeps(req), req.user?.id, id, {
+      fullName: data.fullName,
+      email: data.email,
+      method: data.method,
+      password: data.password,
+      organizationNumber: data.organizationNumber,
+    }),
+  )
+}
+
+export async function handleAccountAction(req: PayloadRequest): Promise<Response> {
+  const denied = deny(req)
+  if (denied) return denied
+  const id = routeId(req)
+  if (id == null) return Response.json({ error: 'Ugyldig ID.' }, { status: 400 })
+  const accountId = req.routeParams?.accountId
+  const deps = accountDeps(req)
+  const who = req.user?.id
+  try {
+    switch (req.routeParams?.action) {
+      case 'revoke':
+        return accountReply(await revokeAccount(deps, who, id, accountId))
+      case 'restore':
+        return accountReply(await restoreAccount(deps, who, id, accountId))
+      case 'reinvite':
+        return accountReply(await reissueInvitation(deps, who, id, accountId))
+      case 'reset-password':
+        return accountReply(await resetTemporaryPassword(deps, who, id, accountId, { password: (await body(req)).password }))
+      default:
+        return Response.json({ error: 'Ugyldig handling.' }, { status: 400 })
+    }
+  } catch (err) {
+    req.payload.logger.error(`[miljo-admin] account action on organization ${id} failed: ${err instanceof Error ? err.name : 'unknown'}`)
+    return Response.json({ error: 'Endringen kunne ikke lagres. Ingenting ble endret.' }, { status: 500, headers: NO_STORE })
+  }
+}
+
 export const miljoOrganizationEndpoints: Endpoint[] = [
   { path: '/:id/miljo-status', method: 'get', handler: handleOrganizationStatus },
   { path: '/:id/pin', method: 'post', handler: handleSetPin },
   { path: '/:id/pin-reveal', method: 'post', handler: handleRevealPin },
   { path: '/:id/pin-unlock', method: 'post', handler: handlePinUnlock },
   { path: '/:id/rotate-code', method: 'post', handler: handleRotateCode },
+  { path: '/:id/accounts', method: 'get', handler: handleListAccounts },
+  { path: '/:id/accounts', method: 'post', handler: handleCreateAccount },
+  { path: '/:id/accounts/:accountId/:action', method: 'post', handler: handleAccountAction },
 ]
 
 export const miljoRegistrationEndpoints: Endpoint[] = [

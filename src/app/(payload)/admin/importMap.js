@@ -24,6 +24,7 @@ import { default as default_8c29f34419157efabf769620e16fc639 } from '@/component
 import { default as default_d77d18f7556f5f66388a1d11ffda1faf } from '@/components/admin/pilot/QuestionRowLabel'
 import { default as default_c946148c519a7cdf9a4e4400211eb170 } from '@/components/admin/pilot/PilotLinkPanel'
 import { default as default_68eca0d6218f95e1e177a8c316009ea6 } from '@/components/admin/pilot/AnswerRowLabel'
+import { default as default_c5635271a8577a501c627eb021db7c9c } from '@/components/admin/miljo/AccountsPanel'
 import { default as default_ae0b89fcf38feaddd6d206b921e8dc21 } from '@/components/admin/miljo/OrganizationPanel'
 import { default as default_304496d3f0435d753ab7b993399f441c } from '@/components/admin/miljo/RegistrationPanel'
 import { default as default_d89c86b6a841c5acc87f52cff99e03ab } from '@/components/admin/miljo/DeliveryPanel'
@@ -66,6 +67,7 @@ export const importMap = {
   "@/components/admin/pilot/QuestionRowLabel#default": default_d77d18f7556f5f66388a1d11ffda1faf,
   "@/components/admin/pilot/PilotLinkPanel#default": default_c946148c519a7cdf9a4e4400211eb170,
   "@/components/admin/pilot/AnswerRowLabel#default": default_68eca0d6218f95e1e177a8c316009ea6,
+  "@/components/admin/miljo/AccountsPanel#default": default_c5635271a8577a501c627eb021db7c9c,
   "@/components/admin/miljo/OrganizationPanel#default": default_ae0b89fcf38feaddd6d206b921e8dc21,
   "@/components/admin/miljo/RegistrationPanel#default": default_304496d3f0435d753ab7b993399f441c,
   "@/components/admin/miljo/DeliveryPanel#default": default_d89c86b6a841c5acc87f52cff99e03ab,

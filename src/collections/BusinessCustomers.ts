@@ -2,6 +2,7 @@ import type { Access, CollectionConfig, FieldAccess } from 'payload'
 import { ENV_ORGANIZATIONS_SLUG, MILJO_ADMIN_GROUP } from '@/lib/miljo/constants'
 import {
   BUSINESS_CUSTOMERS_SLUG,
+  BUSINESS_CUSTOMER_ACCESS_BASIS_OPTIONS,
   BUSINESS_CUSTOMER_STATUS_OPTIONS,
   MILJO_ACCOUNTS_SLUG,
 } from '@/lib/miljo/business'
@@ -52,7 +53,7 @@ export const BusinessCustomers: CollectionConfig = {
     defaultColumns: ['name', 'organizationNumber', 'status', 'contactEmail', 'environmentalOrganization'],
     listSearchableFields: ['name', 'organizationNumber', 'contactEmail'],
     description:
-      'Bedrifter som kan bruke aBoks Miljøregistrering. Ett organisasjonsnummer per bedrift, én Miljøkonto per bedrift.',
+      'Bedrifter som kan bruke aBoks Miljøregistrering. Ett organisasjonsnummer per bedrift. Brukerkontoer opprettes fra organisasjonen (Miljøregistrering → Organisasjoner → «Opprett brukerkonto»).',
   },
   access: {
     read: adminOrOwnCustomer,
@@ -118,6 +119,19 @@ export const BusinessCustomers: CollectionConfig = {
       ],
     },
     {
+      name: 'accessBasis',
+      type: 'select',
+      label: 'Grunnlag for tilgang',
+      required: true,
+      defaultValue: 'purchase',
+      options: BUSINESS_CUSTOMER_ACCESS_BASIS_OPTIONS,
+      access: { read: adminOnlyField },
+      admin: {
+        description:
+          '«Kjøp»: bedriften har tilgang så lenge minst én koblet ordre er bekreftet, sendt eller levert. «Avtale»: aBoks har gitt tilgang uten nettordre (f.eks. kommune eller pilot). Status må uansett være «Aktiv».',
+      },
+    },
+    {
       type: 'collapsible',
       label: 'Kontakt',
       fields: [
@@ -178,8 +192,8 @@ export const BusinessCustomers: CollectionConfig = {
       type: 'join',
       collection: MILJO_ACCOUNTS_SLUG,
       on: 'businessCustomer',
-      label: 'Miljøkonto',
-      admin: { defaultColumns: ['email', 'status', 'emailVerifiedAt'] },
+      label: 'Miljøkontoer',
+      admin: { defaultColumns: ['email', 'fullName', 'status', 'emailVerifiedAt'] },
     },
     {
       name: 'internalNote',

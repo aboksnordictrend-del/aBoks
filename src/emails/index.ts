@@ -9,6 +9,7 @@ export { createBusinessInquiryConfirmationEmail } from './business-inquiry-confi
 export { createAdminBusinessInquiryEmail } from './admin-business-inquiry'
 export { createMiljoRegistrationConfirmationEmail } from './miljo-registration-confirmation'
 export { createMiljoPasswordResetEmail } from './miljo-password-reset'
+export { createMiljoInvitationEmail } from './miljo-invitation'
 export type {
   OrderItem,
   ShippingAddress,
