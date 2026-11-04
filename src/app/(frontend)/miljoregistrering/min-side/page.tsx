@@ -49,7 +49,7 @@ export default async function MinSidePage() {
   ]
 
   return (
-    <main style={{ background: CREAM, minHeight: '70vh' }}>
+    <main className="pt-6 md:pt-8" style={{ background: CREAM, minHeight: '70vh' }}>
       <div className="mx-auto" style={{ maxWidth: 880, padding: 'clamp(40px,7vw,80px) 16px' }}>
         <header style={{ marginBottom: 28 }}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
