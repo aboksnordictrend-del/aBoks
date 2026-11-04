@@ -3,6 +3,8 @@ import { createLocalReq } from 'payload'
 import { getPayloadClient } from '@/lib/payload'
 import { defaultDuplicateTracker } from './duplicates'
 import { dbPinAttemptStore } from './pinAttempts'
+import { PUBLIC_WINDOW_SECONDS } from './abuse'
+import { dbBatchRateLimitStore, withinBudget, type BudgetOutcome, type BudgetRule } from '@/lib/security/dbRateLimit'
 import {
   resolveOrganization,
   submitDelivery,
@@ -27,7 +29,14 @@ export async function resolvePublicOrganization(code: string): Promise<Organizat
 }
 
 export async function submitRegistrationOnServer(input: RegistrationInput): Promise<SubmitRegistrationResult> {
-  return submitRegistration(await localReq(), input, { duplicates: defaultDuplicateTracker })
+  const req = await localReq()
+  return submitRegistration(req, input, { duplicates: defaultDuplicateTracker, limits: dbBatchRateLimitStore(req.payload) })
+}
+
+/** Counts public-page rules (deliveries, statistics, downloads) in the shared database store. */
+export async function publicBudget(tiers: BudgetRule[][]): Promise<BudgetOutcome> {
+  const payload = await getPayloadClient()
+  return withinBudget(dbBatchRateLimitStore(payload), PUBLIC_WINDOW_SECONDS, tiers)
 }
 
 export async function submitDeliveryOnServer(input: DeliveryFormInput): Promise<SubmitDeliveryResult> {

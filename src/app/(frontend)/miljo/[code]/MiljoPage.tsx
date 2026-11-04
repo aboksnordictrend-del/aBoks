@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import Script from 'next/script'
 import type { PublicOrganization } from '@/lib/miljo/service'
 import RegistrationForm from './RegistrationForm'
 import StatisticsPanel from './StatisticsPanel'
@@ -54,7 +53,6 @@ export default function MiljoPage({ organization, turnstileSiteKey }: { organiza
 
   return (
     <>
-      {turnstileSiteKey && <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" />}
       <header className={styles.hero}>
         <p className={styles.eyebrow}>aBoks Miljøregistrering</p>
         <h1 className={styles.orgName}>{organization.name}</h1>

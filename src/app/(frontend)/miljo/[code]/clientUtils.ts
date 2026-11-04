@@ -10,15 +10,5 @@ export function newSubmissionKey(): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
 }
 
-/** A Turnstile token is single-use: reset every widget after each submission attempt. */
-export function resetTurnstile(): void {
-  const t = (window as unknown as { turnstile?: { reset: (el?: unknown) => void } }).turnstile
-  try {
-    t?.reset()
-  } catch {
-    /* widget not rendered */
-  }
-}
-
 export const formatNo = (n: number, maxDecimals = 0): string =>
   new Intl.NumberFormat('nb-NO', { maximumFractionDigits: maxDecimals }).format(n)

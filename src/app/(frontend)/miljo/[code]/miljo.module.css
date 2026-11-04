@@ -370,6 +370,8 @@
 .empty { color: var(--muted); font-size: 15px; margin: 6px 0 0; }
 
 .honeypot { position: absolute !important; left: -10000px !important; width: 1px; height: 1px; overflow: hidden; }
+/* Turnstile: empty for most visitors (interaction-only); a checkbox appears only when Cloudflare asks. */
+.turnstile { margin-top: 12px; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* Narrow phones: smaller steppers so a long «Andre» description never pushes them out. */

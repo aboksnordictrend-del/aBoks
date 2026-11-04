@@ -38,6 +38,9 @@ import {
 } from './stats'
 import type { MiljoPeriod } from './period'
 import { withTransaction } from './tx'
+import { PUBLIC_WINDOW_SECONDS, registrationRules } from './abuse'
+import { withinBudget, type BatchRateLimitStore } from '@/lib/security/dbRateLimit'
+import { rateLimitSubject } from '@/lib/security/clientIp'
 
 type Doc = Record<string, unknown>
 
@@ -143,7 +146,7 @@ export interface RegistrationInput {
   confirmed: boolean
   confirmDuplicate: boolean
   submissionKey: string
-  /** In-memory-only client key (the request IP) for duplicate detection. */
+  /** The request's trusted client address: duplicate detection (memory) and rate limits (hashed). */
   clientKey: string
 }
 
@@ -151,10 +154,13 @@ export type SubmitRegistrationResult =
   | { ok: true; total: number; lines: RegistrationLine[] }
   | {
       ok: false
-      reason: 'closed' | 'invalid' | 'needs-confirmation' | 'possible-duplicate' | 'error'
+      reason: 'closed' | 'invalid' | 'needs-confirmation' | 'possible-duplicate' | 'rate-limited' | 'error'
       message: string
       errors?: Record<string, string>
     }
+
+export const RATE_LIMITED_REGISTRATION_MESSAGE = 'For mange registreringer på kort tid. Prøv igjen om en liten stund.'
+const LIMITER_UNAVAILABLE_MESSAGE = 'Registreringen kunne ikke behandles akkurat nå. Prøv igjen om litt.'
 
 /** Total registered today (Oslo) for the organisation, invalidated excluded. */
 async function todaysTotal(req: PayloadRequest, organizationId: number, now: Date): Promise<number> {
@@ -182,7 +188,7 @@ async function todaysTotal(req: PayloadRequest, organizationId: number, now: Dat
 export async function submitRegistration(
   req: PayloadRequest,
   input: RegistrationInput,
-  deps: { duplicates: DuplicateTracker; now?: Date },
+  deps: { duplicates: DuplicateTracker; limits: BatchRateLimitStore; now?: Date },
 ): Promise<SubmitRegistrationResult> {
   const now = deps.now ?? new Date()
   const resolved = await resolveOrganization(req, input.code)
@@ -215,6 +221,16 @@ export async function submitRegistration(
       }
     }
     flags.push('possible-duplicate')
+  }
+
+  // Persistent limits, counted only for a registration that is about to be stored (two statements:
+  // this network's own budget, then the shared ones — see @/lib/miljo/abuse).
+  // A retry of a stored key returned above and costs nothing. Refused when the store cannot count.
+  const budget = await withinBudget(deps.limits, PUBLIC_WINDOW_SECONDS, registrationRules(rateLimitSubject(input.clientKey), org.id, result.total))
+  if (budget === 'limited') return { ok: false, reason: 'rate-limited', message: RATE_LIMITED_REGISTRATION_MESSAGE }
+  if (budget === 'unavailable') {
+    req.payload.logger.error('[miljo] registration rate limiter unavailable — refused')
+    return { ok: false, reason: 'error', message: LIMITER_UNAVAILABLE_MESSAGE }
   }
 
   try {

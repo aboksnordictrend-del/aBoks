@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { PublicOrganization } from '@/lib/miljo/service'
-import { DELIVERY_LIMITS, DELIVERY_UNIT_LABELS, type DeliveryUnit } from '@/lib/miljo/constants'
+import { DELIVERY_LIMITS, DELIVERY_UNIT_LABELS, TURNSTILE_ACTIONS, type DeliveryUnit } from '@/lib/miljo/constants'
 import { formatDayKey } from '@/lib/miljo/period'
 import { optimizeImage } from '@/lib/imageOptimize'
 import { registerDeliveryAction } from './actions'
-import { formatNo, newSubmissionKey, resetTurnstile } from './clientUtils'
+import { formatNo, newSubmissionKey } from './clientUtils'
+import TurnstileWidget, { type TurnstileHandle } from './TurnstileWidget'
 import styles from './miljo.module.css'
 
 type Done = { deliveryDate: string; quantity: number; unit: DeliveryUnit; operator: string; documented: boolean }
@@ -21,6 +22,7 @@ const osloToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Osl
  */
 export default function DeliveryForm({ organization, turnstileSiteKey }: { organization: PublicOrganization; turnstileSiteKey: string }) {
   const formRef = useRef<HTMLFormElement>(null)
+  const turnstile = useRef<TurnstileHandle>(null)
   const doneRef = useRef<HTMLHeadingElement>(null)
   const [unit, setUnit] = useState<DeliveryUnit>('kg')
   const [pin, setPin] = useState('')
@@ -128,6 +130,14 @@ export default function DeliveryForm({ organization, turnstileSiteKey }: { organ
     data.delete('vedlegg')
     if (file) data.set('vedlegg', file, file.name)
     try {
+      if (turnstileSiteKey) {
+        try {
+          data.set('cf-turnstile-response', await turnstile.current!.token())
+        } catch (e) {
+          setMessage(e instanceof Error ? e.message : 'Sikkerhetskontrollen kunne ikke fullføres. Prøv igjen.')
+          return
+        }
+      }
       const result = await registerDeliveryAction(data)
       if (result.success === true) {
         setDone(result.delivery)
@@ -141,7 +151,7 @@ export default function DeliveryForm({ organization, turnstileSiteKey }: { organ
     } finally {
       setPin('')
       setPending(false)
-      resetTurnstile()
+      turnstile.current?.reset()
     }
   }
 
@@ -153,6 +163,8 @@ export default function DeliveryForm({ organization, turnstileSiteKey }: { organ
       className={styles.card}
       noValidate
       encType="multipart/form-data"
+      onFocusCapture={() => turnstile.current?.prime()}
+      onPointerDownCapture={() => turnstile.current?.prime()}
       onSubmit={(e) => {
         e.preventDefault()
         void submit()
@@ -290,7 +302,7 @@ export default function DeliveryForm({ organization, turnstileSiteKey }: { organ
         </label>
       </div>
 
-      {turnstileSiteKey && <div className="cf-turnstile" data-sitekey={turnstileSiteKey} style={{ marginTop: 16 }} />}
+      {turnstileSiteKey && <TurnstileWidget ref={turnstile} siteKey={turnstileSiteKey} action={TURNSTILE_ACTIONS.delivery} />}
 
       <button type="submit" className={styles.submit} disabled={pending || pin.length < 6 || fileNote !== ''}>
         {pending ? 'Lagrer …' : 'Registrer levering'}

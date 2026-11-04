@@ -1,10 +1,11 @@
-import { rateLimit, clientIpFromHeaders } from '@/lib/rateLimit'
+import { rateLimitSubject, trustedClientIp } from '@/lib/security/clientIp'
+import { readRules } from '@/lib/miljo/abuse'
 import { isValidPublicCode } from '@/lib/miljo/code'
 import { isCsvType } from '@/lib/miljo/csv'
 import { buildCsvExport, buildPdfExport, downloadResponse } from '@/lib/miljo/exports'
 import { PeriodError, resolveMiljoPeriod } from '@/lib/miljo/period'
 import { loadRecords, resolveOrganization } from '@/lib/miljo/service'
-import { createMiljoRequest } from '@/lib/miljo/server'
+import { createMiljoRequest, publicBudget } from '@/lib/miljo/server'
 
 // GET /api/miljo/<publicCode>/eksport?format=pdf|csv&type=registreringer|leveranser|sammendrag
 //     &preset=…&from=…&to=…
@@ -12,7 +13,7 @@ import { createMiljoRequest } from '@/lib/miljo/server'
 // Public downloads behind «Eksporter miljørapport (PDF)» and «Last ned statistikk (CSV)». Same
 // scope and data rules as the statistics endpoint: one organisation, the selected period, only
 // approved reporting columns (the `public` CSV audience), invalidated records excluded. PDFs cost
-// more to build, so they have a tighter per-client limit.
+// more to build, so they have tighter per-network and overall limits (shared database store).
 
 export const dynamic = 'force-dynamic'
 
@@ -28,13 +29,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
   const type = url.searchParams.get('type') ?? 'sammendrag'
   if (format === 'csv' && !isCsvType(type)) return fail(400, 'Ukjent eksporttype.')
 
-  const ip = clientIpFromHeaders(request.headers)
-  const limited = await rateLimit({
-    key: `miljo-export-${format}:${ip}`,
-    limit: format === 'pdf' ? 30 : 60,
-    windowMs: 60 * 60 * 1000,
-  })
-  if (!limited.ok) return fail(429, 'For mange nedlastinger. Prøv igjen om litt.')
+  const budget = await publicBudget(readRules(format, rateLimitSubject(trustedClientIp(request.headers))))
+  if (budget === 'limited') return fail(429, 'For mange nedlastinger. Prøv igjen om litt.')
+  if (budget === 'unavailable') return fail(503, 'Nedlastingen er midlertidig utilgjengelig. Prøv igjen om litt.')
 
   let period
   try {

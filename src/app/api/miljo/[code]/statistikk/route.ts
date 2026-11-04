@@ -1,15 +1,17 @@
-import { rateLimit, clientIpFromHeaders } from '@/lib/rateLimit'
+import { rateLimitSubject, trustedClientIp } from '@/lib/security/clientIp'
+import { readRules } from '@/lib/miljo/abuse'
 import { isValidPublicCode } from '@/lib/miljo/code'
 import { PeriodError, resolveMiljoPeriod } from '@/lib/miljo/period'
 import { buildPublicStatistics, loadRecords, resolveOrganization } from '@/lib/miljo/service'
-import { createMiljoRequest } from '@/lib/miljo/server'
+import { createMiljoRequest, publicBudget } from '@/lib/miljo/server'
 
 // GET /api/miljo/<publicCode>/statistikk?preset=thisYear|thisMonth|lastMonth|lastYear|custom&from&to
 //
 // Public, read-only «Miljøstatistikk» for ONE organisation — the one whose code is in the path.
 // Only aggregated reporting data leaves this handler (see buildPublicStatistics): no contacts,
 // notes, references, review flags, audit data or PIN state. An inactive organisation, a retired
-// code and an unknown code all answer the same 404. Rate-limited per client (best-effort).
+// code and an unknown code all answer the same 404. Rate-limited per network and overall in the shared database store
+// (@/lib/miljo/abuse), before any organisation lookup.
 
 export const dynamic = 'force-dynamic'
 
@@ -20,8 +22,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
   const { code } = await params
   if (!isValidPublicCode(code)) return notFound()
 
-  const limited = await rateLimit({ key: `miljo-stats:${clientIpFromHeaders(request.headers)}`, limit: 240, windowMs: 60 * 60 * 1000 })
-  if (!limited.ok) return Response.json({ error: 'For mange forespørsler. Prøv igjen om litt.' }, { status: 429, headers: HEADERS })
+  const budget = await publicBudget(readRules('statistics', rateLimitSubject(trustedClientIp(request.headers))))
+  if (budget === 'limited') return Response.json({ error: 'For mange forespørsler. Prøv igjen om litt.' }, { status: 429, headers: HEADERS })
+  if (budget === 'unavailable') return Response.json({ error: 'Statistikken er midlertidig utilgjengelig. Prøv igjen om litt.' }, { status: 503, headers: HEADERS })
 
   const url = new URL(request.url)
   let period

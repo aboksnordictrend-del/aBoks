@@ -5,6 +5,7 @@ import { createStub } from './testStub'
 import { buildPublicStatistics, loadRecords, PIN_REJECTED_MESSAGE, resolveOrganization, submitDelivery, submitRegistration, toPublicOrganization } from './service'
 import { correctDelivery, correctRegistration, invalidateDelivery, invalidateRegistration, restoreRegistration, reviewRegistration } from './admin'
 import { memoryDuplicateTracker } from './duplicates'
+import { memoryBatchRateLimitStore } from '@/lib/security/dbRateLimit'
 import { hashPin } from './pin'
 import { resolveMiljoPeriod } from './period'
 import type { PinAttemptStore } from './pinAttempts'
@@ -85,7 +86,7 @@ describe('organisation resolution', () => {
 describe('registration submission', () => {
   it('stores a registration with original and current lines', async () => {
     const { req, db } = await setup()
-    const r = await submitRegistration(req, reg(CODE_A, { aa: '3', aaa: '1' }), { duplicates: memoryDuplicateTracker(), now: NOW })
+    const r = await submitRegistration(req, reg(CODE_A, { aa: '3', aaa: '1' }), { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW })
     assert.deepEqual(r, { ok: true, total: 4, lines: [{ category: 'aa', quantity: 3 }, { category: 'aaa', quantity: 1 }] })
     const stored = db['battery-registrations']![0]!
     assert.deepEqual(stored.submittedLines, stored.lines)
@@ -97,7 +98,7 @@ describe('registration submission', () => {
   it('is idempotent per submission key', async () => {
     const { req, db } = await setup()
     const input = reg(CODE_A, { aa: 2 })
-    const deps = { duplicates: memoryDuplicateTracker(), now: NOW }
+    const deps = { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW }
     assert.ok((await submitRegistration(req, input, deps)).ok)
     assert.ok((await submitRegistration(req, input, deps)).ok)
     assert.equal(db['battery-registrations']!.length, 1)
@@ -106,14 +107,14 @@ describe('registration submission', () => {
   it('refuses a key that belongs to another organisation', async () => {
     const { req } = await setup()
     const input = reg(CODE_A, { aa: 2 })
-    await submitRegistration(req, input, { duplicates: memoryDuplicateTracker(), now: NOW })
-    const r = await submitRegistration(req, { ...input, code: CODE_B }, { duplicates: memoryDuplicateTracker(), now: NOW })
+    await submitRegistration(req, input, { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW })
+    const r = await submitRegistration(req, { ...input, code: CODE_B }, { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW })
     assert.equal(r.ok, false)
   })
 
   it('refuses disabled categories, malformed keys and inactive organisations', async () => {
     const { req } = await setup()
-    const deps = { duplicates: memoryDuplicateTracker(), now: NOW }
+    const deps = { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW }
     assert.equal((await submitRegistration(req, reg(CODE_B, { aaa: 1 }), deps)).ok, false, 'AAA not enabled for org 2')
     assert.equal((await submitRegistration(req, reg(CODE_A, { other: 1 }), deps)).ok, false, '«Andre» not configured')
     assert.equal(why(await submitRegistration(req, reg(CODE_A, { aa: 1 }, { submissionKey: 'not-a-uuid' }), deps)), 'invalid')
@@ -122,7 +123,7 @@ describe('registration submission', () => {
 
   it('asks before storing a near-duplicate, then flags it', async () => {
     const { req, db } = await setup()
-    const deps = { duplicates: memoryDuplicateTracker(), now: NOW }
+    const deps = { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW }
     await submitRegistration(req, reg(CODE_A, { aa: 5 }), deps)
     assert.equal(why(await submitRegistration(req, reg(CODE_A, { aa: 5 }), deps)), 'possible-duplicate')
     assert.equal((await submitRegistration(req, reg(CODE_A, { aa: 5 }, { clientKey: '10.0.0.2' }), deps)).ok, true, 'other network')
@@ -134,7 +135,7 @@ describe('registration submission', () => {
 
   it('flags large registrations and busy days for review', async () => {
     const { req, db } = await setup({ dailyFlagThreshold: 100 })
-    const deps = { duplicates: memoryDuplicateTracker(), now: NOW }
+    const deps = { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW }
     assert.equal(why(await submitRegistration(req, reg(CODE_A, { aa: 60 }), deps)), 'needs-confirmation')
     assert.ok((await submitRegistration(req, reg(CODE_A, { aa: 60 }, { confirmed: true }), deps)).ok)
     assert.ok((await submitRegistration(req, reg(CODE_A, { aa: 45 }, { clientKey: 'x' }), deps)).ok)
@@ -208,7 +209,7 @@ describe('delivery submission and PIN', () => {
 describe('admin corrections and audit', () => {
   async function withRegistration() {
     const stub = await setup()
-    await submitRegistration(stub.req, reg(CODE_A, { aa: 4, aaa: 2 }), { duplicates: memoryDuplicateTracker(), now: NOW })
+    await submitRegistration(stub.req, reg(CODE_A, { aa: 4, aaa: 2 }), { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW })
     return { ...stub, id: stub.db['battery-registrations']![0]!.id }
   }
 
@@ -242,7 +243,7 @@ describe('admin corrections and audit', () => {
 
   it('marks flagged registrations as reviewed', async () => {
     const { req, db } = await setup()
-    await submitRegistration(req, reg(CODE_A, { aa: 60 }, { confirmed: true }), { duplicates: memoryDuplicateTracker(), now: NOW })
+    await submitRegistration(req, reg(CODE_A, { aa: 60 }, { confirmed: true }), { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW })
     const id = db['battery-registrations']![0]!.id
     assert.ok((await reviewRegistration(req, id, {})).ok)
     assert.equal(db['battery-registrations']![0]!.reviewState, 'reviewed')
@@ -269,7 +270,7 @@ describe('admin corrections and audit', () => {
 describe('public statistics isolation', () => {
   it('only contains the requested organisation and no private fields', async () => {
     const { req } = await setup()
-    const deps = { duplicates: memoryDuplicateTracker(), now: NOW }
+    const deps = { duplicates: memoryDuplicateTracker(), limits: memoryBatchRateLimitStore(), now: NOW }
     await submitRegistration(req, reg(CODE_A, { aa: 3 }), deps)
     await submitRegistration(req, reg(CODE_B, { aa: 50 }, { clientKey: 'b' }), deps)
     await submitDelivery(req, delivery('482915'), { pinAttempts: memoryPinStore(), now: NOW })

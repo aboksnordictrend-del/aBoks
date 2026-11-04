@@ -105,6 +105,11 @@ export const REVIEW_STATE_OPTIONS: { label: string; value: ReviewState }[] = [
   { label: 'Gjennomgått', value: 'reviewed' },
 ]
 
+// ── Bot check ──
+
+/** Turnstile `data-action` per public form; the server requires the matching action in Production. */
+export const TURNSTILE_ACTIONS = { registration: 'miljo-registrering', delivery: 'miljo-levering' } as const
+
 // ── Deliveries ──
 
 export const DELIVERY_UNITS = ['kg', 'stk'] as const

@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { PublicOrganization } from '@/lib/miljo/service'
-import type { BatteryCategory } from '@/lib/miljo/constants'
+import { TURNSTILE_ACTIONS, type BatteryCategory } from '@/lib/miljo/constants'
 import { quantityFieldName } from '@/lib/miljo/validation'
 import { registerBatteriesAction } from './actions'
-import { newSubmissionKey, resetTurnstile } from './clientUtils'
+import { newSubmissionKey } from './clientUtils'
+import TurnstileWidget, { type TurnstileHandle } from './TurnstileWidget'
 import SafetyInstructions from './SafetyInstructions'
 import styles from './miljo.module.css'
 
@@ -22,7 +23,7 @@ export default function RegistrationForm({ organization, turnstileSiteKey }: { o
   const { categories, maxPerCategory, maxPerSubmission, confirmAbove } = organization
   const [counts, setCounts] = useState<Counts>({})
   const [confirmed, setConfirmed] = useState(false)
-  const [pending, setPending] = useState(false)
+  const [pending, setPending] = useState<false | 'checking' | 'saving'>(false)
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [duplicate, setDuplicate] = useState(false)
@@ -30,6 +31,7 @@ export default function RegistrationForm({ organization, turnstileSiteKey }: { o
   const [submissionKey, setSubmissionKey] = useState('')
   const doneRef = useRef<HTMLHeadingElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const turnstile = useRef<TurnstileHandle>(null)
 
   useEffect(() => setSubmissionKey(newSubmissionKey()), [])
   useEffect(() => {
@@ -55,12 +57,22 @@ export default function RegistrationForm({ organization, turnstileSiteKey }: { o
 
   const submit = async (confirmDuplicate: boolean) => {
     if (pending || total < 1 || overTotal || (needsConfirm && !confirmed) || !formRef.current) return
-    setPending(true)
+    setPending('checking')
     setMessage('')
     const data = new FormData(formRef.current)
     data.set('submissionKey', submissionKey)
     if (confirmDuplicate) data.set('bekreftDuplikat', '1')
     try {
+      // A fresh single-use Turnstile token for every submission; the server verifies it.
+      if (turnstileSiteKey) {
+        try {
+          data.set('cf-turnstile-response', await turnstile.current!.token())
+        } catch (e) {
+          setMessage(e instanceof Error ? e.message : 'Sikkerhetskontrollen kunne ikke fullføres. Prøv igjen.')
+          return
+        }
+      }
+      setPending('saving')
       const result = await registerBatteriesAction(data)
       if (result.success === true) {
         setDone({ total: result.total, lines: result.lines })
@@ -73,7 +85,7 @@ export default function RegistrationForm({ organization, turnstileSiteKey }: { o
       setMessage('Noe gikk galt. Sjekk nettforbindelsen og prøv igjen.')
     } finally {
       setPending(false)
-      resetTurnstile()
+      turnstile.current?.reset()
     }
   }
 
@@ -129,6 +141,8 @@ export default function RegistrationForm({ organization, turnstileSiteKey }: { o
         ref={formRef}
         className={styles.card}
         noValidate
+        onFocusCapture={() => turnstile.current?.prime()}
+        onPointerDownCapture={() => turnstile.current?.prime()}
         onSubmit={(e) => {
           e.preventDefault()
           void submit(false)
@@ -217,10 +231,10 @@ export default function RegistrationForm({ organization, turnstileSiteKey }: { o
           </label>
         )}
 
-        {turnstileSiteKey && <div className="cf-turnstile" data-sitekey={turnstileSiteKey} style={{ marginTop: 16 }} />}
+        {turnstileSiteKey && <TurnstileWidget ref={turnstile} siteKey={turnstileSiteKey} action={TURNSTILE_ACTIONS.registration} />}
 
-        <button type="submit" className={styles.submit} disabled={pending || total < 1 || overTotal || (needsConfirm && !confirmed)}>
-          {pending ? 'Registrerer …' : 'Registrer batterier'}
+        <button type="submit" className={styles.submit} disabled={pending !== false || total < 1 || overTotal || (needsConfirm && !confirmed)}>
+          {pending === 'checking' ? 'Bekrefter …' : pending ? 'Registrerer …' : 'Registrer batterier'}
         </button>
 
         {message && !duplicate && (
@@ -232,7 +246,7 @@ export default function RegistrationForm({ organization, turnstileSiteKey }: { o
           <div className={styles.notice} role="alert">
             <p style={{ margin: 0 }}>{message}</p>
             <div className={styles.noticeActions}>
-              <button type="button" className={styles.secondary} onClick={() => void submit(true)} disabled={pending}>
+              <button type="button" className={styles.secondary} onClick={() => void submit(true)} disabled={pending !== false}>
                 Ja, registrer likevel
               </button>
               <button type="button" className={styles.secondary} onClick={startOver}>

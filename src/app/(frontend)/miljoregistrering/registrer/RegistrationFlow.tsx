@@ -30,6 +30,34 @@ function turnstileToken(form: HTMLFormElement | null): string | undefined {
   return el?.value || undefined
 }
 
+// Turnstile's implicit rendering scans the page once, when its script loads, so the step-2 widget
+// (mounted later) must be rendered explicitly. `window.turnstile` is declared with only `reset`
+// elsewhere; this local view adds `render`.
+type TurnstileApi = { render: (el: HTMLElement) => string; reset: (widget?: string | HTMLElement) => void }
+const turnstileApi = (): TurnstileApi | undefined => (window as unknown as { turnstile?: TurnstileApi }).turnstile
+
+/** Renders the form's widget if the script is loaded and the container is still empty. */
+function renderWidgetIn(form: HTMLFormElement | null): void {
+  const box = form?.querySelector<HTMLElement>('.cf-turnstile')
+  const api = turnstileApi()
+  if (!box || !api || box.childElementCount > 0) return
+  try {
+    api.render(box)
+  } catch {
+    /* already rendered */
+  }
+}
+
+/** Resets the widget of this form only — never one that belonged to an earlier step. */
+function resetWidgetIn(form: HTMLFormElement | null): void {
+  const box = form?.querySelector<HTMLElement>('.cf-turnstile')
+  try {
+    if (box) turnstileApi()?.reset(box)
+  } catch {
+    /* widget not rendered */
+  }
+}
+
 export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKey: string }) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [busy, setBusy] = useState(false)
@@ -56,7 +84,8 @@ export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKe
 
   useEffect(() => {
     heading.current?.focus()
-  }, [step])
+    if (step === 2 && turnstileSiteKey) renderWidgetIn(step2Form.current)
+  }, [step, turnstileSiteKey])
   useEffect(() => {
     if (step !== 3) return
     const t = setInterval(() => setNowMs(Date.now()), 1000)
@@ -74,7 +103,7 @@ export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKe
     setBusy(true)
     const result = await postJson('/api/miljo/registrering/kjop', { orderNumber, email: purchaseEmail, turnstileToken: turnstileToken(step1Form.current) })
     setBusy(false)
-    window.turnstile?.reset()
+    resetWidgetIn(step1Form.current)
     showResult(result)
     if (result.ok) {
       setOrderNumber(String(result.orderNumber ?? orderNumber))
@@ -118,7 +147,7 @@ export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKe
       turnstileToken: turnstileToken(step2Form.current),
     })
     setBusy(false)
-    window.turnstile?.reset()
+    resetWidgetIn(step2Form.current)
     showResult(result)
     if (result.ok) {
       setPassword('')

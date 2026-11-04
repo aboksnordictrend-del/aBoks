@@ -3,75 +3,74 @@
 import { headers } from 'next/headers'
 import { buildCsrfOrigins } from '@/lib/csrfOrigins'
 import { SITE_URL } from '@/lib/site'
-import { rateLimit, clientIpFromHeaders } from '@/lib/rateLimit'
-import { verifyTurnstile } from '@/lib/turnstile'
-import { BATTERY_CATEGORIES, DELIVERY_LIMITS, type BatteryCategory } from '@/lib/miljo/constants'
+import { rateLimitSubject, trustedClientIp } from '@/lib/security/clientIp'
+import { TURNSTILE_MESSAGES, verifyTurnstileToken } from '@/lib/security/turnstileVerify'
+import { BATTERY_CATEGORIES, DELIVERY_LIMITS, TURNSTILE_ACTIONS, type BatteryCategory } from '@/lib/miljo/constants'
+import { deliveryRules } from '@/lib/miljo/abuse'
 import { isValidPublicCode } from '@/lib/miljo/code'
+import { HONEYPOT_FIELD, TURNSTILE_FIELD, checkRegistrationShape } from '@/lib/miljo/formShape'
 import { quantityFieldName } from '@/lib/miljo/validation'
-import { submitDeliveryOnServer, submitRegistrationOnServer } from '@/lib/miljo/server'
+import { publicBudget, submitDeliveryOnServer, submitRegistrationOnServer } from '@/lib/miljo/server'
 import type { DeliveryActionResult, RegistrationActionResult } from './results'
 
 const trustedOrigins = new Set(buildCsrfOrigins(SITE_URL))
-const HOUR = 60 * 60 * 1000
 
-/** PII-free diagnostic: outcome and reason only. Never quantities with an IP, never a PIN. */
+/** PII-free diagnostic: outcome and reason only. Never quantities with an IP, never a PIN or token. */
 function log(fields: Record<string, unknown>): void {
   console.log(JSON.stringify({ scope: 'miljo-action', ...fields }))
 }
 
 const REJECTED = 'Forespørselen ble avvist. Last siden på nytt og prøv igjen.'
 
-/** Origin, honeypot, shape and entry count — shared first gate of both actions. */
-async function gate(formData: FormData, maxEntries: number, kind: string): Promise<{ ip: string; code: string } | { message: string }> {
+/**
+ * Shared first gate of both actions: Origin (when present), honeypot and code shape. These are
+ * cheap filters, not the protection — a script sets any header it likes. The protection is the
+ * Turnstile check on every submission and the database-backed limits behind it.
+ */
+async function gate(formData: FormData, kind: string): Promise<{ ip: string; code: string } | { message: string }> {
   const h = await headers()
   const origin = h.get('origin')
   if (origin && !trustedOrigins.has(origin)) {
     log({ kind, event: 'rejected', reason: 'origin' })
     return { message: REJECTED }
   }
-  if (String(formData.get('referansekode') ?? '').trim() !== '') {
+  if (String(formData.get(HONEYPOT_FIELD) ?? '').trim() !== '') {
     log({ kind, event: 'rejected', reason: 'honeypot' })
     return { message: 'Noe gikk galt. Prøv igjen senere.' }
-  }
-  let entries = 0
-  for (const _ of formData.keys()) {
-    if (++entries > maxEntries) {
-      log({ kind, event: 'rejected', reason: 'too-many-fields' })
-      return { message: REJECTED }
-    }
   }
   const code = String(formData.get('code') ?? '')
   if (!isValidPublicCode(code)) {
     log({ kind, event: 'rejected', reason: 'shape' })
     return { message: REJECTED }
   }
-  return { ip: clientIpFromHeaders(h), code }
+  return { ip: trustedClientIp(h), code }
 }
 
-async function turnstileOk(formData: FormData, ip: string): Promise<boolean> {
-  const token = formData.get('cf-turnstile-response')
-  return verifyTurnstile(typeof token === 'string' ? token : undefined, ip)
+/** Siteverify for this submission's token; the refusal message, or null when it passed. */
+async function botCheck(formData: FormData, ip: string, action: string, kind: string): Promise<string | null> {
+  const outcome = await verifyTurnstileToken(formData.get(TURNSTILE_FIELD), { action, remoteIp: ip })
+  if (outcome.ok) return null
+  log({ kind, event: 'rejected', reason: 'turnstile', detail: outcome.reason })
+  return TURNSTILE_MESSAGES[outcome.reason]
 }
 
 /**
- * «Registrer batterier». Anonymous: the IP is only an in-memory rate-limit and duplicate key for
- * the life of the server instance; it is never stored or logged. Limits are generous because a
- * whole workplace usually shares one network address.
+ * «Registrer batterier». Anonymous: the address is used for duplicate detection (in memory) and as
+ * a hashed rate-limit key; it is never stored in clear or logged. Order: request shape → gate →
+ * Turnstile (no database work for a bot without a token) → organisation, validation and the
+ * persistent limits in @/lib/miljo/service → insert.
  */
 export async function registerBatteriesAction(formData: FormData): Promise<RegistrationActionResult> {
-  const g = await gate(formData, 20, 'registration')
+  const shape = checkRegistrationShape(formData)
+  if (!shape.ok) {
+    log({ kind: 'registration', event: 'rejected', reason: 'shape', detail: shape.problem })
+    return { success: false, message: REJECTED }
+  }
+  const g = await gate(formData, 'registration')
   if ('message' in g) return { success: false, message: g.message }
 
-  const perOrg = await rateLimit({ key: `miljo-reg:${g.code}:${g.ip}`, limit: 60, windowMs: HOUR })
-  const overall = await rateLimit({ key: `miljo-reg:${g.ip}`, limit: 120, windowMs: HOUR })
-  if (!perOrg.ok || !overall.ok) {
-    log({ kind: 'registration', event: 'rejected', reason: 'rate-limit' })
-    return { success: false, message: 'For mange registreringer på kort tid. Prøv igjen om en liten stund.' }
-  }
-  if (!(await turnstileOk(formData, g.ip))) {
-    log({ kind: 'registration', event: 'rejected', reason: 'turnstile' })
-    return { success: false, message: 'Kunne ikke bekrefte at du er et menneske. Last siden på nytt og prøv igjen.' }
-  }
+  const refused = await botCheck(formData, g.ip, TURNSTILE_ACTIONS.registration, 'registration')
+  if (refused) return { success: false, message: refused, reason: 'turnstile' }
 
   const quantities: Partial<Record<BatteryCategory, unknown>> = {}
   for (const c of BATTERY_CATEGORIES) {
@@ -100,20 +99,29 @@ export async function registerBatteriesAction(formData: FormData): Promise<Regis
 /**
  * «Registrer faktisk levering». Requires the organisation's PIN on every submission; the PIN is
  * checked server-side with an atomic per-organisation attempt limit (see @/lib/miljo/pinAttempts)
- * plus this per-client limit. Every PIN failure returns the same message.
+ * plus a persistent per-network limit here. Every PIN failure returns the same message.
  */
 export async function registerDeliveryAction(formData: FormData): Promise<DeliveryActionResult> {
-  const g = await gate(formData, 20, 'delivery')
+  let entries = 0
+  for (const _ of formData.keys()) {
+    if (++entries > 20) {
+      log({ kind: 'delivery', event: 'rejected', reason: 'too-many-fields' })
+      return { success: false, message: REJECTED }
+    }
+  }
+  const g = await gate(formData, 'delivery')
   if ('message' in g) return { success: false, message: g.message }
 
-  const limited = await rateLimit({ key: `miljo-delivery:${g.ip}`, limit: 20, windowMs: 15 * 60 * 1000 })
-  if (!limited.ok) {
-    log({ kind: 'delivery', event: 'rejected', reason: 'rate-limit' })
-    return { success: false, message: 'For mange forsøk på kort tid. Vent litt og prøv igjen.' }
-  }
-  if (!(await turnstileOk(formData, g.ip))) {
-    log({ kind: 'delivery', event: 'rejected', reason: 'turnstile' })
-    return { success: false, message: 'Kunne ikke bekrefte at du er et menneske. Last siden på nytt og prøv igjen.' }
+  const refused = await botCheck(formData, g.ip, TURNSTILE_ACTIONS.delivery, 'delivery')
+  if (refused) return { success: false, message: refused, reason: 'turnstile' }
+
+  const budget = await publicBudget(deliveryRules(rateLimitSubject(g.ip)))
+  if (budget !== 'ok') {
+    log({ kind: 'delivery', event: 'rejected', reason: budget === 'limited' ? 'rate-limit' : 'limiter-unavailable' })
+    return {
+      success: false,
+      message: budget === 'limited' ? 'For mange forsøk på kort tid. Vent litt og prøv igjen.' : 'Leveransen kunne ikke behandles akkurat nå. Prøv igjen om litt.',
+    }
   }
 
   const file = formData.get('vedlegg')
