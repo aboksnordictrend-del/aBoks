@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { CREAM } from '../../bedrifter/theme'
 import { PageTitle } from '../registrer/formParts'
 import ConfirmActivation from './ConfirmActivation'
+import { PAGE_SHELL } from '../pageShell'
 
 export const metadata: Metadata = {
   title: 'Bekreft registreringen',
@@ -17,7 +18,7 @@ export default async function BekreftPage({ searchParams }: { searchParams: Prom
   const token = typeof sp.token === 'string' ? sp.token : ''
   return (
     <main style={{ background: CREAM, minHeight: '70vh' }}>
-      <div className="mx-auto" style={{ maxWidth: 640, padding: 'clamp(40px,7vw,80px) 16px' }}>
+      <div className={PAGE_SHELL} style={{ maxWidth: 640 }}>
         <PageTitle title="Bekreft registreringen" intro="Siste steg: bekreft e-postadressen for å aktivere organisasjonens konto." />
         <ConfirmActivation token={token} />
       </div>

@@ -5,6 +5,7 @@ import { MILJO_PATHS } from '@/lib/miljo/account/constants'
 import { PageTitle } from '../registrer/formParts'
 import { NO_INDEX, pageSession } from '../konto'
 import LoginForm from './LoginForm'
+import { PAGE_SHELL } from '../pageShell'
 
 export const metadata: Metadata = {
   title: 'Logg inn – Miljøregistrering',
@@ -18,7 +19,7 @@ export default async function LoggInnPage() {
   if (await pageSession()) redirect(MILJO_PATHS.dashboard)
   return (
     <main style={{ background: CREAM, minHeight: '70vh' }}>
-      <div className="mx-auto" style={{ maxWidth: 520, padding: 'clamp(40px,7vw,80px) 16px' }}>
+      <div className={PAGE_SHELL} style={{ maxWidth: 520 }}>
         <PageTitle title="Logg inn" intro="Logg inn med organisasjonens konto i aBoks Miljøregistrering for å se QR-koden og PIN for levering." />
         <LoginForm />
       </div>

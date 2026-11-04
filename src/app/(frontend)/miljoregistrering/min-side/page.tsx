@@ -8,6 +8,7 @@ import { miljoPath } from '@/lib/miljo/qrPrint'
 import { qrSvgPath } from '@/lib/qr/qrcode'
 import { NO_INDEX, pageSession } from '../konto'
 import { ChangePassword, LogoutButton, PinBlock, QrActions } from './MinSideClient'
+import { PAGE_SHELL } from '../pageShell'
 
 export const metadata: Metadata = {
   title: 'Min side – Miljøregistrering',
@@ -49,8 +50,8 @@ export default async function MinSidePage() {
   ]
 
   return (
-    <main className="pt-6 md:pt-8" style={{ background: CREAM, minHeight: '70vh' }}>
-      <div className="mx-auto" style={{ maxWidth: 880, padding: 'clamp(40px,7vw,80px) 16px' }}>
+    <main style={{ background: CREAM, minHeight: '70vh' }}>
+      <div className={PAGE_SHELL} style={{ maxWidth: 880 }}>
         <header style={{ marginBottom: 28 }}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>

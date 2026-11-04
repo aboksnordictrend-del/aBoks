@@ -3,6 +3,7 @@ import { CREAM } from '../../bedrifter/theme'
 import { PageTitle } from '../registrer/formParts'
 import { NO_INDEX } from '../konto'
 import ResetForm from './ResetForm'
+import { PAGE_SHELL } from '../pageShell'
 
 export const metadata: Metadata = {
   title: 'Nytt passord – Miljøregistrering',
@@ -18,7 +19,7 @@ export default async function NyttPassordPage({ searchParams }: { searchParams: 
   const token = typeof sp.token === 'string' ? sp.token : ''
   return (
     <main style={{ background: CREAM, minHeight: '70vh' }}>
-      <div className="mx-auto" style={{ maxWidth: 520, padding: 'clamp(40px,7vw,80px) 16px' }}>
+      <div className={PAGE_SHELL} style={{ maxWidth: 520 }}>
         <PageTitle title="Lag nytt passord" intro="Velg et nytt passord for organisasjonens konto. Du blir logget ut på alle enheter." />
         <ResetForm token={token} />
       </div>

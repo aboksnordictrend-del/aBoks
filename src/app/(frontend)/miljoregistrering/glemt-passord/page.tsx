@@ -3,6 +3,7 @@ import { CREAM } from '../../bedrifter/theme'
 import { PageTitle } from '../registrer/formParts'
 import { NO_INDEX } from '../konto'
 import ForgotForm from './ForgotForm'
+import { PAGE_SHELL } from '../pageShell'
 
 export const metadata: Metadata = {
   title: 'Glemt passord – Miljøregistrering',
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function GlemtPassordPage() {
   return (
     <main style={{ background: CREAM, minHeight: '70vh' }}>
-      <div className="mx-auto" style={{ maxWidth: 520, padding: 'clamp(40px,7vw,80px) 16px' }}>
+      <div className={PAGE_SHELL} style={{ maxWidth: 520 }}>
         <PageTitle title="Glemt passord" intro="Skriv inn e-postadressen dere logger inn med. Vi sender en lenke for å lage nytt passord." />
         <ForgotForm />
       </div>
