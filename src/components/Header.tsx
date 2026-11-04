@@ -243,7 +243,7 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
             <Image src="/logo.png" alt="aBoks" height={56} width={62} style={logoStyle} priority />
           </Link>
 
-          {/* RIGHT col: nav (desktop only) + cart (always) + hamburger (desktop only) */}
+          {/* RIGHT col: nav (desktop only) + account + cart (always) + hamburger (desktop only) */}
           <div className="flex items-center justify-end" style={{ gap: 'clamp(16px,2.6vw,38px)' }}>
             <nav className="hidden lg:flex items-center gap-[clamp(16px,2.6vw,38px)]" aria-label="Primærnavigasjon">
               <Link href="/produkter" style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: navColor, transition: colorTransition, textDecoration: 'none', padding: '6px 0' }}>
@@ -251,19 +251,35 @@ export default function Header({ shopMenu = buildShopMenu([], []) }: { shopMenu?
               </Link>
               {[
                 { label: 'For bedrifter',     href: '/bedrifter' },
-                // From `xl` only: at `lg` widths a seventh item would crowd the row. Below
-                // `xl` the page is reached from the footer and, on mobile, the menu.
+                // From `xl` only: at `lg` widths these would crowd the row (next to the account
+                // and cart icons). Below `xl` they are reached from the menu and the footer.
                 { label: 'Partnerskap',       href: '/bli-partner', className: 'hidden xl:inline-block' },
                 { label: 'Slik fungerer det', href: '/slik-fungerer-det' },
                 { label: 'Historien',         href: '/historien' },
                 { label: 'Inspirasjon',       href: '/inspirasjon' },
-                { label: 'Vanlige spørsmål',  href: '/vanlige-sporsmal' },
+                { label: 'Vanlige spørsmål',  href: '/vanlige-sporsmal', className: 'hidden xl:inline-block' },
               ].map((item: { label: string; href: string; className?: string }) => (
                 <Link key={item.label} href={item.href} className={item.className} style={{ fontFamily: 'var(--font-manrope)', fontWeight: 600, fontSize: '14px', letterSpacing: '0.01em', color: navColor, transition: colorTransition, textDecoration: 'none', padding: '6px 0' }}>
                   {item.label}
                 </Link>
               ))}
             </nav>
+
+            {/* Miljøregistrering account. Min side redirects to sign-in without a session, so one
+                link serves both states — the session cookie is HttpOnly and stays unread here.
+                Same size, stroke and colour as the cart; the 44 px touch target overlaps the gap
+                (negative margin), so the icon row keeps the cart's spacing. */}
+            <Link
+              href="/miljoregistrering/min-side"
+              aria-label="Min side – Miljøregistrering"
+              className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#5e6a48]"
+              style={{ color: navColor, transition: colorTransition, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10.5px', margin: '-4.5px' }}
+            >
+              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="4.2" />
+                <path d="M19.5 20.5a7.5 7.5 0 0 0-15 0" />
+              </svg>
+            </Link>
 
             <Link
               href="/handlekurv"
