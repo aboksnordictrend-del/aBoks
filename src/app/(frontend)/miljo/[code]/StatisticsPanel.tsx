@@ -38,8 +38,21 @@ const qty = (n: number, unit: 'kg' | 'stk') => `${formatNo(n, unit === 'kg' ? 2 
  * «Miljøstatistikk» — the organisation's aggregated, public reporting figures. Registrations
  * (self-reported counts) and deliveries (actual, per unit) are shown in separate, differently
  * marked cards and are never added together. Exports use exactly the selected period.
+ *
+ * Also used on Min side (/miljoregistrering/min-side) with the signed-in account's own endpoints
+ * (`endpoints`), where the full delivery list has its own tab (`showDeliveryRows={false}`).
  */
-export default function StatisticsPanel({ code }: { code: string }) {
+export default function StatisticsPanel({
+  code,
+  endpoints,
+  showDeliveryRows = true,
+}: {
+  code?: string
+  /** Statistics and export URLs; default: the public QR page's for `code`. */
+  endpoints?: { statistics: string; exports: string }
+  showDeliveryRows?: boolean
+}) {
+  const statisticsUrl = endpoints?.statistics ?? `/api/miljo/${encodeURIComponent(code ?? '')}/statistikk`
   const [query, setQuery] = useState<Query>({ preset: 'thisYear' })
   const [draft, setDraft] = useState({ from: '', to: '' })
   const [data, setData] = useState<PublicStatistics | null>(null)
@@ -52,9 +65,9 @@ export default function StatisticsPanel({ code }: { code: string }) {
       setLoading(true)
       setError('')
       try {
-        const res = await fetch(`/api/miljo/${encodeURIComponent(code)}/statistikk?${qs(q)}`, { cache: 'no-store' })
+        const res = await fetch(`${statisticsUrl}?${qs(q)}`, { cache: 'no-store' })
         const body = await res.json()
-        if (!res.ok) throw new Error(body?.error || 'Kunne ikke hente statistikken.')
+        if (!res.ok) throw new Error(body?.error || body?.message || 'Kunne ikke hente statistikken.')
         setData(body as PublicStatistics)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Kunne ikke hente statistikken.')
@@ -62,7 +75,7 @@ export default function StatisticsPanel({ code }: { code: string }) {
         setLoading(false)
       }
     },
-    [code],
+    [statisticsUrl],
   )
 
   useEffect(() => {
@@ -88,7 +101,7 @@ export default function StatisticsPanel({ code }: { code: string }) {
   }
 
   const exportQuery = data ? qs({ preset: query.preset, from: data.period.fromKey, to: data.period.toKey }) : ''
-  const base = `/api/miljo/${encodeURIComponent(code)}/eksport`
+  const base = endpoints?.exports ?? `/api/miljo/${encodeURIComponent(code ?? '')}/eksport`
   const max = data ? Math.max(1, ...data.categories.map((c) => data.registrations.byCategory[c.value])) : 1
   const units = data ? (['kg', 'stk'] as const).filter((u) => data.deliveries.byUnit[u].deliveries > 0) : []
 
@@ -246,31 +259,33 @@ export default function StatisticsPanel({ code }: { code: string }) {
                     <p className={styles.kpiValue}>{formatNo(data.deliveries.documented)}</p>
                   </div>
                 </div>
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <caption className={styles.srOnly}>Leveranser i perioden</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Dato</th>
-                        <th scope="col" className={styles.num}>
-                          Mengde
-                        </th>
-                        <th scope="col">Mottak</th>
-                        <th scope="col">Dokumentasjon</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.deliveryRows.map((d, i) => (
-                        <tr key={`${d.deliveryDate}-${i}`}>
-                          <td>{formatDayKey(d.deliveryDate)}</td>
-                          <td className={styles.num}>{qty(d.quantity, d.unit)}</td>
-                          <td>{d.operator}</td>
-                          <td>{d.documentation}</td>
+                {showDeliveryRows && (
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <caption className={styles.srOnly}>Leveranser i perioden</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">Dato</th>
+                          <th scope="col" className={styles.num}>
+                            Mengde
+                          </th>
+                          <th scope="col">Mottak</th>
+                          <th scope="col">Dokumentasjon</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {data.deliveryRows.map((d, i) => (
+                          <tr key={`${d.deliveryDate}-${i}`}>
+                            <td>{formatDayKey(d.deliveryDate)}</td>
+                            <td className={styles.num}>{qty(d.quantity, d.unit)}</td>
+                            <td>{d.operator}</td>
+                            <td>{d.documentation}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
           </section>

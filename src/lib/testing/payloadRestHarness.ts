@@ -33,8 +33,15 @@ function compare(value: unknown, op: string, expected: unknown): boolean {
       return !(expected as unknown[]).some((e) => same(relId(value), e))
     case 'exists':
       return expected ? value != null && !(Array.isArray(value) && value.length === 0) : value == null
+    // ISO timestamps and YYYY-MM-DD keys compare correctly as strings.
     case 'greater_than':
       return value != null && String(value) > String(expected)
+    case 'greater_than_equal':
+      return value != null && String(value) >= String(expected)
+    case 'less_than':
+      return value != null && String(value) < String(expected)
+    case 'less_than_equal':
+      return value != null && String(value) <= String(expected)
     default:
       throw new Error(`memory adapter: unsupported operator ${op}`)
   }

@@ -92,17 +92,32 @@ export async function resolveOrganization(req: PayloadRequest, code: string): Pr
   })
   const doc = found.docs[0] as unknown as Doc | undefined
   if (!doc || doc.status !== 'active') return { kind: 'unavailable' }
+  return { kind: 'active', org: toResolvedOrganization(doc) }
+}
+
+function toResolvedOrganization(doc: Doc): ResolvedOrganization {
   return {
-    kind: 'active',
-    org: {
-      id: Number(doc.id),
-      name: String(doc.name ?? ''),
-      code,
-      policy: policyFor(doc),
-      otherLabel: typeof doc.otherCategoryLabel === 'string' && doc.otherCategoryLabel.trim() ? doc.otherCategoryLabel.trim() : undefined,
-      pinHash: typeof doc.pinHash === 'string' && doc.pinHash ? doc.pinHash : null,
-    },
+    id: Number(doc.id),
+    name: String(doc.name ?? ''),
+    code: String(doc.publicCode ?? ''),
+    policy: policyFor(doc),
+    otherLabel: typeof doc.otherCategoryLabel === 'string' && doc.otherCategoryLabel.trim() ? doc.otherCategoryLabel.trim() : undefined,
+    pinHash: typeof doc.pinHash === 'string' && doc.pinHash ? doc.pinHash : null,
   }
+}
+
+/**
+ * An organisation by id, active or not — for its own signed-in account (Min side), which may
+ * still read its history while an administrator has closed the public page. The caller has
+ * already decided which organisation the account may see; never pass an id from a request.
+ */
+export async function resolveOrganizationById(
+  req: PayloadRequest,
+  id: number,
+): Promise<{ org: ResolvedOrganization; active: boolean; createdAt: string | null } | null> {
+  const doc = (await req.payload.findByID({ collection: ENV_ORGANIZATIONS_SLUG, id, depth: 0, overrideAccess: true, disableErrors: true, req })) as unknown as Doc | null
+  if (!doc) return null
+  return { org: toResolvedOrganization(doc), active: doc.status === 'active', createdAt: typeof doc.createdAt === 'string' ? doc.createdAt : null }
 }
 
 const CLOSED_MESSAGE = 'Registreringen er ikke aktiv. Kontakt den som har ansvaret for batteriinnsamlingen.'

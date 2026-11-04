@@ -2,7 +2,9 @@
    questionnaire and review form: warm white cards, olive accent, Cormorant headings, Manrope body.
    Mobile-first; every touch target is at least 48px. */
 
-.wrap {
+/* Palette and type only — also used by Min side (/miljoregistrering/min-side), which embeds
+   StatisticsPanel inside its own layout. */
+.theme {
   --ink: #1a1d17;
   --body: #4a4e41;
   --muted: #5f6357;
@@ -18,11 +20,15 @@
   --error-soft: #fdf3f2;
   --delivered: #243153;
   --delivered-soft: #eef1f7;
+  font-family: var(--font-manrope);
+  color: var(--ink);
+}
+
+.wrap {
+  composes: theme;
   max-width: 760px;
   margin: 0 auto;
   padding: clamp(116px, 12vw, 136px) clamp(16px, 5vw, 32px) clamp(64px, 8vw, 96px);
-  font-family: var(--font-manrope);
-  color: var(--ink);
 }
 
 .hero { margin-bottom: 18px; }
@@ -67,6 +73,8 @@
   line-height: 1.2;
   cursor: pointer;
 }
+/* Min side: four tabs — two rows on a phone, one row from 640px. */
+.tabsFour { grid-template-columns: 1fr 1fr; }
 .tab[aria-selected='true'] { background: #ffffff; color: var(--ink); box-shadow: 0 1px 3px rgba(26, 29, 23, 0.12); }
 .tab:focus-visible { outline: 3px solid rgba(94, 106, 72, 0.5); outline-offset: 2px; }
 
@@ -376,6 +384,7 @@
 }
 
 @media (min-width: 640px) {
+  .tabsFour { grid-template-columns: repeat(4, 1fr); }
   .tab { font-size: 15px; }
   .submit { width: auto; padding: 0 44px; }
   .fieldRow { grid-template-columns: 1fr 1fr; }

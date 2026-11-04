@@ -27,6 +27,10 @@ export const ACCOUNT_RATE_LIMITS = {
   resetPerIp: { limit: 20, windowSeconds: 60 * 60 },
   changePerAccount: { limit: 10, windowSeconds: 60 * 60 },
   pinPerAccount: { limit: 30, windowSeconds: 60 * 60 },
+  // Same budgets as the public page's statistics and exports, counted per account.
+  statsPerAccount: { limit: 240, windowSeconds: 60 * 60 },
+  pdfPerAccount: { limit: 30, windowSeconds: 60 * 60 },
+  csvPerAccount: { limit: 60, windowSeconds: 60 * 60 },
 } as const
 
 export const ACCOUNT_MESSAGES = {
