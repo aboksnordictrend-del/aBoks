@@ -1,0 +1,5 @@
+fonttools==4.68.0
+numpy==2.5.4
+pillow==13.0.0
+potracer==0.0.4
+uharfbuzz==0.57.0

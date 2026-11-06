@@ -25,8 +25,8 @@ const time = (iso: string) =>
   new Intl.DateTimeFormat('nb-NO', { timeZone: 'Europe/Oslo', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
 
 /**
- * Sidebar panel on an organisation: public link + QR (preview, PNG, A4 poster, sticker sheet),
- * delivery PIN (generate / set / remove / unlock), record counts with shortcuts, and — tucked
+ * Sidebar panel on an organisation: public link + QR (preview, PNG, A4 poster, sticker sheet,
+ * branded 49 × 49 mm label PDF), delivery PIN (generate / set / remove / unlock), record counts with shortcuts, and — tucked
  * away — the exceptional code rotation. Always reflects the SAVED document.
  *
  * The QR code is generated in the browser by @/lib/qr/qrcode; nothing is sent to any service. A
@@ -48,6 +48,7 @@ export default function OrganizationPanel() {
   const [customPin, setCustomPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [labelBusy, setLabelBusy] = useState(false)
   const [rotate, setRotate] = useState({ confirmCode: '', reason: '' })
 
   const url = code ? miljoPublicUrl(code) : ''
@@ -143,6 +144,28 @@ export default function OrganizationPanel() {
     win.document.close()
   }
 
+  const downloadLabel = async () => {
+    setLabelBusy(true)
+    setError('')
+    try {
+      // Loaded on the click, so pdf-lib and the label artwork stay out of the admin bundle.
+      const { buildMiljoLabelPdf, miljoLabelFilename } = await import('@/lib/miljo/labelPdf')
+      const pdf = await buildMiljoLabelPdf({ url })
+      const href = URL.createObjectURL(new Blob([pdf as BlobPart], { type: 'application/pdf' }))
+      const a = document.createElement('a')
+      a.href = href
+      a.download = miljoLabelFilename(name, code)
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(href), 1000)
+    } catch {
+      setError('Kunne ikke lage etiketten. Prøv igjen.')
+    } finally {
+      setLabelBusy(false)
+    }
+  }
+
   const dim = qr.size + QUIET_ZONE * 2
 
   return (
@@ -184,6 +207,9 @@ export default function OrganizationPanel() {
         </Button>
         <Button buttonStyle="secondary" size="small" margin={false} onClick={() => openPrint('stickers')}>
           Skriv ut klistremerker
+        </Button>
+        <Button buttonStyle="secondary" size="small" margin={false} onClick={() => void downloadLabel()} disabled={labelBusy}>
+          Last ned etikett 49 × 49 mm
         </Button>
       </div>
       <p style={muted}>Én kode for alle organisasjonens aBoks XL. Klistremerkearket har seks koder.</p>
