@@ -19,7 +19,7 @@ export default async function BekreftPage({ searchParams }: { searchParams: Prom
   return (
     <main style={{ background: CREAM, minHeight: '70vh' }}>
       <div className={PAGE_SHELL} style={{ maxWidth: 640 }}>
-        <PageTitle title="Bekreft registreringen" intro="Siste steg: bekreft e-postadressen for å aktivere organisasjonens konto." />
+        <PageTitle title="Bekreft registreringen" intro="Bekreft e-postadressen, så gjennomgår aBoks registreringen." />
         <ConfirmActivation token={token} />
       </div>
     </main>

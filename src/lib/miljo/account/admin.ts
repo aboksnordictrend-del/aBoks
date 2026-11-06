@@ -67,7 +67,7 @@ export const ADMIN_ACCOUNT_MESSAGES = {
   nameRequired: 'Skriv inn navnet til den ansvarlige.',
   emailInvalid: 'Skriv inn en gyldig e-postadresse.',
   emailInUse: 'Det finnes allerede en brukerkonto med denne e-postadressen.',
-  emailPendingRegistration: 'Denne e-postadressen brukes i en selvregistrering som venter på bekreftelse.',
+  emailPendingRegistration: 'Denne e-postadressen brukes i en selvregistrering som venter på bekreftelse eller godkjenning.',
   methodInvalid: 'Velg midlertidig passord eller e-postinvitasjon.',
   organizationNumberRequired: 'Organisasjonen har ikke noe organisasjonsnummer. Oppgi det (9 sifre) for å opprette brukerkontoen.',
   organizationNumberTaken: 'Organisasjonsnummeret tilhører en bedriftskunde som er knyttet til en annen organisasjon.',
@@ -333,7 +333,7 @@ export async function createOrganizationAccount(deps: AdminAccountDeps, adminUse
   const org = await findById(req, ENV_ORGANIZATIONS_SLUG, orgId)
   if (!org) return fail(404, ADMIN_ACCOUNT_MESSAGES.orgNotFound)
   if (await findFirst(req, MILJO_ACCOUNTS_SLUG, { email: { equals: email } })) return fail(409, ADMIN_ACCOUNT_MESSAGES.emailInUse, 'email')
-  if (await findFirst(req, MILJO_REGISTRATIONS_SLUG, { and: [{ loginEmail: { equals: email } }, { status: { equals: 'pending' } }] })) {
+  if (await findFirst(req, MILJO_REGISTRATIONS_SLUG, { and: [{ loginEmail: { equals: email } }, { status: { in: ['pending', 'awaiting_approval'] } }] })) {
     return fail(409, ADMIN_ACCOUNT_MESSAGES.emailPendingRegistration, 'email')
   }
 

@@ -3,8 +3,8 @@ import { emailHtml, escapeHtml } from './types'
 
 /**
  * Confirmation of a Miljøregistrering Bedrift self-registration, sent to the LOGIN e-mail the
- * registrant chose. The single link activates the account (it opens a page with a button, so a
- * mail scanner that follows links cannot activate anything by itself).
+ * registrant chose. The link confirms the address and nothing else — only aBoks' approval activates
+ * an account. It opens a page with a button, so a mail scanner that follows links confirms nothing.
  *
  * Every registrant-typed value is escaped; the plain-text body is not (entities would show).
  */
@@ -36,12 +36,12 @@ export function createMiljoRegistrationConfirmationEmail(data: MiljoRegistration
     <p style="margin:0 0 20px;font-size:15px;color:#555;line-height:1.6;">Hei ${escapeHtml(contactName)},</p>
     <p style="margin:0 0 20px;font-size:15px;color:#555;line-height:1.6;">
       Du har registrert <strong style="color:#1a1d17;">${escapeHtml(organizationName)}</strong>
-      (org.nr. ${escapeHtml(organizationNumber)}) i aBoks Miljøregistrering. Bekreft e-postadressen for å aktivere kontoen.
+      (org.nr. ${escapeHtml(organizationNumber)}) i aBoks Miljøregistrering. Bekreft e-postadressen, så gjennomgår aBoks registreringen.
     </p>
     <p style="margin:0 0 24px;">
       <a href="${escapeHtml(confirmUrl)}"
          style="display:inline-block;padding:14px 28px;background:#1a1d17;color:#faf6ee;border-radius:999px;font-size:15px;font-weight:600;text-decoration:none;">
-        Bekreft og aktiver
+        Bekreft e-postadressen
       </a>
     </p>
     <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.6;">
@@ -49,7 +49,7 @@ export function createMiljoRegistrationConfirmationEmail(data: MiljoRegistration
       <span style="word-break:break-all;color:#1a1d17;">${escapeHtml(confirmUrl)}</span>
     </p>
     <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.6;">
-      Har du ikke registrert deg? Da kan du se bort fra denne e-posten. Ingen konto blir aktivert uten at lenken brukes.
+      Har du ikke registrert deg? Da kan du se bort fra denne e-posten, eller gi oss beskjed på <a href="mailto:post@aboks.no" style="color:#1a1d17;">post@aboks.no</a>. Ingen konto blir aktivert uten godkjenning fra aBoks.
     </p>
     <p style="margin:0;font-size:14px;color:#555;line-height:1.6;">Med vennlig hilsen<br>aBoks</p>
   `
@@ -58,13 +58,13 @@ export function createMiljoRegistrationConfirmationEmail(data: MiljoRegistration
 
 Hei ${contactName},
 
-Du har registrert ${organizationName} (org.nr. ${organizationNumber}) i aBoks Miljøregistrering. Bekreft e-postadressen for å aktivere kontoen:
+Du har registrert ${organizationName} (org.nr. ${organizationNumber}) i aBoks Miljøregistrering. Bekreft e-postadressen, så gjennomgår aBoks registreringen:
 
 ${confirmUrl}
 
 Lenken kan brukes én gang og gjelder til ${expiry}.
 
-Har du ikke registrert deg? Da kan du se bort fra denne e-posten. Ingen konto blir aktivert uten at lenken brukes.
+Har du ikke registrert deg? Da kan du se bort fra denne e-posten, eller gi oss beskjed på post@aboks.no. Ingen konto blir aktivert uten godkjenning fra aBoks.
 
 Med vennlig hilsen
 aBoks`

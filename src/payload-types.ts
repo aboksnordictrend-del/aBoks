@@ -96,6 +96,7 @@ export interface Config {
     'business-customers': BusinessCustomer;
     'miljo-accounts': MiljoAccount;
     'miljo-registrations': MiljoRegistration;
+    'miljo-registration-audit': MiljoRegistrationAudit;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -144,6 +145,7 @@ export interface Config {
     'business-customers': BusinessCustomersSelect<false> | BusinessCustomersSelect<true>;
     'miljo-accounts': MiljoAccountsSelect<false> | MiljoAccountsSelect<true>;
     'miljo-registrations': MiljoRegistrationsSelect<false> | MiljoRegistrationsSelect<true>;
+    'miljo-registration-audit': MiljoRegistrationAuditSelect<false> | MiljoRegistrationAuditSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -2035,24 +2037,39 @@ export interface BatteryDeliveryAudit {
   createdAt: string;
 }
 /**
- * Registreringer bedrifter har gjort selv. Opprettes og oppdateres bare av registreringsflyten.
+ * Registreringer bedrifter har gjort selv. En ny organisasjon får tilgang først når en administrator har godkjent registreringen.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "miljo-registrations".
  */
 export interface MiljoRegistration {
   id: number;
-  status: 'pending' | 'confirmed' | 'superseded';
+  status: 'pending' | 'awaiting_approval' | 'confirmed' | 'rejected' | 'superseded';
   order: number | Order;
   orderNumber?: string | null;
   organizationNumber: string;
   officialName: string;
   contactName: string;
   loginEmail: string;
+  /**
+   * Kan tilhøre en privatperson. Beviser ikke tilknytning til organisasjonen.
+   */
+  orderEmail?: string | null;
   tokenExpiresAt?: string | null;
   sendCount?: number | null;
   lastSentAt?: string | null;
+  orderNoticeSentAt?: string | null;
   confirmedAt?: string | null;
+  decidedAt?: string | null;
+  decidedBy?: (number | null) | User;
+  decidedByLabel?: string | null;
+  verificationMethod?: ('phone' | 'company-email' | 'document' | 'known-customer' | 'other') | null;
+  decisionEmailSentAt?: string | null;
+  decisionNote?: string | null;
+  /**
+   * Endres i behandlingspanelet øverst. Vises aldri for søkeren.
+   */
+  internalNotes?: string | null;
   businessCustomer?: (number | null) | BusinessCustomer;
   account?: (number | null) | MiljoAccount;
   environmentalOrganization?: (number | null) | EnvironmentalOrganization;
@@ -2060,6 +2077,45 @@ export interface MiljoRegistration {
   passwordHash?: string | null;
   tokenHash?: string | null;
   resendKeyHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Uforanderlig logg over behandlingen av selvregistreringer.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "miljo-registration-audit".
+ */
+export interface MiljoRegistrationAudit {
+  id: number;
+  registration: number | MiljoRegistration;
+  organization?: (number | null) | EnvironmentalOrganization;
+  action: 'submitted' | 'email-verified' | 'approved' | 'rejected' | 'activated' | 'superseded' | 'note-updated';
+  performedAt: string;
+  performedBy?: (number | null) | User;
+  /**
+   * E-post for administratorer, «Ansvarlig (PIN)» for leveranser fra QR-siden.
+   */
+  performedByLabel?: string | null;
+  reason?: string | null;
+  before?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  after?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2198,6 +2254,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'miljo-registrations';
         value: number | MiljoRegistration;
+      } | null)
+    | ({
+        relationTo: 'miljo-registration-audit';
+        value: number | MiljoRegistrationAudit;
       } | null);
   globalSlug?: string | null;
   user:
@@ -3113,10 +3173,19 @@ export interface MiljoRegistrationsSelect<T extends boolean = true> {
   officialName?: T;
   contactName?: T;
   loginEmail?: T;
+  orderEmail?: T;
   tokenExpiresAt?: T;
   sendCount?: T;
   lastSentAt?: T;
+  orderNoticeSentAt?: T;
   confirmedAt?: T;
+  decidedAt?: T;
+  decidedBy?: T;
+  decidedByLabel?: T;
+  verificationMethod?: T;
+  decisionEmailSentAt?: T;
+  decisionNote?: T;
+  internalNotes?: T;
   businessCustomer?: T;
   account?: T;
   environmentalOrganization?: T;
@@ -3124,6 +3193,23 @@ export interface MiljoRegistrationsSelect<T extends boolean = true> {
   passwordHash?: T;
   tokenHash?: T;
   resendKeyHash?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "miljo-registration-audit_select".
+ */
+export interface MiljoRegistrationAuditSelect<T extends boolean = true> {
+  registration?: T;
+  organization?: T;
+  action?: T;
+  performedAt?: T;
+  performedBy?: T;
+  performedByLabel?: T;
+  reason?: T;
+  before?: T;
+  after?: T;
   updatedAt?: T;
   createdAt?: T;
 }

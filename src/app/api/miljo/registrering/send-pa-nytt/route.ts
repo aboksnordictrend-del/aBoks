@@ -6,7 +6,7 @@ import { resendConfirmation } from '@/lib/miljo/registration/service'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request): Promise<Response> {
-  const parsed = await parseRequest(request, { requireBotCheck: false })
+  const parsed = await parseRequest(request)
   if (parsed instanceof Response) return parsed
   const { body, ip } = parsed
   return respond(await resendConfirmation(await registrationDeps(), { resendKey: body.resendKey, ip }))

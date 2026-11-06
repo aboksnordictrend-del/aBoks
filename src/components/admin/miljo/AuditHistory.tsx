@@ -6,10 +6,22 @@ import { heading, muted, osloDateTime } from './adminUi'
 
 type Row = { id: number; action: string; reason?: string | null; performedByLabel?: string | null; performedAt: string; before?: unknown; after?: unknown }
 
-const label = (a: string) => AUDIT_ACTION_OPTIONS.find((o) => o.value === a)?.label ?? a
 
 /** Read-only change history of one registration or delivery (newest first). */
-export default function AuditHistory({ collection, field, id, version }: { collection: string; field: string; id: string | number; version: number }) {
+export default function AuditHistory({
+  collection,
+  field,
+  id,
+  version,
+  options = AUDIT_ACTION_OPTIONS,
+}: {
+  collection: string
+  field: string
+  id: string | number
+  version: number
+  options?: { label: string; value: string }[]
+}) {
+  const label = (a: string) => options.find((o) => o.value === a)?.label ?? a
   const [rows, setRows] = useState<Row[] | null>(null)
 
   useEffect(() => {

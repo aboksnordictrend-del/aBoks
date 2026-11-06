@@ -167,3 +167,25 @@
   /* A ring in the section colour cuts the dashed line around each number. */
   .stepNumber { box-shadow: 0 0 0 8px #f2e7d7; }
 }
+
+/* ── Access steps: stacked on phones, 2×2 from 600px, one row of four from 1024px ── */
+.accessSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+/* The step number without its ring, which would show as a beige halo on a white card. Must stay
+   after the rule above: same specificity, so the later one wins. */
+.accessNumber {
+  composes: stepNumber;
+  box-shadow: none;
+}
+@media (min-width: 600px) {
+  .accessSteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .accessSteps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+}

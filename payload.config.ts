@@ -30,7 +30,7 @@ import { EnvironmentalOrganizations } from './src/collections/EnvironmentalOrgan
 import { BatteryRegistrations } from './src/collections/BatteryRegistrations'
 import { BatteryDeliveries } from './src/collections/BatteryDeliveries'
 import { BatteryDeliveryDocuments } from './src/collections/BatteryDeliveryDocuments'
-import { BatteryDeliveryAudit, BatteryRegistrationAudit } from './src/collections/MiljoAudit'
+import { BatteryDeliveryAudit, BatteryRegistrationAudit, MiljoRegistrationAudit } from './src/collections/MiljoAudit'
 import { BusinessCustomers } from './src/collections/BusinessCustomers'
 import { MiljoAccounts } from './src/collections/MiljoAccounts'
 import { MiljoRegistrations } from './src/collections/MiljoRegistrations'
@@ -182,6 +182,7 @@ export default buildConfig({
     BusinessCustomers,
     MiljoAccounts,
     MiljoRegistrations,
+    MiljoRegistrationAudit,
   ],
   // TikTokConnection and PinterestConnection are admin-only, nav-hidden globals that store the
   // encrypted OAuth credentials for their channel; neither has an editing surface. See

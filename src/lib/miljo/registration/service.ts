@@ -1,57 +1,67 @@
 import { commitTransaction, createLocalReq, initTransaction, killTransaction, type Payload, type PayloadRequest } from 'payload'
-import { createMiljoRegistrationConfirmationEmail } from '@/emails'
-import { BUSINESS_CUSTOMERS_SLUG, MILJO_ACCOUNTS_SLUG, MILJO_TRUSTED_ACCOUNT_CREATE, isEligibleOrderStatus, relationshipId } from '@/lib/miljo/business'
-import { ENV_ORGANIZATIONS_SLUG, ORGANIZATION_LIMITS } from '@/lib/miljo/constants'
-import { generatePin, hashPin } from '@/lib/miljo/pin'
-import { pinVaultKey, sealPin } from '@/lib/miljo/pinVault'
+import { createAdminMiljoApplicationEmail, createMiljoRegistrationConfirmationEmail, createMiljoRegistrationOrderNoticeEmail } from '@/emails'
+import { BUSINESS_CUSTOMERS_SLUG, MILJO_ACCOUNTS_SLUG, relationshipId } from '@/lib/miljo/business'
+import { ENV_ORGANIZATIONS_SLUG } from '@/lib/miljo/constants'
+import { ADMIN_EMAIL } from '@/lib/orderEmails'
 import { generateRawToken, hashToken, isWellFormedToken } from '@/lib/reviewToken'
 import { withinLimits, type RateLimitStore } from '@/lib/security/dbRateLimit'
-import { claimPendingRegistration, linkOrderIfFree } from './atomic'
+import { claimEmailConfirmation } from './atomic'
 import type { BrregResult } from './brreg'
 import {
   CONFIRMATION_TTL_MS,
   MILJO_REGISTRATIONS_SLUG,
+  MILJO_REGISTRATION_AUDIT_SLUG,
   RATE_LIMITED_MESSAGE,
   RATE_LIMITS,
   RESEND_MAX_SENDS,
   RESEND_MIN_INTERVAL_MS,
+  type RegistrationAuditAction,
 } from './constants'
 import { hashPasswordForPayload, validateNewPassword } from './password'
 import { AB_ORDER_NUMBER, PURCHASE_MESSAGES, decidePurchase, normalizeEmail, normalizeOrderNumber, type PurchaseOrder } from './purchase'
 
 /**
- * Miljøregistrering Bedrift — self-registration (Stage 2.2a).
+ * Miljøregistrering Bedrift — self-registration, the applicant's half (Stage 2.2a; approval Stage 2.6).
  *
- *   1. verifyPurchase       order number + purchase e-mail → may this buyer register?
+ *   1. verifyPurchase       order number + purchase e-mail → may this buyer apply?
  *   2. lookupOrganization   organisation number → official name from Enhetsregisteret
- *   3. submitRegistration   company, contact, login e-mail, password → a «Venter» registration and
- *                           ONE confirmation e-mail to the login address. Nothing is activated and
- *                           no company, account or organisation is created yet.
+ *   3. submitRegistration   company, contact, login e-mail, password → a «Venter» registration, ONE
+ *                           confirmation e-mail to the login address, and a security notice to the
+ *                           order's own e-mail address when that is a different address.
  *   4. resendConfirmation   a new link (the old one stops working), rate-limited
- *   5. confirmRegistration  the link → ONE transaction that creates or links everything:
- *                           business customer (active), the order link, the environmental
- *                           organisation with its QR code, a delivery PIN, and the Miljø account
- *                           (active, verified, with the password chosen in step 3).
+ *   5. confirmRegistration  the link → «Venter på godkjenning». This proves the login e-mail and
+ *                           NOTHING else: no company, order link, organisation, PIN or account is
+ *                           created here. Only an administrator's approval (./approval) does that.
  *
- * ── Who may become which company ──
+ * ── Why an administrator decides ──
  *
  * Ownership of the PURCHASE is proven by the order number together with its e-mail. The company
  * number is checked against the official register, which proves the company exists — not that the
- * registrant may act for it. A company that is already registered can never be taken over:
+ * applicant may act for it. A private checkout order is a valid purchase for a real organisation,
+ * so orders are deliberately not classified. That gap is closed by a person, who checks the
+ * applicant's connection through an independent channel before approving.
+ *
+ * A pending or rejected applicant has no account at all, so every sign-in and every organisation
+ * resource is refused by the existing rules of @/lib/miljo/businessAccess with no new state to check.
+ *
+ * ── Who may apply for which company ──
+ *
+ * A company that is already registered can never be taken over:
  *   • the company number already has an account                     → refused («logg inn»);
  *   • the company exists (created by aBoks) without an account     → allowed ONLY when aBoks has
  *     already linked this very order to it; otherwise «kontakt aBoks»;
  *   • the order is already linked to a company                     → only that company, and only
  *     if it has no account yet.
- * The database backs every one of these: unique company number, one account per company, unique
- * login e-mail, one company per order (conditional update), one «Venter» registration per order.
+ * An order with a registration awaiting approval cannot start another one: knowing an order number
+ * and its e-mail must not be enough to push a real application out of the queue. The database backs
+ * these: unique company number, unique login e-mail, one company per order (conditional update), one
+ * open registration per order.
  *
  * ── Idempotency ──
  *
- * Opening the link again after activation answers «already activated» and creates nothing. Two
- * simultaneous confirmations of the same link: one claims the registration, the other waits on the
- * row lock and then finds it confirmed. Any failure rolls the whole activation back; the
- * registration stays «Venter» and the link can be used again.
+ * Opening the link again answers with the registration's current state and changes nothing. Two
+ * simultaneous confirmations of the same link: one claims the registration, the other finds it
+ * already confirmed. Any failure rolls the step back; the link can be used again.
  */
 
 export interface RegistrationDeps {
@@ -67,8 +77,7 @@ export type StepResult<T extends object = Record<string, never>> =
   | ({ ok: true } & T)
   | { ok: false; status: number; message: string; field?: string; code?: string }
 
-const GENERIC = PURCHASE_MESSAGES.not_found
-const fail = (status: number, message: string, field?: string, code?: string): StepResult<never> => ({ ok: false, status, message, field, code })
+export const fail = (status: number, message: string, field?: string, code?: string): StepResult<never> => ({ ok: false, status, message, field, code })
 
 export const REGISTRATION_MESSAGES = {
   alreadyRegistered:
@@ -76,12 +85,13 @@ export const REGISTRATION_MESSAGES = {
   contactAboks:
     'Organisasjonen er allerede opprettet hos aBoks, men kan ikke kobles til denne ordren automatisk. Kontakt aBoks, så hjelper vi dere.',
   orderOtherCompany: 'Ordren er knyttet til en annen organisasjon. Kontakt aBoks dersom dette ikke stemmer.',
+  awaitingApproval: 'Det finnes allerede en registrering med denne ordren som venter på godkjenning fra aBoks. Du får beskjed på e-post når den er behandlet.',
   emailInUse: 'E-postadressen brukes allerede av en annen konto i Miljøregistrering. Velg en annen e-postadresse.',
   contactName: 'Skriv inn navnet på kontaktpersonen.',
   loginEmail: 'Skriv inn en gyldig e-postadresse for innlogging.',
   linkInvalid: 'Lenken er ugyldig eller allerede erstattet av en nyere. Bruk den nyeste e-posten, eller start registreringen på nytt.',
   linkExpired: 'Lenken har utløpt. Start registreringen på nytt for å få en ny lenke.',
-  activationFailed: 'Vi kunne ikke aktivere kontoen akkurat nå. Ingenting er endret. Prøv lenken igjen om litt, eller kontakt aBoks.',
+  confirmFailed: 'Vi kunne ikke bekrefte e-postadressen akkurat nå. Ingenting er endret. Prøv lenken igjen om litt, eller kontakt aBoks.',
   sendFailed: 'Registreringen er lagret, men vi fikk ikke sendt e-posten. Prøv «Send e-posten på nytt» om litt.',
   resendTooSoon: 'Vent et minutt før du ber om en ny e-post.',
   resendLimit: 'Det er sendt mange e-poster for denne registreringen. Start registreringen på nytt, eller kontakt aBoks.',
@@ -90,22 +100,56 @@ export const REGISTRATION_MESSAGES = {
 
 /* ------------------------------ helpers ------------------------------ */
 
-const clock = (deps: RegistrationDeps) => (deps.now ? deps.now() : new Date())
+const clock = (deps: { now?: () => Date }) => (deps.now ? deps.now() : new Date())
 const isEmail = (v: string) => v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, max) : '')
+const errName = (err: unknown) => (err instanceof Error ? err.name : 'unknown')
 
-type Doc = Record<string, unknown> & { id: number | string }
+export type Doc = Record<string, unknown> & { id: number | string }
 
-async function findOne(req: PayloadRequest, collection: string, where: Record<string, unknown>): Promise<Doc | null> {
+export async function findOne(req: PayloadRequest, collection: string, where: Record<string, unknown>): Promise<Doc | null> {
   const res = await req.payload.find({ collection: collection as never, where: where as never, depth: 0, limit: 1, pagination: false, overrideAccess: true, req })
   return (res.docs[0] as unknown as Doc | undefined) ?? null
 }
 
-async function hasAccount(req: PayloadRequest, businessCustomerId: unknown): Promise<boolean> {
+export async function hasAccount(req: PayloadRequest, businessCustomerId: unknown): Promise<boolean> {
   const id = relationshipId(businessCustomerId)
   if (id == null) return false
   const res = await req.payload.count({ collection: MILJO_ACCOUNTS_SLUG, where: { businessCustomer: { equals: id } }, overrideAccess: true, req })
   return res.totalDocs > 0
+}
+
+/** One row of the registration's append-only history, in the caller's transaction. */
+export async function writeRegistrationAudit(
+  req: PayloadRequest,
+  entry: {
+    registration: number | string
+    action: RegistrationAuditAction
+    at: Date
+    performedBy?: number | string | null
+    label: string
+    organization?: number | string | null
+    reason?: string | null
+    before?: unknown
+    after?: unknown
+  },
+): Promise<void> {
+  await req.payload.create({
+    collection: MILJO_REGISTRATION_AUDIT_SLUG,
+    data: {
+      registration: entry.registration,
+      organization: entry.organization ?? null,
+      action: entry.action,
+      performedAt: entry.at.toISOString(),
+      performedBy: entry.performedBy ?? null,
+      performedByLabel: entry.label,
+      reason: entry.reason ?? null,
+      before: entry.before ?? null,
+      after: entry.after ?? null,
+    } as never,
+    overrideAccess: true,
+    req,
+  })
 }
 
 /** Order + decision. Loads the products of the order's lines to read their section. */
@@ -114,12 +158,14 @@ async function loadPurchase(req: PayloadRequest, orderNumberRaw: unknown, emailR
   const email = normalizeEmail(emailRaw)
   if (!AB_ORDER_NUMBER.test(orderNumber) || !isEmail(email)) return { decision: { ok: false as const, reason: 'not_found' as const }, order: null, orderNumber }
   const order = (await findOne(req, 'orders', { orderNumber: { equals: orderNumber } })) as (PurchaseOrder & Doc) | null
-  const productIds = [...new Set((order?.items ?? []).map((l) => relationshipId(l.product)).filter((id): id is number | string => id != null).map(String))]
+  // A wrong e-mail stops here, exactly like an unknown order: no further queries for an observer to time.
+  if (!order || normalizeEmail(order.customerInfo?.email) !== email) return { decision: { ok: false as const, reason: 'not_found' as const }, order: null, orderNumber }
+  const productIds = [...new Set((order.items ?? []).map((l) => relationshipId(l.product)).filter((id): id is number | string => id != null).map(String))]
   const products = productIds.length
     ? await req.payload.find({ collection: 'products', where: { id: { in: productIds } }, depth: 0, limit: 0, pagination: false, overrideAccess: true, req })
     : { docs: [] }
   const productSections = new Map((products.docs as unknown as Doc[]).map((p) => [String(p.id), p.section]))
-  const linkedCustomerHasAccount = order ? await hasAccount(req, order.businessCustomer) : false
+  const linkedCustomerHasAccount = await hasAccount(req, order.businessCustomer)
   return { decision: decidePurchase({ order, email, productSections, linkedCustomerHasAccount }), order, orderNumber }
 }
 
@@ -127,11 +173,16 @@ function purchaseFailure(reason: Exclude<ReturnType<typeof decidePurchase>, { ok
   return fail(reason === 'not_found' ? 400 : 409, PURCHASE_MESSAGES[reason], undefined, reason)
 }
 
+/** Only after the caller has shown the order number AND its e-mail: they own the order. */
+async function awaitingApprovalFor(req: PayloadRequest, orderId: number | string): Promise<boolean> {
+  return !!(await findOne(req, MILJO_REGISTRATIONS_SLUG, { and: [{ order: { equals: orderId } }, { status: { equals: 'awaiting_approval' } }] }))
+}
+
 /**
  * Which business customer the activation would use, or why none may be used. `target` null means
  * «create a new one».
  */
-async function resolveTargetCustomer(req: PayloadRequest, order: Doc, organizationNumber: string): Promise<StepResult<{ target: Doc | null }>> {
+export async function resolveTargetCustomer(req: PayloadRequest, order: Doc, organizationNumber: string): Promise<StepResult<{ target: Doc | null }>> {
   const linkedId = relationshipId(order.businessCustomer)
   if (linkedId != null) {
     const linked = await findOne(req, BUSINESS_CUSTOMERS_SLUG, { id: { equals: linkedId } })
@@ -164,8 +215,29 @@ async function sendConfirmation(deps: RegistrationDeps, reg: Doc, rawToken: stri
     await deps.sendEmail({ to: String(reg.loginEmail), ...email })
     return true
   } catch (err) {
-    deps.payload.logger.error(`[miljo-registration] confirmation e-mail for registration ${String(reg.id)} failed: ${err instanceof Error ? err.name : 'unknown'}`)
+    deps.payload.logger.error(`[miljo-registration] confirmation e-mail for registration ${String(reg.id)} failed: ${errName(err)}`)
     return false
+  }
+}
+
+/**
+ * Tells the order's own e-mail address that its order was used to apply. Skipped when the login
+ * address is the same one — that mailbox already gets the confirmation, which says what to do if the
+ * reader did not register. Informational only: it grants and blocks nothing, and a failed send does
+ * not stop the application (the administrator sees that it was not sent).
+ */
+async function sendOrderNotice(deps: RegistrationDeps, reg: Doc, orderEmail: string, now: Date): Promise<void> {
+  if (!orderEmail || orderEmail === normalizeEmail(reg.loginEmail)) return
+  try {
+    const notice = createMiljoRegistrationOrderNoticeEmail({
+      orderNumber: String(reg.orderNumber),
+      organizationName: String(reg.officialName),
+      organizationNumber: String(reg.organizationNumber),
+    })
+    await deps.sendEmail({ to: orderEmail, ...notice })
+    await deps.payload.update({ collection: MILJO_REGISTRATIONS_SLUG, id: reg.id, data: { orderNoticeSentAt: now.toISOString() } as never, overrideAccess: true })
+  } catch (err) {
+    deps.payload.logger.error(`[miljo-registration] order notice for registration ${String(reg.id)} failed: ${errName(err)}`)
   }
 }
 
@@ -186,8 +258,9 @@ export async function verifyPurchase(deps: RegistrationDeps, input: { orderNumbe
   ]))) return fail(429, RATE_LIMITED_MESSAGE)
 
   const req = await createLocalReq({}, deps.payload)
-  const { decision, orderNumber } = await loadPurchase(req, input.orderNumber, input.email)
-  if (!decision.ok) return purchaseFailure(decision.reason)
+  const { decision, order, orderNumber } = await loadPurchase(req, input.orderNumber, input.email)
+  if (!decision.ok || !order) return purchaseFailure(decision.ok ? 'not_found' : decision.reason)
+  if (await awaitingApprovalFor(req, order.id)) return fail(409, REGISTRATION_MESSAGES.awaitingApproval, undefined, 'awaiting_approval')
   return { ok: true, orderNumber }
 }
 
@@ -197,7 +270,11 @@ export async function lookupOrganizationForRegistration(
   deps: RegistrationDeps,
   input: { orderNumber: unknown; email: unknown; organizationNumber: unknown; ip: string },
 ): Promise<StepResult<{ organizationNumber: string; officialName: string }>> {
-  if (!(await withinLimits(deps.rateLimits, [{ key: `reg:lookup:ip:${input.ip}`, ...RATE_LIMITS.lookupPerIp }]))) return fail(429, RATE_LIMITED_MESSAGE)
+  const orderKey = normalizeOrderNumber(input.orderNumber)
+  if (!(await withinLimits(deps.rateLimits, [
+    { key: `reg:lookup:ip:${input.ip}`, ...RATE_LIMITS.lookupPerIp },
+    { key: `reg:lookup:order:${orderKey}`, ...RATE_LIMITS.lookupPerOrder },
+  ]))) return fail(429, RATE_LIMITED_MESSAGE)
   const req = await createLocalReq({}, deps.payload)
   const { decision, order } = await loadPurchase(req, input.orderNumber, input.email)
   if (!decision.ok || !order) return purchaseFailure(decision.ok ? 'not_found' : decision.reason)
@@ -239,6 +316,7 @@ export async function submitRegistration(deps: RegistrationDeps, input: SubmitIn
   const lookupReq = await createLocalReq({}, deps.payload)
   const { decision, order, orderNumber } = await loadPurchase(lookupReq, input.orderNumber, input.email)
   if (!decision.ok || !order) return purchaseFailure(decision.ok ? 'not_found' : decision.reason)
+  if (await awaitingApprovalFor(lookupReq, order.id)) return fail(409, REGISTRATION_MESSAGES.awaitingApproval, undefined, 'awaiting_approval')
 
   const registry = await deps.lookupOrganization(String(input.organizationNumber ?? ''))
   if (!registry.ok) return fail(registry.reason === 'unavailable' ? 503 : 400, registry.message, 'organizationNumber', registry.reason)
@@ -251,25 +329,30 @@ export async function submitRegistration(deps: RegistrationDeps, input: SubmitIn
   const resendKey = generateRawToken()
   const now = clock(deps)
   const expiresAt = new Date(now.getTime() + CONFIRMATION_TTL_MS)
+  const orderEmail = normalizeEmail((order as PurchaseOrder).customerInfo?.email)
 
   // Supersede an earlier «Venter» registration for this order and create the new one, atomically.
   const req = await createLocalReq({}, deps.payload)
   const shouldCommit = await initTransaction(req)
   let reg: Doc
   try {
-    await req.payload.update({
+    const replaced = await req.payload.update({
       collection: MILJO_REGISTRATIONS_SLUG,
       where: { and: [{ order: { equals: order.id } }, { status: { equals: 'pending' } }] },
       data: { status: 'superseded', tokenHash: null, resendKeyHash: null, passwordHash: null, passwordSalt: null } as never,
       overrideAccess: true,
       req,
     })
+    for (const old of replaced.docs as unknown as Doc[]) {
+      await writeRegistrationAudit(req, { registration: old.id, action: 'superseded', at: now, label: 'Søker', after: { status: 'superseded' } })
+    }
     reg = (await req.payload.create({
       collection: MILJO_REGISTRATIONS_SLUG,
       data: {
         status: 'pending',
         order: order.id,
         orderNumber,
+        orderEmail,
         organizationNumber: registry.organizationNumber,
         officialName: registry.officialName,
         contactName,
@@ -285,14 +368,22 @@ export async function submitRegistration(deps: RegistrationDeps, input: SubmitIn
       overrideAccess: true,
       req,
     })) as unknown as Doc
+    await writeRegistrationAudit(req, {
+      registration: reg.id,
+      action: 'submitted',
+      at: now,
+      label: 'Søker',
+      after: { organizationNumber: registry.organizationNumber, orderNumber },
+    })
     if (shouldCommit) await commitTransaction(req)
   } catch (err) {
     await killTransaction(req)
-    deps.payload.logger.warn(`[miljo-registration] submit for order ${String(order.id)} not stored: ${err instanceof Error ? err.name : 'unknown'}`)
+    deps.payload.logger.warn(`[miljo-registration] submit for order ${String(order.id)} not stored: ${errName(err)}`)
     return fail(409, REGISTRATION_MESSAGES.busy)
   }
 
   const emailSent = await sendConfirmation(deps, reg, rawToken, expiresAt)
+  await sendOrderNotice(deps, reg, orderEmail, now)
   return { ok: true, resendKey, emailHint: maskEmail(loginEmail), emailSent }
 }
 
@@ -323,157 +414,76 @@ export async function resendConfirmation(deps: RegistrationDeps, input: { resend
   return { ok: true, emailHint: maskEmail(String(reg.loginEmail)) }
 }
 
-/* ------------------------------ 5. confirm + activate ------------------------------ */
+/* ------------------------------ 5. confirm the e-mail ------------------------------ */
 
-export interface ActivationResult {
-  alreadyActivated: boolean
+export type ConfirmationState = 'awaiting_approval' | 'activated' | 'rejected'
+
+export interface ConfirmationResult {
+  state: ConfirmationState
+  /** False the first time the link is used. */
+  alreadyConfirmed: boolean
   organizationName: string
+  /** Only once an administrator has approved the registration. */
   publicCode: string | null
 }
 
-export async function confirmRegistration(deps: RegistrationDeps, input: { token: unknown; ip: string }): Promise<StepResult<ActivationResult>> {
+async function currentState(req: PayloadRequest, reg: Doc): Promise<StepResult<ConfirmationResult> | null> {
+  const organizationName = String(reg.officialName)
+  if (reg.status === 'awaiting_approval') return { ok: true, state: 'awaiting_approval', alreadyConfirmed: true, organizationName, publicCode: null }
+  if (reg.status === 'rejected') return { ok: true, state: 'rejected', alreadyConfirmed: true, organizationName, publicCode: null }
+  if (reg.status === 'confirmed') {
+    const orgId = relationshipId(reg.environmentalOrganization)
+    const org = orgId != null ? await findOne(req, ENV_ORGANIZATIONS_SLUG, { id: { equals: orgId } }) : null
+    return { ok: true, state: 'activated', alreadyConfirmed: true, organizationName, publicCode: (org?.publicCode as string | undefined) ?? null }
+  }
+  return null
+}
+
+/** Tells aBoks that an application is ready to review. Best effort: the queue in Payload is the record. */
+async function notifyAdministrators(deps: RegistrationDeps, reg: Doc): Promise<void> {
+  try {
+    const message = createAdminMiljoApplicationEmail({
+      organizationName: String(reg.officialName),
+      organizationNumber: String(reg.organizationNumber),
+      orderNumber: String(reg.orderNumber ?? ''),
+      contactName: String(reg.contactName),
+      loginEmail: String(reg.loginEmail),
+      reviewUrl: `${deps.siteUrl.replace(/\/$/, '')}/admin/collections/${MILJO_REGISTRATIONS_SLUG}/${String(reg.id)}`,
+    })
+    await deps.sendEmail({ to: ADMIN_EMAIL, ...message })
+  } catch (err) {
+    deps.payload.logger.error(`[miljo-registration] administrator notice for registration ${String(reg.id)} failed: ${errName(err)}`)
+  }
+}
+
+export async function confirmRegistration(deps: RegistrationDeps, input: { token: unknown; ip: string }): Promise<StepResult<ConfirmationResult>> {
   if (!(await withinLimits(deps.rateLimits, [{ key: `reg:confirm:ip:${input.ip}`, ...RATE_LIMITS.confirmPerIp }]))) return fail(429, RATE_LIMITED_MESSAGE)
   if (!isWellFormedToken(input.token)) return fail(400, REGISTRATION_MESSAGES.linkInvalid, undefined, 'invalid')
   const tokenHash = hashToken(input.token)
   const lookup = await createLocalReq({}, deps.payload)
   const found = await findOne(lookup, MILJO_REGISTRATIONS_SLUG, { tokenHash: { equals: tokenHash } })
   if (!found || found.status === 'superseded') return fail(400, REGISTRATION_MESSAGES.linkInvalid, undefined, 'invalid')
-  if (found.status === 'confirmed') return activatedResult(lookup, found, true)
+  const known = await currentState(lookup, found)
+  if (known) return known
   const now = clock(deps)
   if (!(new Date(String(found.tokenExpiresAt)).getTime() > now.getTime())) return fail(410, REGISTRATION_MESSAGES.linkExpired, undefined, 'expired')
-  // Without the vault key the new PIN could be stored only as a hash, and Min side could never show
-  // it («Vis PIN»). Refuse before anything is claimed or written; the link stays usable.
-  const vaultKey = pinVaultKey()
-  if (!vaultKey) {
-    deps.payload.logger.error(`[miljo-registration] activation of registration ${String(found.id)} refused: MILJO_PIN_ENCRYPTION_KEY is not configured`)
-    return fail(503, REGISTRATION_MESSAGES.activationFailed, undefined, 'vault-not-configured')
-  }
 
   const req = await createLocalReq({}, deps.payload)
   const shouldCommit = await initTransaction(req)
   try {
-    const result = await activate(req, found, now, vaultKey)
-    if (!result.ok) {
+    if (!(await claimEmailConfirmation(req, found.id, now))) {
       await killTransaction(req)
-      return result
+      const current = await findOne(lookup, MILJO_REGISTRATIONS_SLUG, { id: { equals: found.id } })
+      const state = current ? await currentState(lookup, current) : null
+      return state ?? fail(410, REGISTRATION_MESSAGES.linkExpired, undefined, 'expired')
     }
+    await writeRegistrationAudit(req, { registration: found.id, action: 'email-verified', at: now, label: 'Søker', after: { status: 'awaiting_approval' } })
     if (shouldCommit) await commitTransaction(req)
-    return result
   } catch (err) {
     await killTransaction(req)
-    deps.payload.logger.error(`[miljo-registration] activation of registration ${String(found.id)} rolled back: ${err instanceof Error ? err.name : 'unknown'}`)
-    return fail(500, REGISTRATION_MESSAGES.activationFailed)
+    deps.payload.logger.error(`[miljo-registration] confirmation of registration ${String(found.id)} rolled back: ${errName(err)}`)
+    return fail(500, REGISTRATION_MESSAGES.confirmFailed)
   }
-}
-
-async function activatedResult(req: PayloadRequest, reg: Doc, alreadyActivated: boolean): Promise<StepResult<ActivationResult>> {
-  const orgId = relationshipId(reg.environmentalOrganization)
-  const org = orgId != null ? await findOne(req, ENV_ORGANIZATIONS_SLUG, { id: { equals: orgId } }) : null
-  return { ok: true, alreadyActivated, organizationName: String(reg.officialName), publicCode: (org?.publicCode as string | undefined) ?? null }
-}
-
-/** Everything inside ONE transaction (`req`). Throws, or returns a refusal, to roll back. */
-async function activate(req: PayloadRequest, reg: Doc, now: Date, vaultKey: Buffer): Promise<StepResult<ActivationResult>> {
-  // a. Claim the registration — decided by the database (see ./atomic).
-  if (!(await claimPendingRegistration(req, reg.id, now))) {
-    const current = await findOne(req, MILJO_REGISTRATIONS_SLUG, { id: { equals: reg.id } })
-    if (current?.status === 'confirmed') return activatedResult(req, current, true)
-    return fail(410, REGISTRATION_MESSAGES.linkExpired, undefined, 'expired')
-  }
-
-  // b. The order must still qualify.
-  const order = await findOne(req, 'orders', { id: { equals: relationshipId(reg.order) } })
-  if (!order || !isEligibleOrderStatus(order.status)) return fail(409, PURCHASE_MESSAGES.not_eligible_status)
-
-  // c. The business customer: the one aBoks linked this order to, or a new one.
-  const target = await resolveTargetCustomer(req, order, String(reg.organizationNumber))
-  if (!target.ok) return target
-  const verifiedAt = now.toISOString()
-  let customer = target.target
-  if (customer) {
-    customer = (await req.payload.update({
-      collection: BUSINESS_CUSTOMERS_SLUG,
-      id: customer.id,
-      data: { status: 'active', contactEmailVerifiedAt: verifiedAt, ...(customer.contactName ? {} : { contactName: reg.contactName }) } as never,
-      overrideAccess: true,
-      req,
-    })) as unknown as Doc
-  } else {
-    customer = (await req.payload.create({
-      collection: BUSINESS_CUSTOMERS_SLUG,
-      data: {
-        name: reg.officialName,
-        organizationNumber: reg.organizationNumber,
-        contactName: reg.contactName,
-        contactEmail: reg.loginEmail,
-        contactEmailVerifiedAt: verifiedAt,
-        status: 'active',
-      } as never,
-      overrideAccess: true,
-      req,
-    })) as unknown as Doc
-  }
-
-  // d. One company per order — decided by the database.
-  if (!(await linkOrderIfFree(req, order.id, customer.id))) return fail(409, REGISTRATION_MESSAGES.orderOtherCompany)
-
-  // e. The environmental organisation (one QR code per company) — reuse the one aBoks made.
-  let orgId = relationshipId(customer.environmentalOrganization)
-  if (orgId == null) {
-    const org = (await req.payload.create({
-      collection: ENV_ORGANIZATIONS_SLUG,
-      // The register's name can be longer than an organisation name may be; the business customer keeps it whole.
-      data: { name: String(reg.officialName).slice(0, ORGANIZATION_LIMITS.nameMax), organizationType: 'bedrift', status: 'active' } as never,
-      overrideAccess: true,
-      req,
-    })) as unknown as Doc
-    orgId = org.id
-    await req.payload.update({ collection: BUSINESS_CUSTOMERS_SLUG, id: customer.id, data: { environmentalOrganization: orgId } as never, overrideAccess: true, req })
-  }
-
-  // f. A delivery PIN, if the organisation has none — the same storage as the admin «PIN» action.
-  const org = await findOne(req, ENV_ORGANIZATIONS_SLUG, { id: { equals: orgId } })
-  if (!org?.pinHash) {
-    const pin = generatePin()
-    await req.payload.update({
-      collection: ENV_ORGANIZATIONS_SLUG,
-      id: orgId,
-      data: {
-        pinHash: await hashPin(pin),
-        pinSetAt: verifiedAt,
-        pinEncrypted: sealPin(pin, Number(orgId), vaultKey),
-        pinAttemptCount: 0,
-        pinAttemptWindowStart: null,
-      } as never,
-      context: { miljoSetPin: true },
-      overrideAccess: true,
-      req,
-    })
-  }
-
-  // g. The Miljø account: active, verified, with the password chosen at registration.
-  const account = (await req.payload.create({
-    collection: MILJO_ACCOUNTS_SLUG,
-    data: {
-      email: reg.loginEmail,
-      password: generateRawToken(), // replaced below by the registrant's own hash
-      businessCustomer: customer.id,
-      status: 'active',
-      emailVerifiedAt: verifiedAt,
-    } as never,
-    context: { [MILJO_TRUSTED_ACCOUNT_CREATE]: true },
-    overrideAccess: true,
-    req,
-  })) as unknown as Doc
-  await req.payload.db.updateOne({ collection: MILJO_ACCOUNTS_SLUG, id: account.id, data: { salt: reg.passwordSalt, hash: reg.passwordHash }, req } as never)
-
-  // h. Record the result; the password hash is no longer needed here.
-  const updated = (await req.payload.update({
-    collection: MILJO_REGISTRATIONS_SLUG,
-    id: reg.id,
-    data: { businessCustomer: customer.id, account: account.id, environmentalOrganization: orgId, passwordHash: null, passwordSalt: null, resendKeyHash: null } as never,
-    overrideAccess: true,
-    req,
-  })) as unknown as Doc
-  return activatedResult(req, updated, false)
+  await notifyAdministrators(deps, found)
+  return { ok: true, state: 'awaiting_approval', alreadyConfirmed: false, organizationName: String(found.officialName), publicCode: null }
 }

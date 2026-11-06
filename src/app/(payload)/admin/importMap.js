@@ -28,6 +28,8 @@ import { default as default_c5635271a8577a501c627eb021db7c9c } from '@/component
 import { default as default_ae0b89fcf38feaddd6d206b921e8dc21 } from '@/components/admin/miljo/OrganizationPanel'
 import { default as default_304496d3f0435d753ab7b993399f441c } from '@/components/admin/miljo/RegistrationPanel'
 import { default as default_d89c86b6a841c5acc87f52cff99e03ab } from '@/components/admin/miljo/DeliveryPanel'
+import { default as default_a5362c007c00664853f3b170ba62e2df } from '@/components/admin/miljo/RegistrationReviewPanel'
+import { default as default_1363134821778fde78852afd5fd95827 } from '@/components/admin/miljo/RegistrationQueue'
 import { default as default_82e162e3a40f323970764102685edf7b } from '@/components/admin/analytics/NavLink'
 import { default as default_96f7826023c671e840efbaace74dd187 } from '@/components/admin/blobImages/NavLink'
 import { default as default_c1bf44ceeaba256b4df3c2a5dc5267bc } from '@/components/admin/pilot/NavLink'
@@ -71,6 +73,8 @@ export const importMap = {
   "@/components/admin/miljo/OrganizationPanel#default": default_ae0b89fcf38feaddd6d206b921e8dc21,
   "@/components/admin/miljo/RegistrationPanel#default": default_304496d3f0435d753ab7b993399f441c,
   "@/components/admin/miljo/DeliveryPanel#default": default_d89c86b6a841c5acc87f52cff99e03ab,
+  "@/components/admin/miljo/RegistrationReviewPanel#default": default_a5362c007c00664853f3b170ba62e2df,
+  "@/components/admin/miljo/RegistrationQueue#default": default_1363134821778fde78852afd5fd95827,
   "@/components/admin/analytics/NavLink#default": default_82e162e3a40f323970764102685edf7b,
   "@/components/admin/blobImages/NavLink#default": default_96f7826023c671e840efbaace74dd187,
   "@/components/admin/pilot/NavLink#default": default_c1bf44ceeaba256b4df3c2a5dc5267bc,

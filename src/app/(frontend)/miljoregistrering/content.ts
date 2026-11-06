@@ -84,6 +84,22 @@ export const AUDIENCES = {
   ] satisfies { icon: IconName; title: string; text: string }[],
 }
 
+export const ACCESS = {
+  eyebrow: 'Slik kommer du i gang',
+  title: 'Hvordan får bedriften tilgang?',
+  intro: 'Virksomheter som kjøper en aBoks-modell på aboks.no, kan opprette en bedriftskonto og få tilgang til aBoks Miljøregistrering.',
+  // Mirrors the real flow in ./registrer/RegistrationFlow.tsx: the purchase check accepts only web
+  // orders (AB-xxxxxx) with a model on them, so neither retailer purchases nor accessories qualify.
+  items: [
+    { title: 'Kjøp en aBoks-modell', text: 'Alle aBoks-modeller gir mulighet for tilgang til Miljøregistrering.' },
+    { title: 'Opprett bedriftskonto', text: 'Registrer virksomheten med ordrenummer, organisasjonsnummer og kontaktinformasjon.' },
+    { title: 'Bekreft e-postadressen', text: 'Bekreft e-postadressen. Registreringen blir deretter gjennomgått av aBoks.' },
+    { title: 'Start miljøregistreringen', text: 'Når kontoen er godkjent, får virksomheten tilgang til QR-kode, batteriregistrering, statistikk og rapporter.' },
+  ],
+  primary: { label: 'Opprett bedriftskonto', href: '/miljoregistrering/registrer' },
+  secondary: { label: 'Se våre produkter', href: '/produkter' },
+}
+
 export const FAQ = [
   {
     id: 'konto',
@@ -126,7 +142,7 @@ export const FAQ = [
 
 export const FINAL_CTA = {
   title: 'Gjør batteriinnsamling til et dokumenterbart miljøtiltak',
-  text: 'Har organisasjonen kjøpt aBoks? Registrer bedriften med ordrenummeret, så får dere egen QR-kode og konto. Er dere allerede registrert, logger dere inn på Min side.',
+  text: 'Har virksomheten kjøpt en aBoks-modell? Registrer bedriften og bekreft e-postadressen. Når registreringen er godkjent av aBoks, får dere tilgang til egen QR-kode, batteriregistrering, statistikk og rapporter.',
   primary: { label: 'Registrer bedriften', href: '/miljoregistrering/registrer' },
   secondary: { label: 'Logg inn', href: '/miljoregistrering/logg-inn' },
 }

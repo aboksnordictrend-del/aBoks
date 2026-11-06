@@ -4,6 +4,7 @@ import { SITE_URL } from '@/lib/site'
 import { IMAGES } from './content'
 import MiljoHero from './MiljoHero'
 import {
+  AccessSection,
   AudienceSection,
   DemoNotice,
   DemoSection,
@@ -119,6 +120,7 @@ export default function MiljoregistreringPage() {
 
       <DocumentationSection />
       <AudienceSection />
+      <AccessSection />
       <FaqSection />
       <FinalCtaSection />
     </main>

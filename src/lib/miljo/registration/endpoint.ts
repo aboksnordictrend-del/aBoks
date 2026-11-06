@@ -1,10 +1,9 @@
-import { getPayloadClient } from '@/lib/payload'
 import { resolveApplicationOrigin } from '@/lib/appOrigin'
 import { buildCsrfOrigins } from '@/lib/csrfOrigins'
-import { clientIpFromHeaders } from '@/lib/rateLimit'
 import { SITE_URL } from '@/lib/site'
+import { rateLimitSubject, trustedClientIp } from '@/lib/security/clientIp'
 import { dbRateLimitStore } from '@/lib/security/dbRateLimit'
-import { turnstileConfigured, verifyTurnstile } from '@/lib/turnstile'
+import { TURNSTILE_MESSAGES, verifyTurnstileToken } from '@/lib/security/turnstileVerify'
 import { lookupOrganization } from './brreg'
 import type { RegistrationDeps, StepResult } from './service'
 
@@ -12,11 +11,14 @@ import type { RegistrationDeps, StepResult } from './service'
  * The HTTP edge of Miljøregistrering self-registration (/api/miljo/registrering/*): JSON in, JSON
  * out, `Cache-Control: no-store`, nothing cached and nothing about the request logged.
  *
- *   • Origin: a present Origin must be one of this deployment's own origins (the same allowlist as
- *     Payload's CSRF check). No cookie is involved in Stage 2.2a, but a cross-site page still may
- *     not drive these forms.
- *   • Bot check: Cloudflare Turnstile when configured (`turnstileToken` in the body); skipped
- *     otherwise, like the review and inquiry forms.
+ *   • Origin: required, and one of this deployment's own origins (the same allowlist as Payload's
+ *     CSRF check). Browsers always send it on a fetch POST, so a cross-site page cannot drive these
+ *     forms and a direct request without it gets nowhere.
+ *   • Bot check: the strict Turnstile of the public QR page (@/lib/security/turnstileVerify) on the
+ *     purchase check, the organisation lookup and the submission. It fails CLOSED on a deployment
+ *     when the keys are missing, and compares hostname and action in Production. Confirmation and
+ *     «send again» carry a 256-bit secret from the e-mail or the page instead, and are rate-limited.
+ *   • Client address: read only from headers the platform controls; IPv6 counted per /64.
  *   • Rate limits and every decision live in ./service.
  */
 
@@ -27,6 +29,8 @@ const trustedOrigins = new Set([...buildCsrfOrigins(appOrigin), ...buildCsrfOrig
 export const json = (status: number, body: unknown) => Response.json(body, { status, headers: HEADERS })
 
 export async function registrationDeps(): Promise<RegistrationDeps> {
+  // Imported here so the request checks below can be tested without the Payload config.
+  const { getPayloadClient } = await import('@/lib/payload')
   const payload = await getPayloadClient()
   return {
     payload,
@@ -41,13 +45,14 @@ export async function registrationDeps(): Promise<RegistrationDeps> {
 
 export interface ParsedRequest {
   body: Record<string, unknown>
+  /** A rate-limit subject, never a raw header value. */
   ip: string
 }
 
-/** Origin, content type, body and (optionally) Turnstile — or the Response that refuses it. */
-export async function parseRequest(request: Request, { requireBotCheck }: { requireBotCheck: boolean }): Promise<ParsedRequest | Response> {
+/** Origin, content type, body and (when `botAction` is given) Turnstile — or the Response that refuses it. */
+export async function parseRequest(request: Request, { botAction }: { botAction?: string } = {}): Promise<ParsedRequest | Response> {
   const origin = request.headers.get('origin')
-  if (origin && !trustedOrigins.has(origin)) return json(403, { ok: false, message: 'Forespørselen ble avvist.' })
+  if (!origin || !trustedOrigins.has(origin)) return json(403, { ok: false, message: 'Forespørselen ble avvist.' })
   if (!(request.headers.get('content-type') ?? '').includes('application/json')) {
     return json(415, { ok: false, message: 'Ugyldig forespørsel.' })
   }
@@ -58,12 +63,15 @@ export async function parseRequest(request: Request, { requireBotCheck }: { requ
   } catch {
     return json(400, { ok: false, message: 'Ugyldig forespørsel.' })
   }
-  const ip = clientIpFromHeaders(request.headers)
-  if (requireBotCheck && turnstileConfigured()) {
-    const token = typeof body.turnstileToken === 'string' ? body.turnstileToken : undefined
-    if (!(await verifyTurnstile(token, ip))) return json(400, { ok: false, message: 'Bekreft at du ikke er en robot, og prøv igjen.' })
+  const address = trustedClientIp(request.headers)
+  if (botAction) {
+    const outcome = await verifyTurnstileToken(body.turnstileToken, { action: botAction, remoteIp: address })
+    if (!outcome.ok) {
+      const unavailable = outcome.reason === 'misconfigured' || outcome.reason === 'unavailable'
+      return json(unavailable ? 503 : 400, { ok: false, message: TURNSTILE_MESSAGES[outcome.reason], code: 'turnstile' })
+    }
   }
-  return { body, ip }
+  return { body, ip: rateLimitSubject(address) }
 }
 
 /** A service result as the HTTP response. Only the fields the form needs are returned. */

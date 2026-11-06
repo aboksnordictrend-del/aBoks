@@ -3,18 +3,20 @@ import type { PayloadRequest } from 'payload'
 import { MILJO_REGISTRATIONS_SLUG } from './constants'
 
 /**
- * The two writes of an activation that must be decided by the DATABASE, not by a read-then-write
+ * The writes of the registration flow that must be decided by the DATABASE, not by a read-then-write
  * in the application — so that concurrent requests can never both succeed:
  *
- *   • claimPendingRegistration — `UPDATE … SET status = 'confirmed' WHERE id = ? AND status =
- *     'pending' AND token_expires_at > now()`. Inside the activation transaction the row stays
- *     locked until commit; a second confirmation of the same link waits, re-evaluates the WHERE
- *     and finds nothing to claim.
+ *   • claimEmailConfirmation — `UPDATE … SET status = 'awaiting_approval' WHERE id = ? AND status =
+ *     'pending' AND token_expires_at > now()`. A second confirmation of the same link finds nothing.
+ *   • claimDecision — `UPDATE … SET status = 'confirmed' | 'rejected' … WHERE id = ? AND status =
+ *     'awaiting_approval'`. Inside the decision transaction the row stays locked until commit; a
+ *     second approval waits, re-evaluates the WHERE and finds nothing to claim, so one registration
+ *     can never activate twice, and an approval and a rejection can never both win.
  *   • linkOrderIfFree — `UPDATE orders SET business_customer_id = ? WHERE id = ? AND
  *     (business_customer_id IS NULL OR business_customer_id = ?)`. One order can never end up with
  *     two companies, whatever runs at the same time.
  *
- * Both run on the request's own transaction connection (the same pattern as @/lib/emailClaim).
+ * All run on the request's own transaction connection (the same pattern as @/lib/emailClaim).
  * Without an SQL executor — only the in-memory test database — they fall back to the equivalent
  * read-then-write through the Local API, which is correct for a single caller only.
  */
@@ -48,13 +50,13 @@ export function rowCount(result: unknown): number {
   return Array.isArray(rows) ? rows.length : 0
 }
 
-/** True when THIS call moved the registration from pending to confirmed. */
-export async function claimPendingRegistration(req: PayloadRequest, id: number | string, now: Date): Promise<boolean> {
+/** True when THIS call moved the registration from pending to awaiting approval. */
+export async function claimEmailConfirmation(req: PayloadRequest, id: number | string, now: Date): Promise<boolean> {
   const db = executorOf(req)
   if (db) {
     const result = await db.execute(sql`
       UPDATE "miljo_registrations"
-         SET "status" = 'confirmed', "confirmed_at" = ${now.toISOString()}, "updated_at" = now()
+         SET "status" = 'awaiting_approval', "confirmed_at" = ${now.toISOString()}, "resend_key_hash" = NULL, "updated_at" = now()
        WHERE "id" = ${Number(id)} AND "status" = 'pending' AND "token_expires_at" > ${now.toISOString()}
       RETURNING "id"
     `)
@@ -67,7 +69,53 @@ export async function claimPendingRegistration(req: PayloadRequest, id: number |
     await req.payload.update({
       collection: MILJO_REGISTRATIONS_SLUG,
       id,
-      data: { status: 'confirmed', confirmedAt: now.toISOString() } as never,
+      data: { status: 'awaiting_approval', confirmedAt: now.toISOString(), resendKeyHash: null } as never,
+      overrideAccess: true,
+      req,
+    })
+    return true
+  })
+}
+
+export interface DecisionClaim {
+  outcome: 'confirmed' | 'rejected'
+  decidedAt: Date
+  decidedById: number | string | null
+  decidedByLabel: string
+  verificationMethod: string | null
+  decisionNote: string | null
+}
+
+/** True when THIS call decided the registration. Only a registration awaiting approval can be. */
+export async function claimDecision(req: PayloadRequest, id: number | string, claim: DecisionClaim): Promise<boolean> {
+  const db = executorOf(req)
+  if (db) {
+    const status = claim.outcome === 'confirmed' ? sql`'confirmed'` : sql`'rejected'`
+    const decidedBy = claim.decidedById == null ? null : Number(claim.decidedById)
+    const result = await db.execute(sql`
+      UPDATE "miljo_registrations"
+         SET "status" = ${status}, "decided_at" = ${claim.decidedAt.toISOString()}, "decided_by_id" = ${decidedBy},
+             "decided_by_label" = ${claim.decidedByLabel}, "verification_method" = ${claim.verificationMethod},
+             "decision_note" = ${claim.decisionNote}, "updated_at" = now()
+       WHERE "id" = ${Number(id)} AND "status" = 'awaiting_approval'
+      RETURNING "id"
+    `)
+    return rowCount(result) === 1
+  }
+  return serialised(`registration:${String(id)}`, async () => {
+    const current = await req.payload.findByID({ collection: MILJO_REGISTRATIONS_SLUG, id, depth: 0, overrideAccess: true, disableErrors: true, req })
+    if ((current as { status?: unknown } | null)?.status !== 'awaiting_approval') return false
+    await req.payload.update({
+      collection: MILJO_REGISTRATIONS_SLUG,
+      id,
+      data: {
+        status: claim.outcome,
+        decidedAt: claim.decidedAt.toISOString(),
+        decidedBy: claim.decidedById,
+        decidedByLabel: claim.decidedByLabel,
+        verificationMethod: claim.verificationMethod,
+        decisionNote: claim.decisionNote,
+      } as never,
       overrideAccess: true,
       req,
     })

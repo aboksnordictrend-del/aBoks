@@ -9,6 +9,7 @@ import {
   INK,
   MUTED,
   OLIVE,
+  PALE_SAGE,
   SANS,
   SECTION_PAD,
   SERIF,
@@ -17,10 +18,11 @@ import {
   h2Style,
   introStyle,
   primaryButton,
+  secondaryButton,
 } from '../bedrifter/theme'
 import Reveal from '../historien/Reveal'
 import { SectionHeading } from '../bli-partner/ui'
-import { AUDIENCES, DOCUMENTATION, FAQ, FINAL_CTA, INTRO, STEPS } from './content'
+import { ACCESS, AUDIENCES, DOCUMENTATION, FAQ, FINAL_CTA, INTRO, STEPS } from './content'
 import { Icon, IconTile } from './icons'
 import styles from './page.module.css'
 import demoStyles from './demo/demo.module.css'
@@ -292,6 +294,44 @@ export function AudienceSection() {
             </li>
           ))}
         </ul>
+      </div>
+    </section>
+  )
+}
+
+/* ────────────────────────────── How an organisation gets access ────────────────────────────── */
+
+export function AccessSection() {
+  return (
+    <section id="tilgang" aria-labelledby="tilgang-title" style={{ background: PALE_SAGE, padding: SECTION_PAD, scrollMarginTop: ANCHOR_OFFSET }}>
+      <div className={container}>
+        <Reveal>
+          <SectionHeading id="tilgang-title" eyebrow={ACCESS.eyebrow} title={ACCESS.title} intro={ACCESS.intro} />
+        </Reveal>
+        <ol className={styles.accessSteps} style={{ marginTop: 'clamp(32px,4vw,52px)' }}>
+          {ACCESS.items.map((s, i) => (
+            <li key={s.title}>
+              <Reveal delay={i * 0.05} style={{ ...cardStyle, height: '100%' }}>
+                <span className={styles.accessNumber} aria-hidden="true">
+                  {i + 1}
+                </span>
+                <h3 style={{ ...cardTitle, margin: '18px 0 6px' }}>
+                  <span className="sr-only">Steg {i + 1}: </span>
+                  {s.title}
+                </h3>
+                <p style={cardText}>{s.text}</p>
+              </Reveal>
+            </li>
+          ))}
+        </ol>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap" style={{ marginTop: 'clamp(28px,3.4vw,44px)' }}>
+          <Link href={ACCESS.primary.href} data-btn className="w-full px-10 sm:w-auto" style={primaryButton}>
+            {ACCESS.primary.label}
+          </Link>
+          <Link href={ACCESS.secondary.href} data-btn className="w-full px-8 sm:w-auto" style={secondaryButton}>
+            {ACCESS.secondary.label}
+          </Link>
+        </div>
       </div>
     </section>
   )

@@ -8,6 +8,7 @@ import {
   ENV_ORGANIZATIONS_SLUG,
   MILJO_ADMIN_GROUP,
 } from '@/lib/miljo/constants'
+import { MILJO_REGISTRATIONS_SLUG, MILJO_REGISTRATION_AUDIT_SLUG, REGISTRATION_AUDIT_ACTION_OPTIONS } from '@/lib/miljo/registration/constants'
 import { appendOnly, refuseDelete } from './hooks/miljo'
 import { adminOnly } from '@/lib/security/staffAccess'
 
@@ -22,7 +23,7 @@ import { adminOnly } from '@/lib/security/staffAccess'
 
 const nobody: Access = () => false
 
-function auditFields(subject: { name: string; relationTo: CollectionSlug; label: string }): Field[] {
+function auditFields(subject: { name: string; relationTo: CollectionSlug; label: string }, actionOptions: { label: string; value: string }[] = AUDIT_ACTION_OPTIONS): Field[] {
   return [
     {
       name: subject.name,
@@ -44,7 +45,7 @@ function auditFields(subject: { name: string; relationTo: CollectionSlug; label:
     {
       type: 'row',
       fields: [
-        { name: 'action', type: 'select', label: 'Handling', required: true, options: AUDIT_ACTION_OPTIONS, admin: { readOnly: true, width: '50%' } },
+        { name: 'action', type: 'select', label: 'Handling', required: true, options: actionOptions, admin: { readOnly: true, width: '50%' } },
         {
           name: 'performedAt',
           type: 'date',
@@ -106,6 +107,30 @@ export const BatteryDeliveryAudit: CollectionConfig = {
   access: { read: adminOnly, create: nobody, update: nobody, delete: nobody },
   defaultSort: '-performedAt',
   fields: auditFields({ name: 'delivery', relationTo: BATTERY_DELIVERIES_SLUG, label: 'Levering' }),
+  hooks: {
+    beforeChange: [appendOnly],
+    beforeDelete: [refuseDelete('Endringsloggen kan ikke slettes.')],
+  },
+  timestamps: true,
+}
+
+/**
+ * The history of a self-registration (Stage 2.6): submitted, e-mail confirmed, approved or rejected,
+ * activated, and changes to the internal notes. No password, token or PIN is ever written here.
+ */
+export const MiljoRegistrationAudit: CollectionConfig = {
+  slug: MILJO_REGISTRATION_AUDIT_SLUG,
+  labels: { singular: 'Endring (selvregistrering)', plural: 'Endringslogg – selvregistreringer' },
+  admin: {
+    useAsTitle: 'action',
+    group: MILJO_ADMIN_GROUP,
+    defaultColumns: ['action', 'registration', 'performedByLabel', 'reason', 'performedAt'],
+    description: 'Uforanderlig logg over behandlingen av selvregistreringer.',
+    pagination: { defaultLimit: 50 },
+  },
+  access: { read: adminOnly, create: nobody, update: nobody, delete: nobody },
+  defaultSort: '-performedAt',
+  fields: auditFields({ name: 'registration', relationTo: MILJO_REGISTRATIONS_SLUG, label: 'Selvregistrering' }, REGISTRATION_AUDIT_ACTION_OPTIONS),
   hooks: {
     beforeChange: [appendOnly],
     beforeDelete: [refuseDelete('Endringsloggen kan ikke slettes.')],

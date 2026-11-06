@@ -8,6 +8,7 @@ export { createPartnerPayoutEmail } from './partner-payout'
 export { createBusinessInquiryConfirmationEmail } from './business-inquiry-confirmation'
 export { createAdminBusinessInquiryEmail } from './admin-business-inquiry'
 export { createMiljoRegistrationConfirmationEmail } from './miljo-registration-confirmation'
+export { createMiljoRegistrationOrderNoticeEmail, createMiljoRegistrationApprovedEmail, createMiljoRegistrationRejectedEmail, createAdminMiljoApplicationEmail } from './miljo-registration-decisions'
 export { createMiljoPasswordResetEmail } from './miljo-password-reset'
 export { createMiljoInvitationEmail } from './miljo-invitation'
 export type {

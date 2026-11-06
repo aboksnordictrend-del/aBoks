@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Script from 'next/script'
 import { INK, MUTED, SANS, secondaryButton } from '../../bedrifter/theme'
+import { REGISTRATION_TURNSTILE_ACTIONS } from '@/lib/miljo/registration/constants'
 import { Field, Notice, Steps, SubmitButton, postJson, type ApiResult } from './formParts'
 
 /**
@@ -12,6 +13,8 @@ import { Field, Notice, Steps, SubmitButton, postJson, type ApiResult } from './
  *   2. Organisasjon   organisation number (official name from Enhetsregisteret), contact person,
  *                     login e-mail and password                          → …/organisasjon, …/registrering
  *   3. Bekreft e-post «check your inbox», with «send again»               → …/send-pa-nytt
+ *
+ * After the e-mail is confirmed, an administrator reviews the registration; only that activates it.
  *
  * The purchase details from step 1 stay in this page's memory only and are re-checked by the
  * server on every later step. The password is sent once and then cleared from the page.
@@ -115,8 +118,10 @@ export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKe
   async function fetchOrganization() {
     if (busy) return
     setBusy(true)
-    const result = await postJson('/api/miljo/registrering/organisasjon', { orderNumber, email: purchaseEmail, organizationNumber })
+    const result = await postJson('/api/miljo/registrering/organisasjon', { orderNumber, email: purchaseEmail, organizationNumber, turnstileToken: turnstileToken(step2Form.current) })
     setBusy(false)
+    // A token works once: the lookup used this one, so the widget fetches a new one for the submission.
+    resetWidgetIn(step2Form.current)
     if (result.ok) {
       setOfficialName(String(result.officialName))
       setOrganizationNumber(String(result.organizationNumber))
@@ -181,11 +186,11 @@ export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKe
         <form ref={step1Form} onSubmit={submitPurchase} noValidate>
           <h2 style={{ fontFamily: SANS, fontSize: 20, fontWeight: 700, color: INK, margin: '0 0 6px' }}>Bekreft kjøpet</h2>
           <p style={{ fontFamily: SANS, fontSize: 15, color: MUTED, margin: '0 0 20px', lineHeight: 1.6 }}>
-            Registreringen krever et kjøp av en aBoks-modell. Bruk ordrenummeret (f.eks. AB-012345) og e-postadressen fra ordrebekreftelsen.
+            Registreringen krever et kjøp av en aBoks-modell. Bruk ordrenummeret (f.eks. AB-012345) og e-postadressen fra ordrebekreftelsen. aBoks gjennomgår hver registrering før kontoen aktiveres.
           </p>
           <Field id="orderNumber" name="orderNumber" label="Ordrenummer" value={orderNumber} onChange={setOrderNumber} autoComplete="off" maxLength={20} error={errors.orderNumber} />
           <Field id="purchaseEmail" name="purchaseEmail" type="email" label="E-post brukt ved bestilling" value={purchaseEmail} onChange={setPurchaseEmail} autoComplete="email" maxLength={254} error={errors.email} />
-          {turnstileSiteKey && <div className="cf-turnstile" data-sitekey={turnstileSiteKey} style={{ marginBottom: 18 }} />}
+          {turnstileSiteKey && <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-action={REGISTRATION_TURNSTILE_ACTIONS.purchase} style={{ marginBottom: 18 }} />}
           <SubmitButton busy={busy}>Fortsett</SubmitButton>
         </form>
       )}
@@ -223,7 +228,7 @@ export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKe
           <Field id="loginEmail" name="loginEmail" type="email" label="E-post for innlogging" value={loginEmail} onChange={setLoginEmail} autoComplete="email" maxLength={254} hint="Kan være en annen adresse enn den brukt ved bestillingen. Vi sender en bekreftelseslenke hit." error={errors.loginEmail} />
           <Field id="password" name="password" type="password" label="Passord" value={password} onChange={setPassword} autoComplete="new-password" maxLength={128} hint="Minst 10 tegn, med minst én bokstav og ett tall." error={errors.password} />
           <Field id="passwordConfirmation" name="passwordConfirmation" type="password" label="Bekreft passord" value={passwordConfirmation} onChange={setPasswordConfirmation} autoComplete="new-password" maxLength={128} />
-          {turnstileSiteKey && <div className="cf-turnstile" data-sitekey={turnstileSiteKey} style={{ marginBottom: 18 }} />}
+          {turnstileSiteKey && <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-action={REGISTRATION_TURNSTILE_ACTIONS.registration} style={{ marginBottom: 18 }} />}
           <SubmitButton busy={busy}>Registrer organisasjonen</SubmitButton>
         </form>
       )}
@@ -232,7 +237,7 @@ export default function RegistrationFlow({ turnstileSiteKey }: { turnstileSiteKe
         <div>
           <h2 style={{ fontFamily: SANS, fontSize: 20, fontWeight: 700, color: INK, margin: '0 0 6px' }}>Sjekk e-posten</h2>
           <p style={{ fontFamily: SANS, fontSize: 15, color: MUTED, margin: '0 0 20px', lineHeight: 1.6 }}>
-            Vi har sendt en bekreftelseslenke til <strong style={{ color: INK }}>{emailHint}</strong>. Kontoen aktiveres når du åpner lenken og bekrefter. Lenken gjelder i 24 timer.
+            Vi har sendt en bekreftelseslenke til <strong style={{ color: INK }}>{emailHint}</strong>. Åpne lenken og bekreft e-postadressen, så gjennomgår aBoks registreringen. Du får beskjed på e-post når bedriftskontoen er aktivert. Lenken gjelder i 24 timer.
           </p>
           <SubmitButton type="button" busy={busy} disabled={waitSeconds > 0} onClick={resend}>
             {waitSeconds > 0 ? `Send e-posten på nytt (om ${waitSeconds} s)` : 'Send e-posten på nytt'}

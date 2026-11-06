@@ -1,3 +1,4 @@
+import { REGISTRATION_TURNSTILE_ACTIONS } from '@/lib/miljo/registration/constants'
 import { parseRequest, registrationDeps, respond } from '@/lib/miljo/registration/endpoint'
 import { lookupOrganizationForRegistration } from '@/lib/miljo/registration/service'
 
@@ -6,7 +7,7 @@ import { lookupOrganizationForRegistration } from '@/lib/miljo/registration/serv
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request): Promise<Response> {
-  const parsed = await parseRequest(request, { requireBotCheck: false })
+  const parsed = await parseRequest(request, { botAction: REGISTRATION_TURNSTILE_ACTIONS.registration })
   if (parsed instanceof Response) return parsed
   const { body, ip } = parsed
   return respond(await lookupOrganizationForRegistration(await registrationDeps(), { orderNumber: body.orderNumber, email: body.email, organizationNumber: body.organizationNumber, ip }))
