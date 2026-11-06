@@ -608,7 +608,7 @@ export interface Customer {
   createdAt: string;
 }
 /**
- * Bedrifter som kan bruke aBoks Miljøregistrering. Ett organisasjonsnummer per bedrift, én Miljøkonto per bedrift.
+ * Bedrifter som kan bruke aBoks Miljøregistrering. Ett organisasjonsnummer per bedrift. Brukerkontoer opprettes fra organisasjonen (Miljøregistrering → Organisasjoner → «Opprett brukerkonto»).
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "business-customers".
@@ -628,6 +628,10 @@ export interface BusinessCustomer {
    * Settes automatisk første gang status blir «Aktiv».
    */
   activatedAt?: string | null;
+  /**
+   * «Kjøp»: bedriften har tilgang så lenge minst én koblet ordre er bekreftet, sendt eller levert. «Avtale»: aBoks har gitt tilgang uten nettordre (f.eks. kommune eller pilot). Status må uansett være «Aktiv».
+   */
+  accessBasis: 'purchase' | 'agreement';
   contactName?: string | null;
   /**
    * Adressen eierskapet bekreftes mot.
@@ -728,7 +732,7 @@ export interface EnvironmentalOrganization {
   createdAt: string;
 }
 /**
- * Felles innlogging for en bedriftskunde i Miljøregistrering. Kan bare logge inn når kontoen er aktiv og e-posten er bekreftet.
+ * Innlogginger for bedriftskunder i Miljøregistrering. Kan bare logge inn når kontoen er aktiv og e-posten er bekreftet. Opprett nye kontoer fra organisasjonen («Opprett brukerkonto»).
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "miljo-accounts".
@@ -736,17 +740,23 @@ export interface EnvironmentalOrganization {
 export interface MiljoAccount {
   id: number;
   /**
-   * Én konto per bedriftskunde. Kan ikke endres etter at kontoen er opprettet.
+   * Kan ikke endres etter at kontoen er opprettet.
    */
   businessCustomer: number | BusinessCustomer;
+  fullName?: string | null;
   /**
    * «Deaktivert» stenger kontoen ved neste forespørsel.
    */
   status: 'invited' | 'active' | 'disabled';
   /**
-   * Settes av bekreftelsesflyten (kommer senere).
+   * Settes når e-posten er bekreftet (selvregistrering eller invitasjon) eller når aBoks oppretter kontoen med midlertidig passord.
    */
   emailVerifiedAt?: string | null;
+  provisioning?: ('self-registration' | 'admin-password' | 'admin-invitation') | null;
+  mustChangePassword?: boolean | null;
+  invitedAt?: string | null;
+  inviteExpiresAt?: string | null;
+  inviteTokenHash?: string | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -3049,6 +3059,7 @@ export interface BusinessCustomersSelect<T extends boolean = true> {
   organizationNumber?: T;
   status?: T;
   activatedAt?: T;
+  accessBasis?: T;
   contactName?: T;
   contactEmail?: T;
   contactEmailVerifiedAt?: T;
@@ -3065,8 +3076,14 @@ export interface BusinessCustomersSelect<T extends boolean = true> {
  */
 export interface MiljoAccountsSelect<T extends boolean = true> {
   businessCustomer?: T;
+  fullName?: T;
   status?: T;
   emailVerifiedAt?: T;
+  provisioning?: T;
+  mustChangePassword?: T;
+  invitedAt?: T;
+  inviteExpiresAt?: T;
+  inviteTokenHash?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
